@@ -3,14 +3,13 @@
   "Statement": [
     {
       "Action": [
-        "s3:GetObject",
-        "s3:PutObject"
+        "s3:*"
       ],
       "Resource": [
         "*"
       ],
       "Effect": "Allow",
-      "Sid": "02d569759aab4902a3f3bd5aad50b91e"
+      "Sid": "bf900f21bc4349b19c4ad59b62fade1b"
     },
     {
       "Action": [

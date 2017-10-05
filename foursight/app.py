@@ -1,78 +1,78 @@
+from __future__ import print_function, unicode_literals
 from chalice import Chalice, BadRequestError, NotFoundError
-import boto3
 import json
+from chalicelib.ff_connection import FFConnection
+from chalicelib.ff_checks import FFCheckSuite, run_check
+from chalicelib.utils import getMethodsByDecorator
+from chalicelib.s3_connection import S3Connection
+import boto3
 from botocore.exceptions import ClientError
-from chalicelib.ff_connection import FF_Connection
 
 app = Chalice(app_name='foursight')
 app.debug = True
 
-TEST_DICT = {
-    'ABC': '123',
-    'DEF': '456'
+
+CACHED = {}
+SERVER_INFO = {
+    'webprod': {
+        'server': 'https://data.4dnucleome.org/',
+        'bucket': 'foursight-webprod',
+        'es': 'https://search-fourfront-webprod-hmrrlalm4ifyhl4bzbvl73hwv4.us-east-1.es.amazonaws.com/'
+    }
 }
 
-OBJECTS = {}
-
-S3 = boto3.client('s3')
-BUCKET = 'foursight-dev'
-
+# this is messy
+alias = 'webprod'
+info = SERVER_INFO[alias]
+CACHED[alias] = FFConnection(info['server'], info['bucket'], info['es'])
 
 @app.route('/')
 def index():
     return {'foursight': 'insight into fourfront'}
 
 
-@app.route('/ff')
-def test_FF_connection():
-    connection = FF_Connection('https://data.4dnucleome.org/')
-    return {'status': str(connection.isUp)}
+@app.route('/run_checks/{checks}')
+def test_FF_connection(checks):
+    connection = CACHED['webprod']
+    testSuite = FFCheckSuite(connection)
+    decoMethods = getMethodsByDecorator(FFCheckSuite, run_check)
+    results = {}
+    to_run = []
+    did_run = []
+    if checks != 'all':
+        to_run = checks.split(',')
+    for method in decoMethods:
+        name = method.__name__
+        if to_run and name not in to_run:
+            continue
+        res = method(testSuite)
+        results[name] = res
+        did_run.append(name)
+    if results:
+        s3_key = connection.log_result(checks, results)
+    else:
+        s3_key = None
+
+    return {
+        'status': connection.is_up,
+        'checks_runs': did_run,
+        'results_stored_as': s3_key,
+        'latest_run': connection.latest_run,
+        's3_info': connection.s3connection.head_info
+    }
 
 
-@app.route('/test/{testval}')
-def test_return(testval):
-    try:
-        return {'return_val': TEST_DICT[testval]}
-    except KeyError:
-        raise BadRequestError("Unknown test key '%s', valid choices are: %s" % (
-            testval, ', '.join(TEST_DICT.keys())))
-
-
-@app.route('/s3objects/{key}', methods=['GET', 'PUT'])
-def s3objects(key):
-    request = app.current_request
-    if request.method == 'PUT':
-        S3.put_object(Bucket=BUCKET, Key=key,
-                      Body=json.dumps(request.json_body))
-    elif request.method == 'GET':
-        try:
-            response = S3.get_object(Bucket=BUCKET, Key=key)
-            return json.loads(response['Body'].read())
-        except ClientError as e:
-            raise NotFoundError(key)
+@app.route('/test_s3/{bucket_name}')
+def test_s3_connection(bucket_name):
+    s3Connection = S3Connection(bucket_name)
+    return {
+        'bucket': s3Connection.bucket,
+        'region': s3Connection.location,
+        'status': s3Connection.status_code,
+        'info': s3Connection.head_info
+    }
 
 
 @app.route('/introspect')
 def introspect():
     return app.current_request.to_dict()
-
-
-# The view function above will return {"hello": "world"}
-# whenever you make an HTTP GET request to '/'.
-#
-# Here are a few more examples:
-#
-# @app.route('/hello/{name}')
-# def hello_name(name):
-#    # '/hello/james' -> {"hello": "james"}
-#    return {'hello': name}
-#
-# @app.route('/users', methods=['POST'])
-# def create_user():
-#     # This is the JSON body the user sent in their POST request.
-#     user_as_json = app.current_request.json_body
-#     # We'll echo the json body back to the user in a 'user' key.
-#     return {'user': user_as_json}
-#
-# See the README documentation for more examples.
-#
