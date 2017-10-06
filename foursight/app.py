@@ -21,19 +21,32 @@ SERVER_INFO = {
     }
 }
 
-# this is messy
-alias = 'webprod'
-info = SERVER_INFO[alias]
-CACHED[alias] = FFConnection(info['server'], info['bucket'], info['es'])
-
 @app.route('/')
 def index():
     return {'foursight': 'insight into fourfront'}
 
 
-@app.route('/run_checks/{checks}')
-def test_FF_connection(checks):
-    connection = CACHED['webprod']
+@app.route('/foursight/{environ}/{checks}')
+def run_checks(environ, checks, supplied_connection=None):
+    if supplied_connection is None:
+        if environ not in SERVER_INFO:
+            return {
+                'ERROR': 'invalid environment provided. Should be one of: %s' % (str(list(SERVER_INFO.keys()))),
+                'checks_run': {}
+            }
+        try:
+            connection = CACHED[environ]
+        except KeyError:
+            info = SERVER_INFO[environ]
+            CACHED[environ] = FFConnection(info['server'], info['bucket'], info['es'])
+            connection = CACHED[environ]
+        if not connection.is_up:
+            return {
+                'ERROR': 'connection to FF is down',
+                'checks_run': {}
+            }
+    else:
+        connection = supplied_connection
     testSuite = FFCheckSuite(connection)
     decoMethods = getMethodsByDecorator(FFCheckSuite, run_check)
     results = {}
@@ -54,12 +67,36 @@ def test_FF_connection(checks):
         s3_key = None
 
     return {
-        'status': connection.is_up,
         'checks_runs': did_run,
         'results_stored_as': s3_key,
         'latest_run': connection.latest_run,
         's3_info': connection.s3connection.head_info
     }
+
+
+@app.route('/latest_run/{environ}')
+def latest_run(environ):
+    if environ not in SERVER_INFO:
+        return {
+            'ERROR': 'invalid environment provided. Should be one of: %s' % (str(list(SERVER_INFO.keys()))),
+            'checks_run': {}
+        }
+    try:
+        connection = CACHED[environ]
+    except KeyError:
+        info = SERVER_INFO[environ]
+        CACHED[environ] = FFConnection(info['server'], info['bucket'], info['es'])
+        connection = CACHED[environ]
+    if not connection.is_up:
+        return {
+            'ERROR': 'connection to FF is down',
+            'checks_run': {}
+        }
+    if connection.latest_run is None:
+        run_checks(environ, 'all', connection)
+        return connection.get_latest_run()
+    else:
+        return connection.get_latest_run()
 
 
 @app.route('/test_s3/{bucket_name}')

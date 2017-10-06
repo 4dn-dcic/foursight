@@ -45,3 +45,12 @@ class FFConnection(object):
         if checks == 'all':
             self.latest_run = s3_key
         return s3_key
+
+
+    def get_latest_run(self):
+        if self.latest_run is None:
+            return {
+                'ERROR': 'no run has been performed',
+                'checks_run': {}
+            }
+        return json.loads(self.s3connection.get_object(self.latest_run))
