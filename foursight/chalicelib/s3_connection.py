@@ -17,8 +17,10 @@ class S3Connection(object):
             self.head_info = self.test_connection()
             self.status_code = self.head_info.get('ResponseMetadata', {}).get("HTTPStatusCode", 404)
 
+
     def put_object(self, key, value):
         self.client.put_object(Bucket=self.bucket, Key=key, Body=value)
+
 
     def get_object(self, key):
         # return found bucket content or None on an error
@@ -28,12 +30,18 @@ class S3Connection(object):
         except ClientError as e:
             return None
 
+
+    def list_objects(self, prefix):
+        return [obj for obj in self.client.list_objects(Bucket=self.bucket, Prefix=prefix)]
+
+
     def test_connection(self):
         try:
             bucket_resp = self.client.head_bucket(Bucket=self.bucket)
         except ClientError:
             return {'ResponseMetadata': {'HTTPStatusCode': 404}}
         return bucket_resp
+
 
     def create_bucket(self):
         # us-east-1 is default location

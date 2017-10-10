@@ -1,4 +1,5 @@
 from __future__ import print_function, unicode_literals
+from .util import get_closest
 import datetime
 import json
 
@@ -34,7 +35,7 @@ class CheckResult(object):
         }
 
 
-    def get_latest(self):
+    def get_latest_check(self):
         latest_key = ''.join([self.name, '/latest', self.extension])
         result = self.s3connection.get_object(latest_key)
         if result is None:
@@ -50,7 +51,28 @@ class CheckResult(object):
         return json_result
 
 
+    def get_closest_check(self, diff_hours):
+        # check_tuples is a list of items of form (s3key, datetime timestamp)
+        check_tuples = []
+        s3_prefix = ''.join([self.name, '/'])
+        relevant_checks = self.s3connection.list_objects(s3_prefix)
+        # now use only s3 objects with a valid timestamp
+        for check in relevant_checks:
+            if check.startswith(prefix) and check.endswith(self.extension):
+                time_str = check[len(prefix):-len(self.extension)]
+                try:
+                    check_time = datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
+                except ValueError:
+                    continue
+                check_tuples.append((check, check_time))
+        desired_time = datetime.datetime.utcnow() -
+            datetime.datetime.timedelta(hours=diff_hours)
+        best_match = get_closest(check_tuples, desired_time)
+        return self.s3connection.get_object(best_match[0])
+
+
     def store_result(self):
+        #
         timestamp = datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(timestamp)
         time_key = ''.join([self.name, '/', timestamp, self.extension])

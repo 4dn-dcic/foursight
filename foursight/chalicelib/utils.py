@@ -28,3 +28,13 @@ def get_methods_by_deco(cls, decorator):
         if hasattr(maybeDecorated, 'decorator'):
             if maybeDecorated.decorator == decorator:
                 yield maybeDecorated
+
+
+def get_closest(items, pivot):
+    """
+    Return the item in the list of items closest to the given pivot.
+    Items should be given in tuple form (ID, value (to compare))
+    Intended primarily for use with datetime objects.
+    See: S.O. 32237862
+    """
+    return min(items, key=lambda x: abs(x[1] - pivot))

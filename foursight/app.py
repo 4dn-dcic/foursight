@@ -61,7 +61,7 @@ def init_connection(environ, supplied_connection):
 
 @app.route('/')
 def index():
-    return {'foursight': 'insight into fourfront'}
+    return json.dumps({'foursight': 'insight into fourfront'})
 
 
 @app.route('/run/{environ}/{checks}')
@@ -106,7 +106,7 @@ def get_latest_checks(environ, checks, supplied_connection=None):
             continue
         # the CheckResult below is used solely to collect the latest check
         TempCheck = CheckResult(connection.s3connection, name)
-        results[name] = TempCheck.get_latest()
+        results[name] = TempCheck.get_latest_check()
         did_check.append(name)
 
     return json.dumps({
@@ -129,4 +129,4 @@ def test_s3_connection(bucket_name):
 
 @app.route('/introspect')
 def introspect():
-    return app.current_request.to_dict()
+    return json.dumps(app.current_request.to_dict())
