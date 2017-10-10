@@ -2,7 +2,6 @@ from __future__ import print_function, unicode_literals
 import requests
 import boto3
 from botocore.exceptions import ClientError
-import json
 
 class S3Connection(object):
     def __init__(self, bucket_name):
@@ -22,12 +21,12 @@ class S3Connection(object):
         self.client.put_object(Bucket=self.bucket, Key=key, Body=value)
 
     def get_object(self, key):
-        # return found bucket content or error as JSON
+        # return found bucket content or None on an error
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             return response['Body'].read()
         except ClientError as e:
-            return json.dumps({'ResponseMetadata': 'ClientError'})
+            return None
 
     def test_connection(self):
         try:

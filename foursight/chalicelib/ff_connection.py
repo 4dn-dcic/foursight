@@ -11,8 +11,8 @@ class FFConnection(object):
         self.s3connection = S3Connection(bucket)
         self.es = es
         self.is_up = self.test_connection()
-        self.latest_run = None
         self.auth = self.get_auth()
+
 
     def test_connection(self):
         # check connection
@@ -21,6 +21,7 @@ class FFConnection(object):
         except:
             return False
         return True if head_resp.status_code == 200 else False
+
 
     def get_auth(self):
         # authorization info is currently held in s3
@@ -33,24 +34,7 @@ class FFConnection(object):
             secret = auth_res.get('secret')
             return (key, secret) if key and secret else ()
 
+
     def get_auth_user(self):
         me_res = json.loads(requests.get(''.join([self.server,'me']), auth=self.auth))
         return me_res
-
-    def log_result(self, checks, result):
-        # if checks == all, store s3 key as self.latestRun
-        timestamp = datetime.datetime.utcnow().isoformat()
-        s3_key = ''.join([checks, '_at_', timestamp, '.json'])
-        self.s3connection.put_object(s3_key, json.dumps(result))
-        if checks == 'all':
-            self.latest_run = s3_key
-        return s3_key
-
-
-    def get_latest_run(self):
-        if self.latest_run is None:
-            return {
-                'ERROR': 'no run has been performed',
-                'checks_run': {}
-            }
-        return json.loads(self.s3connection.get_object(self.latest_run))

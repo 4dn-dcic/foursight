@@ -1,7 +1,7 @@
 # General utils for foursight
 from __future__ import print_function, unicode_literals
 
-def makeRegistrationDecorator(inDecorator):
+def make_registration_deco(inDecorator):
     """
     Copies and returns the given decorator, with an added .decorator property
     See: S.O. 5910703
@@ -18,10 +18,10 @@ def makeRegistrationDecorator(inDecorator):
     return newDecorator
 
 
-def getMethodsByDecorator(cls, decorator):
+def get_methods_by_deco(cls, decorator):
     """
     Returns all methods in cls with decorator as a generator;
-    the input decorator must be registered with the makeRegistrationDecorator.
+    the input decorator must be registered with the make_registration_deco.
     Again, see: S.O. 5910703
     """
     for maybeDecorated in cls.__dict__.values():
