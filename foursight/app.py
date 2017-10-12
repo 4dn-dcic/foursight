@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from chalice import Chalice, BadRequestError, NotFoundError
+from chalice import Chalice, BadRequestError, NotFoundError, CORSConfig, Cron
 import json
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, run_check
@@ -22,8 +22,17 @@ SERVER_INFO = {
     }
 }
 
+foursight_cors = CORSConfig(
+    allow_origin = '*',
+    allow_headers = ['Authorization',
+                     'Content-Type',
+                     'X-Amz-Date',
+                     'X-Amz-Security-Token',
+                     'X-Api-Key',
+                     'X-Requested-With']
+)
 
-def init_connection(environ, supplied_connection):
+def init_connection(environ, supplied_connection=None):
     """
     Initialize the fourfront/s3 connection using the FFConnection object
     and the given environment. The supplied_connection argument is used for
@@ -64,7 +73,7 @@ def index():
     return json.dumps({'foursight': 'insight into fourfront'})
 
 
-@app.route('/run/{environ}/{checks}')
+@app.route('/run/{environ}/{checks}', cors=foursight_cors)
 def run_checks(environ, checks, supplied_connection=None):
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
@@ -88,14 +97,14 @@ def run_checks(environ, checks, supplied_connection=None):
     })
 
 
-@app.route('/latest/{environ}/{checks}')
+@app.route('/latest/{environ}/{checks}', cors=foursight_cors)
 def get_latest_checks(environ, checks, supplied_connection=None):
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
-        return error_res
+        return json.dumps(error_res)
     testSuite = CheckSuite(connection)
     decoMethods = get_methods_by_deco(CheckSuite, run_check)
-    results = {}
+    results = []
     to_check = []
     did_check = []
     if checks != 'all':
@@ -106,12 +115,35 @@ def get_latest_checks(environ, checks, supplied_connection=None):
             continue
         # the CheckResult below is used solely to collect the latest check
         TempCheck = CheckResult(connection.s3connection, name)
-        results[name] = TempCheck.get_latest_check()
+        results.append(TempCheck.get_latest_check())
         did_check.append(name)
 
     return json.dumps({
         'checks': results,
         'checks_found': did_check,
+        's3_info': connection.s3connection.head_info
+    })
+
+
+@app.route('/cleanup/{environ}', cors=foursight_cors)
+def cleanup(environ, supplied_connection=None):
+    connection, error_res = init_connection(environ, supplied_connection)
+    if connection is None:
+        return json.dumps(error_res)
+    testSuite = CheckSuite(connection)
+    decoMethods = get_methods_by_deco(CheckSuite, run_check)
+    all_keys = set(connection.s3connection.list_all_keys())
+    # never delete these keys
+    all_keys.remove('auth')
+    for method in decoMethods:
+        name = method.__name__
+        # remove all keys with prefix equal to this method name
+        method_keys = set(connection.s3connection.list_keys_w_prefix(name))
+        all_keys = all_keys - method_keys
+    if len(all_keys) > 0:
+        connection.s3connection.delete_keys(list(all_keys))
+    return json.dumps({
+        'cleaned': ' '.join([str(len(all_keys)), 'items']),
         's3_info': connection.s3connection.head_info
     })
 
@@ -130,3 +162,18 @@ def test_s3_connection(bucket_name):
 @app.route('/introspect')
 def introspect():
     return json.dumps(app.current_request.to_dict())
+
+### SCHEDULED FXNS ###
+
+# run at 10 am UTC every day
+@app.schedule(Cron(0, 10, '*', '*', '?', '*'))
+def daily_checks(event):
+    for environ in SERVER_INFO:
+        run_checks(environ, 'all')
+
+
+# run every 2 hrs
+@app.schedule(Cron('*', '0/2', '*', '*', '?', '*'))
+def two_hour_checks(event):
+    for environ in SERVER_INFO:
+        run_checks(environ, 'item_counts_by_type,indexing_progress')

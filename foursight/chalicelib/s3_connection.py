@@ -31,8 +31,20 @@ class S3Connection(object):
             return None
 
 
-    def list_objects(self, prefix):
-        return [obj for obj in self.client.list_objects(Bucket=self.bucket, Prefix=prefix)]
+    def list_keys_w_prefix(self, prefix):
+        contents = [obj for obj in self.client.list_objects_v2(Bucket=self.bucket, Prefix=prefix)['Contents']]
+        return [obj['Key'] for obj in contents]
+
+
+    def list_all_keys(self):
+        contents = [obj for obj in self.client.list_objects_v2(Bucket=self.bucket)['Contents']]
+        return [obj['Key'] for obj in contents]
+
+
+    def delete_keys(self, key_list):
+        # boto3 requires this setup
+        to_delete = {'Objects' : [{'Key': key} for key in key_list]}
+        self.client.delete_objects(Bucket=self.bucket, Delete=to_delete)
 
 
     def test_connection(self):
