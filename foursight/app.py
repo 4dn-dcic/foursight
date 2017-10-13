@@ -27,6 +27,11 @@ SERVER_INFO = {
         'server': 'https://data.4dnucleome.org/',
         'bucket': 'foursight-webprod',
         'es': 'https://search-fourfront-webprod-hmrrlalm4ifyhl4bzbvl73hwv4.us-east-1.es.amazonaws.com/'
+    },
+    'webdev': {
+        'server': 'http://fourfront-webdev.us-east-1.elasticbeanstalk.com/',
+        'bucket': 'foursight-webdev',
+        'es': 'http://ec2-54-234-155-236.compute-1.amazonaws.com:9872/'
     }
 }
 
