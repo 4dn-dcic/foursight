@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from chalice import Chalice, BadRequestError, NotFoundError, CORSConfig, Cron
+from chalice import Chalice, BadRequestError, NotFoundError, CORSConfig, Cron, Rate
 import json
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, run_check
@@ -12,6 +12,14 @@ from botocore.exceptions import ClientError
 app = Chalice(app_name='foursight')
 app.debug = True
 
+
+# should we base origin checks solely off of SERVER_INFO?
+# could compare request.headers.origin to SERVER_INFO[environ]['server']
+ALLOWED_ORIGINS = [
+    'http://localhost:8000/',
+    'https://data.4dnucleome.org/',
+    'http://fourfront-webdev.us-east-1.elasticbeanstalk.com/'
+]
 
 CACHED = {}
 SERVER_INFO = {
@@ -47,7 +55,7 @@ def init_connection(environ, supplied_connection=None):
             error_res = {
                 'status': 'error',
                 'description': 'invalid environment provided. Should be one of: %s' % (str(list(SERVER_INFO.keys()))),
-                'checks_run': {}
+                'checks': {}
             }
             return None, error_res
         try:
@@ -60,12 +68,28 @@ def init_connection(environ, supplied_connection=None):
             error_res = {
                 'status': 'error',
                 'description': 'The connection to fourfront is down.',
-                'checks_run': {}
+                'checks': {}
             }
             return None, error_res
     else:
         connection = supplied_connection
     return connection, error_res
+
+
+def check_origin(current_request):
+    """
+    Returns None if origin passes (in ALLOWED_ORIGINS)
+    """
+    req_headers = current_request.headers
+    if req_headers and getattr(req_headers, 'origin', None) is not None:
+        if req_headers.origin and req_headers.origin not in ALLOWED_ORIGINS:
+            return json.dumps({
+                'status': 'error',
+                'description': 'CORS check failed.',
+                'checks': {},
+                'request': current_request.to_dict()
+            })
+    return None
 
 
 @app.route('/')
@@ -75,6 +99,9 @@ def index():
 
 @app.route('/run/{environ}/{checks}', cors=foursight_cors)
 def run_checks(environ, checks, supplied_connection=None):
+    origin_flag = check_origin(app.current_request)
+    if origin_flag:
+        return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
@@ -93,12 +120,16 @@ def run_checks(environ, checks, supplied_connection=None):
 
     return json.dumps({
         'checks_runs': did_run,
+        'checks': {},
         's3_info': connection.s3connection.head_info
     })
 
 
 @app.route('/latest/{environ}/{checks}', cors=foursight_cors)
 def get_latest_checks(environ, checks, supplied_connection=None):
+    origin_flag = check_origin(app.current_request)
+    if origin_flag:
+        return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
@@ -127,6 +158,9 @@ def get_latest_checks(environ, checks, supplied_connection=None):
 
 @app.route('/cleanup/{environ}', cors=foursight_cors)
 def cleanup(environ, supplied_connection=None):
+    origin_flag = check_origin(app.current_request)
+    if origin_flag:
+        return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
@@ -144,6 +178,7 @@ def cleanup(environ, supplied_connection=None):
         connection.s3connection.delete_keys(list(all_keys))
     return json.dumps({
         'cleaned': ' '.join([str(len(all_keys)), 'items']),
+        'checks': {},
         's3_info': connection.s3connection.head_info
     })
 
@@ -173,7 +208,7 @@ def daily_checks(event):
 
 
 # run every 2 hrs
-@app.schedule(Cron('*', '0/2', '*', '*', '?', '*'))
+@app.schedule(Rate(2, unit=Rate.HOURS))
 def two_hour_checks(event):
     for environ in SERVER_INFO:
         run_checks(environ, 'item_counts_by_type,indexing_progress')
