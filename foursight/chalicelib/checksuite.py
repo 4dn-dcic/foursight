@@ -49,8 +49,8 @@ class CheckSuite(object):
 
 
     @run_check
-    def elasticsearch_indices(self):
-        check = self.init_check('elasticsearch_indices')
+    def status_of_elasticsearch_indices(self):
+        check = self.init_check('status_of_elasticsearch_indices')
         ### the check
         es = self.connection.es
         resp = requests.get(''.join([es,'_cat/indices?v']))
