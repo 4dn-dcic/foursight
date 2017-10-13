@@ -103,10 +103,12 @@ def index():
 
 
 @app.route('/run/{environ}/{checks}', cors=foursight_cors)
-def run_checks(environ, checks, supplied_connection=None):
-    origin_flag = check_origin(app.current_request)
-    if origin_flag:
-        return origin_flag
+def run_checks(environ, checks, supplied_connection=None, scheduled=False):
+    # skip origin checks for scheduled jobs
+    if not scheduled:
+        origin_flag = check_origin(app.current_request)
+        if origin_flag:
+            return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
@@ -131,10 +133,11 @@ def run_checks(environ, checks, supplied_connection=None):
 
 
 @app.route('/latest/{environ}/{checks}', cors=foursight_cors)
-def get_latest_checks(environ, checks, supplied_connection=None):
-    origin_flag = check_origin(app.current_request)
-    if origin_flag:
-        return origin_flag
+def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False):
+    if not scheduled:
+        origin_flag = check_origin(app.current_request)
+        if origin_flag:
+            return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
@@ -162,10 +165,11 @@ def get_latest_checks(environ, checks, supplied_connection=None):
 
 
 @app.route('/cleanup/{environ}', cors=foursight_cors)
-def cleanup(environ, supplied_connection=None):
-    origin_flag = check_origin(app.current_request)
-    if origin_flag:
-        return origin_flag
+def cleanup(environ, supplied_connection=None, scheduled=False):
+    if not scheduled:
+        origin_flag = check_origin(app.current_request)
+        if origin_flag:
+            return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
@@ -209,11 +213,11 @@ def introspect():
 @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
 def daily_checks(event):
     for environ in SERVER_INFO:
-        run_checks(environ, 'all')
+        run_checks(environ, 'all', scheduled=True)
 
 
 # run every 2 hrs
 @app.schedule(Rate(2, unit=Rate.HOURS))
 def two_hour_checks(event):
     for environ in SERVER_INFO:
-        run_checks(environ, 'item_counts_by_type,indexing_progress')
+        run_checks(environ, 'item_counts_by_type,indexing_progress', scheduled=True)
