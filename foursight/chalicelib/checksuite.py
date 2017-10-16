@@ -27,9 +27,20 @@ class CheckSuite(object):
     For example, the 'status_of_servers' check initilizes a CheckResult like so:
     check = self.init_check('status_of_servers')
     Then, fields on that CheckResult (named check) can be easily set:
-    check.status = 'PASS'
-    Lastly, once the check is finished, store results using:
-    check.store_result()
+    >> check.status = 'PASS'
+    Lastly, once the check is finished, finalize and store S3 results using:
+    >> check.store_result()
+
+    You can get results from past/latest checks with any name in any check
+    method by initializing a CheckResult with the corresponding name.
+    For example, get the result of 'item_counts_by_type' check 24 hours ago:
+    >> health_count_check = self.init_check('item_counts_by_type')
+    >> prior = health_count_check.get_closest_check(24)
+    get_closest_check() returns a Python dict of the check result, which
+    can be interrogated in ways such as:
+    >> prior['status']
+    There is also a get_latest_check() method that returns the same type
+    of object for the latest result of a given check.
 
     Individual check methods need not return anything.
     """
@@ -178,7 +189,7 @@ class CheckSuite(object):
         if diff_counts:
             check.status = 'WARN'
             check.full_output = diff_counts
-            check.description = 'DB/ES counts have changed in past 24 hours; Positive numbers represent an increase in current counts.'
+            check.description = 'DB/ES counts have changed in past 24 hours; positive numbers represent an increase in current counts.'
         else:
             check.status = 'PASS'
         check.store_result()
@@ -209,8 +220,3 @@ class CheckSuite(object):
             check.description = ' '.join(['Indexing seems healthy. There are', str(latest_unindexed),
             'remaining items to index, a change of', str(diff_unindexed), 'from two hours ago.'])
         check.store_result()
-
-
-    def test3(self):
-        # a non-run test
-        return 'TEST 3 FOUND'
