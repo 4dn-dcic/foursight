@@ -13,7 +13,30 @@ run_check = make_registration_deco(run_check)
 
 
 class CheckSuite(object):
+    """
+    This class represents the entirety of the checks run in Foursight.
+    To create a new check, simply create a method for this class and add
+    the '@run_check' decorator to it. This decorator MUST be used or the
+    check will not be run.
+
+    Each check method should initialize a CheckResult object, which holds the
+    name, status, output, and more for the check. This object should be
+    initialized using the init_check function, which MUST be passed a name
+    argument EXACTLY equal to the check name (i.e. method name).
+
+    For example, the 'status_of_servers' check initilizes a CheckResult like so:
+    check = self.init_check('status_of_servers')
+    Then, fields on that CheckResult (named check) can be easily set:
+    check.status = 'PASS'
+    Lastly, once the check is finished, store results using:
+    check.store_result()
+
+    Individual check methods need not return anything.
+    """
     def __init__(self, connection):
+        # self.connection is an FFConnection object.
+        # Reference s3 connection with self.connection.s3connection,
+        # which is an S3Connection object.
         self.connection = connection
 
 

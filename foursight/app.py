@@ -99,11 +99,22 @@ def check_origin(current_request):
 
 @app.route('/')
 def index():
+    """
+    Test route
+    """
     return json.dumps({'foursight': 'insight into fourfront'})
 
 
 @app.route('/run/{environ}/{checks}', cors=foursight_cors)
 def run_checks(environ, checks, supplied_connection=None, scheduled=False):
+    """
+    Run the given checks on the given environment, creating a record in the
+    corresponding S3 bucket under the check's method name. If checks == 'all',
+    then every check in checksuite will be run. The latest run of checks
+    replaces the 'latest' label for each check directory in S3 and also
+    creates a timestamped record.
+    CORS enabled.
+    """
     # skip origin checks for scheduled jobs
     if not scheduled:
         origin_flag = check_origin(app.current_request)
@@ -134,6 +145,13 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
 
 @app.route('/latest/{environ}/{checks}', cors=foursight_cors)
 def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False):
+    """
+    Return JSON of each check tagged with the "latest" tag for speicified current
+    checks in checksuite for the given environment. If checks == 'all', every
+    registered check will be returned. Otherwise, send a comma separated list
+    of check names (the method names!) as the check argument.
+    CORS enabled.
+    """
     if not scheduled:
         origin_flag = check_origin(app.current_request)
         if origin_flag:
@@ -166,6 +184,12 @@ def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False
 
 @app.route('/cleanup/{environ}', cors=foursight_cors)
 def cleanup(environ, supplied_connection=None, scheduled=False):
+    """
+    For a given environment, remove all tests records from S3 that are no
+    long being used (i.e. not currently defined within checksuite).
+    Will not remove auth.
+    CORS enabled.
+    """
     if not scheduled:
         origin_flag = check_origin(app.current_request)
         if origin_flag:
