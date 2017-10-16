@@ -20,7 +20,7 @@ class CheckResult(object):
             self.title = title
         self.description = description
         # should I make an enum for status?
-        # valid values are: 'PEND', 'PASS', 'WARN', 'FAIL', 'ERROR'
+        # valid values are: 'PEND', 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
         self.status = 'PEND'
         self.extension = extension
         self.brief_output = None
@@ -84,7 +84,7 @@ class CheckResult(object):
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this
-        if self.status not in ['PASS', 'WARN', 'FAIL', 'ERROR']:
+        if self.status not in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE']:
             self.status = 'ERROR'
             self.description = 'Malformed status; look at Foursight check definition.'
         timestamp = datetime.datetime.utcnow().isoformat()
