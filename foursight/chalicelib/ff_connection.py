@@ -26,10 +26,11 @@ class FFConnection(object):
     def get_auth(self):
         # authorization info is currently held in s3
         # this is probably (definitely) not the best way to go
-        auth_res = json.loads(self.s3connection.get_object('auth'))
-        if auth_res.get('ResponseMetadata') == 'ClientError':
+        auth_res = self.s3connection.get_object('auth')
+        if auth_res is None:
             return ()
         else:
+            auth_res = json.loads(auth_res)
             key = auth_res.get('key')
             secret = auth_res.get('secret')
             return (key, secret) if key and secret else ()

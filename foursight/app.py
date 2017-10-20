@@ -12,28 +12,8 @@ from botocore.exceptions import ClientError
 app = Chalice(app_name='foursight')
 app.debug = True
 
-
-# should we base origin checks solely off of SERVER_INFO?
-# could compare request.headers.origin to SERVER_INFO[environ]['server']
-ALLOWED_ORIGINS = [
-    'http://localhost:8000/',
-    'https://data.4dnucleome.org/',
-    'http://fourfront-webdev.us-east-1.elasticbeanstalk.com/'
-]
-
+ENVIRONMENTS = {}
 CACHED = {}
-SERVER_INFO = {
-    'webprod': {
-        'server': 'https://data.4dnucleome.org/',
-        'bucket': 'foursight-webprod',
-        'es': 'https://search-fourfront-webprod-hmrrlalm4ifyhl4bzbvl73hwv4.us-east-1.es.amazonaws.com/'
-    },
-    'webdev': {
-        'server': 'http://fourfront-webdev.us-east-1.elasticbeanstalk.com/',
-        'bucket': 'foursight-webdev',
-        'es': 'http://ec2-54-234-155-236.compute-1.amazonaws.com:9872/'
-    }
-}
 
 foursight_cors = CORSConfig(
     allow_origin = '*',
@@ -44,6 +24,40 @@ foursight_cors = CORSConfig(
                      'X-Api-Key',
                      'X-Requested-With']
 )
+
+
+def init_environments(env='all'):
+    """
+    Generate environments for ENVIRONMENTS global variable by reading
+    the foursight-dev bucket.
+    Returns a list of environments/keys that are not valid.
+    """
+    s3connection = S3Connection('foursight-dev')
+    env_keys = s3connection.list_all_keys()
+    bad_keys = []
+    if env != 'all':
+        if env in env_keys:
+            env_keys = [env]
+        else:
+            return [env]
+    else: # reset ENVIRONMENTS if we're trying to init all
+        ENVIRONMENTS = {}
+    for env_key in env_keys:
+        env_res = json.loads(s3connection.get_object(env_key))
+        # check that the keys we need are in the object
+        if isinstance(env_res, dict) and {'fourfront', 'es'} <= set(env_res):
+            env_entry = {
+                'fourfront': env_res['fourfront'],
+                'es': env_res['es'],
+                'bucket': 'foursight-' + env_key
+            }
+            if 'local_server' in env_res:
+                env_entry['local_server'] = env_res['local_server']
+            ENVIRONMENTS[env_key] = env_entry
+        else:
+            bad_keys.append(env_key)
+    return bad_keys
+
 
 def init_connection(environ, supplied_connection=None):
     """
@@ -56,23 +70,25 @@ def init_connection(environ, supplied_connection=None):
     """
     error_res = {}
     if supplied_connection is None:
-        if environ not in SERVER_INFO:
-            error_res = {
-                'status': 'error',
-                'description': 'invalid environment provided. Should be one of: %s' % (str(list(SERVER_INFO.keys()))),
-                'checks': {}
-            }
+        if environ not in ENVIRONMENTS:
+            bad_keys = init_environments()
+            if environ in bad_keys:
+                error_res = {
+                    'status': 'error',
+                    'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
+                    'checks': {}
+                }
             return None, error_res
         try:
             connection = CACHED[environ]
         except KeyError:
-            info = SERVER_INFO[environ]
-            CACHED[environ] = FFConnection(info['server'], info['bucket'], info['es'])
+            info = ENVIRONMENTS[environ]
+            CACHED[environ] = FFConnection(info['fourfront'], info['bucket'], info['es'])
             connection = CACHED[environ]
         if not connection.is_up:
             error_res = {
                 'status': 'error',
-                'description': 'The connection to fourfront is down.',
+                'description': 'The connection to fourfront is down',
                 'checks': {}
             }
             return None, error_res
@@ -81,17 +97,27 @@ def init_connection(environ, supplied_connection=None):
     return connection, error_res
 
 
-def check_origin(current_request):
+def check_origin(current_request, environ):
     """
-    Returns None if origin passes (in ALLOWED_ORIGINS)
+    Returns None if origin passes
     """
+    allowed_origins = []
+    env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
+    if env_ff_server:
+        allowed_origins.append(env_ff_server)
+    # special case for test server
+    if environ == 'local':
+        local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
+        if local_ff_server is not None:
+            allowed_origins.append(local_ff_server)
     req_headers = current_request.headers
     if req_headers and getattr(req_headers, 'origin', None) is not None:
-        if req_headers.origin and req_headers.origin not in ALLOWED_ORIGINS:
+        if req_headers.origin and req_headers.origin not in allowed_origins:
             return json.dumps({
                 'status': 'error',
                 'description': 'CORS check failed.',
                 'checks': {},
+                'request_environ': environ,
                 'request': current_request.to_dict()
             })
     return None
@@ -116,14 +142,14 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
     CORS enabled.
     """
     # skip origin checks for scheduled jobs
-    if not scheduled:
-        origin_flag = check_origin(app.current_request)
-        if origin_flag:
-            return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
-    testSuite = CheckSuite(connection)
+    if not scheduled:
+        origin_flag = check_origin(app.current_request, environ)
+        if origin_flag:
+            return origin_flag
+    checkSuite = CheckSuite(connection)
     decoMethods = get_methods_by_deco(CheckSuite, run_check)
     to_run = []
     did_run = []
@@ -133,7 +159,7 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
         name = method.__name__
         if to_run and name not in to_run:
             continue
-        method(testSuite)
+        method(checkSuite)
         did_run.append(name)
 
     return json.dumps({
@@ -152,14 +178,14 @@ def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False
     of check names (the method names!) as the check argument.
     CORS enabled.
     """
-    if not scheduled:
-        origin_flag = check_origin(app.current_request)
-        if origin_flag:
-            return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
-    testSuite = CheckSuite(connection)
+    if not scheduled:
+        origin_flag = check_origin(app.current_request, environ)
+        if origin_flag:
+            return origin_flag
+    checkSuite = CheckSuite(connection)
     decoMethods = get_methods_by_deco(CheckSuite, run_check)
     results = []
     to_check = []
@@ -190,14 +216,14 @@ def cleanup(environ, supplied_connection=None, scheduled=False):
     Will not remove auth.
     CORS enabled.
     """
-    if not scheduled:
-        origin_flag = check_origin(app.current_request)
-        if origin_flag:
-            return origin_flag
     connection, error_res = init_connection(environ, supplied_connection)
     if connection is None:
         return json.dumps(error_res)
-    testSuite = CheckSuite(connection)
+    if not scheduled:
+        origin_flag = check_origin(app.current_request, environ)
+        if origin_flag:
+            return origin_flag
+    checkSuite = CheckSuite(connection)
     decoMethods = get_methods_by_deco(CheckSuite, run_check)
     all_keys = set(connection.s3connection.list_all_keys())
     # never delete these keys
@@ -214,6 +240,44 @@ def cleanup(environ, supplied_connection=None, scheduled=False):
         'checks': {},
         's3_info': connection.s3connection.head_info
     })
+
+
+@app.route('/build_env/{environ}', methods=['PUT'])
+def build_environment(environ):
+    """
+    Take a PUT request that has a json payload with 'fourfront' (ff server),
+    'es' (es server), and optionally, 'bucket' (s3 bucket name).
+    Attempts to generate an new environment and runs all checks initially
+    if successful.
+    """
+    request = app.current_request
+    env_data = request.json_body
+    if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
+        env_entry = {
+            'fourfront': env_data['fourfront'],
+            'es': env_data['es'],
+            'bucket': 'foursight-' + environ
+        }
+        if 'local_server' in env_data:
+            env_entry['local_server'] = env_data['local_server']
+        s3connection = S3Connection('foursight-dev')
+        s3connection.put_object(environ, json.dumps(env_entry))
+        # do a quick update
+        ENVIRONMENTS[environ] = env_entry
+        # run some checks on the new env
+        checks_run_json = run_checks(environ, 'all', scheduled=True)
+        return json.dumps({
+            'status': 'success',
+            'description': ' '.join(['Succesfully made:', environ]),
+            'initial_checks_run': json.loads(checks_run_json),
+            's3': s3connection.head_info
+        })
+    else:
+        return json.dumps({
+            'status': 'error',
+            'description': ' '.join(['Could not make environment:', envrion]),
+            's3': s3connection.head_info
+        })
 
 
 @app.route('/test_s3/{bucket_name}')
@@ -236,12 +300,18 @@ def introspect():
 # run at 10 am UTC every day
 @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
 def daily_checks(event):
-    for environ in SERVER_INFO:
+    init_environments()
+    for environ in ENVIRONMENTS:
+        if environ == 'local':
+            continue
         run_checks(environ, 'all', scheduled=True)
 
 
 # run every 2 hrs
 @app.schedule(Rate(2, unit=Rate.HOURS))
 def two_hour_checks(event):
-    for environ in SERVER_INFO:
+    init_environments()
+    for environ in ENVIRONMENTS:
+        if environ == 'local':
+            continue
         run_checks(environ, 'item_counts_by_type,indexing_progress', scheduled=True)
