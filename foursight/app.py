@@ -2,12 +2,13 @@ from __future__ import print_function, unicode_literals
 from chalice import Chalice, BadRequestError, NotFoundError, CORSConfig, Cron, Rate
 import json
 from chalicelib.ff_connection import FFConnection
-from chalicelib.checksuite import CheckSuite, run_check
+from chalicelib.checksuite import CheckSuite, daily_check, rate_check
 from chalicelib.checkresult import CheckResult
 from chalicelib.utils import get_methods_by_deco
 from chalicelib.s3_connection import S3Connection
 import boto3
 from botocore.exceptions import ClientError
+from itertools import chain
 
 app = Chalice(app_name='foursight')
 app.debug = True
@@ -41,6 +42,7 @@ def init_environments(env='all'):
         else:
             return [env]
     else: # reset ENVIRONMENTS if we're trying to init all
+        global ENVIRONMENTS
         ENVIRONMENTS = {}
     for env_key in env_keys:
         env_res = json.loads(s3connection.get_object(env_key))
@@ -70,14 +72,17 @@ def init_connection(environ, supplied_connection=None):
     """
     error_res = {}
     if supplied_connection is None:
+        # try re-initializing ENVIRONMENTS if environ is not found
         if environ not in ENVIRONMENTS:
-            bad_keys = init_environments()
-            if environ in bad_keys:
-                error_res = {
-                    'status': 'error',
-                    'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
-                    'checks': {}
-                }
+            init_environments()
+        # if still not there, return an error
+        if environ not in ENVIRONMENTS:
+            error_res = {
+                'status': 'error',
+                'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
+                'environment': environ,
+                'checks': {}
+            }
             return None, error_res
         try:
             connection = CACHED[environ]
@@ -89,6 +94,7 @@ def init_connection(environ, supplied_connection=None):
             error_res = {
                 'status': 'error',
                 'description': 'The connection to fourfront is down',
+                'environment': environ,
                 'checks': {}
             }
             return None, error_res
@@ -115,12 +121,40 @@ def check_origin(current_request, environ):
         if req_headers.origin and req_headers.origin not in allowed_origins:
             return json.dumps({
                 'status': 'error',
-                'description': 'CORS check failed.',
+                'description': 'CORS check failed',
                 'checks': {},
-                'request_environ': environ,
+                'environment': environ,
                 'request': current_request.to_dict()
             })
     return None
+
+
+def init_check_suite(checks, connection):
+    """
+    Build a CheckSuite object from the given connection and find suitable
+    methods to run from it, based on the desired checks input (a string)
+    If checks == 'all', then every check in checksuite will be run.
+    If checks == 'daily', then every daily_check in checksuite will be run.
+    If checks == 'rate', then every rate_check in checksuite will be run.
+    Otherwise, checks should be a comma separated list of checks to run,
+    such as: 'item_counts_by_type,indexing_progress'
+    """
+    checkSuite = CheckSuite(connection)
+    check_methods = []
+    daily_check_methods = get_methods_by_deco(CheckSuite, daily_check)
+    rate_check_methods = get_methods_by_deco(CheckSuite, rate_check)
+    if checks == 'all' or checks == 'daily':
+        check_methods.extend(daily_check_methods)
+    if checks == 'all' or checks == 'rate':
+        check_methods.extend(rate_check_methods)
+    if checks not in ['all', 'daily', 'rate']:
+        specified_checks = [spec.strip() for spec in checks.split(',')]
+        all_methods = chain(daily_check_methods, rate_check_methods)
+        method_lookup = {method.__name__: method for method in all_methods}
+        for in_check in specified_checks:
+            if in_check in method_lookup:
+                check_methods.append(method_lookup[in_check])
+    return check_methods, checkSuite
 
 
 @app.route('/')
@@ -135,10 +169,9 @@ def index():
 def run_checks(environ, checks, supplied_connection=None, scheduled=False):
     """
     Run the given checks on the given environment, creating a record in the
-    corresponding S3 bucket under the check's method name. If checks == 'all',
-    then every check in checksuite will be run. The latest run of checks
-    replaces the 'latest' label for each check directory in S3 and also
-    creates a timestamped record.
+    corresponding S3 bucket under the check's method name.
+    The latest run of checks replaces the 'latest' label for each check
+    directory in S3 and also creates a timestamped record.
     CORS enabled.
     """
     # skip origin checks for scheduled jobs
@@ -149,23 +182,18 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
         origin_flag = check_origin(app.current_request, environ)
         if origin_flag:
             return origin_flag
-    checkSuite = CheckSuite(connection)
-    decoMethods = get_methods_by_deco(CheckSuite, run_check)
-    to_run = []
+    check_methods, checkSuite = init_check_suite(checks, connection)
     did_run = []
-    if checks != 'all':
-        to_run = checks.split(',')
-    for method in decoMethods:
+    for method in check_methods:
         name = method.__name__
-        if to_run and name not in to_run:
-            continue
         method(checkSuite)
         did_run.append(name)
 
     return json.dumps({
+        'status': 'success',
+        'checks_specified': checks,
         'checks_runs': did_run,
-        'checks': {},
-        's3_info': connection.s3connection.head_info
+        'environment': environ
     })
 
 
@@ -185,26 +213,21 @@ def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False
         origin_flag = check_origin(app.current_request, environ)
         if origin_flag:
             return origin_flag
-    checkSuite = CheckSuite(connection)
-    decoMethods = get_methods_by_deco(CheckSuite, run_check)
+    check_methods, checkSuite = init_check_suite(checks, connection)
     results = []
-    to_check = []
     did_check = []
-    if checks != 'all':
-        to_check = checks.split(',')
-    for method in decoMethods:
+    for method in check_methods:
         name = method.__name__
-        if to_check and name not in to_check:
-            continue
         # the CheckResult below is used solely to collect the latest check
         TempCheck = CheckResult(connection.s3connection, name)
         results.append(TempCheck.get_latest_check())
         did_check.append(name)
 
     return json.dumps({
+        'status': 'success',
+        'environment': environ,
         'checks': results,
-        'checks_found': did_check,
-        's3_info': connection.s3connection.head_info
+        'checks_found': did_check
     })
 
 
@@ -223,12 +246,11 @@ def cleanup(environ, supplied_connection=None, scheduled=False):
         origin_flag = check_origin(app.current_request, environ)
         if origin_flag:
             return origin_flag
-    checkSuite = CheckSuite(connection)
-    decoMethods = get_methods_by_deco(CheckSuite, run_check)
     all_keys = set(connection.s3connection.list_all_keys())
     # never delete these keys
     all_keys.remove('auth')
-    for method in decoMethods:
+    check_methods, _ = init_check_suite('all', connection)
+    for method in check_methods:
         name = method.__name__
         # remove all keys with prefix equal to this method name
         method_keys = set(connection.s3connection.list_keys_w_prefix(name))
@@ -236,9 +258,57 @@ def cleanup(environ, supplied_connection=None, scheduled=False):
     if len(all_keys) > 0:
         connection.s3connection.delete_keys(list(all_keys))
     return json.dumps({
-        'cleaned': ' '.join([str(len(all_keys)), 'items']),
-        'checks': {},
-        's3_info': connection.s3connection.head_info
+        'status': 'success',
+        'environment': environ,
+        'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
+        'keys_cleaned': all_keys
+    })
+
+
+@app.route('/put_check/{environ}/{check}', methods=['PUT'])
+def put_check(environ, check):
+    """
+    Take a PUT request. Body of the request should be a json object with keys
+    corresponding to the fields in CheckResult, namely:
+    title, status, description, brief_output, full_output
+    """
+    connection, error_res = init_connection(environ)
+    if connection is None:
+        return json.dumps(error_res)
+    valid_methods, CheckSuite = init_check_suite('all', connection)
+    valid_checks = [method.__name__ for method in valid_methods]
+    if check not in valid_checks:
+        return json.dumps({
+            'status': 'error',
+            'endpoint': 'put_check',
+            'check': check,
+            'description': ' '.join(['Could not PUT invalid check:', check]),
+            'environment': environ
+        })
+    request = app.current_request
+    put_data = request.json_body
+    if not isinstance(put_data, dict):
+        return json.dumps({
+            'status': 'error',
+            'endpoint': 'put_check',
+            'check': check,
+            'description': ' '.join(['PUT request is malformed:', put_data]),
+            'environment': environ
+        })
+    putCheck = CheckSuite.init_check(check)
+    # set valid fields from the PUT body. should this be dynamic?
+    # if status is not included, it will be set to ERROR
+    for field in ['title', 'status', 'description', 'brief_output', 'full_output']:
+        put_content = put_data.get(field)
+        if put_content:
+            setattr(putCheck, field, put_content)
+    stored = putCheck.store_result()
+    return json.dumps({
+        'status': 'success',
+        'endpoint': 'put_check',
+        'check': check,
+        'updated_content': stored,
+        'environment': environ
     })
 
 
@@ -270,13 +340,14 @@ def build_environment(environ):
             'status': 'success',
             'description': ' '.join(['Succesfully made:', environ]),
             'initial_checks_run': json.loads(checks_run_json),
-            's3': s3connection.head_info
+            'environment': environ
         })
     else:
         return json.dumps({
             'status': 'error',
-            'description': ' '.join(['Could not make environment:', envrion]),
-            's3': s3connection.head_info
+            'description': 'Environment creation failed',
+            'body': env_data,
+            'environment': environ
         })
 
 
@@ -304,7 +375,7 @@ def daily_checks(event):
     for environ in ENVIRONMENTS:
         if environ == 'local':
             continue
-        run_checks(environ, 'all', scheduled=True)
+        run_checks(environ, 'daily', scheduled=True)
 
 
 # run every 2 hrs

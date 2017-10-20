@@ -96,3 +96,5 @@ class CheckResult(object):
         self.s3connection.put_object(time_key, formatted)
         # put result as 'latest'
         self.s3connection.put_object(latest_key, formatted)
+        # return stored data in case we're interested
+        return formatted

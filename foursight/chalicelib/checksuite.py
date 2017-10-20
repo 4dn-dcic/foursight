@@ -4,20 +4,30 @@ from .checkresult import CheckResult
 import requests
 import json
 
-# initialize the run_check decorator
-def run_check(func):
+# initialize the daily_check decorator
+def daily_check(func):
+    return func
+
+def rate_check(func):
     return func
 
 
-run_check = make_registration_deco(run_check)
+daily_check = make_registration_deco(daily_check)
+rate_check = make_registration_deco(rate_check)
 
 
 class CheckSuite(object):
     """
     This class represents the entirety of the checks run in Foursight.
     To create a new check, simply create a method for this class and add
-    the '@run_check' decorator to it. This decorator MUST be used or the
-    check will not be run.
+    the '@daily_check' or '@rate_check decorator to it.
+    This decorator MUST be used or the check will not be shown in fourfront.
+    @daily_check should be used for checks that are scheduled to run every day
+    using the app.run function, which runs at 10am UTC.
+    @rate_check should be used for any non-daily check that will have a cron/
+    rate defined for it in app.py.
+    @daily_check methods MAY be run at custom intervals, but @rate_check
+    methods will never run daily.
 
     Each check method should initialize a CheckResult object, which holds the
     name, status, output, and more for the check. This object should be
@@ -61,7 +71,7 @@ class CheckSuite(object):
         return CheckResult(self.connection.s3connection, name, title, description, extension)
 
 
-    @run_check
+    @daily_check
     def status_of_servers(self):
         ff_server = self.connection.is_up
         es = self.connection.es
@@ -82,7 +92,7 @@ class CheckSuite(object):
         check.store_result()
 
 
-    @run_check
+    @daily_check
     def status_of_elasticsearch_indices(self):
         check = self.init_check('status_of_elasticsearch_indices')
         ### the check
@@ -113,7 +123,7 @@ class CheckSuite(object):
         check.store_result()
 
 
-    @run_check
+    @rate_check
     def item_counts_by_type(self):
         def process_counts(count_str):
             # specifically formatted for FF health page
@@ -157,7 +167,7 @@ class CheckSuite(object):
         check.store_result()
 
 
-    @run_check
+    @daily_check
     def change_in_item_counts(self):
         # use this check to get the comparison
         health_count_check = self.init_check('item_counts_by_type')
@@ -189,13 +199,13 @@ class CheckSuite(object):
         if diff_counts:
             check.status = 'WARN'
             check.full_output = diff_counts
-            check.description = 'DB/ES counts have changed in past 24 hours; positive numbers represent an increase in current counts.'
+            check.description = 'DB/ES counts have changed in past day; positive numbers represent an increase in current counts.'
         else:
             check.status = 'PASS'
         check.store_result()
 
 
-    @run_check
+    @rate_check
     def indexing_progress(self):
         # get latest and db/es counts closest to 2 hrs ago
         health_count_check = self.init_check('item_counts_by_type')
