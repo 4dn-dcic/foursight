@@ -32,12 +32,12 @@ class S3Connection(object):
 
 
     def list_keys_w_prefix(self, prefix):
-        contents = [obj for obj in self.client.list_objects_v2(Bucket=self.bucket, Prefix=prefix)['Contents']]
+        contents = self.client.list_objects_v2(Bucket=self.bucket, Prefix=prefix).get('Contents', [])
         return [obj['Key'] for obj in contents]
 
 
     def list_all_keys(self):
-        contents = [obj for obj in self.client.list_objects_v2(Bucket=self.bucket)['Contents']]
+        contents = self.client.list_objects_v2(Bucket=self.bucket).get('Contents', [])
         return [obj['Key'] for obj in contents]
 
 

@@ -44,10 +44,7 @@ class CheckResult(object):
         latest_key = ''.join([self.name, '/latest', self.extension])
         result = self.s3connection.get_object(latest_key)
         if result is None:
-            timestamp = datetime.datetime.utcnow().isoformat()
-            formatted = self.format_result(timestamp)
-            formatted['status'] = 'ERROR'
-            return formatted
+            return None
         # see if data is in json format
         try:
             json_result = json.loads(result)
@@ -61,6 +58,8 @@ class CheckResult(object):
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
         relevant_checks = self.s3connection.list_keys_w_prefix(s3_prefix)
+        if not relevant_checks:
+            return None
         # now use only s3 objects with a valid timestamp
         for check in relevant_checks:
             if check.startswith(s3_prefix) and check.endswith(self.extension):

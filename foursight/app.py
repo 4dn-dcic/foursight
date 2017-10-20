@@ -186,8 +186,9 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
     did_run = []
     for method in check_methods:
         name = method.__name__
-        method(checkSuite)
-        did_run.append(name)
+        run_res = method(checkSuite)
+        if run_res:
+            did_run.append(name)
 
     return json.dumps({
         'status': 'success',
@@ -220,8 +221,10 @@ def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False
         name = method.__name__
         # the CheckResult below is used solely to collect the latest check
         TempCheck = CheckResult(connection.s3connection, name)
-        results.append(TempCheck.get_latest_check())
-        did_check.append(name)
+        latest_res = TempCheck.get_latest_check()
+        if latest_res:
+            results.append(latest_res)
+            did_check.append(name)
 
     return json.dumps({
         'status': 'success',
@@ -248,7 +251,8 @@ def cleanup(environ, supplied_connection=None, scheduled=False):
             return origin_flag
     all_keys = set(connection.s3connection.list_all_keys())
     # never delete these keys
-    all_keys.remove('auth')
+    if 'auth' in all_keys:
+        all_keys.remove('auth')
     check_methods, _ = init_check_suite('all', connection)
     for method in check_methods:
         name = method.__name__

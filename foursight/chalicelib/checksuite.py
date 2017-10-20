@@ -89,7 +89,7 @@ class CheckSuite(object):
             if not es_server:
                 descrip = ' '.join([descrip, 'ES server is down.'])
             check.description = descrip
-        check.store_result()
+        return check.store_result()
 
 
     @daily_check
@@ -120,7 +120,7 @@ class CheckSuite(object):
         else:
             check.status = 'PASS'
         check.full_output = index_info
-        check.store_result()
+        return check.store_result()
 
 
     @rate_check
@@ -142,8 +142,7 @@ class CheckSuite(object):
             health_res = requests.get(''.join([server,'health?format=json']))
         except:
             check.status = 'ERROR'
-            check.store_result()
-            return
+            return check.store_result()
         health_json = json.loads(health_res.text)
         for index in health_json['db_es_compare']:
             counts = process_counts(health_json['db_es_compare'][index])
@@ -164,7 +163,7 @@ class CheckSuite(object):
         else:
             check.status = 'PASS'
         check.full_output = health_counts
-        check.store_result()
+        return check.store_result()
 
 
     @daily_check
@@ -174,6 +173,8 @@ class CheckSuite(object):
         latest = health_count_check.get_latest_check()
         # get_health_counts run closest to 24 hours ago
         prior = health_count_check.get_closest_check(24)
+        if not latest or not prior:
+            return
         diff_counts = {}
         # drill into full_output
         latest = latest['full_output']
@@ -202,7 +203,7 @@ class CheckSuite(object):
             check.description = 'DB/ES counts have changed in past day; positive numbers represent an increase in current counts.'
         else:
             check.status = 'PASS'
-        check.store_result()
+        return check.store_result()
 
 
     @rate_check
@@ -211,6 +212,8 @@ class CheckSuite(object):
         health_count_check = self.init_check('item_counts_by_type')
         latest = health_count_check.get_latest_check()
         prior = health_count_check.get_closest_check(2)
+        if not latest or not prior:
+            return
         latest_unindexed = latest['full_output']['ALL']['DB'] - latest['full_output']['ALL']['ES']
         prior_unindexed = prior['full_output']['ALL']['DB'] - prior['full_output']['ALL']['ES']
         diff_unindexed = latest_unindexed - prior_unindexed
@@ -229,4 +232,4 @@ class CheckSuite(object):
             check.status = 'PASS'
             check.description = ' '.join(['Indexing seems healthy. There are', str(latest_unindexed),
             'remaining items to index, a change of', str(diff_unindexed), 'from two hours ago.'])
-        check.store_result()
+        return check.store_result()
