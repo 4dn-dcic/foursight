@@ -261,7 +261,7 @@ def cleanup(environ, supplied_connection=None, scheduled=False):
         'status': 'success',
         'environment': environ,
         'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
-        'keys_cleaned': all_keys
+        'keys_cleaned': list(all_keys)
     })
 
 
