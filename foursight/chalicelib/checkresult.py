@@ -32,7 +32,7 @@ class CheckResult(object):
             'name': self.name,
             'title': self.title,
             'description': self.description,
-            'status': self.status,
+            'status': self.status.upper(),
             'timestamp': timestamp,
             'extension': self.extension,
             'brief_output': self.brief_output,
@@ -83,7 +83,7 @@ class CheckResult(object):
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this
-        if self.status not in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE']:
+        if self.status.upper() not in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE']:
             self.status = 'ERROR'
             self.description = 'Malformed status; look at Foursight check definition.'
         timestamp = datetime.datetime.utcnow().isoformat()
