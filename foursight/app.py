@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from chalice import Chalice, BadRequestError, NotFoundError, CORSConfig, Cron, Rate
+from chalice import Chalice, CORSConfig, Cron, Rate, IAMAuthorizer
 import json
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, daily_check, rate_check
@@ -15,6 +15,8 @@ app.debug = True
 
 ENVIRONMENTS = {}
 CACHED = {}
+
+authorizer = IAMAuthorizer()
 
 foursight_cors = CORSConfig(
     allow_origin = '*',
@@ -157,6 +159,7 @@ def init_check_suite(checks, connection):
     return check_methods, checkSuite
 
 
+# purposefully not authorized
 @app.route('/')
 def index():
     """
@@ -165,7 +168,7 @@ def index():
     return json.dumps({'foursight': 'insight into fourfront'})
 
 
-@app.route('/run/{environ}/{checks}', cors=foursight_cors)
+@app.route('/run/{environ}/{checks}', cors=foursight_cors, authorizer=authorizer)
 def run_checks(environ, checks, supplied_connection=None, scheduled=False):
     """
     Run the given checks on the given environment, creating a record in the
@@ -198,7 +201,7 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
     })
 
 
-@app.route('/latest/{environ}/{checks}', cors=foursight_cors)
+@app.route('/latest/{environ}/{checks}', cors=foursight_cors, authorizer=authorizer)
 def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False):
     """
     Return JSON of each check tagged with the "latest" tag for speicified current
@@ -234,7 +237,7 @@ def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False
     })
 
 
-@app.route('/cleanup/{environ}', cors=foursight_cors)
+@app.route('/cleanup/{environ}', cors=foursight_cors, authorizer=authorizer)
 def cleanup(environ, supplied_connection=None, scheduled=False):
     """
     For a given environment, remove all tests records from S3 that are no
@@ -269,7 +272,7 @@ def cleanup(environ, supplied_connection=None, scheduled=False):
     })
 
 
-@app.route('/put_check/{environ}/{check}', methods=['PUT'])
+@app.route('/put_check/{environ}/{check}', methods=['PUT'], authorizer=authorizer)
 def put_check(environ, check):
     """
     Take a PUT request. Body of the request should be a json object with keys
@@ -316,7 +319,7 @@ def put_check(environ, check):
     })
 
 
-@app.route('/build_env/{environ}', methods=['PUT'])
+@app.route('/build_env/{environ}', methods=['PUT'], authorizer=authorizer)
 def build_environment(environ):
     """
     Take a PUT request that has a json payload with 'fourfront' (ff server),
@@ -355,7 +358,7 @@ def build_environment(environ):
         })
 
 
-@app.route('/test_s3/{bucket_name}')
+@app.route('/test_s3/{bucket_name}', authorizer=authorizer)
 def test_s3_connection(bucket_name):
     s3Connection = S3Connection(bucket_name)
     return json.dumps({
@@ -366,7 +369,7 @@ def test_s3_connection(bucket_name):
     })
 
 
-@app.route('/introspect')
+@app.route('/introspect', authorizer=authorizer)
 def introspect():
     return json.dumps(app.current_request.to_dict())
 
