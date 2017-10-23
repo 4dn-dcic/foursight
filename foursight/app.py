@@ -88,7 +88,7 @@ def init_connection(environ, supplied_connection=None):
             connection = CACHED[environ]
         except KeyError:
             info = ENVIRONMENTS[environ]
-            CACHED[environ] = FFConnection(info['fourfront'], info['bucket'], info['es'])
+            CACHED[environ] = FFConnection(environ, info['fourfront'], info['bucket'], info['es'])
             connection = CACHED[environ]
         if not connection.is_up:
             error_res = {

@@ -5,7 +5,8 @@ import datetime
 from .s3_connection import S3Connection
 
 class FFConnection(object):
-    def __init__(self, server, bucket, es):
+    def __init__(self, environ, server, bucket, es):
+        self.environment = environ
         self.headers = {'content-type': 'application/json', 'accept': 'application/json'}
         self.server = server
         self.s3connection = S3Connection(bucket)
