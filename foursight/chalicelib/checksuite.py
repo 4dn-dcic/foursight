@@ -3,6 +3,8 @@ from .utils import make_registration_deco
 from .checkresult import CheckResult
 import requests
 import json
+import datetime
+from collections import OrderedDict
 
 # initialize the daily_check decorator
 def daily_check(func):
@@ -232,4 +234,57 @@ class CheckSuite(object):
             check.status = 'PASS'
             check.description = ' '.join(['Indexing seems healthy. There are', str(latest_unindexed),
             'remaining items to index, a change of', str(diff_unindexed), 'from two hours ago.'])
+        return check.store_result()
+
+
+    @daily_check
+    def indexing_records(self):
+        check = self.init_check('indexing_records')
+        es = self.connection.es
+        es_resp = requests.get(''.join([es,'meta/meta/_search?q=_exists_:indexing_record&size=1000&sort=uuid:desc']))
+        if getattr(es_resp, 'status_code', None) != 200:
+            check.status = 'ERROR'
+            check.description = "Error connecting to ES at endpoint: meta/meta/_search?q=_exists_:indexing_status"
+            return check.store_result()
+        # 3 day timedelta
+        delta_days = datetime.timedelta(days=3)
+        all_records = es_resp.json().get('hits', {}).get('hits', [])
+        recent_records = {}
+        warn_records = {}
+        for rec in all_records:
+            time_diff = (datetime.datetime.utcnow() -
+                datetime.datetime.strptime(rec['_id'], "%Y-%m-%dT%H:%M:%S.%f"))
+            if time_diff < delta_days:
+                body = rec['_source'].get('indexing_record')
+                this_record = {}
+                this_record['record'] = body
+                if not body:
+                    warn_records[rec['_id']] = 'Indexing run is not finished'
+                    if check.status == 'PEND': check.status = 'WARN'
+                else:
+                    elapsed = body.get('indexing_elapsed')
+                    indexed = body.get('indexed')
+                    if elapsed and indexed:
+                        elapsed_dt = datetime.datetime.strptime(elapsed, "%H:%M:%S.%f")
+                        base_dt = datetime.datetime(1900, 1, 1)
+                        elapsed_mins = ((elapsed_dt-base_dt).total_seconds() / 60.0)
+                        this_record['indexed_per_minute'] = indexed / elapsed_mins
+                    if body.get('last_xmin') is None or body.get('types_indexed') == 'all':
+                        this_record['complete_index'] = True
+                    else:
+                        this_record['complete_index'] = False
+                    if body.get('errors'):
+                        warn_records[rec['_id']] = 'Indexing run has errors'
+                        check.status = 'FAIL'
+                recent_records[rec['_id']] = this_record
+        del all_records
+        # sort so most recent records are first
+        sort_records = OrderedDict(sorted(recent_records.iteritems(), key=lambda rec: datetime.datetime.strptime(rec[0], "%Y-%m-%dT%H:%M:%S.%f"), reverse=True))
+        check.full_output = sort_records
+        if warn_records:
+            check.description = 'One or more indexing runs in the past three days may require attention.'
+            check.brief_output = warn_records
+        else:
+            check.description = 'Indexing runs from the past three days seem normal.'
+            check.status = 'PASS'
         return check.store_result()
