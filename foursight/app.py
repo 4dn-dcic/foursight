@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from chalice import Chalice, CORSConfig, Cron, Rate, IAMAuthorizer
+from chalice import Chalice, CORSConfig, Cron, Rate
 import json
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, daily_check, rate_check
@@ -16,10 +16,9 @@ app.debug = True
 ENVIRONMENTS = {}
 CACHED = {}
 
-authorizer = IAMAuthorizer()
-
 foursight_cors = CORSConfig(
     allow_origin = '*',
+    allow_credentials = True,
     allow_headers = ['Authorization',
                      'Content-Type',
                      'X-Amz-Date',
@@ -63,72 +62,41 @@ def init_environments(env='all'):
     return bad_keys
 
 
-def init_connection(environ, supplied_connection=None):
+def init_connection(environ):
     """
     Initialize the fourfront/s3 connection using the FFConnection object
-    and the given environment. The supplied_connection argument is used for
-    testing and a FFConnection object can be supplied directly to it,
-    which will bypass the rest of the function.
+    and the given environment.
     Returns an FFConnection object (or None if error) and a dictionary
     error response.
     """
     error_res = {}
-    if supplied_connection is None:
-        # try re-initializing ENVIRONMENTS if environ is not found
-        if environ not in ENVIRONMENTS:
-            init_environments()
-        # if still not there, return an error
-        if environ not in ENVIRONMENTS:
-            error_res = {
-                'status': 'error',
-                'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
-                'environment': environ,
-                'checks': {}
-            }
-            return None, error_res
-        try:
-            connection = CACHED[environ]
-        except KeyError:
-            info = ENVIRONMENTS[environ]
-            CACHED[environ] = FFConnection(environ, info['fourfront'], info['bucket'], info['es'])
-            connection = CACHED[environ]
-        if not connection.is_up:
-            error_res = {
-                'status': 'error',
-                'description': 'The connection to fourfront is down',
-                'environment': environ,
-                'checks': {}
-            }
-            return None, error_res
-    else:
-        connection = supplied_connection
+    # try re-initializing ENVIRONMENTS if environ is not found
+    if environ not in ENVIRONMENTS:
+        init_environments()
+    # if still not there, return an error
+    if environ not in ENVIRONMENTS:
+        error_res = {
+            'status': 'error',
+            'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
+            'environment': environ,
+            'checks': {}
+        }
+        return None, error_res
+    try:
+        connection = CACHED[environ]
+    except KeyError:
+        info = ENVIRONMENTS[environ]
+        CACHED[environ] = FFConnection(environ, info['fourfront'], info['bucket'], info['es'])
+        connection = CACHED[environ]
+    if not connection.is_up:
+        error_res = {
+            'status': 'error',
+            'description': 'The connection to fourfront is down',
+            'environment': environ,
+            'checks': {}
+        }
+        return None, error_res
     return connection, error_res
-
-
-def check_origin(current_request, environ):
-    """
-    Returns None if origin passes
-    """
-    allowed_origins = []
-    env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
-    if env_ff_server:
-        allowed_origins.append(env_ff_server)
-    # special case for test server
-    if environ == 'local':
-        local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
-        if local_ff_server is not None:
-            allowed_origins.append(local_ff_server)
-    req_headers = current_request.headers
-    if req_headers and getattr(req_headers, 'origin', None) is not None:
-        if req_headers.origin and req_headers.origin not in allowed_origins:
-            return json.dumps({
-                'status': 'error',
-                'description': 'CORS check failed',
-                'checks': {},
-                'environment': environ,
-                'request': current_request.to_dict()
-            })
-    return None
 
 
 def init_check_suite(checks, connection):
@@ -159,8 +127,64 @@ def init_check_suite(checks, connection):
     return check_methods, checkSuite
 
 
-# purposefully
-@app.route('/')
+def check_origin(current_request, environ):
+    """
+    Returns None if origin passes
+    """
+    allowed_origins = []
+    env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
+    if env_ff_server:
+        allowed_origins.append(env_ff_server)
+    # special case for test server
+    if environ == 'local':
+        local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
+        if local_ff_server is not None:
+            allowed_origins.append(local_ff_server)
+    req_headers = current_request.headers
+    if req_headers and getattr(req_headers, 'origin', None) is not None:
+        if req_headers.origin and req_headers.origin not in allowed_origins:
+            return json.dumps({
+                'status': 'error',
+                'description': 'CORS check failed',
+                'checks': {},
+                'environment': environ,
+                'request': current_request.to_dict()
+            })
+    return None
+
+# from chalice import AuthResponse
+# import jwt
+# from base64 import b64decode
+"""
+All you need to do to add authorizer to a route:
+app.route('/', ... , authorizer=auth0_authorizer)
+"""
+
+# @app.authorizer()
+# def auth0_authorizer(auth_request):
+#     token = getattr(req_headers, 'token', None)
+#     if not token:
+#         return AuthResponse(routes=[], principal_id='user')
+#
+#     req_headers = auth_request.headers
+#     if not req_headers:
+#         return AuthResponse(routes=[], principal_id='user')
+#     auth0_client = getattr(req_headers, 'auth0_client', None)
+#     auth0_secret = getattr(req_headers, 'auth0_secret', None)
+#     if auth0_client and auth0_secret:
+#         try:
+#             # leeway accounts for clock drift between us and auth0
+#             payload = jwt.decode(token, b64decode(auth0_secret, '-_'),
+#                                  audience=auth0_client, leeway=30)
+#             if 'email' in payload and payload.get('email_verified') is True:
+#                 return AuthResponse(routes=['/'], principal_id='user')
+#         except:
+#             return AuthResponse(routes=['/'], principal_id='test')
+#     else:
+#         return AuthResponse(routes=[], principal_id='user')
+
+
+@app.route('/', methods=['GET'])
 def index():
     """
     Test route
@@ -168,8 +192,8 @@ def index():
     return json.dumps({'foursight': 'insight into fourfront'})
 
 
-@app.route('/run/{environ}/{checks}', cors=foursight_cors)
-def run_checks(environ, checks, supplied_connection=None, scheduled=False):
+@app.route('/run/{environ}/{checks}', cors=foursight_cors, methods=['GET'])
+def run_checks(environ, checks, scheduled=False):
     """
     Run the given checks on the given environment, creating a record in the
     corresponding S3 bucket under the check's method name.
@@ -178,7 +202,7 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
     CORS enabled.
     """
     # skip origin checks for scheduled jobs
-    connection, error_res = init_connection(environ, supplied_connection)
+    connection, error_res = init_connection(environ)
     if connection is None:
         return json.dumps(error_res)
     if not scheduled:
@@ -201,8 +225,8 @@ def run_checks(environ, checks, supplied_connection=None, scheduled=False):
     })
 
 
-@app.route('/latest/{environ}/{checks}', cors=foursight_cors)
-def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False):
+@app.route('/latest/{environ}/{checks}', cors=foursight_cors, methods=['GET'])
+def get_latest_checks(environ, checks, scheduled=False):
     """
     Return JSON of each check tagged with the "latest" tag for speicified current
     checks in checksuite for the given environment. If checks == 'all', every
@@ -210,7 +234,7 @@ def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False
     of check names (the method names!) as the check argument.
     CORS enabled.
     """
-    connection, error_res = init_connection(environ, supplied_connection)
+    connection, error_res = init_connection(environ)
     if connection is None:
         return json.dumps(error_res)
     if not scheduled:
@@ -237,15 +261,15 @@ def get_latest_checks(environ, checks, supplied_connection=None, scheduled=False
     })
 
 
-@app.route('/cleanup/{environ}', cors=foursight_cors)
-def cleanup(environ, supplied_connection=None, scheduled=False):
+@app.route('/cleanup/{environ}', cors=foursight_cors, methods=['GET'])
+def cleanup(environ, scheduled=False):
     """
     For a given environment, remove all tests records from S3 that are no
     long being used (i.e. not currently defined within checksuite).
     Will not remove auth.
     CORS enabled.
     """
-    connection, error_res = init_connection(environ, supplied_connection)
+    connection, error_res = init_connection(environ)
     if connection is None:
         return json.dumps(error_res)
     if not scheduled:
@@ -358,7 +382,7 @@ def build_environment(environ):
         })
 
 
-@app.route('/test_s3/{bucket_name}')
+@app.route('/test_s3/{bucket_name}', methods=['GET'])
 def test_s3_connection(bucket_name):
     s3Connection = S3Connection(bucket_name)
     return json.dumps({
@@ -370,7 +394,7 @@ def test_s3_connection(bucket_name):
 
 
 # this route is purposefully un-authorized
-@app.route('/introspect')
+@app.route('/introspect', methods=['GET'])
 def introspect():
     return json.dumps(app.current_request.to_dict())
 
