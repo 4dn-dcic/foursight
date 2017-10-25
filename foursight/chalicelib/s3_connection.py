@@ -55,7 +55,8 @@ class S3Connection(object):
         return bucket_resp
 
 
-    def create_bucket(self):
+    def create_bucket(self, manual_bucket=None):
         # us-east-1 is default location
         # add CreateBucketConfiguration w/ Location key for a different region
-        self.client.create_bucket(Bucket=self.bucket)
+        bucket = manual_bucket if manual_bucket else self.bucket
+        self.client.create_bucket(Bucket=bucket)

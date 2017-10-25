@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from chalice import Chalice, CORSConfig, Cron, Rate
+from chalice import Chalice, Cron, Rate, Response
 import json
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, daily_check, rate_check
@@ -15,17 +15,6 @@ app.debug = True
 
 ENVIRONMENTS = {}
 CACHED = {}
-
-foursight_cors = CORSConfig(
-    allow_origin = '*',
-    allow_credentials = True,
-    allow_headers = ['Authorization',
-                     'Content-Type',
-                     'X-Amz-Date',
-                     'X-Amz-Security-Token',
-                     'X-Api-Key',
-                     'X-Requested-With']
-)
 
 
 def init_environments(env='all'):
@@ -127,30 +116,36 @@ def init_check_suite(checks, connection):
     return check_methods, checkSuite
 
 
-def check_origin(current_request, environ):
-    """
-    Returns None if origin passes
-    """
-    allowed_origins = []
-    env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
-    if env_ff_server:
-        allowed_origins.append(env_ff_server)
-    # special case for test server
-    if environ == 'local':
-        local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
-        if local_ff_server is not None:
-            allowed_origins.append(local_ff_server)
-    req_headers = current_request.headers
-    if req_headers and getattr(req_headers, 'origin', None) is not None:
-        if req_headers.origin and req_headers.origin not in allowed_origins:
-            return json.dumps({
-                'status': 'error',
-                'description': 'CORS check failed',
-                'checks': {},
-                'environment': environ,
-                'request': current_request.to_dict()
-            })
-    return None
+def init_response(request, environ):
+    resp = Response('Foursight preflight response') # response body
+    req_dict = request.to_dict()
+    origin = req_dict.get('headers', {}).get('origin', None)
+    if origin:
+        use_origin = origin if origin.endswith('/') else ''.join([origin, '/'])
+        allowed_origins = []
+        if environ not in ENVIRONMENTS:
+            init_environments()
+        env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
+        if env_ff_server: allowed_origins.append(env_ff_server)
+        # special case for test server
+        if environ == 'local':
+            local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
+            if local_ff_server: allowed_origins.append(local_ff_server)
+        if use_origin in allowed_origins:
+            resp.headers = {
+                'Access-Control-Allow-Origin': origin,
+                'Access-Control-Allow-Credentials': 'true',
+                'Access-Control-Allow-Headers': ', '.join([
+                    'Authorization',
+                    'Content-Type',
+                    'X-Amz-Date',
+                    'X-Amz-Security-Token',
+                    'X-Api-Key',
+                    'X-Requested-With'
+                ])
+            }
+    return resp
+
 
 # from chalice import AuthResponse
 # import jwt
@@ -193,8 +188,8 @@ def index():
     return json.dumps({'foursight': 'insight into fourfront'})
 
 
-@app.route('/run/{environ}/{checks}', cors=foursight_cors, methods=['GET'])
-def run_checks(environ, checks, scheduled=False):
+@app.route('/run/{environ}/{checks}', methods=['GET', 'OPTIONS'])
+def run_checks(environ, checks):
     """
     Run the given checks on the given environment, creating a record in the
     corresponding S3 bucket under the check's method name.
@@ -202,14 +197,14 @@ def run_checks(environ, checks, scheduled=False):
     directory in S3 and also creates a timestamped record.
     CORS enabled.
     """
-    # skip origin checks for scheduled jobs
+    response = init_response(app.current_request, environ)
+    if app.current_request.method == 'OPTIONS':
+        return response
     connection, error_res = init_connection(environ)
     if connection is None:
-        return json.dumps(error_res)
-    if not scheduled:
-        origin_flag = check_origin(app.current_request, environ)
-        if origin_flag:
-            return origin_flag
+        response.body = error_res
+        response.status_code = 400
+        return response
     check_methods, checkSuite = init_check_suite(checks, connection)
     did_run = []
     for method in check_methods:
@@ -217,17 +212,18 @@ def run_checks(environ, checks, scheduled=False):
         run_res = method(checkSuite)
         if run_res:
             did_run.append(name)
-
-    return json.dumps({
+    response.body = {
         'status': 'success',
         'checks_specified': checks,
         'checks_runs': did_run,
         'environment': environ
-    })
+    }
+    response.status_code = 200
+    return response
 
 
-@app.route('/latest/{environ}/{checks}', cors=foursight_cors, methods=['GET'])
-def get_latest_checks(environ, checks, scheduled=False):
+@app.route('/latest/{environ}/{checks}', methods=['GET', 'OPTIONS'])
+def get_latest_checks(environ, checks):
     """
     Return JSON of each check tagged with the "latest" tag for speicified current
     checks in checksuite for the given environment. If checks == 'all', every
@@ -235,13 +231,14 @@ def get_latest_checks(environ, checks, scheduled=False):
     of check names (the method names!) as the check argument.
     CORS enabled.
     """
+    response = init_response(app.current_request, environ)
+    if app.current_request.method == 'OPTIONS':
+        return response
     connection, error_res = init_connection(environ)
     if connection is None:
-        return json.dumps(error_res)
-    if not scheduled:
-        origin_flag = check_origin(app.current_request, environ)
-        if origin_flag:
-            return origin_flag
+        response.body = error_res
+        response.status_code = 400
+        return response
     check_methods, checkSuite = init_check_suite(checks, connection)
     results = []
     did_check = []
@@ -253,30 +250,32 @@ def get_latest_checks(environ, checks, scheduled=False):
         if latest_res:
             results.append(latest_res)
             did_check.append(name)
-
-    return json.dumps({
+    response.body = {
         'status': 'success',
         'environment': environ,
         'checks': results,
         'checks_found': did_check
-    })
+    }
+    response.status_code = 200
+    return response
 
 
-@app.route('/cleanup/{environ}', cors=foursight_cors, methods=['GET'])
-def cleanup(environ, scheduled=False):
+@app.route('/cleanup/{environ}', methods=['GET', 'OPTIONS'])
+def cleanup(environ):
     """
     For a given environment, remove all tests records from S3 that are no
     long being used (i.e. not currently defined within checksuite).
     Will not remove auth.
     CORS enabled.
     """
+    response = init_response(app.current_request, environ)
+    if app.current_request.method == 'OPTIONS':
+        return response
     connection, error_res = init_connection(environ)
     if connection is None:
-        return json.dumps(error_res)
-    if not scheduled:
-        origin_flag = check_origin(app.current_request, environ)
-        if origin_flag:
-            return origin_flag
+        response.body = error_res
+        response.status_code = 400
+        return response
     all_keys = set(connection.s3connection.list_all_keys())
     # never delete these keys
     if 'auth' in all_keys:
@@ -289,44 +288,56 @@ def cleanup(environ, scheduled=False):
         all_keys = all_keys - method_keys
     if len(all_keys) > 0:
         connection.s3connection.delete_keys(list(all_keys))
-    return json.dumps({
+    response.body = {
         'status': 'success',
         'environment': environ,
         'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
         'keys_cleaned': list(all_keys)
-    })
+    }
+    response.status_code = 200
+    return response
 
 
-@app.route('/put_check/{environ}/{check}', methods=['PUT'])
+@app.route('/put_check/{environ}/{check}', methods=['PUT', 'OPTIONS'])
 def put_check(environ, check):
     """
     Take a PUT request. Body of the request should be a json object with keys
     corresponding to the fields in CheckResult, namely:
-    title, status, description, brief_output, full_output
+    title, status, description, brief_output, full_output.
+    CORS enabled.
     """
+    response = init_response(app.current_request, environ)
+    if app.current_request.method == 'OPTIONS':
+        return response
     connection, error_res = init_connection(environ)
     if connection is None:
-        return json.dumps(error_res)
+        response.body = error_res
+        response.status_code = 400
+        return response
     valid_methods, CheckSuite = init_check_suite('all', connection)
     valid_checks = [method.__name__ for method in valid_methods]
     if check not in valid_checks:
-        return json.dumps({
+        response.body = {
             'status': 'error',
             'endpoint': 'put_check',
             'check': check,
             'description': ' '.join(['Could not PUT invalid check:', check]),
             'environment': environ
-        })
+        }
+        response.status_code = 400
+        return response
     request = app.current_request
     put_data = request.json_body
     if not isinstance(put_data, dict):
-        return json.dumps({
+        response.body = {
             'status': 'error',
             'endpoint': 'put_check',
             'check': check,
             'description': ' '.join(['PUT request is malformed:', put_data]),
             'environment': environ
-        })
+        }
+        response.status_code = 400
+        return response
     putCheck = CheckSuite.init_check(check)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
@@ -335,13 +346,15 @@ def put_check(environ, check):
         if put_content:
             setattr(putCheck, field, put_content)
     stored = putCheck.store_result()
-    return json.dumps({
+    response.body = {
         'status': 'success',
         'endpoint': 'put_check',
         'check': check,
         'updated_content': stored,
         'environment': environ
-    })
+    }
+    response.status_code = 200
+    return response
 
 
 @app.route('/build_env/{environ}', methods=['PUT'])
@@ -364,34 +377,28 @@ def build_environment(environ):
             env_entry['local_server'] = env_data['local_server']
         s3connection = S3Connection('foursight-dev')
         s3connection.put_object(environ, json.dumps(env_entry))
-        # do a quick update
-        ENVIRONMENTS[environ] = env_entry
+        s3connection.create_bucket(env_entry['bucket'])
         # run some checks on the new env
-        checks_run_json = run_checks(environ, 'all', scheduled=True)
-        return json.dumps({
-            'status': 'success',
-            'description': ' '.join(['Succesfully made:', environ]),
-            'initial_checks_run': json.loads(checks_run_json),
-            'environment': environ
-        })
+        checks_run_json = run_checks(environ, 'all').to_dict()['body']
+        return Response(
+            body = {
+                'status': 'success',
+                'description': ' '.join(['Succesfully made:', environ]),
+                'initial_checks_run': json.loads(checks_run_json),
+                'environment': environ
+            },
+            status_code = 200
+        )
     else:
-        return json.dumps({
-            'status': 'error',
-            'description': 'Environment creation failed',
-            'body': env_data,
-            'environment': environ
-        })
-
-
-@app.route('/test_s3/{bucket_name}', methods=['GET'])
-def test_s3_connection(bucket_name):
-    s3Connection = S3Connection(bucket_name)
-    return json.dumps({
-        'bucket': s3Connection.bucket,
-        'region': s3Connection.location,
-        'status': s3Connection.status_code,
-        'info': s3Connection.head_info
-    })
+        return Response(
+            body = {
+                'status': 'error',
+                'description': 'Environment creation failed',
+                'body': env_data,
+                'environment': environ
+            },
+            status_code = 400
+        )
 
 
 # this route is purposefully un-authorized
@@ -408,7 +415,7 @@ def daily_checks(event):
     for environ in ENVIRONMENTS:
         if environ == 'local':
             continue
-        run_checks(environ, 'daily', scheduled=True)
+        run_checks(environ, 'daily')
 
 
 # run every 2 hrs
@@ -418,4 +425,4 @@ def two_hour_checks(event):
     for environ in ENVIRONMENTS:
         if environ == 'local':
             continue
-        run_checks(environ, 'item_counts_by_type,indexing_progress', scheduled=True)
+        run_checks(environ, 'item_counts_by_type,indexing_progress')
