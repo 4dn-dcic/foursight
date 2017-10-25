@@ -193,7 +193,7 @@ class CheckSuite(object):
                 if diff_DB != 0:
                     diff_counts[index] = diff_DB
         for index in prior_unique:
-            diff_counts[index] = 'DB': -1 * prior[index]['DB']
+            diff_counts[index] = -1 * prior[index]['DB']
         check = self.init_check('change_in_item_counts')
         if diff_counts:
             check.status = 'WARN'
