@@ -187,22 +187,18 @@ class CheckSuite(object):
             if index == 'ALL':
                 continue
             if index not in prior:
-                diff_counts[index] = latest[index]
+                diff_counts[index] = latest[index]['DB']
             else:
                 diff_DB = latest[index]['DB'] - prior[index]['DB']
-                diff_ES = latest[index]['ES'] - prior[index]['ES']
-                if diff_DB != 0 or diff_ES != 0:
-                    diff_counts[index] = {'DB': diff_DB, 'ES': diff_ES}
+                if diff_DB != 0:
+                    diff_counts[index] = diff_DB
         for index in prior_unique:
-            diff_counts[index] = {
-                'DB': -1 * prior[index]['DB'],
-                'ES': -1 * prior[index]['ES']
-            }
+            diff_counts[index] = 'DB': -1 * prior[index]['DB']
         check = self.init_check('change_in_item_counts')
         if diff_counts:
             check.status = 'WARN'
             check.full_output = diff_counts
-            check.description = 'DB/ES counts have changed in past day; positive numbers represent an increase in current counts.'
+            check.description = 'DB counts have changed in past day; positive numbers represent an increase in current counts.'
         else:
             check.status = 'PASS'
         return check.store_result()

@@ -158,6 +158,7 @@ def check_origin(current_request, environ):
 """
 All you need to do to add authorizer to a route:
 app.route('/', ... , authorizer=auth0_authorizer)
+See: https://github.com/aws/chalice/blob/master/docs/source/topics/authorizers.rst
 """
 
 # @app.authorizer()
