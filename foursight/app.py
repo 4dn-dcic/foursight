@@ -216,13 +216,7 @@ def run_checks(environ, checks):
         response.body = error_res
         response.status_code = 400
         return response
-    check_methods, checkSuite = init_check_suite(checks, connection)
-    did_run = []
-    for method in check_methods:
-        name = method.__name__
-        run_res = method(checkSuite)
-        if run_res:
-            did_run.append(name)
+    did_run = perform_run_checks(connection, checks)
     response.body = {
         'status': 'success',
         'checks_specified': checks,
@@ -231,6 +225,21 @@ def run_checks(environ, checks):
     }
     response.status_code = 200
     return response
+
+
+def perform_run_checks(connection, checks):
+    """
+    This function needed to be split out to separate timed invocation of
+    checks to manual invocation.
+    """
+    check_methods, checkSuite = init_check_suite(checks, connection)
+    did_run = []
+    for method in check_methods:
+        name = method.__name__
+        run_res = method(checkSuite)
+        if run_res:
+            did_run.append(name)
+    return did_run
 
 
 @app.route('/latest/{environ}/{checks}', methods=['GET', 'OPTIONS'])
@@ -390,7 +399,16 @@ def build_environment(environ):
         s3connection = S3Connection('foursight-envs')
         s3connection.put_object(environ, json.dumps(env_entry))
         s3_bucket = ''.join(['foursight-', STAGE, '-', environ])
-        s3connection.create_bucket(s3_bucket)
+        bucket_res = s3connection.create_bucket(s3_bucket)
+        if not bucket_res:
+            return Response(
+                body = {
+                    'status': 'error',
+                    'description': ' '.join(['Could not create bucket:', s3_bucket]),
+                    'environment': environ
+                },
+                status_code = 500
+            )
         # run some checks on the new env
         checks_run_json = run_checks(environ, 'all').to_dict()['body']
         return Response(
@@ -428,7 +446,9 @@ def daily_checks(event):
     for environ in ENVIRONMENTS:
         if environ == 'local':
             continue
-        run_checks(environ, 'daily')
+        connection, error_res = init_connection(environ)
+        if connection:
+            perform_run_checks(connection, 'daily')
 
 
 # run every 2 hrs
@@ -438,4 +458,6 @@ def two_hour_checks(event):
     for environ in ENVIRONMENTS:
         if environ == 'local':
             continue
-        run_checks(environ, 'item_counts_by_type,indexing_progress')
+        connection, error_res = init_connection(environ)
+        if connection:
+            perform_run_checks(connection, 'item_counts_by_type,indexing_progress')

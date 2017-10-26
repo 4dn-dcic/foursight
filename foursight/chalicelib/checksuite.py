@@ -80,8 +80,12 @@ class CheckSuite(object):
     def status_of_servers(self):
         ff_server = self.connection.is_up
         es = self.connection.es
-        es_resp = requests.get(es)
-        es_server = es_resp.status_code == 200 and "You Know, for Search" in es_resp.text
+        try:
+            es_resp = requests.get(es)
+        except:
+            es_server = None
+        else:
+            es_server = es_resp.status_code == 200 and "You Know, for Search" in es_resp.text
         check = self.init_check('status_of_servers')
         if ff_server and es_server:
             check.status = 'PASS'

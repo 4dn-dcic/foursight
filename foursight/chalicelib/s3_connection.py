@@ -1,7 +1,6 @@
 from __future__ import print_function, unicode_literals
 import requests
 import boto3
-from botocore.exceptions import ClientError
 
 class S3Connection(object):
     def __init__(self, bucket_name):
@@ -19,26 +18,38 @@ class S3Connection(object):
 
 
     def put_object(self, key, value):
-        self.client.put_object(Bucket=self.bucket, Key=key, Body=value)
-
+        try:
+            self.client.put_object(Bucket=self.bucket, Key=key, Body=value)
+        except:
+            return None
+        else:
+            return (key, value)
 
     def get_object(self, key):
         # return found bucket content or None on an error
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             return response['Body'].read()
-        except ClientError as e:
+        except:
             return None
 
 
     def list_keys_w_prefix(self, prefix):
-        contents = self.client.list_objects_v2(Bucket=self.bucket, Prefix=prefix).get('Contents', [])
-        return [obj['Key'] for obj in contents]
+        try:
+            contents = self.client.list_objects_v2(Bucket=self.bucket, Prefix=prefix).get('Contents', [])
+        except:
+            return []
+        else:
+            return [obj['Key'] for obj in contents]
 
 
     def list_all_keys(self):
-        contents = self.client.list_objects_v2(Bucket=self.bucket).get('Contents', [])
-        return [obj['Key'] for obj in contents]
+        try:
+            contents = self.client.list_objects_v2(Bucket=self.bucket).get('Contents', [])
+        except:
+            return []
+        else:
+            return [obj['Key'] for obj in contents]
 
 
     def delete_keys(self, key_list):
@@ -50,7 +61,7 @@ class S3Connection(object):
     def test_connection(self):
         try:
             bucket_resp = self.client.head_bucket(Bucket=self.bucket)
-        except ClientError:
+        except:
             return {'ResponseMetadata': {'HTTPStatusCode': 404}}
         return bucket_resp
 
@@ -58,5 +69,11 @@ class S3Connection(object):
     def create_bucket(self, manual_bucket=None):
         # us-east-1 is default location
         # add CreateBucketConfiguration w/ Location key for a different region
+        # echoes bucket name if successful, None otherwise
         bucket = manual_bucket if manual_bucket else self.bucket
-        self.client.create_bucket(Bucket=bucket)
+        try:
+            self.client.create_bucket(Bucket=bucket)
+        except:
+            return None
+        else:
+            return bucket
