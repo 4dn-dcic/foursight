@@ -1,12 +1,13 @@
 from __future__ import print_function, unicode_literals
 from chalice import Chalice, Cron, Rate, Response
 import json
+import boto3
+import os
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, daily_check, rate_check
 from chalicelib.checkresult import CheckResult
 from chalicelib.utils import get_methods_by_deco
 from chalicelib.s3_connection import S3Connection
-import boto3
 from botocore.exceptions import ClientError
 from itertools import chain
 
@@ -15,6 +16,8 @@ app.debug = True
 
 ENVIRONMENTS = {}
 CACHED = {}
+# set environmental variables in .chalice/config.json
+STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 
 
 def init_environments(env='all'):
@@ -23,7 +26,7 @@ def init_environments(env='all'):
     the foursight-dev bucket.
     Returns a list of environments/keys that are not valid.
     """
-    s3connection = S3Connection('foursight-dev')
+    s3connection = S3Connection('foursight-envs')
     env_keys = s3connection.list_all_keys()
     bad_keys = []
     if env != 'all':
@@ -41,7 +44,7 @@ def init_environments(env='all'):
             env_entry = {
                 'fourfront': env_res['fourfront'],
                 'es': env_res['es'],
-                'bucket': 'foursight-' + env_key
+                'bucket': ''.join(['foursight-', STAGE, '-', env_key])
             }
             if 'local_server' in env_res:
                 env_entry['local_server'] = env_res['local_server']
@@ -117,6 +120,14 @@ def init_check_suite(checks, connection):
 
 
 def init_response(request, environ):
+    """
+    Initialize the response object that will be returned from chalice.
+    Please not that this function is not strictly necessary, as returning
+    JSON will automatically send a response with status_code of 200.
+    This function also handles CORS requests by echoing Access-Control-*
+    headers back if Origin is in the provided request headers.
+    Returns an initialized chalice response.
+    """
     resp = Response('Foursight preflight response') # response body
     req_dict = request.to_dict()
     origin = req_dict.get('headers', {}).get('origin', None)
@@ -360,8 +371,10 @@ def put_check(environ, check):
 @app.route('/build_env/{environ}', methods=['PUT'])
 def build_environment(environ):
     """
-    Take a PUT request that has a json payload with 'fourfront' (ff server),
-    'es' (es server), and optionally, 'bucket' (s3 bucket name).
+    Take a PUT request that has a json payload with 'fourfront' (ff server)
+    and 'es' (es server).
+    If environ == local, you may provide a 'local_server' in the request body
+    for CORS compatibility.
     Attempts to generate an new environment and runs all checks initially
     if successful.
     """
@@ -370,14 +383,14 @@ def build_environment(environ):
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
         env_entry = {
             'fourfront': env_data['fourfront'],
-            'es': env_data['es'],
-            'bucket': 'foursight-' + environ
+            'es': env_data['es']
         }
-        if 'local_server' in env_data:
+        if 'local_server' in env_data and environ == 'local':
             env_entry['local_server'] = env_data['local_server']
-        s3connection = S3Connection('foursight-dev')
+        s3connection = S3Connection('foursight-envs')
         s3connection.put_object(environ, json.dumps(env_entry))
-        s3connection.create_bucket(env_entry['bucket'])
+        s3_bucket = ''.join(['foursight-', STAGE, '-', environ])
+        s3connection.create_bucket(s3_bucket)
         # run some checks on the new env
         checks_run_json = run_checks(environ, 'all').to_dict()['body']
         return Response(

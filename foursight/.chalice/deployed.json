@@ -1,4 +1,23 @@
 {
+  "prod": {
+    "region": "us-east-1",
+    "api_handler_name": "foursight-prod",
+    "api_handler_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod",
+    "rest_api_id": "we0v248yi4",
+    "lambda_functions": {
+      "foursight-prod-daily_checks": {
+        "type": "scheduled_event",
+        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-daily_checks"
+      },
+      "foursight-prod-two_hour_checks": {
+        "type": "scheduled_event",
+        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-two_hour_checks"
+      }
+    },
+    "chalice_version": "1.0.4",
+    "api_gateway_stage": "api",
+    "backend": "api"
+  },
   "dev": {
     "region": "us-east-1",
     "api_handler_name": "foursight-dev",
@@ -14,7 +33,7 @@
         "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-daily_checks"
       }
     },
-    "chalice_version": "1.0.2",
+    "chalice_version": "1.0.4",
     "api_gateway_stage": "api",
     "backend": "api"
   }

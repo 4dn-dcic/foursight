@@ -2,7 +2,17 @@
   "stages": {
     "dev": {
       "api_gateway_stage": "api",
-      "autogen_policy": false
+      "autogen_policy": false,
+      "environment_variables": {
+          "chalice_stage": "dev"
+      }
+    },
+    "prod": {
+      "api_gateway_stage": "api",
+      "autogen_policy": false,
+      "environment_variables": {
+          "chalice_stage": "prod"
+      }
     }
   },
   "version": "2.0",

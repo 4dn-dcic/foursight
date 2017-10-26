@@ -261,7 +261,10 @@ class CheckSuite(object):
                     elapsed = body.get('indexing_elapsed')
                     indexed = body.get('indexed')
                     if elapsed and indexed:
-                        elapsed_dt = datetime.datetime.strptime(elapsed, "%H:%M:%S.%f")
+                        if 'day' in elapsed:
+                            elapsed_dt = datetime.datetime.strptime(elapsed, "%d day, %H:%M:%S.%f")
+                        else:
+                            elapsed_dt = datetime.datetime.strptime(elapsed, "%H:%M:%S.%f")
                         base_dt = datetime.datetime(1900, 1, 1)
                         elapsed_mins = ((elapsed_dt-base_dt).total_seconds() / 60.0)
                         this_record['indexed_per_minute'] = indexed / elapsed_mins
