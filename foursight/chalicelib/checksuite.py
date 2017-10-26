@@ -41,7 +41,12 @@ class CheckSuite(object):
     Then, fields on that CheckResult (named check) can be easily set:
     >> check.status = 'PASS'
     Lastly, once the check is finished, finalize and store S3 results using:
-    >> check.store_result()
+    >> return check.store_result()
+    Returning the result from store_result(), or a custom value, is
+    encouraged because the /run/ function uses these to report that tests
+    have succesfully run.
+    Returning None or no value without calling store_result() will effectively
+    abort the check.
 
     You can get results from past/latest checks with any name in any check
     method by initializing a CheckResult with the corresponding name.
@@ -53,8 +58,6 @@ class CheckSuite(object):
     >> prior['status']
     There is also a get_latest_check() method that returns the same type
     of object for the latest result of a given check.
-
-    Individual check methods need not return anything.
     """
     def __init__(self, connection):
         # self.connection is an FFConnection object.
