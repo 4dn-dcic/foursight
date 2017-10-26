@@ -6,14 +6,14 @@ A serverless chalice application to monitor and run tasks on [Fourfront](https:/
 
 Foursight is under active development and features will likely change.
 
-To fetch latest results for all checks on a specific FF environment:
+There are two foursight stages, dev and prod, each with their own API Gateway ID and address. To fetch latest results for all checks on a specific FF environment:
 ```
-GET <foursight_server>/api/latest/<environment>/all
+GET <foursight_address>/api/latest/<environment>/all
 ```
 
 To run all checks on a specific FF environment:
 ```
-GET <foursight_server>/api/run/<environment>/all
+GET <foursight_address>/api/run/<environment>/all
 ```
 
 Other endpoints are available and are being added as needed, so check back soon.
