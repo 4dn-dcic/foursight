@@ -4,8 +4,8 @@ python:
 - '2.7'
 - '3.6'
 install:
-    - "pip install -r chalice/requirements.txt"
-    - "pip3 install -r chalice/requirements.txt"
+    - "pip install -r foursight/requirements.txt"
+    - "pip3 install -r foursight/requirements.txt"
 script:
  - python foursight/test.py
  - python3 foursight/test.py
