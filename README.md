@@ -8,12 +8,12 @@ Foursight is under active development and features will likely change.
 
 There are two foursight stages, dev and prod, each with their own API Gateway ID and address. To fetch latest results for all checks on a specific FF environment:
 ```
-GET <foursight_address>/api/latest/<environment>/all
+curl -X GET <foursight_address>/api/latest/<environment>/all
 ```
 
 To run all checks on a specific FF environment:
 ```
-GET <foursight_address>/api/run/<environment>/all
+curl -X GET <foursight_address>/api/run/<environment>/all
 ```
 
 To run tests (from root level):
