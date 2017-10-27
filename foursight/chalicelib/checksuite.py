@@ -4,6 +4,7 @@ from .checkresult import CheckResult
 import requests
 import json
 import datetime
+import boto3
 from collections import OrderedDict
 
 # initialize the daily_check decorator
@@ -98,6 +99,48 @@ class CheckSuite(object):
             if not es_server:
                 descrip = ' '.join([descrip, 'ES server is down.'])
             check.description = descrip
+        return check.store_result()
+
+
+    @daily_check
+    def elastic_beanstalk_health(self):
+        check = self.init_check('elastic_beanstalk_health')
+        brief_output = {}
+        full_output = {}
+        eb_client = boto3.client('elasticbeanstalk')
+        try:
+            resp = eb_client.describe_instances_health(
+                EnvironmentName=''.join(['fourfront-', self.connection.environment]),
+                AttributeNames=['All']
+            )
+        except:
+            return
+        resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+        if resp_status != 200:
+            check.status = 'ERROR'
+            check.description = 'Could not establish a connection to AWS.'
+            return check.store_result()
+        instances_health = resp.get('InstanceHealthList', [])
+        for instance in instances_health:
+            inst_info = {}
+            inst_info['deploy_status'] = instance['Deployment']['Status']
+            inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
+            inst_info['deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+            inst_info['id'] = instance['InstanceId']
+            inst_info['color'] = instance['Color']
+            inst_info['health'] = instance['HealthStatus']
+            inst_info['launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
+            inst_info['causes'] = instance.get('causes', [])
+            if inst_info['causes'] or inst_info['color'] in ['Red', 'Yellow', 'Grey'] or inst_info['health'] in ['Degraded', 'Severe', 'Warning']:
+                brief_output[inst_info['id']] = inst_info
+            full_output[inst_info['id']] = inst_info
+        if brief_output:
+            check.status = 'FAIL'
+            check.description = 'One or more Elastic Beanstalk instances may require attention.'
+            check.brief_output = brief_output
+        else:
+            check.status = 'PASS'
+        check.full_output = full_output
         return check.store_result()
 
 

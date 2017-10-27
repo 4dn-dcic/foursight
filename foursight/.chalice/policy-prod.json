@@ -3,7 +3,8 @@
   "Statement": [
     {
       "Action": [
-        "s3:*"
+        "s3:*",
+        "elasticbeanstalk:*"
       ],
       "Resource": [
         "*"
