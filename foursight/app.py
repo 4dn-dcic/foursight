@@ -119,7 +119,7 @@ def init_check_suite(checks, connection):
     return check_methods, checkSuite
 
 
-def init_response(request, environ):
+def init_cors_response(request, environ):
     """
     Initialize the response object that will be returned from chalice.
     Please not that this function is not strictly necessary, as returning
@@ -146,6 +146,7 @@ def init_response(request, environ):
         if use_origin in allowed_origins:
             resp.headers = {
                 'Access-Control-Allow-Origin': origin,
+                'Access-Control-Allow-Methods': 'PUT, GET, OPTIONS',
                 'Access-Control-Allow-Credentials': 'true',
                 'Access-Control-Allow-Headers': ', '.join([
                     'Authorization',
@@ -256,7 +257,7 @@ def run_foursight(environ, checks):
 
     CORS enabled.
     """
-    response = init_response(app.current_request, environ)
+    response = init_cors_response(app.current_request, environ)
     if app.current_request.method == 'OPTIONS':
         return response
     connection, error_res = init_connection(environ)
@@ -288,7 +289,7 @@ def run_foursight(environ, checks):
 # will be removed once FF is updated
 @app.route('/latest/{environ}/{checks}', methods=['GET', 'OPTIONS'])
 def get_latest_checks(environ, checks):
-    response = init_response(app.current_request, environ)
+    response = init_cors_response(app.current_request, environ)
     if app.current_request.method == 'OPTIONS':
         return response
     connection, error_res = init_connection(environ)
@@ -414,6 +415,7 @@ def put_environment(environ):
     """
     request = app.current_request
     env_data = request.json_body
+    proc_environ = environ.split('-')[-1] if environ.startswith('fourfront-') else environ
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
         ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'
         es_address = env_data['es'] if env_data['es'].endswith('/') else env_data['es'] + '/'
@@ -421,23 +423,23 @@ def put_environment(environ):
             'fourfront': ff_address,
             'es': es_address
         }
-        if 'local_server' in env_data and environ == 'local':
+        if 'local_server' in env_data and proc_environ == 'local':
             env_entry['local_server'] = env_data['local_server']
         s3connection = S3Connection('foursight-envs')
-        s3connection.put_object(environ, json.dumps(env_entry))
-        s3_bucket = ''.join(['foursight-', STAGE, '-', environ])
+        s3connection.put_object(proc_environ, json.dumps(env_entry))
+        s3_bucket = ''.join(['foursight-', STAGE, '-', proc_environ])
         bucket_res = s3connection.create_bucket(s3_bucket)
         if not bucket_res:
             return Response(
                 body = {
                     'status': 'error',
                     'description': ' '.join(['Could not create bucket:', s3_bucket]),
-                    'environment': environ
+                    'environment': proc_environ
                 },
                 status_code = 500
             )
         # run some checks on the new env
-        connection, error_res = init_connection(environ)
+        connection, error_res = init_connection(proc_environ)
         if connection and connection.is_up:
             did_run = perform_run_checks(connection, 'all')
         else:
@@ -445,9 +447,9 @@ def put_environment(environ):
         return Response(
             body = {
                 'status': 'success',
-                'description': ' '.join(['Succesfully made:', environ]),
+                'description': ' '.join(['Succesfully made:', proc_environ]),
                 'initial_checks_run': did_run,
-                'environment': environ
+                'environment': proc_environ
             },
             status_code = 200
         )
@@ -457,7 +459,7 @@ def put_environment(environ):
                 'status': 'error',
                 'description': 'Environment creation failed',
                 'body': env_data,
-                'environment': environ
+                'environment': proc_environ
             },
             status_code = 400
         )
@@ -559,7 +561,7 @@ def cleanup(environ):
     Will not remove auth.
     CORS enabled.
     """
-    response = init_response(app.current_request, environ)
+    response = init_cors_response(app.current_request, environ)
     if app.current_request.method == 'OPTIONS':
         return response
     connection, error_res = init_connection(environ)
