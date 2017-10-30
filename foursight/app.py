@@ -265,6 +265,42 @@ def run_checks(environ, checks):
     return response
 
 
+@app.route('/grab/{environ}/{check}', methods=['GET', 'OPTIONS'])
+def grab_check(environ, check):
+    """
+    Get a check result that isn't necessarily defined within foursight.
+    Doesn't use 'all' or 'daily'.
+    CORS enabled.
+    """
+    response = init_response(app.current_request, environ)
+    if app.current_request.method == 'OPTIONS':
+        return response
+    connection, error_res = init_connection(environ)
+    if connection is None:
+        response.body = error_res
+        response.status_code = 400
+        return response
+    TempCheck = CheckResult(connection.s3connection, check)
+    latest_res = TempCheck.get_latest_check()
+    if latest_res:
+        response.body = {
+            'status': 'success',
+            'checks': latest_res,
+            'grabbed': check,
+            'environment': environ
+        }
+        response.status_code = 200
+    else:
+        response.body = {
+            'status': 'error',
+            'checks': {},
+            'description': ''.join(['Could not grab results for: ', check,'. Maybe no such check result exists?']),
+            'environment': environ
+        }
+        response.status_code = 400
+    return response
+
+
 @app.route('/latest/{environ}/{checks}', methods=['GET', 'OPTIONS'])
 def get_latest_checks(environ, checks):
     """

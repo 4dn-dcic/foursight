@@ -339,3 +339,10 @@ class CheckSuite(object):
             check.description = 'Indexing runs from the past three days seem normal.'
             check.status = 'PASS'
         return check.store_result()
+
+
+    @rate_check
+    def staging_deployment(self):
+        check = self.init_check('staging_deployment')
+        check.status = 'IGNORE'
+        return check.store_result()
