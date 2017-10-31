@@ -419,12 +419,14 @@ def put_environment(environ):
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
         ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'
         es_address = env_data['es'] if env_data['es'].endswith('/') else env_data['es'] + '/'
+
         env_entry = {
             'fourfront': ff_address,
             'es': es_address
         }
         if 'local_server' in env_data and proc_environ == 'local':
-            env_entry['local_server'] = env_data['local_server']
+            env_entry['local_server'] = env_data['local_server'] if env_data['local_server'].endswith('/') else env_data['local_server'] + '/'
+
         s3connection = S3Connection('foursight-envs')
         s3connection.put_object(proc_environ, json.dumps(env_entry))
         s3_bucket = ''.join(['foursight-', STAGE, '-', proc_environ])
