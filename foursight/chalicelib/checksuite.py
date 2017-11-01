@@ -303,11 +303,12 @@ class CheckSuite(object):
             if time_diff < delta_days:
                 body = rec['_source'].get('indexing_record')
                 if not body:
-                    warn_records.append({
+                    this_record = {
                         'timestamp': rec['_id'],
                         'to_index': rec['_source'].get('to_index'),
                         'finished': False
-                    })
+                    }
+                    warn_records.append(this_record)
                     if check.status == 'PEND': check.status = 'WARN'
                 else:
                     this_record = {'record': body}

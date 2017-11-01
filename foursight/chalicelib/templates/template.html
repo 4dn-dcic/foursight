@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Foursight</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional Bootstrap theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <style type="text/css">
+    .container {
+        max-width: 1400px;
+        padding-top: 10px;
+    }
+    .control-form {
+        display: inline;
+        margin-right: 20px;
+        margin-top: -8px;
+    }
+    .boxstyle {
+        border: 1px solid #ccc;
+        margin-bottom: 5px;
+        border-radius: 8px;
+    }
+    .commonstyle {
+        margin: 0px 5px 5px 5px;
+    }
+    .check-pass {
+        background-color: #dff0d8;
+        color: #3c763d
+    }
+    .check-warn {
+        background-color: #fcf8e3;
+        color: #8a6d3b;
+    }
+    .check-fail {
+        background-color: #f2dede;
+        color: #a94442;
+    }
+    .check-error {
+        background-color: #ddd;
+        color: #000;
+    }
+    .check-ignore {
+        display: none;
+    }
+    li {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+    a {
+        color: inherit;
+    }
+    h3 {
+        text-align: center;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>{{'Foursight (' + stage + ')'}}</h3>
+        <ul>
+            {% for env in envs %}
+            <li>
+                <h4>
+                    <span>{{env.environment}}</span>
+                </h4>
+                <ul>
+                    {% for check in env['checks'] %}
+                    <li>
+                        <div class="{{'check-' + check['status'].lower() + ' boxstyle'}}">
+                            <h5 style='margin:10px 5px 10px 5px;'}}>
+                                {% if check.content %}
+                                    <a data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>{{check.title}}</a>
+                                {% else %}
+                                    <span>{{check.title}}</span>
+                                {% endif %}
+                                <span class="pull-right">
+                                    {{check.timestamp}}
+                                </span>
+                                <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
+                                    <button class="btn btn-link" type="submit">
+                                        <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
+                                    </button>
+                                </form>
+                            </h5>
+                            {% if check.content %}
+                            <div class="collapse commonstyle" id={{env['environment'] + '-' + check['name']}}>
+                                {% if check.get('description') %}
+                                    <div class="commonstyle">{{check.description}}</div>
+                                {% endif %}
+                                {% if check.get('brief_output')%}
+                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-brief'}}>
+                                        Toggle brief output
+                                    </button>
+                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-brief'}}>
+                                        <pre><code>{{check.brief_output}}</code></pre>
+                                    </div>
+                                {% endif %}
+                                {% if check.get('full_output')%}
+                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-full'}}>
+                                        Toggle full output
+                                    </button>
+                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-full'}}>
+                                        <pre><code>{{check.full_output}}</code></pre>
+                                    </div>
+                                    {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+</body>
+</html>

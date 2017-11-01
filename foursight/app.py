@@ -1,8 +1,11 @@
 from __future__ import print_function, unicode_literals
 from chalice import Chalice, Cron, Rate, Response
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 import boto3
 import os
+from datetime import datetime
+from dateutil import tz
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, daily_check, rate_check
 from chalicelib.checkresult import CheckResult
@@ -13,6 +16,11 @@ from itertools import chain
 
 app = Chalice(app_name='foursight')
 app.debug = True
+
+jin_env = Environment(
+    loader=FileSystemLoader('chalicelib/templates'),
+    autoescape=select_autoescape(['html', 'xml'])
+)
 
 ENVIRONMENTS = {}
 CACHED = {}
@@ -236,6 +244,72 @@ def index():
     Test route
     """
     return json.dumps({'foursight': 'insight into fourfront'})
+
+
+@app.route('/view/{environ}/{check}', methods=['GET'])
+"""
+Called from the view endpoint (or manually, I guess), this re-runs the given
+checks for the given environment (CANNOT be 'all'; too slow) and returns the
+view_foursight templated result with the new check result.
+"""
+def view_rerun(environ, check):
+    connection, error_res = init_connection(environ)
+    if connection and connection.is_up:
+        perform_run_checks(connection, check)
+    return view_foursight(environ)
+
+
+@app.route('/view/{environ}', methods=['GET'])
+def view_foursight(environ):
+    """
+    View a template of all checks from the given environment(s).
+    Environ may be 'all' or a specific FS environments separated by commas.
+    With 'all', this function can be somewhat slow.
+    Returns a response with html content.
+    """
+    html_resp = Response('Foursight viewing suite')
+    html_resp.headers = {'Content-Type': 'text/html'}
+    init_environments()
+    total_envs = []
+    view_envs = ENVIRONMENTS.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
+    for this_environ in view_envs:
+        if environ == 'all' and this_environ == 'local':
+            continue
+        connection, error_res = init_connection(this_environ)
+        if connection and connection.is_up:
+            results, did_check = perform_get_latest(connection, 'all')
+            # encode some json
+            for res in results:
+                from_zone = tz.tzutc()
+                to_zone = tz.tzlocal()
+                ts_utc = datetime.strptime(res['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+                ts_utc = ts_utc.replace(tzinfo=from_zone)
+                ts_local = ts_utc.astimezone(to_zone)
+                proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
+                res['timestamp'] = proc_ts
+                if not res.get('description') and not res.get('brief_output') and not res.get('full_output'):
+                    res['content'] = False
+                else:
+                    res['content'] = True
+                if res.get('brief_output'):
+                    res['brief_output'] = json.dumps(res['brief_output'], indent=4)
+                if res.get('full_output'):
+                    res['full_output'] = json.dumps(res['full_output'], indent=4)
+            # sort checks by status
+            stat_order = ['FAIL', 'WARN', 'ERROR', 'PASS', 'IGNORE']
+            results = sorted(results, key=lambda v: stat_order.index(v['status']))
+            total_envs.append({
+                'status': 'success',
+                'environment': this_environ,
+                'checks': results
+            })
+    # prioritize these environments
+    env_order = ['webprod', 'webdev', 'hotseat']
+    total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
+    template = jin_env.get_template('template.html')
+    html_resp.body = template.render(envs=total_envs, stage=STAGE)
+    html_resp.status_code = 200
+    return html_resp
 
 
 @app.route('/run/{environ}/{checks}', methods=['PUT', 'GET', 'OPTIONS'])
