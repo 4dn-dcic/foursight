@@ -99,7 +99,7 @@ def init_connection(environ):
     return connection, error_res
 
 
-def init_check_suite(checks, connection):
+def init_checksuite(checks, connection):
     """
     Build a CheckSuite object from the given connection and find suitable
     methods to run from it, based on the desired checks input (a string)
@@ -173,7 +173,7 @@ def perform_run_checks(connection, checks):
     This function needed to be split out to separate timed invocation of
     checks to manual invocation.
     """
-    check_methods, checkSuite = init_check_suite(checks, connection)
+    check_methods, checkSuite = init_checksuite(checks, connection)
     did_run = []
     for method in check_methods:
         name = method.__name__
@@ -191,7 +191,7 @@ def perform_get_latest(connection, checks):
     Abstraction of get_lastest_checks to allow the functionality of running
     the function from a request to foursight or a scheduled/manual function.
     """
-    check_methods, checkSuite = init_check_suite(checks, connection)
+    check_methods, checkSuite = init_checksuite(checks, connection)
     results = []
     did_check = []
     for method in check_methods:
@@ -202,6 +202,8 @@ def perform_get_latest(connection, checks):
         if latest_res:
             results.append(latest_res)
             did_check.append(name)
+    # sort alphabetically
+    results = sorted(results, key=lambda v: v['name'].lower())
     return results, did_check
 
 
@@ -247,12 +249,12 @@ def index():
 
 
 @app.route('/view/{environ}/{check}', methods=['GET'])
-"""
-Called from the view endpoint (or manually, I guess), this re-runs the given
-checks for the given environment (CANNOT be 'all'; too slow) and returns the
-view_foursight templated result with the new check result.
-"""
 def view_rerun(environ, check):
+    """
+    Called from the view endpoint (or manually, I guess), this re-runs the given
+    checks for the given environment (CANNOT be 'all'; too slow) and returns the
+    view_foursight templated result with the new check result.
+    """
     connection, error_res = init_connection(environ)
     if connection and connection.is_up:
         perform_run_checks(connection, check)
@@ -278,8 +280,8 @@ def view_foursight(environ):
         connection, error_res = init_connection(this_environ)
         if connection and connection.is_up:
             results, did_check = perform_get_latest(connection, 'all')
-            # encode some json
             for res in results:
+                # change timezone to local
                 from_zone = tz.tzutc()
                 to_zone = tz.tzlocal()
                 ts_utc = datetime.strptime(res['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
@@ -295,9 +297,6 @@ def view_foursight(environ):
                     res['brief_output'] = json.dumps(res['brief_output'], indent=4)
                 if res.get('full_output'):
                     res['full_output'] = json.dumps(res['full_output'], indent=4)
-            # sort checks by status
-            stat_order = ['FAIL', 'WARN', 'ERROR', 'PASS', 'IGNORE']
-            results = sorted(results, key=lambda v: stat_order.index(v['status']))
             total_envs.append({
                 'status': 'success',
                 'environment': this_environ,
@@ -444,7 +443,7 @@ def put_check(environ, check):
         response.status_code = 400
         return response
     ##### Maybe add this back in if we decide to go all-in on deocorators
-    # valid_methods, CheckSuite = init_check_suite('all', connection)
+    # valid_methods, CheckSuite = init_checksuite('all', connection)
     # valid_checks = [method.__name__ for method in valid_methods]
     # if check not in valid_checks:
     #     response.body = {
@@ -597,38 +596,6 @@ def two_hour_checks(event):
 ### NON-STANDARD ENDPOINTS ###
 
 
-@app.route('/all_latest/{checks}', methods=['GET'])
-def all_environs_latest_checks(checks):
-    """
-    Returns "latest" results for given checks for all foursight environments.
-    The checks parameter works the same as it does for get_latest_checks.
-    Returned json will have keys for each environment.
-    Is NOT CORS enabled.
-    """
-    init_environments()
-    total_checks = {}
-    for environ in ENVIRONMENTS:
-        if environ == 'local':
-            continue
-        connection, error_res = init_connection(environ)
-        if connection and connection.is_up:
-            results, did_check = perform_get_latest(connection, checks)
-            total_checks[environ] = {
-                'status': 'success',
-                'environment': environ,
-                'checks': results,
-                'checks_found': did_check
-            }
-    return Response(
-        body = {
-            'status': 'success',
-            'description': 'Latest check results for all foursight environments',
-            'environments': total_checks
-        },
-        status_code = 200
-    )
-
-
 @app.route('/cleanup/{environ}', methods=['GET', 'OPTIONS'])
 def cleanup(environ):
     """
@@ -649,7 +616,7 @@ def cleanup(environ):
     # never delete these keys
     if 'auth' in all_keys:
         all_keys.remove('auth')
-    check_methods, _ = init_check_suite('all', connection)
+    check_methods, _ = init_checksuite('all', connection)
     for method in check_methods:
         name = method.__name__
         # remove all keys with prefix equal to this method name
