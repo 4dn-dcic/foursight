@@ -18,7 +18,7 @@ curl -X PUT <foursight_address>/api/run/<environment>/all
 
 To run tests (from root level):
 ```
-python foursight/test.py
+python test.py
 ```
 
 Other endpoints are available and are being added as needed, so check back soon.
