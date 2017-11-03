@@ -1,8 +1,11 @@
 from __future__ import print_function, unicode_literals
 from chalice import Chalice, Cron, Rate, Response
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 import boto3
 import os
+from datetime import datetime
+from dateutil import tz
 from chalicelib.ff_connection import FFConnection
 from chalicelib.checksuite import CheckSuite, daily_check, rate_check
 from chalicelib.checkresult import CheckResult
@@ -13,6 +16,11 @@ from itertools import chain
 
 app = Chalice(app_name='foursight')
 app.debug = True
+
+jin_env = Environment(
+    loader=FileSystemLoader('chalicelib/templates'),
+    autoescape=select_autoescape(['html', 'xml'])
+)
 
 ENVIRONMENTS = {}
 CACHED = {}
@@ -91,7 +99,7 @@ def init_connection(environ):
     return connection, error_res
 
 
-def init_check_suite(checks, connection):
+def init_checksuite(checks, connection):
     """
     Build a CheckSuite object from the given connection and find suitable
     methods to run from it, based on the desired checks input (a string)
@@ -119,7 +127,7 @@ def init_check_suite(checks, connection):
     return check_methods, checkSuite
 
 
-def init_response(request, environ):
+def init_cors_response(request, environ):
     """
     Initialize the response object that will be returned from chalice.
     Please not that this function is not strictly necessary, as returning
@@ -127,6 +135,7 @@ def init_response(request, environ):
     This function also handles CORS requests by echoing Access-Control-*
     headers back if Origin is in the provided request headers.
     Returns an initialized chalice response.
+    MUST receive a valid request object, so this should be run from lambdas.
     """
     resp = Response('Foursight preflight response') # response body
     req_dict = request.to_dict()
@@ -145,6 +154,7 @@ def init_response(request, environ):
         if use_origin in allowed_origins:
             resp.headers = {
                 'Access-Control-Allow-Origin': origin,
+                'Access-Control-Allow-Methods': 'PUT, GET, OPTIONS',
                 'Access-Control-Allow-Credentials': 'true',
                 'Access-Control-Allow-Headers': ', '.join([
                     'Authorization',
@@ -156,6 +166,45 @@ def init_response(request, environ):
                 ])
             }
     return resp
+
+
+def perform_run_checks(connection, checks):
+    """
+    This function needed to be split out to separate timed invocation of
+    checks to manual invocation.
+    """
+    check_methods, checkSuite = init_checksuite(checks, connection)
+    did_run = []
+    for method in check_methods:
+        name = method.__name__
+        try:
+            run_res = method(checkSuite)
+        except:
+            continue
+        if run_res:
+            did_run.append(name)
+    return did_run
+
+
+def perform_get_latest(connection, checks):
+    """
+    Abstraction of get_lastest_checks to allow the functionality of running
+    the function from a request to foursight or a scheduled/manual function.
+    """
+    check_methods, checkSuite = init_checksuite(checks, connection)
+    results = []
+    did_check = []
+    for method in check_methods:
+        name = method.__name__
+        # the CheckResult below is used solely to collect the latest check
+        TempCheck = CheckResult(connection.s3connection, name)
+        latest_res = TempCheck.get_latest_check()
+        if latest_res:
+            results.append(latest_res)
+            did_check.append(name)
+    # sort alphabetically
+    results = sorted(results, key=lambda v: v['name'].lower())
+    return results, did_check
 
 
 # from chalice import AuthResponse
@@ -199,59 +248,89 @@ def index():
     return json.dumps({'foursight': 'insight into fourfront'})
 
 
-@app.route('/run/{environ}/{checks}', methods=['GET', 'OPTIONS'])
-def run_checks(environ, checks):
+@app.route('/view/{environ}/{check}', methods=['GET'])
+def view_rerun(environ, check):
     """
+    Called from the view endpoint (or manually, I guess), this re-runs the given
+    checks for the given environment (CANNOT be 'all'; too slow) and returns the
+    view_foursight templated result with the new check result.
+    """
+    connection, error_res = init_connection(environ)
+    if connection and connection.is_up:
+        perform_run_checks(connection, check)
+    return view_foursight(environ)
+
+
+@app.route('/view/{environ}', methods=['GET'])
+def view_foursight(environ):
+    """
+    View a template of all checks from the given environment(s).
+    Environ may be 'all' or a specific FS environments separated by commas.
+    With 'all', this function can be somewhat slow.
+    Returns a response with html content.
+    """
+    html_resp = Response('Foursight viewing suite')
+    html_resp.headers = {'Content-Type': 'text/html'}
+    init_environments()
+    total_envs = []
+    view_envs = ENVIRONMENTS.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
+    for this_environ in view_envs:
+        if environ == 'all' and this_environ == 'local':
+            continue
+        connection, error_res = init_connection(this_environ)
+        if connection and connection.is_up:
+            results, did_check = perform_get_latest(connection, 'all')
+            for res in results:
+                # change timezone to local
+                from_zone = tz.tzutc()
+                to_zone = tz.tzlocal()
+                ts_utc = datetime.strptime(res['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+                ts_utc = ts_utc.replace(tzinfo=from_zone)
+                ts_local = ts_utc.astimezone(to_zone)
+                proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
+                res['timestamp'] = proc_ts
+                if not res.get('description') and not res.get('brief_output') and not res.get('full_output'):
+                    res['content'] = False
+                else:
+                    res['content'] = True
+                if res.get('brief_output'):
+                    res['brief_output'] = json.dumps(res['brief_output'], indent=4)
+                if res.get('full_output'):
+                    res['full_output'] = json.dumps(res['full_output'], indent=4)
+            total_envs.append({
+                'status': 'success',
+                'environment': this_environ,
+                'checks': results
+            })
+    # prioritize these environments
+    env_order = ['webprod', 'webdev', 'hotseat']
+    total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
+    template = jin_env.get_template('template.html')
+    html_resp.body = template.render(envs=total_envs, stage=STAGE)
+    html_resp.status_code = 200
+    return html_resp
+
+
+@app.route('/run/{environ}/{checks}', methods=['PUT', 'GET', 'OPTIONS'])
+def run_foursight(environ, checks):
+    """
+    Two functionalities, based on the request method.
+
+    If PUT:
     Run the given checks on the given environment, creating a record in the
     corresponding S3 bucket under the check's method name.
     The latest run of checks replaces the 'latest' label for each check
     directory in S3 and also creates a timestamped record.
-    CORS enabled.
-    """
-    response = init_response(app.current_request, environ)
-    if app.current_request.method == 'OPTIONS':
-        return response
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
-        response.status_code = 400
-        return response
-    did_run = perform_run_checks(connection, checks)
-    response.body = {
-        'status': 'success',
-        'checks_specified': checks,
-        'checks_runs': did_run,
-        'environment': environ
-    }
-    response.status_code = 200
-    return response
 
-
-def perform_run_checks(connection, checks):
-    """
-    This function needed to be split out to separate timed invocation of
-    checks to manual invocation.
-    """
-    check_methods, checkSuite = init_check_suite(checks, connection)
-    did_run = []
-    for method in check_methods:
-        name = method.__name__
-        run_res = method(checkSuite)
-        if run_res:
-            did_run.append(name)
-    return did_run
-
-
-@app.route('/latest/{environ}/{checks}', methods=['GET', 'OPTIONS'])
-def get_latest_checks(environ, checks):
-    """
+    If GET:
     Return JSON of each check tagged with the "latest" tag for speicified current
     checks in checksuite for the given environment. If checks == 'all', every
     registered check will be returned. Otherwise, send a comma separated list
     of check names (the method names!) as the check argument.
+
     CORS enabled.
     """
-    response = init_response(app.current_request, environ)
+    response = init_cors_response(app.current_request, environ)
     if app.current_request.method == 'OPTIONS':
         return response
     connection, error_res = init_connection(environ)
@@ -259,17 +338,39 @@ def get_latest_checks(environ, checks):
         response.body = error_res
         response.status_code = 400
         return response
-    check_methods, checkSuite = init_check_suite(checks, connection)
-    results = []
-    did_check = []
-    for method in check_methods:
-        name = method.__name__
-        # the CheckResult below is used solely to collect the latest check
-        TempCheck = CheckResult(connection.s3connection, name)
-        latest_res = TempCheck.get_latest_check()
-        if latest_res:
-            results.append(latest_res)
-            did_check.append(name)
+    if app.current_request.method == 'PUT':
+        did_run = perform_run_checks(connection, checks)
+        response.body = {
+            'status': 'success',
+            'checks_specified': checks,
+            'checks_run': did_run,
+            'environment': environ
+        }
+        response.status_code = 200
+        return response
+    else: # GET. latest results for each check
+        results, did_check = perform_get_latest(connection, checks)
+        response.body = {
+            'status': 'success',
+            'environment': environ,
+            'checks': results,
+            'checks_found': did_check
+        }
+        response.status_code = 200
+        return response
+
+# will be removed once FF is updated
+@app.route('/latest/{environ}/{checks}', methods=['GET', 'OPTIONS'])
+def get_latest_checks(environ, checks):
+    response = init_cors_response(app.current_request, environ)
+    if app.current_request.method == 'OPTIONS':
+        return response
+    connection, error_res = init_connection(environ)
+    if connection is None:
+        response.body = error_res
+        response.status_code = 400
+        return response
+    results, did_check = perform_get_latest(connection, checks)
     response.body = {
         'status': 'success',
         'environment': environ,
@@ -280,70 +381,53 @@ def get_latest_checks(environ, checks):
     return response
 
 
-@app.route('/cleanup/{environ}', methods=['GET', 'OPTIONS'])
-def cleanup(environ):
+@app.route('/checks/{environ}/{check}', methods=['GET'])
+def get_check(environ, check):
     """
-    For a given environment, remove all tests records from S3 that are no
-    long being used (i.e. not currently defined within checksuite).
-    Will not remove auth.
-    CORS enabled.
+    Get a check result that isn't necessarily defined within foursight.
+    Check name must be a valid check (not 'all', 'daily', or 'rate')
     """
-    response = init_response(app.current_request, environ)
-    if app.current_request.method == 'OPTIONS':
-        return response
+    response = Response('Foursight get_check')
     connection, error_res = init_connection(environ)
     if connection is None:
         response.body = error_res
         response.status_code = 400
         return response
-    all_keys = set(connection.s3connection.list_all_keys())
-    # never delete these keys
-    if 'auth' in all_keys:
-        all_keys.remove('auth')
-    check_methods, _ = init_check_suite('all', connection)
-    for method in check_methods:
-        name = method.__name__
-        # remove all keys with prefix equal to this method name
-        method_keys = set(connection.s3connection.list_keys_w_prefix(name))
-        all_keys = all_keys - method_keys
-    if len(all_keys) > 0:
-        connection.s3connection.delete_keys(list(all_keys))
-    response.body = {
-        'status': 'success',
-        'environment': environ,
-        'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
-        'keys_cleaned': list(all_keys)
-    }
-    response.status_code = 200
+    TempCheck = CheckResult(connection.s3connection, check)
+    latest_res = TempCheck.get_latest_check()
+    if latest_res:
+        response.body = {
+            'status': 'success',
+            'checks': latest_res,
+            'checks_found': check,
+            'environment': environ
+        }
+        response.status_code = 200
+    else:
+        response.body = {
+            'status': 'error',
+            'checks': {},
+            'description': ''.join(['Could not get results for: ', check,'. Maybe no such check result exists?']),
+            'environment': environ
+        }
+        response.status_code = 400
     return response
 
 
-@app.route('/put_check/{environ}/{check}', methods=['PUT', 'OPTIONS'])
+@app.route('/checks/{environ}/{check}', methods=['PUT'])
 def put_check(environ, check):
     """
     Take a PUT request. Body of the request should be a json object with keys
     corresponding to the fields in CheckResult, namely:
     title, status, description, brief_output, full_output.
-    CORS enabled.
+
+    Please note: at this time, a check should be initialized in CheckSuite
+    for every tests to be supported with the run_foursight function.
     """
-    response = init_response(app.current_request, environ)
-    if app.current_request.method == 'OPTIONS':
-        return response
+    response = Response('Foursight put_check')
     connection, error_res = init_connection(environ)
     if connection is None:
         response.body = error_res
-        response.status_code = 400
-        return response
-    valid_methods, CheckSuite = init_check_suite('all', connection)
-    valid_checks = [method.__name__ for method in valid_methods]
-    if check not in valid_checks:
-        response.body = {
-            'status': 'error',
-            'endpoint': 'put_check',
-            'check': check,
-            'description': ' '.join(['Could not PUT invalid check:', check]),
-            'environment': environ
-        }
         response.status_code = 400
         return response
     request = app.current_request
@@ -358,7 +442,22 @@ def put_check(environ, check):
         }
         response.status_code = 400
         return response
-    putCheck = CheckSuite.init_check(check)
+    ##### Maybe add this back in if we decide to go all-in on deocorators
+    # valid_methods, CheckSuite = init_checksuite('all', connection)
+    # valid_checks = [method.__name__ for method in valid_methods]
+    # if check not in valid_checks:
+    #     response.body = {
+    #         'status': 'error',
+    #         'endpoint': 'put_check',
+    #         'check': check,
+    #         'description': ' '.join(['Could not PUT invalid check:', check]),
+    #         'environment': environ
+    #     }
+    #     response.status_code = 400
+    #     return response
+    #####
+    checkSuite = CheckSuite(connection)
+    putCheck = checkSuite.init_check(check)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'description', 'brief_output', 'full_output']:
@@ -377,8 +476,8 @@ def put_check(environ, check):
     return response
 
 
-@app.route('/build_env/{environ}', methods=['PUT'])
-def build_environment(environ):
+@app.route('/environments/{environ}', methods=['PUT'])
+def put_environment(environ):
     """
     Take a PUT request that has a json payload with 'fourfront' (ff server)
     and 'es' (es server).
@@ -389,34 +488,43 @@ def build_environment(environ):
     """
     request = app.current_request
     env_data = request.json_body
+    proc_environ = environ.split('-')[-1] if environ.startswith('fourfront-') else environ
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
+        ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'
+        es_address = env_data['es'] if env_data['es'].endswith('/') else env_data['es'] + '/'
+
         env_entry = {
-            'fourfront': env_data['fourfront'],
-            'es': env_data['es']
+            'fourfront': ff_address,
+            'es': es_address
         }
-        if 'local_server' in env_data and environ == 'local':
-            env_entry['local_server'] = env_data['local_server']
+        if 'local_server' in env_data and proc_environ == 'local':
+            env_entry['local_server'] = env_data['local_server'] if env_data['local_server'].endswith('/') else env_data['local_server'] + '/'
+
         s3connection = S3Connection('foursight-envs')
-        s3connection.put_object(environ, json.dumps(env_entry))
-        s3_bucket = ''.join(['foursight-', STAGE, '-', environ])
+        s3connection.put_object(proc_environ, json.dumps(env_entry))
+        s3_bucket = ''.join(['foursight-', STAGE, '-', proc_environ])
         bucket_res = s3connection.create_bucket(s3_bucket)
         if not bucket_res:
             return Response(
                 body = {
                     'status': 'error',
                     'description': ' '.join(['Could not create bucket:', s3_bucket]),
-                    'environment': environ
+                    'environment': proc_environ
                 },
                 status_code = 500
             )
         # run some checks on the new env
-        checks_run_json = run_checks(environ, 'all').to_dict()['body']
+        connection, error_res = init_connection(proc_environ)
+        if connection and connection.is_up:
+            did_run = perform_run_checks(connection, 'all')
+        else:
+            did_run = []
         return Response(
             body = {
                 'status': 'success',
-                'description': ' '.join(['Succesfully made:', environ]),
-                'initial_checks_run': json.loads(checks_run_json),
-                'environment': environ
+                'description': ' '.join(['Succesfully made:', proc_environ]),
+                'initial_checks_run': did_run,
+                'environment': proc_environ
             },
             status_code = 200
         )
@@ -426,16 +534,38 @@ def build_environment(environ):
                 'status': 'error',
                 'description': 'Environment creation failed',
                 'body': env_data,
-                'environment': environ
+                'environment': proc_environ
             },
             status_code = 400
         )
 
 
-# this route is purposefully un-authorized
-@app.route('/introspect', methods=['GET'])
-def introspect():
-    return json.dumps(app.current_request.to_dict())
+@app.route('/environments/{environ}', methods=['GET'])
+def get_environment(environ):
+    """
+    Return config information about a given environment, or throw an error
+    if it is not valid.
+    """
+    init_environments()
+    if environ in ENVIRONMENTS:
+        return Response(
+            body = {
+                'status': 'success',
+                'details': ENVIRONMENTS[environ],
+                'environment': environ
+            },
+            status_code = 200
+        )
+    else:
+        return Response(
+            body = {
+                'status': 'error',
+                'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
+                'environment': environ
+            },
+            status_code = 400
+        )
+
 
 ### SCHEDULED FXNS ###
 
@@ -447,7 +577,7 @@ def daily_checks(event):
         if environ == 'local':
             continue
         connection, error_res = init_connection(environ)
-        if connection:
+        if connection and connection.is_up:
             perform_run_checks(connection, 'daily')
 
 
@@ -459,5 +589,52 @@ def two_hour_checks(event):
         if environ == 'local':
             continue
         connection, error_res = init_connection(environ)
-        if connection:
+        if connection and connection.is_up:
             perform_run_checks(connection, 'item_counts_by_type,indexing_progress')
+
+
+### NON-STANDARD ENDPOINTS ###
+
+
+@app.route('/cleanup/{environ}', methods=['GET', 'OPTIONS'])
+def cleanup(environ):
+    """
+    For a given environment, remove all tests records from S3 that are no
+    long being used (i.e. not currently defined within checksuite).
+    Will not remove auth.
+    CORS enabled.
+    """
+    response = init_cors_response(app.current_request, environ)
+    if app.current_request.method == 'OPTIONS':
+        return response
+    connection, error_res = init_connection(environ)
+    if connection is None:
+        response.body = error_res
+        response.status_code = 400
+        return response
+    all_keys = set(connection.s3connection.list_all_keys())
+    # never delete these keys
+    if 'auth' in all_keys:
+        all_keys.remove('auth')
+    check_methods, _ = init_checksuite('all', connection)
+    for method in check_methods:
+        name = method.__name__
+        # remove all keys with prefix equal to this method name
+        method_keys = set(connection.s3connection.list_keys_w_prefix(name))
+        all_keys = all_keys - method_keys
+    if len(all_keys) > 0:
+        connection.s3connection.delete_keys(list(all_keys))
+    response.body = {
+        'status': 'success',
+        'environment': environ,
+        'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
+        'keys_cleaned': list(all_keys)
+    }
+    response.status_code = 200
+    return response
+
+
+# this route is purposefully un-authorized
+@app.route('/introspect', methods=['GET'])
+def introspect():
+    return json.dumps(app.current_request.to_dict())

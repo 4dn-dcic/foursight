@@ -4,6 +4,9 @@ python:
 - '2.7'
 - '3.6'
 install:
-    - "pip install -r foursight/requirements.txt"
+- "pip install -r requirements.txt"
 script:
- - python foursight/test.py
+- python test.py
+- if [ "$TRAVIS_BRANCH" = "production" ] && ["$TRAVIS_PYTHON_VERSION" = "2.7"];
+  then echo "Test succeeded! Deploying to prod stage.";
+  chalice deploy --stage prod; fi
