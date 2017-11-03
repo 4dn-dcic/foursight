@@ -7,5 +7,7 @@ install:
 - "pip install -r requirements.txt"
 script:
 - python test.py
-- if [ "$TRAVIS_BRANCH" = "production" ]; then echo "Test succeeded! Deploying to prod stage.";
+- echo $TRAVIS_PYTHON_VERSION
+- if [ "$TRAVIS_BRANCH" = "production" ] && ["$TRAVIS_PYTHON_VERSION" = "2.7"];
+  then echo "Test succeeded! Deploying to prod stage.";
   chalice deploy --stage prod; fi
