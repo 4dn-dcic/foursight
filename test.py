@@ -39,15 +39,50 @@ class TestUnitTests(unittest.TestCase):
 
 
 class TestIntegrated(unittest.TestCase):
-    environ = 'webprod' # hopefully this is up
-    environ2 = 'webdev' # back up if self.environ is down
+    # should add tests for functions that require app.current_request
+    # will need to figure out how to mock these
+    environ = 'mastertest' # hopefully this is up
+    conn, _ = app.init_connection(environ)
+    if conn is None:
+        environ = 'webdev' # back up if self.environ is down
+        conn, _ = app.init_connection(environ)
+    checks_fxns, cs = app.init_checksuite('all', conn)
+    checks = [check.__name__ for check in checks_fxns]
 
     def test_init_connection(self):
-        conn, _ = app.init_connection(self.environ)
-        if conn is None:
-            conn, _ = app.init_connection(self.environ2)
-        self.assertFalse(conn is None)
-        self.assertTrue(conn.is_up)
+        self.assertFalse(self.conn is None)
+        self.assertTrue(self.conn.is_up)
+
+    def test_run_basics(self):
+        # run some checks
+        did_run = app.perform_run_checks(self.conn, 'all')
+        self.assertEqual(set(self.checks), set(did_run))
+        results, did_check = app.perform_get_latest(self.conn, 'all')
+        self.assertEqual(set(self.checks), set(did_check))
+
+    def test_get_check(self):
+        # do this for every check
+        for get_check in self.checks:
+            chalice_resp = app.get_check(self.environ, get_check)
+            self.assertTrue(chalice_resp.status_code == 200)
+            body = chalice_resp.body
+            self.assertTrue(body.get('status') == 'success')
+            self.assertTrue(body.get('checks_found') == get_check)
+            self.assertTrue(body.get('checks', {}).get('name') == get_check)
+            self.assertTrue(body.get('checks', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
+            self.assertTrue('timestamp' in body.get('checks', {}))
+
+    def test_get_environment(self):
+        env_resp = app.get_environment(self.environ)
+        self.assertTrue(env_resp.status_code == 200)
+        body = env_resp.body
+        self.assertTrue(body.get('environment') == self.environ)
+        self.assertTrue(body.get('status') == 'success')
+        details = body.get('details')
+        self.assertTrue(details.get('bucket').startswith('foursight-'))
+        self.assertTrue(details.get('bucket').endswith(self.environ))
+        this_env = app.ENVIRONMENTS.get(self.environ)
+        self.assertTrue(this_env == details)
 
 
 if __name__ == '__main__':
