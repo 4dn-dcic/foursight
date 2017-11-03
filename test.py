@@ -39,8 +39,8 @@ class TestUnitTests(unittest.TestCase):
 
 
 class TestIntegrated(unittest.TestCase):
-    self.environ = 'webprod' # hopefully this is up
-    self.environ2 = 'webdev' # back up if self.environ is down
+    environ = 'webprod' # hopefully this is up
+    environ2 = 'webdev' # back up if self.environ is down
 
     def test_init_connection(self):
         conn, _ = app.init_connection(self.environ)
