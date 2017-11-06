@@ -11,7 +11,7 @@ script:
 - coverage run --omit *virtualenv* test.py
 - coverage report -m
 - if [ "$TRAVIS_BRANCH" = "production" ]; then
-    if ["$TRAVIS_PYTHON_VERSION" = "2.7"]; then
+    if [["$TRAVIS_PYTHON_VERSION" == "2.7"]]; then
       echo "Test succeeded! Deploying to prod stage.";
       chalice deploy --stage prod;
     fi
