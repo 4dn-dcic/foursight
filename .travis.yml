@@ -8,7 +8,7 @@ install:
 - pip install coverage
 - pip install coveralls
 script:
-- coverage run test.py
+- coverage run --omit *virtualenv* test.py
 - coverage report -m
 after_success:
 - coveralls
