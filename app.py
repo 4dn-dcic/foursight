@@ -593,6 +593,17 @@ def two_hour_checks(event):
             perform_run_checks(connection, 'item_counts_by_type,indexing_progress')
 
 
+@app.schedule(Rate(4, unit=Rate.HOURS))
+def test_hour_checks(event):
+    init_environments()
+    for environ in ENVIRONMENTS:
+        if environ == 'local':
+            continue
+        connection, error_res = init_connection(environ)
+        if connection and connection.is_up:
+            perform_run_checks(connection, 'item_counts_by_type')
+
+
 ### NON-STANDARD ENDPOINTS ###
 
 
