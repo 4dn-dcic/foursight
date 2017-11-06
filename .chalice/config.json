@@ -3,6 +3,7 @@
     "dev": {
       "api_gateway_stage": "api",
       "autogen_policy": false,
+      "lambda_memory_size": 256,
       "environment_variables": {
           "chalice_stage": "dev"
       }
@@ -10,6 +11,7 @@
     "prod": {
       "api_gateway_stage": "api",
       "autogen_policy": false,
+      "lambda_memory_size": 256,
       "environment_variables": {
           "chalice_stage": "prod"
       }
