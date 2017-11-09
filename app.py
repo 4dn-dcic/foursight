@@ -140,7 +140,7 @@ def init_cors_response(request, environ):
     """
     resp = Response('Foursight preflight response') # response body
     req_dict = request.to_dict()
-    origin = req_dict.get('headers', {}).get('origin', None)
+    origin = req_dict.get('headers', {}).get('origin')
     if origin:
         use_origin = origin if origin.endswith('/') else ''.join([origin, '/'])
         allowed_origins = []
@@ -149,7 +149,7 @@ def init_cors_response(request, environ):
         env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
         if env_ff_server: allowed_origins.append(env_ff_server)
         # special case for ALWAYS_ALLOWED origin
-        if ALWAYS_ALLOWED in use_origin: allowed_origins.append(use)
+        if ALWAYS_ALLOWED in use_origin: allowed_origins.append(use_origin)
         # special case for test server
         if environ == 'local':
             local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
