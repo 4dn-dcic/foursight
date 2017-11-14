@@ -12,12 +12,19 @@ script:
 - coverage report -m
 after_success:
 - coveralls
+- echo $TRAVIS_PULL_REQUEST
 - echo $TRAVIS_BRANCH
 - echo $TRAVIS_PYTHON_VERSION
 - |
-  if [[ $TRAVIS_BRANCH == 'production' && $TRAVIS_PYTHON_VERSION == '2.7' ]]; then
-    chalice deploy --stage prod;
-    echo 'Test succeeded! Deploying to prod stage.';
+  if [[ $TRAVIS_PULL_REQUEST == 'false' && $TRAVIS_PYTHON_VERSION == '2.7' ]]; then
+    if [[ $TRAVIS_BRANCH == 'master']]; then
+      chalice deploy --stage dev;
+      echo 'Tests succeeded! Deploying to dev stage.';
+    fi
+    if [[ $TRAVIS_BRANCH == 'production']]; then
+      chalice deploy --stage prod;
+      echo 'Tests succeeded! Deploying to prod stage.';
+    fi
   else
-    echo 'Test succeeded, but this is not the time for deployment.';
+    echo 'Tests succeeded, but this is not the time for deployment.';
   fi
