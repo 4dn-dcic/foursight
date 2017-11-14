@@ -53,18 +53,6 @@ class TestIntegrated(unittest.TestCase):
         self.assertFalse(self.conn is None)
         self.assertTrue(self.conn.is_up)
 
-    def test_init_environments(self):
-        app.init_environments() # default to 'all' environments
-        assert(self.environ in app.ENVIRONMENTS)
-        for env, env_data in app.ENVIRONMENTS.items():
-            assert('fourfront' in env_data)
-            assert('es' in env_data)
-            assert('bucket' in env_data)
-            # this doesn't need to be a hard requirement, but it's good
-            # form, so let's enforce it
-            if env == 'local':
-                assert('local_server' in env_data)
-
     def test_run_basics(self):
         # run some checks
         did_run = app.perform_run_checks(self.conn, 'all')
