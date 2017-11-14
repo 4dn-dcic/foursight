@@ -52,8 +52,8 @@ class CheckSuite(object):
     You can get results from past/latest checks with any name in any check
     method by initializing a CheckResult with the corresponding name.
     For example, get the result of 'item_counts_by_type' check 24 hours ago:
-    >> health_count_check = self.init_check('item_counts_by_type')
-    >> prior = health_count_check.get_closest_check(24)
+    >> counts_check = self.init_check('item_counts_by_type')
+    >> prior = counts_check.get_closest_check(24)
     get_closest_check() returns a Python dict of the check result, which
     can be interrogated in ways such as:
     >> prior['status']
@@ -104,10 +104,30 @@ class CheckSuite(object):
 
     @daily_check
     def elastic_beanstalk_health(self):
+        """
+        Check both environment health and health of individual instances
+        """
         check = self.init_check('elastic_beanstalk_health')
-        brief_output = {}
         full_output = {}
         eb_client = boto3.client('elasticbeanstalk')
+        try:
+            resp = eb_client.describe_environment_health(
+                EnvironmentName=''.join(['fourfront-', self.connection.environment]),
+                AttributeNames=['All']
+            )
+        except:
+            return
+        resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+        if resp_status != 200:
+            check.status = 'ERROR'
+            check.description = 'Could not establish a connection to AWS.'
+            return check.store_result()
+        full_output['status'] = resp.get('Status')
+        full_output['environment_name'] = resp.get('EnvironmentName')
+        full_output['color'] = resp.get('Color')
+        full_output['health_status'] = resp.get('HealthStatus')
+        full_output['causes'] = resp.get('Causes')
+        full_output['instance_health'] = []
         try:
             resp = eb_client.describe_instances_health(
                 EnvironmentName=''.join(['fourfront-', self.connection.environment]),
@@ -131,13 +151,16 @@ class CheckSuite(object):
             inst_info['health'] = instance['HealthStatus']
             inst_info['launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
             inst_info['causes'] = instance.get('causes', [])
-            if inst_info['causes'] or inst_info['color'] in ['Red', 'Yellow', 'Grey'] or inst_info['health'] in ['Degraded', 'Severe', 'Warning']:
-                brief_output[inst_info['id']] = inst_info
-            full_output[inst_info['id']] = inst_info
-        if brief_output:
+            full_output['instance_health'].append(inst_info)
+        if full_output['color'] == 'Grey':
+            check.status = 'WARN'
+            check.description = 'EB environment is updating.'
+        elif full_output['color'] == 'Yellow':
+            check.status = 'WARN'
+            check.description = 'EB environment is compromised; requests may fail.'
+        elif full_output['color'] == 'Red':
             check.status = 'FAIL'
-            check.description = 'One or more Elastic Beanstalk instances may require attention.'
-            check.brief_output = brief_output
+            check.description = 'EB environment is degraded; request are likely to fail.'
         else:
             check.status = 'PASS'
         check.full_output = full_output
@@ -187,44 +210,55 @@ class CheckSuite(object):
 
         check = self.init_check('item_counts_by_type')
         # run the check
-        health_counts = {}
-        warn_health_counts = {}
+        item_counts = {}
+        warn_item_counts = {}
         server = self.connection.server
         try:
-            health_res = requests.get(''.join([server,'health?format=json']))
+            counts_res = requests.get(''.join([server,'counts?format=json']))
         except:
             check.status = 'ERROR'
             return check.store_result()
-        health_json = json.loads(health_res.text)
-        for index in health_json['db_es_compare']:
-            counts = process_counts(health_json['db_es_compare'][index])
-            health_counts[index] = counts
+        ##### temporary back up while counts endpoint gets worked into FF
+        if counts_res.status_code != 200:
+            try:
+                counts_res = requests.get(''.join([server,'health?format=json']))
+            except:
+                check.status = 'ERROR'
+                return check.store_result()
+        #####
+        if counts_res.status_code != 200:
+            check.status = 'ERROR'
+            return check.store_result()
+        counts_json = json.loads(counts_res.text)
+        for index in counts_json['db_es_compare']:
+            counts = process_counts(counts_json['db_es_compare'][index])
+            item_counts[index] = counts
             if counts['DB'] != counts['ES']:
-                warn_health_counts[index] = counts
+                warn_item_counts[index] = counts
         # add ALL for total counts
-        total_counts = process_counts(health_json['db_es_total'])
-        health_counts['ALL'] = total_counts
+        total_counts = process_counts(counts_json['db_es_total'])
+        item_counts['ALL'] = total_counts
         # set fields, store result
-        if not health_counts:
+        if not item_counts:
             check.status = 'FAIL'
             check.description = 'Error on fourfront health page.'
-        elif warn_health_counts:
+        elif warn_item_counts:
             check.status = 'WARN'
             check.description = 'DB and ES counts are not equal.'
-            check.brief_output = warn_health_counts
+            check.brief_output = warn_item_counts
         else:
             check.status = 'PASS'
-        check.full_output = health_counts
+        check.full_output = item_counts
         return check.store_result()
 
 
     @daily_check
     def change_in_item_counts(self):
         # use this check to get the comparison
-        health_count_check = self.init_check('item_counts_by_type')
-        latest = health_count_check.get_latest_check()
-        # get_health_counts run closest to 24 hours ago
-        prior = health_count_check.get_closest_check(24)
+        counts_check = self.init_check('item_counts_by_type')
+        latest = counts_check.get_latest_check()
+        # get_item_counts run closest to 24 hours ago
+        prior = counts_check.get_closest_check(24)
         if not latest or not prior:
             return
         diff_counts = {}
@@ -257,9 +291,9 @@ class CheckSuite(object):
     @rate_check
     def indexing_progress(self):
         # get latest and db/es counts closest to 2 hrs ago
-        health_count_check = self.init_check('item_counts_by_type')
-        latest = health_count_check.get_latest_check()
-        prior = health_count_check.get_closest_check(2)
+        counts_check = self.init_check('item_counts_by_type')
+        latest = counts_check.get_latest_check()
+        prior = counts_check.get_closest_check(2)
         if not latest or not prior:
             return
         latest_unindexed = latest['full_output']['ALL']['DB'] - latest['full_output']['ALL']['ES']

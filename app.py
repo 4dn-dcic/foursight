@@ -24,7 +24,7 @@ jin_env = Environment(
 
 ENVIRONMENTS = {}
 CACHED = {}
-ALWAYS_ALLOWED = 'data.4dnucleome.org'
+PROD_ADDRESS = 'https://data.4dnucleome.org/'
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 
@@ -148,8 +148,8 @@ def init_cors_response(request, environ):
             init_environments()
         env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
         if env_ff_server: allowed_origins.append(env_ff_server)
-        # special case for ALWAYS_ALLOWED origin
-        if ALWAYS_ALLOWED in use_origin: allowed_origins.append(use_origin)
+        # special case for PROD_ADDRESS
+        if use_origin == PROD_ADDRESS: allowed_origins.append(use_origin)
         # special case for test server
         if environ == 'local':
             local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
