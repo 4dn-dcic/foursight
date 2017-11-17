@@ -3,8 +3,10 @@ import requests
 import json
 import datetime
 from .s3_connection import S3Connection
+from .ff_utils import fdn_connection
+from wranglertools import fdnDCIC
 
-class FFConnection(object):
+class FSConnection(object):
     def __init__(self, environ, server, bucket, es):
         self.environment = environ
         self.headers = {'content-type': 'application/json', 'accept': 'application/json'}
@@ -12,7 +14,7 @@ class FFConnection(object):
         self.s3_connection = S3Connection(bucket)
         self.es = es
         self.is_up = self.test_connection()
-        self.auth = self.get_auth()
+        self.ff_connection = self.get_ff_connection()
 
 
     def test_connection(self):
@@ -24,17 +26,25 @@ class FFConnection(object):
         return True if head_resp.status_code == 200 else False
 
 
-    def get_auth(self):
+    def get_ff_connection(self):
         # authorization info is currently held in s3
-        # this is probably (definitely) not the best way to go
+        # return a key that works with ff_utils/wranglertools.fdnDCIC
         auth_res = self.s3_connection.get_object('auth')
         if auth_res is None:
-            return ()
+            return None
         else:
             auth_res = json.loads(auth_res)
             key = auth_res.get('key')
             secret = auth_res.get('secret')
-            return (key, secret) if key and secret else ()
+            key_dict = {
+                'default': {
+                    'key': key,
+                    'secret': secret,
+                    'server': self.server
+                }
+            }
+            return fdn_connection(key_dict)
+
 
 
     def get_auth_user(self):

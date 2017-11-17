@@ -6,7 +6,7 @@ import boto3
 import os
 from datetime import datetime
 from dateutil import tz
-from chalicelib.ff_connection import FFConnection
+from chalicelib.fs_connection import FSConnection
 from chalicelib.checksuite import CheckSuite, daily_check, rate_check
 from chalicelib.checkresult import CheckResult
 from chalicelib.utils import get_methods_by_deco
@@ -35,8 +35,8 @@ def init_environments(env='all'):
     the foursight-dev bucket.
     Returns a list of environments/keys that are not valid.
     """
-    s3connection = S3Connection('foursight-envs')
-    env_keys = s3connection.list_all_keys()
+    s3_connection = S3Connection('foursight-envs')
+    env_keys = s3_connection.list_all_keys()
     bad_keys = []
     if env != 'all':
         if env in env_keys:
@@ -47,7 +47,7 @@ def init_environments(env='all'):
         global ENVIRONMENTS
         ENVIRONMENTS = {}
     for env_key in env_keys:
-        env_res = json.loads(s3connection.get_object(env_key))
+        env_res = json.loads(s3_connection.get_object(env_key))
         # check that the keys we need are in the object
         if isinstance(env_res, dict) and {'fourfront', 'es'} <= set(env_res):
             env_entry = {
@@ -65,9 +65,9 @@ def init_environments(env='all'):
 
 def init_connection(environ):
     """
-    Initialize the fourfront/s3 connection using the FFConnection object
+    Initialize the fourfront/s3 connection using the FSConnection object
     and the given environment.
-    Returns an FFConnection object (or None if error) and a dictionary
+    Returns an FSConnection object (or None if error) and a dictionary
     error response.
     """
     error_res = {}
@@ -87,7 +87,7 @@ def init_connection(environ):
         connection = CACHED[environ]
     except KeyError:
         info = ENVIRONMENTS[environ]
-        CACHED[environ] = FFConnection(environ, info['fourfront'], info['bucket'], info['es'])
+        CACHED[environ] = FSConnection(environ, info['fourfront'], info['bucket'], info['es'])
         connection = CACHED[environ]
     if not connection.is_up:
         error_res = {
@@ -200,7 +200,7 @@ def perform_get_latest(connection, checks):
     for method in check_methods:
         name = method.__name__
         # the CheckResult below is used solely to collect the latest check
-        TempCheck = CheckResult(connection.s3connection, name)
+        TempCheck = CheckResult(connection.s3_connection, name)
         latest_res = TempCheck.get_latest_check()
         if latest_res:
             results.append(latest_res)
@@ -362,27 +362,6 @@ def run_foursight(environ, checks):
         response.status_code = 200
         return response
 
-# will be removed once FF is updated
-@app.route('/latest/{environ}/{checks}', methods=['GET', 'OPTIONS'])
-def get_latest_checks(environ, checks):
-    response = init_cors_response(app.current_request, environ)
-    if app.current_request.method == 'OPTIONS':
-        return response
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
-        response.status_code = 400
-        return response
-    results, did_check = perform_get_latest(connection, checks)
-    response.body = {
-        'status': 'success',
-        'environment': environ,
-        'checks': results,
-        'checks_found': did_check
-    }
-    response.status_code = 200
-    return response
-
 
 @app.route('/checks/{environ}/{check}', methods=['GET'])
 def get_check(environ, check):
@@ -396,7 +375,7 @@ def get_check(environ, check):
         response.body = error_res
         response.status_code = 400
         return response
-    TempCheck = CheckResult(connection.s3connection, check)
+    TempCheck = CheckResult(connection.s3_connection, check)
     latest_res = TempCheck.get_latest_check()
     if latest_res:
         response.body = {
@@ -503,10 +482,10 @@ def put_environment(environ):
         if 'local_server' in env_data and proc_environ == 'local':
             env_entry['local_server'] = env_data['local_server'] if env_data['local_server'].endswith('/') else env_data['local_server'] + '/'
 
-        s3connection = S3Connection('foursight-envs')
-        s3connection.put_object(proc_environ, json.dumps(env_entry))
+        s3_connection = S3Connection('foursight-envs')
+        s3_connection.put_object(proc_environ, json.dumps(env_entry))
         s3_bucket = ''.join(['foursight-', STAGE, '-', proc_environ])
-        bucket_res = s3connection.create_bucket(s3_bucket)
+        bucket_res = s3_connection.create_bucket(s3_bucket)
         if not bucket_res:
             return Response(
                 body = {
@@ -615,7 +594,7 @@ def cleanup(environ):
         response.body = error_res
         response.status_code = 400
         return response
-    all_keys = set(connection.s3connection.list_all_keys())
+    all_keys = set(connection.s3_connection.list_all_keys())
     # never delete these keys
     if 'auth' in all_keys:
         all_keys.remove('auth')
@@ -623,10 +602,10 @@ def cleanup(environ):
     for method in check_methods:
         name = method.__name__
         # remove all keys with prefix equal to this method name
-        method_keys = set(connection.s3connection.list_keys_w_prefix(name))
+        method_keys = set(connection.s3_connection.list_keys_w_prefix(name))
         all_keys = all_keys - method_keys
     if len(all_keys) > 0:
-        connection.s3connection.delete_keys(list(all_keys))
+        connection.s3_connection.delete_keys(list(all_keys))
     response.body = {
         'status': 'success',
         'environment': environ,

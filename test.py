@@ -4,7 +4,7 @@ import datetime
 import json
 import app
 from chalicelib.checksuite import CheckSuite
-from chalicelib.ff_connection import FFConnection
+from chalicelib.fs_connection import FSConnection
 
 
 class TestUnitTests(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestUnitTests(unittest.TestCase):
     def test_connection_fields(self):
         self.assertTrue(self.connection.environment == 'test')
         self.assertTrue(self.connection.is_up == False)
-        self.assertTrue(self.connection.s3connection.status_code == 404)
+        self.assertTrue(self.connection.s3_connection.status_code == 404)
 
     def test_checksuite_basics(self):
         check_res = json.loads(self.suite.status_of_servers())
@@ -23,7 +23,7 @@ class TestUnitTests(unittest.TestCase):
 
     def test_checkresult_basics(self):
         test_check = self.suite.init_check('test_check', description='Unittest check')
-        self.assertTrue(test_check.s3connection.status_code == 404)
+        self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
         self.assertTrue(test_check.title == 'Test Check')

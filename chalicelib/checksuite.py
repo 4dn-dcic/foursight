@@ -62,7 +62,7 @@ class CheckSuite(object):
     """
     def __init__(self, connection):
         # self.connection is an FFConnection object.
-        # Reference s3 connection with self.connection.s3connection,
+        # Reference s3 connection with self.connection.s3_connection,
         # which is an S3Connection object.
         self.connection = connection
 
@@ -74,7 +74,7 @@ class CheckSuite(object):
         results. name is the only required parameter and MUST be equal to
         the method name of the check as defined in CheckSuite.
         """
-        return CheckResult(self.connection.s3connection, name, title, description, extension)
+        return CheckResult(self.connection.s3_connection, name, title, description, extension)
 
 
     @daily_check
