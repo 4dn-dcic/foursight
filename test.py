@@ -54,12 +54,12 @@ class TestIntegrated(unittest.TestCase):
         self.assertFalse(self.conn is None)
         self.assertTrue(self.conn.is_up)
         # test the ff connection
-        assert(conn.ff_connection.server = conn.server)
-        assert(conn.ff_connection.user)
-        assert(conn.ff_connection.email)
-        assert(conn.ff_connection.lab)
-        assert(conn.ff_connection.award)
-        assert(conn.ff_connection.auth)
+        assert(self.conn.ff_connection.server == self.conn.server)
+        assert(self.conn.ff_connection.user)
+        assert(self.conn.ff_connection.email)
+        assert(self.conn.ff_connection.lab)
+        assert(self.conn.ff_connection.award)
+        assert(self.conn.ff_connection.auth)
 
     def test_init_environments(self):
         app.init_environments() # default to 'all' environments
