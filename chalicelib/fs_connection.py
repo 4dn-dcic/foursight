@@ -14,6 +14,7 @@ class FSConnection(object):
         self.s3_connection = S3Connection(bucket)
         self.es = es
         self.is_up = self.test_connection()
+        # ff_connection is an FDN_Connection (see .ff_utils / fdn_connection)
         self.ff_connection = self.get_ff_connection()
 
 
@@ -28,7 +29,7 @@ class FSConnection(object):
 
     def get_ff_connection(self):
         # authorization info is currently held in s3
-        # return a key that works with ff_utils/wranglertools.fdnDCIC
+        # returns a fdnDCIC FDN_Connection object if successful
         auth_res = self.s3_connection.get_object('auth')
         if auth_res is None:
             return None
@@ -44,9 +45,3 @@ class FSConnection(object):
                 }
             }
             return fdn_connection(key_dict)
-
-
-
-    def get_auth_user(self):
-        me_res = json.loads(requests.get(''.join([self.server,'me']), auth=self.auth))
-        return me_res
