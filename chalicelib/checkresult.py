@@ -11,8 +11,8 @@ import json
 # holds a reference to the overall s3 connection as well
 
 class CheckResult(object):
-    def __init__(self, s3connection, name, title=None, description=None, extension=".json"):
-        self.s3connection = s3connection
+    def __init__(self, s3_connection, name, title=None, description=None, extension=".json"):
+        self.s3_connection = s3_connection
         self.name = name
         if title is None:
             self.title = ' '.join(self.name.split('_')).title()
@@ -42,7 +42,7 @@ class CheckResult(object):
 
     def get_latest_check(self):
         latest_key = ''.join([self.name, '/latest', self.extension])
-        result = self.s3connection.get_object(latest_key)
+        result = self.s3_connection.get_object(latest_key)
         if result is None:
             return None
         # see if data is in json format
@@ -57,7 +57,7 @@ class CheckResult(object):
         # check_tuples is a list of items of form (s3key, datetime timestamp)
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.s3connection.list_keys_w_prefix(s3_prefix)
+        relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
         if not relevant_checks:
             return None
         # now use only s3 objects with a valid timestamp
@@ -72,7 +72,7 @@ class CheckResult(object):
         desired_time = (datetime.datetime.utcnow() -
             datetime.timedelta(hours=diff_hours, minutes=diff_mins))
         best_match = get_closest(check_tuples, desired_time)
-        result = self.s3connection.get_object(best_match[0])
+        result = self.s3_connection.get_object(best_match[0])
         # see if data is in json format
         try:
             json_result = json.loads(result)
@@ -92,8 +92,8 @@ class CheckResult(object):
         latest_key = ''.join([self.name, '/latest', self.extension])
         if self.extension == ".json":
             formatted = json.dumps(formatted)
-        self.s3connection.put_object(time_key, formatted)
+        self.s3_connection.put_object(time_key, formatted)
         # put result as 'latest'
-        self.s3connection.put_object(latest_key, formatted)
+        self.s3_connection.put_object(latest_key, formatted)
         # return stored data in case we're interested
         return formatted
