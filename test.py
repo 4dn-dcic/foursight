@@ -5,6 +5,7 @@ import json
 import app
 from chalicelib.checksuite import CheckSuite
 from chalicelib.fs_connection import FSConnection
+import chalicelib.ff_utils
 
 
 class TestUnitTests(unittest.TestCase):
@@ -52,6 +53,13 @@ class TestIntegrated(unittest.TestCase):
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
         self.assertTrue(self.conn.is_up)
+        # test the ff connection
+        assert(conn.ff_connection.server = conn.server)
+        assert(conn.ff_connection.user)
+        assert(conn.ff_connection.email)
+        assert(conn.ff_connection.lab)
+        assert(conn.ff_connection.award)
+        assert(conn.ff_connection.auth)
 
     def test_init_environments(self):
         app.init_environments() # default to 'all' environments
