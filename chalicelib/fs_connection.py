@@ -21,10 +21,10 @@ class FSConnection(object):
     def test_connection(self):
         # check connection
         try:
-            head_resp = requests.head(self.server)
+            head_resp = requests.get(self.server)
         except:
             return False
-        return True if head_resp.status_code == 200 else False
+        return True if (head_resp.status_code == 200 and '4DN Data Portal' in head_resp.text) else False
 
 
     def get_ff_connection(self):
