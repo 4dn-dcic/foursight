@@ -18,9 +18,9 @@ class TestUnitTests(unittest.TestCase):
         self.assertTrue(self.connection.s3_connection.status_code == 404)
 
     def test_checksuite_basics(self):
-        check_res = json.loads(self.suite.status_of_servers())
-        self.assertTrue(check_res.get('status') == 'FAIL')
-        self.assertTrue(check_res.get('name') == 'status_of_servers')
+        check_res = json.loads(self.suite.item_counts_by_type())
+        self.assertTrue(check_res.get('status') == 'ERROR')
+        self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
     def test_checkresult_basics(self):
         test_check = self.suite.init_check('test_check', description='Unittest check')
