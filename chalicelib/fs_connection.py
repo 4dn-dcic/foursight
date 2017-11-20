@@ -13,18 +13,19 @@ class FSConnection(object):
         self.server = server
         self.s3_connection = S3Connection(bucket)
         self.es = es
-        self.is_up = self.test_connection()
+        self.is_up = self.test_ff_connection()
         # ff_connection is an FDN_Connection (see .ff_utils / fdn_connection)
         self.ff_connection = self.get_ff_connection()
 
 
-    def test_connection(self):
-        # check connection
+    def test_ff_connection(self):
+        # see if status == 200 for local_server
+        # this won't catch many errors; is more meant to see if it exists
         try:
-            head_resp = requests.get(self.server)
+            head_resp = requests.head(self.server)
         except:
             return False
-        return True if (head_resp.status_code == 200 and '4DN Data Portal' in head_resp.text) else False
+        return True if head_resp.status_code == 200 else False
 
 
     def get_ff_connection(self):
