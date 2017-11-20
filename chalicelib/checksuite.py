@@ -37,8 +37,8 @@ class CheckSuite(object):
     initialized using the init_check function, which MUST be passed a name
     argument EXACTLY equal to the check name (i.e. method name).
 
-    For example, the 'status_of_servers' check initilizes a CheckResult like so:
-    check = self.init_check('status_of_servers')
+    For example, the 'elastic_beanstalk_health' check initilizes a CheckResult like so:
+    check = self.init_check('elastic_beanstalk_health')
     Then, fields on that CheckResult (named check) can be easily set:
     >> check.status = 'PASS'
     Lastly, once the check is finished, finalize and store S3 results using:
@@ -75,31 +75,6 @@ class CheckSuite(object):
         the method name of the check as defined in CheckSuite.
         """
         return CheckResult(self.connection.s3_connection, name, title, description, extension)
-
-
-    @daily_check
-    def status_of_servers(self):
-        ff_server = self.connection.is_up
-        es = self.connection.es
-        try:
-            es_resp = requests.get(es)
-        except:
-            es_server = None
-        else:
-            es_server = es_resp.status_code == 200 and "You Know, for Search" in es_resp.text
-        check = self.init_check('status_of_servers')
-        if ff_server and es_server:
-            check.status = 'PASS'
-            check.description = 'Fourfront and ES servers are up.'
-        else:
-            check.status = 'FAIL'
-            descrip = ''
-            if not ff_server:
-                descrip = ' '.join([descrip, 'Fourfront server is down.'])
-            if not es_server:
-                descrip = ' '.join([descrip, 'ES server is down.'])
-            check.description = descrip
-        return check.store_result()
 
 
     @daily_check
@@ -173,6 +148,10 @@ class CheckSuite(object):
         ### the check
         es = self.connection.es
         resp = requests.get(''.join([es,'_cat/indices?v']))
+        if getattr(resp, 'status_code', None) != 200:
+            check.status = 'ERROR'
+            check.description = "Error connecting to ES at endpoint: _cat/indices"
+            return check.store_result()
         indices = resp.text.split('\n')
         split_indices = [ind.split() for ind in indices]
         headers = split_indices.pop(0)
