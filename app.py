@@ -7,12 +7,9 @@ import os
 from datetime import datetime
 from dateutil import tz
 from chalicelib.fs_connection import FSConnection
-from chalicelib.checksuite import CheckSuite, daily_check, rate_check
+from chalicelib.checksuite import run_check_group, get_check_group_latest, run_check, get_check_strings
 from chalicelib.checkresult import CheckResult
-from chalicelib.utils import get_methods_by_deco
 from chalicelib.s3_connection import S3Connection
-from botocore.exceptions import ClientError
-from itertools import chain
 
 app = Chalice(app_name='foursight')
 app.debug = True
@@ -24,7 +21,6 @@ jin_env = Environment(
 
 ENVIRONMENTS = {}
 CACHED = {}
-PROD_ADDRESS = 'https://data.4dnucleome.org/'
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 
@@ -100,116 +96,6 @@ def init_connection(environ):
     return connection, error_res
 
 
-def init_checksuite(checks, connection):
-    """
-    Build a CheckSuite object from the given connection and find suitable
-    methods to run from it, based on the desired checks input (a string)
-    If checks == 'all', then every check in checksuite will be run.
-    If checks == 'daily', then every daily_check in checksuite will be run.
-    If checks == 'rate', then every rate_check in checksuite will be run.
-    Otherwise, checks should be a comma separated list of checks to run,
-    such as: 'item_counts_by_type,indexing_progress'
-    """
-    checkSuite = CheckSuite(connection)
-    check_methods = []
-    daily_check_methods = get_methods_by_deco(CheckSuite, daily_check)
-    rate_check_methods = get_methods_by_deco(CheckSuite, rate_check)
-    if checks == 'all' or checks == 'daily':
-        check_methods.extend(daily_check_methods)
-    if checks == 'all' or checks == 'rate':
-        check_methods.extend(rate_check_methods)
-    if checks not in ['all', 'daily', 'rate']:
-        specified_checks = [spec.strip() for spec in checks.split(',')]
-        all_methods = chain(daily_check_methods, rate_check_methods)
-        method_lookup = {method.__name__: method for method in all_methods}
-        for in_check in specified_checks:
-            if in_check in method_lookup:
-                check_methods.append(method_lookup[in_check])
-    return check_methods, checkSuite
-
-
-def init_cors_response(request, environ):
-    """
-    Initialize the response object that will be returned from chalice.
-    Please not that this function is not strictly necessary, as returning
-    JSON will automatically send a response with status_code of 200.
-    This function also handles CORS requests by echoing Access-Control-*
-    headers back if Origin is in the provided request headers.
-    Returns an initialized chalice response.
-    MUST receive a valid request object, so this should be run from lambdas.
-    """
-    resp = Response('Foursight preflight response') # response body
-    req_dict = request.to_dict()
-    origin = req_dict.get('headers', {}).get('origin')
-    if origin:
-        use_origin = origin if origin.endswith('/') else ''.join([origin, '/'])
-        allowed_origins = []
-        if environ not in ENVIRONMENTS:
-            init_environments()
-        env_ff_server = ENVIRONMENTS.get(environ, {}).get('fourfront')
-        if env_ff_server: allowed_origins.append(env_ff_server)
-        # special case for PROD_ADDRESS
-        if use_origin == PROD_ADDRESS: allowed_origins.append(use_origin)
-        # special case for test server
-        if environ == 'local':
-            local_ff_server = ENVIRONMENTS.get('local', {}).get('local_server')
-            if local_ff_server: allowed_origins.append(local_ff_server)
-        if use_origin in allowed_origins:
-            resp.headers = {
-                'Access-Control-Allow-Origin': origin,
-                'Access-Control-Allow-Methods': 'PUT, GET, OPTIONS',
-                'Access-Control-Allow-Credentials': 'true',
-                'Access-Control-Allow-Headers': ', '.join([
-                    'Authorization',
-                    'Content-Type',
-                    'X-Amz-Date',
-                    'X-Amz-Security-Token',
-                    'X-Api-Key',
-                    'X-Requested-With'
-                ])
-            }
-    return resp
-
-
-def perform_run_checks(connection, checks):
-    """
-    This function needed to be split out to separate timed invocation of
-    checks to manual invocation.
-    """
-    check_methods, checkSuite = init_checksuite(checks, connection)
-    did_run = []
-    for method in check_methods:
-        name = method.__name__
-        try:
-            run_res = method(checkSuite)
-        except:
-            continue
-        if run_res:
-            did_run.append(name)
-    return did_run
-
-
-def perform_get_latest(connection, checks):
-    """
-    Abstraction of get_lastest_checks to allow the functionality of running
-    the function from a request to foursight or a scheduled/manual function.
-    """
-    check_methods, checkSuite = init_checksuite(checks, connection)
-    results = []
-    did_check = []
-    for method in check_methods:
-        name = method.__name__
-        # the CheckResult below is used solely to collect the latest check
-        TempCheck = CheckResult(connection.s3_connection, name)
-        latest_res = TempCheck.get_latest_check()
-        if latest_res:
-            results.append(latest_res)
-            did_check.append(name)
-    # sort alphabetically
-    results = sorted(results, key=lambda v: v['name'].lower())
-    return results, did_check
-
-
 # from chalice import AuthResponse
 # import jwt
 # from base64 import b64decode
@@ -260,7 +146,9 @@ def view_rerun(environ, check):
     """
     connection, error_res = init_connection(environ)
     if connection and connection.is_up:
-        perform_run_checks(connection, check)
+        check_str = get_check_strings(check)
+        if check_str:
+            run_check(connection, check_str, check_kwargs)
     return view_foursight(environ)
 
 
@@ -282,7 +170,7 @@ def view_foursight(environ):
             continue
         connection, error_res = init_connection(this_environ)
         if connection and connection.is_up:
-            results, did_check = perform_get_latest(connection, 'all')
+            results = get_check_group_latest(connection, 'all_checks')
             for res in results:
                 # change timezone to local
                 from_zone = tz.tzutc()
@@ -314,8 +202,8 @@ def view_foursight(environ):
     return html_resp
 
 
-@app.route('/run/{environ}/{checks}', methods=['PUT', 'GET', 'OPTIONS'])
-def run_foursight(environ, checks):
+@app.route('/run/{environ}/{check_group}', methods=['PUT', 'GET'])
+def run_foursight(environ, check_group):
     """
     Two functionalities, based on the request method.
 
@@ -327,22 +215,20 @@ def run_foursight(environ, checks):
 
     If GET:
     Return JSON of each check tagged with the "latest" tag for speicified current
-    checks in checksuite for the given environment. If checks == 'all', every
+    checks in checksuite for the given environment. If check_group == 'all_checks', every
     registered check will be returned. Otherwise, send a comma separated list
     of check names (the method names!) as the check argument.
 
     CORS enabled.
     """
-    response = init_cors_response(app.current_request, environ)
-    if app.current_request.method == 'OPTIONS':
-        return response
+    response = Response()
     connection, error_res = init_connection(environ)
     if connection is None:
         response.body = error_res
         response.status_code = 400
         return response
     if app.current_request.method == 'PUT':
-        did_run = perform_run_checks(connection, checks)
+        did_run = run_check_group(connection, check_group)
         response.body = {
             'status': 'success',
             'checks_specified': checks,
@@ -352,12 +238,11 @@ def run_foursight(environ, checks):
         response.status_code = 200
         return response
     else: # GET. latest results for each check
-        results, did_check = perform_get_latest(connection, checks)
+        results = get_check_group_latest(connection, check_group)
         response.body = {
             'status': 'success',
             'environment': environ,
-            'checks': results,
-            'checks_found': did_check
+            'checks': results
         }
         response.status_code = 200
         return response
@@ -367,7 +252,7 @@ def run_foursight(environ, checks):
 def get_check(environ, check):
     """
     Get a check result that isn't necessarily defined within foursight.
-    Check name must be a valid check (not 'all', 'daily', or 'rate')
+    Check name must be a valid check
     """
     response = Response('Foursight get_check')
     connection, error_res = init_connection(environ)
@@ -402,9 +287,6 @@ def put_check(environ, check):
     Take a PUT request. Body of the request should be a json object with keys
     corresponding to the fields in CheckResult, namely:
     title, status, description, brief_output, full_output.
-
-    Please note: at this time, a check should be initialized in CheckSuite
-    for every tests to be supported with the run_foursight function.
     """
     response = Response('Foursight put_check')
     connection, error_res = init_connection(environ)
@@ -424,22 +306,7 @@ def put_check(environ, check):
         }
         response.status_code = 400
         return response
-    ##### Maybe add this back in if we decide to go all-in on deocorators
-    # valid_methods, CheckSuite = init_checksuite('all', connection)
-    # valid_checks = [method.__name__ for method in valid_methods]
-    # if check not in valid_checks:
-    #     response.body = {
-    #         'status': 'error',
-    #         'endpoint': 'put_check',
-    #         'check': check,
-    #         'description': ' '.join(['Could not PUT invalid check:', check]),
-    #         'environment': environ
-    #     }
-    #     response.status_code = 400
-    #     return response
-    #####
-    checkSuite = CheckSuite(connection)
-    putCheck = checkSuite.init_check(check)
+    putCheck = CheckResult(connection.s3_connection, check)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'description', 'brief_output', 'full_output']:
@@ -498,7 +365,7 @@ def put_environment(environ):
         # run some checks on the new env
         connection, error_res = init_connection(proc_environ)
         if connection and connection.is_up:
-            did_run = perform_run_checks(connection, 'all')
+            did_run = run_check_group(connection, 'all_checks')
         else:
             did_run = []
         return Response(
@@ -560,7 +427,7 @@ def daily_checks(event):
             continue
         connection, error_res = init_connection(environ)
         if connection and connection.is_up:
-            perform_run_checks(connection, 'daily')
+            run_check_group(connection, 'daily_checks')
 
 
 # run every 2 hrs
@@ -572,13 +439,13 @@ def two_hour_checks(event):
             continue
         connection, error_res = init_connection(environ)
         if connection and connection.is_up:
-            perform_run_checks(connection, 'item_counts_by_type,indexing_progress')
+            run_check_group(connection, 'two_hour_checks')
 
 
 ### NON-STANDARD ENDPOINTS ###
 
 
-@app.route('/cleanup/{environ}', methods=['GET', 'OPTIONS'])
+@app.route('/cleanup/{environ}', methods=['GET'])
 def cleanup(environ):
     """
     For a given environment, remove all tests records from S3 that are no
@@ -586,9 +453,7 @@ def cleanup(environ):
     Will not remove auth.
     CORS enabled.
     """
-    response = init_cors_response(app.current_request, environ)
-    if app.current_request.method == 'OPTIONS':
-        return response
+    response = Response()
     connection, error_res = init_connection(environ)
     if connection is None:
         response.body = error_res
@@ -598,9 +463,9 @@ def cleanup(environ):
     # never delete these keys
     if 'auth' in all_keys:
         all_keys.remove('auth')
-    check_methods, _ = init_checksuite('all', connection)
-    for method in check_methods:
-        name = method.__name__
+    check_strs = get_check_strings()
+    for check_str in check_strs:
+        name = check_str.split('/')[1]
         # remove all keys with prefix equal to this method name
         method_keys = set(connection.s3_connection.list_keys_w_prefix(name))
         all_keys = all_keys - method_keys

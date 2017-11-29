@@ -1,5 +1,4 @@
 from __future__ import print_function, unicode_literals
-from .utils import get_closest
 import datetime
 import json
 
@@ -97,3 +96,14 @@ class CheckResult(object):
         self.s3_connection.put_object(latest_key, formatted)
         # return stored data in case we're interested
         return formatted
+
+
+### Utility functions for checkresult
+def get_closest(items, pivot):
+    """
+    Return the item in the list of items closest to the given pivot.
+    Items should be given in tuple form (ID, value (to compare))
+    Intended primarily for use with datetime objects.
+    See: S.O. 32237862
+    """
+    return min(items, key=lambda x: abs(x[1] - pivot))
