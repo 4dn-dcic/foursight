@@ -4,26 +4,27 @@ import datetime
 import json
 import app
 from chalicelib.checksuite import CheckSuite
-from chalicelib.ff_connection import FFConnection
+from chalicelib.fs_connection import FSConnection
+import chalicelib.ff_utils
 
 
 class TestUnitTests(unittest.TestCase):
-    connection = FFConnection('test', None, None, None)
+    connection = FSConnection('test', None, None, None)
     suite = CheckSuite(connection)
 
     def test_connection_fields(self):
         self.assertTrue(self.connection.environment == 'test')
         self.assertTrue(self.connection.is_up == False)
-        self.assertTrue(self.connection.s3connection.status_code == 404)
+        self.assertTrue(self.connection.s3_connection.status_code == 404)
 
     def test_checksuite_basics(self):
-        check_res = json.loads(self.suite.status_of_servers())
-        self.assertTrue(check_res.get('status') == 'FAIL')
-        self.assertTrue(check_res.get('name') == 'status_of_servers')
+        check_res = json.loads(self.suite.item_counts_by_type())
+        self.assertTrue(check_res.get('status') == 'ERROR')
+        self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
     def test_checkresult_basics(self):
         test_check = self.suite.init_check('test_check', description='Unittest check')
-        self.assertTrue(test_check.s3connection.status_code == 404)
+        self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
         self.assertTrue(test_check.title == 'Test Check')
@@ -52,6 +53,13 @@ class TestIntegrated(unittest.TestCase):
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
         self.assertTrue(self.conn.is_up)
+        # test the ff connection
+        assert(self.conn.ff_connection.server == self.conn.server)
+        assert(self.conn.ff_connection.user)
+        assert(self.conn.ff_connection.email)
+        assert(self.conn.ff_connection.lab)
+        assert(self.conn.ff_connection.award)
+        assert(self.conn.ff_connection.auth)
 
     def test_init_environments(self):
         app.init_environments() # default to 'all' environments
