@@ -37,7 +37,7 @@ class TestUnitTests(unittest.TestCase):
         ]
         for bad_check_info in bad_check_group:
             check_res = run_check(self.connection, bad_check_info[0], bad_check_info[1])
-            self.assertTrue(isinstance(check_res, str))
+            self.assertFalse(isinstance(check_res, dict))
             self.assertTrue('ERROR' in check_res)
 
     def test_checkresult_basics(self):
