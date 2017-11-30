@@ -3,7 +3,7 @@ import unittest
 import datetime
 import json
 import app
-from chalicelib.checksuite import CheckSuite
+from chalicelib.checksuite import run_check_group, get_check_group_latest, run_check, get_check_strings, init_check_res
 from chalicelib.fs_connection import FSConnection
 import chalicelib.ff_utils
 
@@ -18,12 +18,14 @@ class TestUnitTests(unittest.TestCase):
         self.assertTrue(self.connection.s3_connection.status_code == 404)
 
     def test_checksuite_basics(self):
-        check_res = json.loads(self.suite.item_counts_by_type())
-        self.assertTrue(check_res.get('status') == 'ERROR')
-        self.assertTrue(check_res.get('name') == 'item_counts_by_type')
+        check_res = run_check('wrangler_checks/item_counts_by_type', {}, [])
+        self.assertTrue(len(check_res) == 1)
+        check_json = json.loads(check_res[0])
+        self.assertTrue(check_json.get('status') == 'ERROR')
+        self.assertTrue(check_json.get('name') == 'item_counts_by_type')
 
     def test_checkresult_basics(self):
-        test_check = self.suite.init_check('test_check', description='Unittest check')
+        test_check = init_check_res(connection, 'test_check', description='Unittest check')
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)

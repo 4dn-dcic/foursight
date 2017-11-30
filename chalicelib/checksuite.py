@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import make_registration_deco, get_methods_by_deco, check_method_deco, check_function
+from .utils import get_methods_by_deco, check_method_deco, check_function
 from .checkresult import CheckResult
 import sys
 import importlib
