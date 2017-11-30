@@ -22,7 +22,7 @@ def item_counts_by_type(connection, **kwargs):
     # run the check
     item_counts = {}
     warn_item_counts = {}
-    server = connection.server
+    server = connection.ff
     try:
         counts_res = requests.get(''.join([server,'counts?format=json']))
     except:
@@ -65,11 +65,12 @@ def item_counts_by_type(connection, **kwargs):
 @check_function
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
+    check = init_check_res(connection, 'change_in_item_counts')
     counts_check = init_check_res(connection, 'item_counts_by_type')
     latest = counts_check.get_latest_check()
     # get_item_counts run closest to 24 hours ago
     prior = counts_check.get_closest_check(24)
-    if not latest or not prior:
+    if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no counts_check results to run this check with.'
         return check.store_result()
@@ -90,7 +91,6 @@ def change_in_item_counts(connection, **kwargs):
                 diff_counts[index] = diff_DB
     for index in prior_unique:
         diff_counts[index] = -1 * prior[index]['DB']
-    check = init_check_res(connection, 'change_in_item_counts')
     if diff_counts:
         check.status = 'WARN'
         check.full_output = diff_counts

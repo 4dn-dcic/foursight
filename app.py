@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 from dateutil import tz
 from chalicelib.fs_connection import FSConnection
-from chalicelib.checksuite import run_check_group, get_check_group_latest, run_check, get_check_strings
+from chalicelib.check_utils import run_check_group, get_check_group_latest, run_check, get_check_strings
 from chalicelib.checkresult import CheckResult
 from chalicelib.s3_connection import S3Connection
 
@@ -159,7 +159,7 @@ def view_foursight(environ):
     for this_environ in view_envs:
         connection, error_res = init_connection(this_environ)
         if connection:
-            results = get_check_group_latest(connection, 'all_checks')
+            results = get_check_group_latest(connection, 'all')
             processed_results = []
             for res in results:
                 # first check to see if res is just a string, meaning
@@ -217,14 +217,12 @@ def run_foursight(environ, check_group):
     directory in S3 and also creates a timestamped record.
 
     If GET:
-    Return JSON of each check tagged with the "latest" tag for speicified current
-    checks in checksuite for the given environment. If check_group == 'all_checks', every
-    registered check will be returned. Otherwise, send a comma separated list
-    of check names (the method names!) as the check argument.
-
-    CORS enabled.
+    Return JSON of each check tagged with the "latest" tag for checks
+    within given check_group for the given environment. If check_group == 'all', every
+    registered check will be returned. Otherwise, must be a valid check_group
+    name.
     """
-    response = Response()
+    response = Response('Foursight run')
     connection, error_res = init_connection(environ)
     if connection is None:
         response.body = error_res
@@ -234,7 +232,7 @@ def run_foursight(environ, check_group):
         did_run = run_check_group(connection, check_group)
         response.body = {
             'status': 'success',
-            environment': environ',
+            'environment': environ,
             'check_group': check_group,
             'checks': did_run
         }
@@ -364,7 +362,7 @@ def put_environment(environ):
             )
         # run some checks on the new env
         connection, error_res = init_connection(proc_environ)
-        did_run = run_check_group(connection, 'all_checks') if connection else []
+        did_run = run_check_group(connection, 'all') if connection else []
         return Response(
             body = {
                 'status': 'success',
@@ -444,9 +442,8 @@ def cleanup(environ):
     For a given environment, remove all tests records from S3 that are no
     long being used (i.e. not currently defined within checksuite).
     Will not remove auth.
-    CORS enabled.
     """
-    response = Response()
+    response = Response('Foursight cleanup')
     connection, error_res = init_connection(environ)
     if connection is None:
         response.body = error_res

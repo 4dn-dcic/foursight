@@ -18,7 +18,7 @@ def elastic_beanstalk_health(connection, **kwargs):
     eb_client = boto3.client('elasticbeanstalk')
     try:
         resp = eb_client.describe_environment_health(
-            EnvironmentName=''.join(['fourfront-', connection.environment]),
+            EnvironmentName=connection.ff_env,
             AttributeNames=['All']
         )
     except:
@@ -38,7 +38,7 @@ def elastic_beanstalk_health(connection, **kwargs):
     full_output['instance_health'] = []
     try:
         resp = eb_client.describe_instances_health(
-            EnvironmentName=''.join(['fourfront-', connection.environment]),
+            EnvironmentName=connection.ff_env,
             AttributeNames=['All']
         )
     except:
@@ -114,18 +114,18 @@ def status_of_elasticsearch_indices(connection, **kwargs):
 
 @check_function
 def indexing_progress(connection, **kwargs):
+    check = init_check_res(connection, 'indexing_progress')
     # get latest and db/es counts closest to 2 hrs ago
     counts_check = init_check_res(connection, 'item_counts_by_type')
     latest = counts_check.get_latest_check()
     prior = counts_check.get_closest_check(2)
-    if not latest or not prior:
+    if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no item_counts_by_type results to run this check with.'
         return check.store_result()
     latest_unindexed = latest['full_output']['ALL']['DB'] - latest['full_output']['ALL']['ES']
     prior_unindexed = prior['full_output']['ALL']['DB'] - prior['full_output']['ALL']['ES']
     diff_unindexed = latest_unindexed - prior_unindexed
-    check = init_check_res(connection, 'indexing_progress')
     if diff_unindexed == 0 and latest_unindexed != 0:
         check.status = 'FAIL'
         check.description = ' '.join(['Total number of unindexed items is',

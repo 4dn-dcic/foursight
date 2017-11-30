@@ -3,7 +3,7 @@ import unittest
 import datetime
 import json
 import app
-from chalicelib.checksuite import run_check_group, get_check_group_latest, run_check, get_check_strings, init_check_res
+from chalicelib.check_utils import run_check_group, get_check_group_latest, run_check, get_check_strings, init_check_res
 from chalicelib.fs_connection import FSConnection
 
 

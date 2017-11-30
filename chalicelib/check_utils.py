@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 from .utils import get_methods_by_deco, check_method_deco, check_function
 from .checkresult import CheckResult
+from .check_groups import *
 import sys
 import importlib
 
@@ -15,22 +16,6 @@ for check_mod in CHECK_MODULES:
         globals()[check_mod] = importlib.import_module('.'.join(['chalicelib', check_mod]))
     except ImportError:
         print(''.join(['ERROR importing checks from ', check_mod]), file=sys.stderr)
-
-# define check groups for schedules here
-# each group is an array with entries corresponding to one check's run
-# info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies]
-daily_checks = [
-    ['system_checks/elastic_beanstalk_health', {}, []],
-    ['system_checks/status_of_elasticsearch_indices', {}, []],
-    ['system_checks/indexing_records', {}, []],
-    ['system_checks/staging_deployment', {}, []],
-    ['wrangler_checks/change_in_item_counts', {}, []]
-]
-
-two_hour_checks = [
-    ['system_checks/indexing_progress', {}, []],
-    ['wrangler_checks/item_counts_by_type', {}, []]
-]
 
 
 def get_check_strings(specific_check=None):
@@ -66,7 +51,7 @@ def run_check_group(connection, name):
         return check_results
     for check_info in check_group:
         if len(check_info) != 3:
-            check_results.append(' '.join(['ERROR with', str(check_info), 'in', name]))
+            check_results.append(' '.join(['ERROR with', str(check_info), 'in group:', name]))
         else:
             # nothing done with dependencies yet
             check_results.append(run_check(connection, check_info[0], check_info[1]))
@@ -98,8 +83,8 @@ def fetch_check_group(name):
     Will be none if the group is not defined.
     Special case for all_checks, which gets all checks and uses default kwargs
     """
-    if name == 'all_checks':
-        all_check_strs = get_check_strings()
+    if name == 'all':
+        all_checks_strs = get_check_strings()
         all_checks_group = [[check_str, {}, []] for check_str in all_checks_strs]
         return all_checks_group
     group = globals().get(name, None)
@@ -120,20 +105,21 @@ def run_check(connection, check_str, check_kwargs):
     Return a string for failed results, CheckResult object otherwise
     """
     # make sure parameters are good
+    error_str = ' '.join(['Info: CHECK:', str(check_str), 'KWARGS:', str(check_kwargs)])
     if len(check_str.strip().split('/')) != 2:
-        return 'ERROR. Check string is malformed for %s. Must in form module/check_name.' % (str(check_info))
+        return ' '.join(['ERROR. Check string must be of form module/check_name.', error_str])
     check_mod_str = check_str.strip().split('/')[0]
     check_name_str = check_str.strip().split('/')[1]
     if not isinstance(check_kwargs, dict):
-        return 'ERROR. Check kwargs are malformed for %s. Must be a dict.' % (str(check_info))
+        return ' '.join(['ERROR. Check kwargs must be a dict.', error_str])
     check_mod = globals().get(check_mod_str)
     if not check_mod:
-        return 'ERROR. Check dependencies are malformed for %s. Check module is not valid.' % (str(check_info))
+        return ' '.join(['ERROR. Check module is not valid.', error_str])
     check_method = check_mod.__dict__.get(check_name_str)
     if not check_method:
-        return 'ERROR. Check dependencies are malformed for %s. Check name is not valid.' % (str(check_info))
+        return ' '.join(['ERROR. Check name is not valid.', error_str])
     if not check_method_deco(check_method, check_function):
-        return 'ERROR. Check is bad for %s. Ensure the check_function decorator is present.' % (str(check_info))
+        return ' '.join(['ERROR. Ensure the check_function decorator is present.', error_str])
     return check_method(connection, **check_kwargs)
 
 

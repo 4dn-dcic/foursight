@@ -90,10 +90,10 @@ class CheckResult(object):
         time_key = ''.join([self.name, '/', timestamp, self.extension])
         latest_key = ''.join([self.name, '/latest', self.extension])
         if self.extension == ".json":
-            formatted = json.dumps(formatted)
-        self.s3_connection.put_object(time_key, formatted)
+            s3_formatted = json.dumps(formatted)
+        self.s3_connection.put_object(time_key, s3_formatted)
         # put result as 'latest'
-        self.s3_connection.put_object(latest_key, formatted)
+        self.s3_connection.put_object(latest_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
 
