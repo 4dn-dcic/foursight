@@ -23,7 +23,6 @@ jin_env = Environment(
 )
 
 ENVIRONMENTS = {}
-CACHED = {}
 PROD_ADDRESS = 'https://data.4dnucleome.org/'
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
@@ -84,12 +83,7 @@ def init_connection(environ):
             'checks': {}
         }
         return None, error_res
-    try:
-        connection = CACHED[environ]
-    except KeyError:
-        info = ENVIRONMENTS[environ]
-        CACHED[environ] = FSConnection(environ, info)
-        connection = CACHED[environ]
+    connection = FSConnection(environ, ENVIRONMENTS[environ])
     if not connection.is_up:
         error_res = {
             'status': 'error',
