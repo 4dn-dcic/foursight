@@ -3,7 +3,6 @@ import requests
 import json
 import datetime
 from .s3_connection import S3Connection
-from .ff_utils import fdn_connection
 from wranglertools import fdnDCIC
 
 class FSConnection(object):
