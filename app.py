@@ -78,14 +78,6 @@ def init_connection(environ):
         }
         return None, error_res
     connection = FSConnection(environ, ENVIRONMENTS[environ])
-    if not connection.is_up:
-        error_res = {
-            'status': 'error',
-            'description': 'The connection to fourfront is down',
-            'environment': environ,
-            'checks': {}
-        }
-        return None, error_res
     return connection, error_res
 
 
