@@ -5,4 +5,4 @@ PyJWT==1.5.3
 Jinja2==2.9.6
 chalice==1.0.4
 MarkupSafe==1.0
-Submit4DN
+dcicutils==0.1.4

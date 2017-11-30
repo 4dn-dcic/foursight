@@ -5,15 +5,20 @@ import json
 import app
 from chalicelib.checksuite import run_check_group, get_check_group_latest, run_check, get_check_strings, init_check_res
 from chalicelib.fs_connection import FSConnection
-import chalicelib.ff_utils
 
 
 class TestUnitTests(unittest.TestCase):
-    connection = FSConnection('test', None, None, None)
+    environ_info = {
+        'fourfront': None,
+        'es': None,
+        'bucket': None,
+        'ff_env': None
+    }
+    connection = FSConnection('test', environ_info)
     suite = CheckSuite(connection)
 
     def test_connection_fields(self):
-        self.assertTrue(self.connection.environment == 'test')
+        self.assertTrue(self.connection.fs_environment == 'test')
         self.assertTrue(self.connection.is_up == False)
         self.assertTrue(self.connection.s3_connection.status_code == 404)
 
@@ -56,12 +61,10 @@ class TestIntegrated(unittest.TestCase):
         self.assertFalse(self.conn is None)
         self.assertTrue(self.conn.is_up)
         # test the ff connection
-        assert(self.conn.ff_connection.server == self.conn.server)
-        assert(self.conn.ff_connection.user)
-        assert(self.conn.ff_connection.email)
-        assert(self.conn.ff_connection.lab)
-        assert(self.conn.ff_connection.award)
-        assert(self.conn.ff_connection.auth)
+        assert(self.conn.fs_environment == 'mastertest')
+        assert(self.conn.ff)
+        assert(self.conn.es)
+        assert(self.conn.ff_env == 'fourfront-mastertest')
 
     def test_init_environments(self):
         app.init_environments() # default to 'all' environments
@@ -70,6 +73,7 @@ class TestIntegrated(unittest.TestCase):
             assert('fourfront' in env_data)
             assert('es' in env_data)
             assert('bucket' in env_data)
+            assert('ff_env' in env_data)
             # this doesn't need to be a hard requirement, but it's good
             # form, so let's enforce it
             if env == 'local':

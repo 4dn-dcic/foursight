@@ -49,6 +49,7 @@ def init_environments(env='all'):
             env_entry = {
                 'fourfront': env_res['fourfront'],
                 'es': env_res['es'],
+                'ff_env': env_res.get('ff_env', ''.join(['fourfront-', env_key])),
                 'bucket': ''.join(['foursight-', STAGE, '-', env_key])
             }
             if 'local_server' in env_res:
@@ -83,7 +84,7 @@ def init_connection(environ):
         connection = CACHED[environ]
     except KeyError:
         info = ENVIRONMENTS[environ]
-        CACHED[environ] = FSConnection(environ, info['fourfront'], info['bucket'], info['es'])
+        CACHED[environ] = FSConnection(environ, info)
         connection = CACHED[environ]
     if not connection.is_up:
         error_res = {
@@ -341,10 +342,12 @@ def put_environment(environ):
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
         ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'
         es_address = env_data['es'] if env_data['es'].endswith('/') else env_data['es'] + '/'
+        ff_env = env_data['ff_env'] if 'ff_env' in env_data else ''.join(['fourfront-', proc_environ])
 
         env_entry = {
             'fourfront': ff_address,
-            'es': es_address
+            'es': es_address,
+            'ff_env': ff_env
         }
         if 'local_server' in env_data and proc_environ == 'local':
             env_entry['local_server'] = env_data['local_server'] if env_data['local_server'].endswith('/') else env_data['local_server'] + '/'
