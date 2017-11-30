@@ -52,8 +52,6 @@ def init_environments(env='all'):
                 'ff_env': env_res.get('ff_env', ''.join(['fourfront-', env_key])),
                 'bucket': ''.join(['foursight-', STAGE, '-', env_key])
             }
-            if 'local_server' in env_res:
-                env_entry['local_server'] = env_res['local_server']
             ENVIRONMENTS[env_key] = env_entry
         else:
             bad_keys.append(env_key)
@@ -86,14 +84,6 @@ def init_connection(environ):
         info = ENVIRONMENTS[environ]
         CACHED[environ] = FSConnection(environ, info)
         connection = CACHED[environ]
-    if not connection.is_up:
-        error_res = {
-            'status': 'error',
-            'description': 'The connection to fourfront is down',
-            'environment': environ,
-            'checks': {}
-        }
-        return None, error_res
     return connection, error_res
 
 
@@ -146,10 +136,10 @@ def view_rerun(environ, check):
     view_foursight templated result with the new check result.
     """
     connection, error_res = init_connection(environ)
-    if connection and connection.is_up:
+    if connection:
         check_str = get_check_strings(check)
         if check_str:
-            run_check(connection, check_str, check_kwargs)
+            run_check(connection, check_str, {})
     return view_foursight(environ)
 
 
@@ -167,12 +157,23 @@ def view_foursight(environ):
     total_envs = []
     view_envs = ENVIRONMENTS.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
-        if environ == 'all' and this_environ == 'local':
-            continue
         connection, error_res = init_connection(this_environ)
-        if connection and connection.is_up:
+        if connection:
             results = get_check_group_latest(connection, 'all_checks')
+            processed_results = []
             for res in results:
+                # first check to see if res is just a string, meaning
+                # the check didn't execute properly
+                if not isinstance(res, dict):
+                    error_res = {
+                        'status': 'ERROR',
+                        'content': True,
+                        'title': 'Check System Error',
+                        'description': res,
+                        'timestamp': 'Did not run.'
+                    }
+                    processed_results.append(error_res)
+                    continue
                 # change timezone to local
                 from_zone = tz.tzutc()
                 to_zone = tz.tzlocal()
@@ -189,10 +190,11 @@ def view_foursight(environ):
                     res['brief_output'] = json.dumps(res['brief_output'], indent=4)
                 if res.get('full_output'):
                     res['full_output'] = json.dumps(res['full_output'], indent=4)
+                processed_results.append(res)
             total_envs.append({
                 'status': 'success',
                 'environment': this_environ,
-                'checks': results
+                'checks': processed_results
             })
     # prioritize these environments
     env_order = ['data', 'staging', 'webdev', 'hotseat']
@@ -232,9 +234,9 @@ def run_foursight(environ, check_group):
         did_run = run_check_group(connection, check_group)
         response.body = {
             'status': 'success',
-            'checks_specified': checks,
-            'checks_run': did_run,
-            'environment': environ
+            environment': environ',
+            'check_group': check_group,
+            'checks': did_run
         }
         response.status_code = 200
         return response
@@ -243,6 +245,7 @@ def run_foursight(environ, check_group):
         response.body = {
             'status': 'success',
             'environment': environ,
+            'check_group': check_group,
             'checks': results
         }
         response.status_code = 200
@@ -253,7 +256,6 @@ def run_foursight(environ, check_group):
 def get_check(environ, check):
     """
     Get a check result that isn't necessarily defined within foursight.
-    Check name must be a valid check
     """
     response = Response('Foursight get_check')
     connection, error_res = init_connection(environ)
@@ -331,8 +333,6 @@ def put_environment(environ):
     """
     Take a PUT request that has a json payload with 'fourfront' (ff server)
     and 'es' (es server).
-    If environ == local, you may provide a 'local_server' in the request body
-    for CORS compatibility.
     Attempts to generate an new environment and runs all checks initially
     if successful.
     """
@@ -349,9 +349,6 @@ def put_environment(environ):
             'es': es_address,
             'ff_env': ff_env
         }
-        if 'local_server' in env_data and proc_environ == 'local':
-            env_entry['local_server'] = env_data['local_server'] if env_data['local_server'].endswith('/') else env_data['local_server'] + '/'
-
         s3_connection = S3Connection('foursight-envs')
         s3_connection.put_object(proc_environ, json.dumps(env_entry))
         s3_bucket = ''.join(['foursight-', STAGE, '-', proc_environ])
@@ -367,15 +364,12 @@ def put_environment(environ):
             )
         # run some checks on the new env
         connection, error_res = init_connection(proc_environ)
-        if connection and connection.is_up:
-            did_run = run_check_group(connection, 'all_checks')
-        else:
-            did_run = []
+        did_run = run_check_group(connection, 'all_checks') if connection else []
         return Response(
             body = {
                 'status': 'success',
                 'description': ' '.join(['Succesfully made:', proc_environ]),
-                'initial_checks_run': did_run,
+                'initial_checks': did_run,
                 'environment': proc_environ
             },
             status_code = 200
@@ -426,10 +420,8 @@ def get_environment(environ):
 def daily_checks(event):
     init_environments()
     for environ in ENVIRONMENTS:
-        if environ == 'local':
-            continue
         connection, error_res = init_connection(environ)
-        if connection and connection.is_up:
+        if connection:
             run_check_group(connection, 'daily_checks')
 
 
@@ -438,10 +430,8 @@ def daily_checks(event):
 def two_hour_checks(event):
     init_environments()
     for environ in ENVIRONMENTS:
-        if environ == 'local':
-            continue
         connection, error_res = init_connection(environ)
-        if connection and connection.is_up:
+        if connection:
             run_check_group(connection, 'two_hour_checks')
 
 

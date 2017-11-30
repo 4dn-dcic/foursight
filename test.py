@@ -19,7 +19,6 @@ class TestUnitTests(unittest.TestCase):
 
     def test_connection_fields(self):
         self.assertTrue(self.connection.fs_environment == 'test')
-        self.assertTrue(self.connection.is_up == False)
         self.assertTrue(self.connection.s3_connection.status_code == 404)
 
     def test_checksuite_basics(self):
@@ -59,7 +58,6 @@ class TestIntegrated(unittest.TestCase):
 
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
-        self.assertTrue(self.conn.is_up)
         # test the ff connection
         assert(self.conn.fs_environment == 'mastertest')
         assert(self.conn.ff)
@@ -74,10 +72,6 @@ class TestIntegrated(unittest.TestCase):
             assert('es' in env_data)
             assert('bucket' in env_data)
             assert('ff_env' in env_data)
-            # this doesn't need to be a hard requirement, but it's good
-            # form, so let's enforce it
-            if env == 'local':
-                assert('local_server' in env_data)
 
     def test_run_basics(self):
         # run some checks
