@@ -8,7 +8,13 @@ from chalicelib.fs_connection import FSConnection
 
 
 class TestUnitTests(unittest.TestCase):
-    connection = FSConnection('test', None, None, None)
+    environ_info = {
+        'fourfront': None,
+        'es': None,
+        'bucket': None,
+        'ff_env': None
+    }
+    connection = FSConnection('test', environ_info)
     suite = CheckSuite(connection)
 
     def test_connection_fields(self):
