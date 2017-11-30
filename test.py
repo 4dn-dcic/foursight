@@ -5,7 +5,6 @@ import json
 import app
 from chalicelib.checksuite import CheckSuite
 from chalicelib.fs_connection import FSConnection
-import chalicelib.ff_utils
 
 
 class TestUnitTests(unittest.TestCase):
