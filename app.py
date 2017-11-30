@@ -20,7 +20,6 @@ jin_env = Environment(
 )
 
 ENVIRONMENTS = {}
-CACHED = {}
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 
@@ -78,12 +77,15 @@ def init_connection(environ):
             'checks': {}
         }
         return None, error_res
-    try:
-        connection = CACHED[environ]
-    except KeyError:
-        info = ENVIRONMENTS[environ]
-        CACHED[environ] = FSConnection(environ, info)
-        connection = CACHED[environ]
+    connection = FSConnection(environ, ENVIRONMENTS[environ])
+    if not connection.is_up:
+        error_res = {
+            'status': 'error',
+            'description': 'The connection to fourfront is down',
+            'environment': environ,
+            'checks': {}
+        }
+        return None, error_res
     return connection, error_res
 
 
