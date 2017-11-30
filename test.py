@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import unittest
 import datetime
 import json
@@ -37,7 +37,7 @@ class TestUnitTests(unittest.TestCase):
         ]
         for bad_check_info in bad_check_group:
             check_res = run_check(self.connection, bad_check_info[0], bad_check_info[1])
-            self.assertTrue(isinstance(check_res, basestring))
+            self.assertTrue(isinstance(check_res, str))
             self.assertTrue('ERROR' in check_res)
 
     def test_checkresult_basics(self):
