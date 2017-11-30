@@ -195,7 +195,7 @@ def view_foursight(environ):
                 'checks': results
             })
     # prioritize these environments
-    env_order = ['webprod', 'webprod2', 'webdev', 'hotseat']
+    env_order = ['data', 'staging', 'webdev', 'hotseat']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
     template = jin_env.get_template('template.html')
     html_resp.body = template.render(envs=total_envs, stage=STAGE)
