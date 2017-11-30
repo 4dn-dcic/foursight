@@ -7,6 +7,9 @@ import json
 import datetime
 import boto3
 
+def test_function_unused():
+    # this is just here for testing purposes
+    return
 
 @check_function
 def elastic_beanstalk_health(connection, **kwargs):

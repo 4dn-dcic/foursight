@@ -3,7 +3,8 @@ import unittest
 import datetime
 import json
 import app
-from chalicelib.check_utils import run_check_group, get_check_group_latest, run_check, get_check_strings, init_check_res
+from chalicelib.check_utils import *
+from chalicelib.utils import *
 from chalicelib.fs_connection import FSConnection
 
 
@@ -15,21 +16,32 @@ class TestUnitTests(unittest.TestCase):
         'ff_env': None
     }
     connection = FSConnection('test', environ_info)
-    suite = CheckSuite(connection)
 
     def test_connection_fields(self):
         self.assertTrue(self.connection.fs_environment == 'test')
         self.assertTrue(self.connection.s3_connection.status_code == 404)
 
-    def test_checksuite_basics(self):
-        check_res = run_check('wrangler_checks/item_counts_by_type', {}, [])
-        self.assertTrue(len(check_res) == 1)
-        check_json = json.loads(check_res[0])
-        self.assertTrue(check_json.get('status') == 'ERROR')
-        self.assertTrue(check_json.get('name') == 'item_counts_by_type')
+    def test_run_check_basics(self):
+        check_res = run_check(self.connection, 'wrangler_checks/item_counts_by_type', {})
+        # run_check returns a dict with results
+        self.assertTrue(check_res.get('status') == 'ERROR')
+        self.assertTrue(check_res.get('name') == 'item_counts_by_type')
+
+    def test_run_check_errors(self):
+        bad_check_group = [
+            ['indexing_progress', {}, []],
+            ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', []],
+            ['syscks/indexing_progress', {}, []],
+            ['wrangler_checks/iteasdts_by_type', {}, []],
+            ['system_checks/test_function_unused', {}, []]
+        ]
+        for bad_check_info in bad_check_group:
+            check_res = run_check(self.connection, bad_check_info[0], bad_check_info[1])
+            self.assertTrue(isinstance(check_res, basestring))
+            self.assertTrue('ERROR' in check_res)
 
     def test_checkresult_basics(self):
-        test_check = init_check_res(connection, 'test_check', description='Unittest check')
+        test_check = init_check_res(self.connection, 'test_check', description='Unittest check')
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
@@ -38,7 +50,7 @@ class TestUnitTests(unittest.TestCase):
         self.assertTrue(formatted_res.get('status') == 'PEND')
         self.assertTrue(formatted_res.get('title') == 'Test Check')
         self.assertTrue(formatted_res.get('description') == 'Unittest check')
-        check_res = json.loads(test_check.store_result())
+        check_res = test_check.store_result()
         self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == formatted_res.get('name'))
         self.assertTrue(check_res.get('description') == "Malformed status; look at Foursight check definition.")
@@ -51,10 +63,8 @@ class TestIntegrated(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app.init_connection(environ)
     if conn is None:
-        environ = 'webdev' # back up if self.environ is down
+        environ = 'hotseat' # back up if self.environ is down
         conn, _ = app.init_connection(environ)
-    checks_fxns, cs = app.init_checksuite('all', conn)
-    checks = [check.__name__ for check in checks_fxns]
 
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
@@ -73,16 +83,10 @@ class TestIntegrated(unittest.TestCase):
             assert('bucket' in env_data)
             assert('ff_env' in env_data)
 
-    def test_run_basics(self):
-        # run some checks
-        did_run = app.perform_run_checks(self.conn, 'all')
-        self.assertEqual(set(self.checks), set(did_run))
-        results, did_check = app.perform_get_latest(self.conn, 'all')
-        self.assertEqual(set(self.checks), set(did_check))
-
     def test_get_check(self):
         # do this for every check
-        for get_check in self.checks:
+        for check_str in get_check_strings():
+            get_check = check_str.split('/')[1]
             chalice_resp = app.get_check(self.environ, get_check)
             self.assertTrue(chalice_resp.status_code == 200)
             body = chalice_resp.body

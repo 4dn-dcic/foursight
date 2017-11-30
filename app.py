@@ -205,18 +205,34 @@ def view_foursight(environ):
     return html_resp
 
 
-@app.route('/run/{environ}/{check_group}', methods=['PUT', 'GET'])
-def run_foursight(environ, check_group):
+@app.route('/run/{environ}/{check_group}', methods=['PUT'])
+def run_foursight_checks(environ, check_group):
     """
-    Two functionalities, based on the request method.
-
-    If PUT:
     Run the given checks on the given environment, creating a record in the
     corresponding S3 bucket under the check's method name.
     The latest run of checks replaces the 'latest' label for each check
     directory in S3 and also creates a timestamped record.
+    """
+    response = Response('Foursight run')
+    connection, error_res = init_connection(environ)
+    if connection is None:
+        response.body = error_res
+        response.status_code = 400
+        return response
+    did_run = run_check_group(connection, check_group)
+    response.body = {
+        'status': 'success',
+        'environment': environ,
+        'check_group': check_group,
+        'checks': did_run
+    }
+    response.status_code = 200
+    return response
 
-    If GET:
+
+@app.route('/run/{environ}/{check_group}', methods=['GET'])
+def get_foursight_checks(environ, check_group):
+    """
     Return JSON of each check tagged with the "latest" tag for checks
     within given check_group for the given environment. If check_group == 'all', every
     registered check will be returned. Otherwise, must be a valid check_group
@@ -228,26 +244,15 @@ def run_foursight(environ, check_group):
         response.body = error_res
         response.status_code = 400
         return response
-    if app.current_request.method == 'PUT':
-        did_run = run_check_group(connection, check_group)
-        response.body = {
-            'status': 'success',
-            'environment': environ,
-            'check_group': check_group,
-            'checks': did_run
-        }
-        response.status_code = 200
-        return response
-    else: # GET. latest results for each check
-        results = get_check_group_latest(connection, check_group)
-        response.body = {
-            'status': 'success',
-            'environment': environ,
-            'check_group': check_group,
-            'checks': results
-        }
-        response.status_code = 200
-        return response
+    results = get_check_group_latest(connection, check_group)
+    response.body = {
+        'status': 'success',
+        'environment': environ,
+        'check_group': check_group,
+        'checks': results
+    }
+    response.status_code = 200
+    return response
 
 
 @app.route('/checks/{environ}/{check}', methods=['GET'])
