@@ -13,7 +13,7 @@ class TestUnitTests(unittest.TestCase):
     suite = CheckSuite(connection)
 
     def test_connection_fields(self):
-        self.assertTrue(self.connection.environment == 'test')
+        self.assertTrue(self.connection.fs_environment == 'test')
         self.assertTrue(self.connection.is_up == False)
         self.assertTrue(self.connection.s3_connection.status_code == 404)
 
@@ -54,7 +54,7 @@ class TestIntegrated(unittest.TestCase):
         self.assertFalse(self.conn is None)
         self.assertTrue(self.conn.is_up)
         # test the ff connection
-        assert(self.conn.ff_connection.server == self.conn.server)
+        assert(self.conn.ff_connection.ff == self.conn.ff)
         assert(self.conn.ff_connection.user)
         assert(self.conn.ff_connection.email)
         assert(self.conn.ff_connection.lab)

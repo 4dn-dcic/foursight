@@ -87,7 +87,7 @@ class CheckSuite(object):
         eb_client = boto3.client('elasticbeanstalk')
         try:
             resp = eb_client.describe_environment_health(
-                EnvironmentName=''.join(['fourfront-', self.connection.environment]),
+                EnvironmentName=''.join(['fourfront-', self.connection.fs_environment]),
                 AttributeNames=['All']
             )
         except:
@@ -105,7 +105,7 @@ class CheckSuite(object):
         full_output['instance_health'] = []
         try:
             resp = eb_client.describe_instances_health(
-                EnvironmentName=''.join(['fourfront-', self.connection.environment]),
+                EnvironmentName=''.join(['fourfront-', self.connection.fs_environment]),
                 AttributeNames=['All']
             )
         except:
@@ -191,7 +191,7 @@ class CheckSuite(object):
         # run the check
         item_counts = {}
         warn_item_counts = {}
-        server = self.connection.server
+        server = self.connection.ff
         try:
             counts_res = requests.get(''.join([server,'counts?format=json']))
         except:
