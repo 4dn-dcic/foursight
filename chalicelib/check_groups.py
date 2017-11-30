@@ -1,3 +1,9 @@
+# put the names of all modules that have checks within in them below
+CHECK_MODULES = [
+    'system_checks',
+    'wrangler_checks'
+]
+
 # define check groups for schedules here
 # each group is an array with entries corresponding to one check's run
 # info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies]

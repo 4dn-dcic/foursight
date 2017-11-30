@@ -5,11 +5,6 @@ from .check_groups import *
 import sys
 import importlib
 
-# put the names of all modules that have checks within in them below
-CHECK_MODULES = [
-    'system_checks',
-    'wrangler_checks'
-]
 # import modules that contain the checks
 for check_mod in CHECK_MODULES:
     try:

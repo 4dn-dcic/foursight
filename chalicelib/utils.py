@@ -62,17 +62,8 @@ def check_method_deco(method, decorator):
     return hasattr(method, 'decorator') and method.decorator == decorator
 
 
-# initialize the daily_check decorator
-def daily_check(func):
-    return func
-
-def rate_check(func):
-    return func
-
 def check_function(func):
     return func
 
 # the decorator used for all check functions
 check_function = make_registration_deco(check_function)
-daily_check = make_registration_deco(daily_check)
-rate_check = make_registration_deco(rate_check)

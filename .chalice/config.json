@@ -4,6 +4,7 @@
       "api_gateway_stage": "api",
       "autogen_policy": false,
       "lambda_memory_size": 256,
+      "lambda_timeout": 300,
       "environment_variables": {
           "chalice_stage": "dev"
       }
@@ -12,6 +13,7 @@
       "api_gateway_stage": "api",
       "autogen_policy": false,
       "lambda_memory_size": 256,
+      "lambda_timeout": 300,
       "environment_variables": {
           "chalice_stage": "prod"
       }
