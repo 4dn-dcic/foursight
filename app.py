@@ -81,6 +81,18 @@ def init_connection(environ):
     return connection, error_res
 
 
+def init_response(environ):
+    """
+    Generalized function to init response given an environment
+    """
+    response = Response('Foursight response')
+    connection, error_res = init_connection(environ)
+    if connection is None:
+        response.body = error_res
+        response.status_code = 400
+    return connection, response
+
+
 # from chalice import AuthResponse
 # import jwt
 # from base64 import b64decode
@@ -207,11 +219,8 @@ def run_foursight_checks(environ, check_group):
     The latest run of checks replaces the 'latest' label for each check
     directory in S3 and also creates a timestamped record.
     """
-    response = Response('Foursight run')
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
-        response.status_code = 400
+    connection, response = init_response(environ)
+    if not connection:
         return response
     did_run = run_check_group(connection, check_group)
     response.body = {
@@ -232,11 +241,8 @@ def get_foursight_checks(environ, check_group):
     registered check will be returned. Otherwise, must be a valid check_group
     name.
     """
-    response = Response('Foursight run')
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
-        response.status_code = 400
+    connection, response = init_response(environ)
+    if not connection:
         return response
     results = get_check_group_latest(connection, check_group)
     response.body = {
@@ -254,11 +260,8 @@ def get_check(environ, check):
     """
     Get a check result that isn't necessarily defined within foursight.
     """
-    response = Response('Foursight get_check')
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
-        response.status_code = 400
+    connection, response = init_response(environ)
+    if not connection:
         return response
     TempCheck = CheckResult(connection.s3_connection, check)
     latest_res = TempCheck.get_latest_check()
@@ -288,11 +291,8 @@ def put_check(environ, check):
     corresponding to the fields in CheckResult, namely:
     title, status, description, brief_output, full_output.
     """
-    response = Response('Foursight put_check')
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
-        response.status_code = 400
+    connection, response = init_response(environ)
+    if not connection:
         return response
     request = app.current_request
     put_data = request.json_body
@@ -403,7 +403,7 @@ def get_environment(environ):
         return Response(
             body = {
                 'status': 'error',
-                'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
+                'description': 'Invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
                 'environment': environ
             },
             status_code = 400
@@ -435,42 +435,33 @@ def two_hour_checks(event):
 ### NON-STANDARD ENDPOINTS ###
 
 
-@app.route('/cleanup/{environ}', methods=['GET'])
-def cleanup(environ):
-    """
-    For a given environment, remove all tests records from S3 that are no
-    long being used (i.e. not currently defined within checksuite).
-    Will not remove auth.
-    """
-    response = Response('Foursight cleanup')
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
-        response.status_code = 400
-        return response
-    all_keys = set(connection.s3_connection.list_all_keys())
-    # never delete these keys
-    if 'auth' in all_keys:
-        all_keys.remove('auth')
-    check_strs = get_check_strings()
-    for check_str in check_strs:
-        name = check_str.split('/')[1]
-        # remove all keys with prefix equal to this method name
-        method_keys = set(connection.s3_connection.list_keys_w_prefix(name))
-        all_keys = all_keys - method_keys
-    if len(all_keys) > 0:
-        connection.s3_connection.delete_keys(list(all_keys))
-    response.body = {
-        'status': 'success',
-        'environment': environ,
-        'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
-        'keys_cleaned': list(all_keys)
-    }
-    response.status_code = 200
-    return response
-
-
-# this route is purposefully un-authorized
-@app.route('/introspect', methods=['GET'])
-def introspect():
-    return json.dumps(app.current_request.to_dict())
+# @app.route('/cleanup/{environ}', methods=['GET'])
+# def cleanup(environ):
+#     """
+#     For a given environment, remove all tests records from S3 that are no
+#     long being used (i.e. not currently defined within checksuite).
+#     Will not remove auth.
+#     """
+#     connection, response = init_response(environ)
+#     if not connection:
+#         return response
+#     all_keys = set(connection.s3_connection.list_all_keys())
+#     # never delete these keys
+#     if 'auth' in all_keys:
+#         all_keys.remove('auth')
+#     check_strs = get_check_strings()
+#     for check_str in check_strs:
+#         name = check_str.split('/')[1]
+#         # remove all keys with prefix equal to this method name
+#         method_keys = set(connection.s3_connection.list_keys_w_prefix(name))
+#         all_keys = all_keys - method_keys
+#     if len(all_keys) > 0:
+#         connection.s3_connection.delete_keys(list(all_keys))
+#     response.body = {
+#         'status': 'success',
+#         'environment': environ,
+#         'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
+#         'keys_cleaned': list(all_keys)
+#     }
+#     response.status_code = 200
+#     return response
