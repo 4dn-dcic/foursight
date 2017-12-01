@@ -187,6 +187,10 @@ class TestCheckUtils(unittest.TestCase):
     def test_run_check_group(self):
         all_checks_res = check_utils.run_check_group(self.conn, 'all')
         self.assertTrue(isinstance(all_checks_res, list) and len(all_checks_res) > 0)
+        for check_res in all_checks_res:
+            self.assertTrue(isinstance(check_res, dict))
+            self.assertTrue('name' in check_res)
+            self.assertTrue('status' in check_res)
         # non-existant check group
         bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
         assert(bad_checks_res == [])
@@ -229,6 +233,7 @@ class TestCheckUtils(unittest.TestCase):
                     self.assertTrue(len(check_info) == 3)
                     self.assertTrue(isinstance(check_info[1], dict))
                     self.assertTrue(isinstance(check_info[2], list))
+
 
 if __name__ == '__main__':
     unittest.main()
