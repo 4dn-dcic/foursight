@@ -4,8 +4,7 @@ import unittest
 import datetime
 import json
 import app
-from chalicelib.check_utils import *
-from chalicelib.utils import *
+from chalicelib import check_utils, utils, check_groups
 from chalicelib.fs_connection import FSConnection
 
 
@@ -26,13 +25,13 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(self.connection.ff_env == 'test3')
 
     def test_run_check_with_bad_connection(self):
-        check_res = run_check(self.connection, 'wrangler_checks/item_counts_by_type', {})
+        check_res = check_utils.run_check(self.connection, 'wrangler_checks/item_counts_by_type', {})
         # run_check returns a dict with results
         self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
     def test_checkresult_basics(self):
-        test_check = init_check_res(self.connection, 'test_check', description='Unittest check')
+        test_check = utils.init_check_res(self.connection, 'test_check', description='Unittest check')
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
@@ -155,22 +154,10 @@ class TestCheckUtils(unittest.TestCase):
         environ = 'hotseat' # back up if self.environ is down
         conn, _ = app.init_connection(environ)
 
-    def test_run_check_errors(self):
-        bad_check_group = [
-            ['indexing_progress', {}, []],
-            ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', []],
-            ['syscks/indexing_progress', {}, []],
-            ['wrangler_checks/iteasdts_by_type', {}, []],
-            ['system_checks/test_function_unused', {}, []]
-        ]
-        for bad_check_info in bad_check_group:
-            check_res = run_check(self.conn, bad_check_info[0], bad_check_info[1])
-            self.assertFalse(isinstance(check_res, dict))
-            self.assertTrue('ERROR' in check_res)
-
     def test_get_check_strings(self):
         # do this for every check
-        for check_str in get_check_strings():
+        all_check_strs = check_utils.get_check_strings()
+        for check_str in all_check_strs:
             get_check = check_str.split('/')[1]
             chalice_resp = app.get_check(self.environ, get_check)
             self.assertTrue(chalice_resp.status_code == 200)
@@ -180,7 +167,68 @@ class TestCheckUtils(unittest.TestCase):
             self.assertTrue(body.get('checks', {}).get('name') == get_check)
             self.assertTrue(body.get('checks', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
             self.assertTrue('timestamp' in body.get('checks', {}))
+        # test a specific check
+        one_check_str = check_utils.get_check_strings('indexing_progress')
+        self.assertTrue(one_check_str == 'system_checks/indexing_progress')
+        self.assertTrue(one_check_str in all_check_strs)
 
+    def test_fetch_check_group(self):
+        all_checks = check_utils.fetch_check_group('all')
+        self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
+        daily_checks = check_utils.fetch_check_group('daily_checks')
+        # get list of check strings from lists of check info
+        daily_check_strs = [chk_str[0] for chk_str in daily_checks]
+        all_check_strs = [chk_str[0] for chk_str in all_checks]
+        self.assertTrue(set(daily_check_strs) <= set(all_check_strs))
+        # non-existant check group
+        bad_checks = check_utils.fetch_check_group('not_a_check_group')
+        self.assertTrue(bad_checks is None)
+
+    def test_run_check_group(self):
+        all_checks_res = check_utils.run_check_group(self.conn, 'all')
+        self.assertTrue(isinstance(all_checks_res, list) and len(all_checks_res) > 0)
+        # non-existant check group
+        bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
+        assert(bad_checks_res == [])
+
+    def test_get_check_group_latest(self):
+        all_res = check_utils.get_check_group_latest(self.conn, 'all')
+        for check_res in all_res:
+            self.assertTrue(isinstance(check_res, dict))
+            self.assertTrue('name' in check_res)
+            self.assertTrue('status' in check_res)
+        # non-existant check group
+        bad_res = check_utils.get_check_group_latest(self.conn, 'not_a_check_group')
+        assert(bad_res == [])
+
+    def test_run_check(self):
+        test_info = ['system_checks/indexing_records', {}, []]
+        check_res = check_utils.run_check(self.conn, test_info[0], test_info[1])
+        self.assertTrue(isinstance(check_res, dict))
+        self.assertTrue('name' in check_res)
+        self.assertTrue('status' in check_res)
+
+    def test_run_check_errors(self):
+        bad_check_group = [
+            ['indexing_progress', {}, []],
+            ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', []],
+            ['syscks/indexing_progress', {}, []],
+            ['wrangler_checks/iteasdts_by_type', {}, []],
+            ['system_checks/test_function_unused', {}, []]
+        ]
+        for bad_check_info in bad_check_group:
+            check_res = check_utils.run_check(self.conn, bad_check_info[0], bad_check_info[1])
+            self.assertFalse(isinstance(check_res, dict))
+            self.assertTrue('ERROR' in check_res)
+
+    def test_check_groups(self):
+        # this may not be the best approach
+        for key, val in check_groups.__dict__.items():
+            if '_checks' in key and isinstance(val, list):
+                for check_info in val:
+                    self.assertTrue(len(check_info) == 3)
+                    self.assertTrue(isinstance(check_info[1], dict))
+                    self.assertTrue(isinstance(check_info[2], list))
 
 if __name__ == '__main__':
     unittest.main()
