@@ -1,5 +1,27 @@
 # General utils for foursight
 from __future__ import print_function, unicode_literals
+import types
+from importlib import import_module
+from .checkresult import CheckResult
+
+
+def init_check_res(connection, name, title=None, description=None, extension=".json"):
+    """
+    Initialize a CheckResult object, which holds all information for a
+    check and methods necessary to store and retrieve latest/historical
+    results. name is the only required parameter and MUST be equal to
+    the method name of the check as defined in CheckSuite.
+    """
+    return CheckResult(connection.s3_connection, name, title, description, extension)
+
+
+def set_default_kwargs(default_kwargs, in_kwargs):
+    """
+    Simple time-saver function to set intial kwargs in checks.
+    Triggers if the given args are {}
+    """
+    return default_kwargs if in_kwargs == {} else in_kwargs
+
 
 def make_registration_deco(inDecorator):
     """
@@ -20,21 +42,28 @@ def make_registration_deco(inDecorator):
 
 def get_methods_by_deco(cls, decorator):
     """
-    Returns all methods in cls with decorator as a generator;
+    Returns all methods in cls/module with decorator as a list;
     the input decorator must be registered with the make_registration_deco.
     Again, see: S.O. 5910703
     """
+    methods = []
     for maybeDecorated in cls.__dict__.values():
         if hasattr(maybeDecorated, 'decorator'):
             if maybeDecorated.decorator == decorator:
-                yield maybeDecorated
+                methods.append(maybeDecorated)
+    return methods
 
 
-def get_closest(items, pivot):
+def check_method_deco(method, decorator):
     """
-    Return the item in the list of items closest to the given pivot.
-    Items should be given in tuple form (ID, value (to compare))
-    Intended primarily for use with datetime objects.
-    See: S.O. 32237862
+    See if the given method has the given decorator. Returns True if so,
+    False if not.
     """
-    return min(items, key=lambda x: abs(x[1] - pivot))
+    return hasattr(method, 'decorator') and method.decorator == decorator
+
+
+def check_function(func):
+    return func
+
+# the decorator used for all check functions
+check_function = make_registration_deco(check_function)
