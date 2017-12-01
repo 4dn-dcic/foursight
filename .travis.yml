@@ -18,12 +18,12 @@ after_success:
 - |
   if [[ $TRAVIS_PULL_REQUEST == 'false' && $TRAVIS_PYTHON_VERSION == '2.7' ]]; then
     if [[ $TRAVIS_BRANCH == 'master' ]]; then
-      chalice deploy --stage dev;
       echo 'Tests succeeded! Deploying to dev stage.';
+      python -m deploy dev;
     fi
     if [[ $TRAVIS_BRANCH == 'production' ]]; then
-      chalice deploy --stage prod;
       echo 'Tests succeeded! Deploying to prod stage.';
+      python -m deploy prod;
     fi
   else
     echo 'Tests succeeded, but this is not the time for deployment.';
