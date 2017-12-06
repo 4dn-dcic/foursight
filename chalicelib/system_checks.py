@@ -11,7 +11,7 @@ def test_function_unused():
     # this is just here for testing purposes
     return
 
-@check_function
+@check_function(default={'abc':'123'})
 def elastic_beanstalk_health(connection, **kwargs):
     """
     Check both environment health and health of individual instances
@@ -214,6 +214,6 @@ def indexing_records(connection, **kwargs):
 
 @check_function
 def staging_deployment(connection, **kwargs):
-    check = init_check_res(connection, 'staging_deployment')
-    check.status = 'IGNORE'
-    return check.store_result()
+    # dummy function since we don't want this to store results when run
+    # used with PUT /checks/ endpoint
+    return
