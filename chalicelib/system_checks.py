@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, set_default_kwargs
+from .utils import check_function, init_check_res, set_default_kwargs, build_dummy_result
 from collections import OrderedDict
 import requests
 import sys
@@ -215,5 +215,4 @@ def indexing_records(connection, **kwargs):
 @check_function
 def staging_deployment(connection, **kwargs):
     # dummy function since we don't want this to store results when run
-    # used with PUT /checks/ endpoint
-    return
+    return build_dummy_result('staging_deployment')
