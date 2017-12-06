@@ -11,7 +11,7 @@ def test_function_unused():
     # this is just here for testing purposes
     return
 
-@check_function(default={'abc':'123'})
+@check_function
 def elastic_beanstalk_health(connection, **kwargs):
     """
     Check both environment health and health of individual instances
