@@ -62,8 +62,15 @@ def check_method_deco(method, decorator):
     return hasattr(method, 'decorator') and method.decorator == decorator
 
 
-def check_function(func):
-    return func
+def check_function(*default_args, **default_kwargs):
+    def outer(func):
+        def inner_func(*args, **kwargs):
+            if kwargs == {}:
+                kwargs.update(default_kwargs)
+            return func(*args, **kwargs)
+        return inner_func
+    return outer_func
+
 
 # the decorator used for all check functions
 check_function = make_registration_deco(check_function)
