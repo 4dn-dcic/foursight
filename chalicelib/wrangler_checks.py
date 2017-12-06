@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, set_default_kwargs
+from .utils import check_function, init_check_res
 from collections import OrderedDict
 import requests
 import sys
@@ -8,7 +8,7 @@ import datetime
 import boto3
 
 
-@check_function
+@check_function()
 def item_counts_by_type(connection, **kwargs):
     def process_counts(count_str):
         # specifically formatted for FF health page
@@ -62,7 +62,7 @@ def item_counts_by_type(connection, **kwargs):
     return check.store_result()
 
 
-@check_function
+@check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts')

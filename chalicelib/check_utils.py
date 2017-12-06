@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import get_methods_by_deco, check_method_deco, check_function
+from .utils import get_methods_by_deco, check_method_deco, CHECK_DECO
 from .checkresult import CheckResult
 from .check_groups import *
 import sys
@@ -22,7 +22,7 @@ def get_check_strings(specific_check=None):
     all_checks = []
     for check_mod in CHECK_MODULES:
         if globals().get(check_mod):
-            methods = get_methods_by_deco(globals()[check_mod], check_function)
+            methods = get_methods_by_deco(globals()[check_mod], CHECK_DECO)
             for method in methods:
                 check_str = '/'.join([check_mod, method.__name__])
                 if specific_check and specific_check == method.__name__:
@@ -118,7 +118,7 @@ def run_check(connection, check_str, check_kwargs):
     check_method = check_mod.__dict__.get(check_name_str)
     if not check_method:
         return ' '.join(['ERROR. Check name is not valid.', error_str])
-    if not check_method_deco(check_method, check_function):
+    if not check_method_deco(check_method, CHECK_DECO):
         return ' '.join(['ERROR. Ensure the check_function decorator is present.', error_str])
     return check_method(connection, **check_kwargs)
 
