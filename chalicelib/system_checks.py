@@ -115,9 +115,8 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     return check.store_result()
 
 
-@check_function(abc='123')
+@check_function()
 def indexing_progress(connection, **kwargs):
-    import pdb; pdb.set_trace()
     check = init_check_res(connection, 'indexing_progress')
     # get latest and db/es counts closest to 2 hrs ago
     counts_check = init_check_res(connection, 'item_counts_by_type')

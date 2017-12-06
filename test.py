@@ -237,6 +237,20 @@ class TestCheckUtils(unittest.TestCase):
                     self.assertTrue(isinstance(check_info[1], dict))
                     self.assertTrue(isinstance(check_info[2], list))
 
+class TestUtils(unittest.TestCase):
+
+    @utils.check_function(abc=123)
+    def test_function_dummy(*args, **kwargs):
+        return kwargs
+
+    def test_check_function_deco_default_kwargs(self):
+        # test to see if the check_function decorator correctly overrides
+        # kwargs of decorated function if none are provided
+        kwargs_default = self.test_function_dummy()
+        self.assertTrue(kwargs_default == {'abc': 123})
+        kwargs_override = self.test_function_dummy(bcd=234)
+        self.assertTrue(kwargs_override == {'bcd': 234})
+
 
 if __name__ == '__main__':
     unittest.main()
