@@ -1,6 +1,7 @@
 # General utils for foursight
 from __future__ import print_function, unicode_literals
 import types
+import datetime
 from importlib import import_module
 from .checkresult import CheckResult
 
@@ -21,6 +22,19 @@ def set_default_kwargs(default_kwargs, in_kwargs):
     Triggers if the given args are {}
     """
     return default_kwargs if in_kwargs == {} else in_kwargs
+
+
+def build_dummy_result(check_name):
+    """
+    Simple function to return a dict consistent with a CheckResult dictionary
+    content but is not actually stored.
+    """
+    return {
+        'status': 'IGNORE',
+        'name': check_name,
+        'status': 'success',
+        'timestamp': datetime.datetime.utcnow().isoformat()
+    }
 
 
 def make_registration_deco(inDecorator):

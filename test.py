@@ -160,13 +160,16 @@ class TestCheckUtils(unittest.TestCase):
         for check_str in all_check_strs:
             get_check = check_str.split('/')[1]
             chalice_resp = app.get_check(self.environ, get_check)
-            self.assertTrue(chalice_resp.status_code == 200)
             body = chalice_resp.body
-            self.assertTrue(body.get('status') == 'success')
-            self.assertTrue(body.get('checks_found') == get_check)
-            self.assertTrue(body.get('checks', {}).get('name') == get_check)
-            self.assertTrue(body.get('checks', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
-            self.assertTrue('timestamp' in body.get('checks', {}))
+            if body.get('status') == 'success':
+                self.assertTrue(chalice_resp.status_code == 200)
+                self.assertTrue(body.get('checks_found') == get_check)
+                self.assertTrue(body.get('checks', {}).get('name') == get_check)
+                self.assertTrue(body.get('checks', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
+                self.assertTrue('timestamp' in body.get('checks', {}))
+            elif body.get('status') == 'error':
+                error_msg = "Could not get results for: " + get_check + ". Maybe no such check result exists?"
+                self.assertTrue(body.get('description') == error_msg)
         # test a specific check
         one_check_str = check_utils.get_check_strings('indexing_progress')
         self.assertTrue(one_check_str == 'system_checks/indexing_progress')
