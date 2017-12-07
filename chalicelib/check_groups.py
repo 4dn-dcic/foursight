@@ -8,6 +8,8 @@ CHECK_MODULES = [
 # each group is an array with entries corresponding to one check's run
 # info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies]
 
+# check group names should end in "_checks" by convention
+
 daily_checks = [
     ['system_checks/elastic_beanstalk_health', {}, []],
     ['system_checks/status_of_elasticsearch_indices', {}, []],
