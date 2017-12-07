@@ -27,7 +27,6 @@ def build_dummy_result(check_name):
     return {
         'status': 'IGNORE',
         'name': check_name,
-        'status': 'success',
         'timestamp': datetime.datetime.utcnow().isoformat()
     }
 

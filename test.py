@@ -54,6 +54,10 @@ class TestAppRoutes(unittest.TestCase):
         environ = 'hotseat' # back up if self.environ is down
         conn, _ = app.init_connection(environ)
 
+    def home_route(self):
+        res = app.index()
+        self.assertTrue(json.loads(res) == {'foursight': 'insight into fourfront'})
+
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
         # test the ff connection
@@ -90,7 +94,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
         # this is pretty weak
-        res2 = app.view_rerun('environ', 'indexing_progress')
+        res2 = app.view_rerun(self.environ, 'indexing_progress')
         self.assertTrue('<!DOCTYPE html>' in res2.body)
         self.assertTrue('Foursight' in res2.body)
         self.assertFalse(res2 == res)
@@ -174,6 +178,9 @@ class TestCheckUtils(unittest.TestCase):
         one_check_str = check_utils.get_check_strings('indexing_progress')
         self.assertTrue(one_check_str == 'system_checks/indexing_progress')
         self.assertTrue(one_check_str in all_check_strs)
+        # test a specific check that doesn't exist
+        bad_check_str = check_utils.get_check_strings('not_a_real_check')
+        self.assertTrue(bad_check_str is None)
 
     def test_fetch_check_group(self):
         all_checks = check_utils.fetch_check_group('all')
@@ -197,6 +204,11 @@ class TestCheckUtils(unittest.TestCase):
         # non-existant check group
         bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
         assert(bad_checks_res == [])
+        # use a bad check groups
+        test_checks_res = check_utils.run_check_group(self.conn, 'malformed_test_checks')
+        assert("ERROR with [{}, []] in group: malformed_test_checks" in test_checks_res)
+        assert("ERROR with ['system_checks/indexing_progress', []] in group: malformed_test_checks" in test_checks_res)
+        assert("ERROR with ['system_checks/indexing_progress', {}] in group: malformed_test_checks" in test_checks_res)
 
     def test_get_check_group_latest(self):
         all_res = check_utils.get_check_group_latest(self.conn, 'all')
@@ -207,6 +219,9 @@ class TestCheckUtils(unittest.TestCase):
         # non-existant check group
         bad_res = check_utils.get_check_group_latest(self.conn, 'not_a_check_group')
         assert(bad_res == [])
+        # bad check group. will skip all malformed checks
+        test_res = check_utils.get_check_group_latest(self.conn, 'malformed_test_checks')
+        assert(len(test_res) == 0)
 
     def test_run_check(self):
         test_info = ['system_checks/indexing_records', {}, []]
@@ -233,12 +248,15 @@ class TestCheckUtils(unittest.TestCase):
         for key, val in check_groups.__dict__.items():
             if '_checks' in key and isinstance(val, list):
                 for check_info in val:
-                    self.assertTrue(len(check_info) == 3)
-                    self.assertTrue(isinstance(check_info[1], dict))
-                    self.assertTrue(isinstance(check_info[2], list))
+                    if key != 'malformed_test_checks':
+                        self.assertTrue(len(check_info) == 3)
+                        self.assertTrue(isinstance(check_info[1], dict))
+                        self.assertTrue(isinstance(check_info[2], list))
+                    else:
+                        self.assertTrue(len(check_info) != 3)
+
 
 class TestUtils(unittest.TestCase):
-
     @utils.check_function(abc=123)
     def test_function_dummy(*args, **kwargs):
         return kwargs
@@ -250,6 +268,13 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(kwargs_default == {'abc': 123})
         kwargs_override = self.test_function_dummy(bcd=234)
         self.assertTrue(kwargs_override == {'bcd': 234})
+
+    def test_build_dummy_result(self):
+        dummy_check = 'dumb_test'
+        dummy_res = utils.build_dummy_result(dummy_check)
+        self.assertTrue(dummy_res['status'] == 'IGNORE')
+        self.assertTrue(dummy_res['name']) == dummy_check
+        self.assertTrue('timestamp' in dummy_res)
 
 
 if __name__ == '__main__':

@@ -20,3 +20,10 @@ two_hour_checks = [
     ['system_checks/indexing_progress', {}, []],
     ['wrangler_checks/item_counts_by_type', {}, []]
 ]
+
+# don't use this check group! just for testing
+malformed_test_checks = [
+    [{}, []], # bad
+    ['system_checks/indexing_progress', []], # bad
+    ['system_checks/indexing_progress', {}], # bad
+]
