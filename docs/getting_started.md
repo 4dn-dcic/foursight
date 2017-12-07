@@ -9,10 +9,17 @@ Foursight itself is based around the concepts of 'checks', which operate on the 
 
 Checks are defined in individual files (called check modules) and grouped together into check groups, which are run as units. For example, if you made a bunch of checks that you wanted to run daily, you would create a group for these checks and schedule it to run on a CloudWatch CRON in app.py. Currently check groups are defined in check_groups.py. An example check module is system_checks.py. More details on how to write checks and check groups are below.
 
-## Stages and environments
-These are two important concepts to introduce. There are currently two Foursight stages, ```dev``` and ```prod```, which each define a separately deployed Chalice application. That means there is a different set of Lambdas, API Gateways, etc. for each stage. The reason to have multiple stages is so the one stage, ```dev```, can be used for testing new stuff while ```prod``` is for battle-tested checks. For information on how to deploy to specific stages, see the deployment documentation.
+## Installing dependencies
+Before developing with Foursight, you must install the required Python packages and set up your AWS credentials locally. It is best practice to use a virtual environment. Packages can be installed with pip using the following command from the root Foursight directory:
 
-Foursight environments correspond to different Fourfront configurations and store their results separately of each other. For example, Fourfront has production and staging environments, which should have tests run individually on them. Environments are dynamically initialized for each Foursight API requests and are based off of items in S3. Both stages of Foursight have access to each individual environment, but the results for checks get stored separately. For example, there checks are stored separately for the production environment on dev stage and the production environment on prod stage. There would also be a unique bucket for checks on the staging environment on dev stage and the staging environment on prod stage, etc. Thus, there is a unique storage location for each combination of stage and environment. To read more about environments, see the environments documentation.
+```
+pip install -r requirements.txt
+```
+
+## Stages and environments
+These are two important concepts to introduce. There are currently two Foursight stages, ```dev``` and ```prod```, which each define a separately deployed Chalice application. That means there is a different set of Lambdas, API Gateways, etc. for each stage. The reason to have multiple stages is so the one stage, ```dev```, can be used for testing new stuff while ```prod``` is for battle-tested checks. For information on how to deploy to specific stages, see the [deployment documentation](./deployment.md).
+
+Foursight environments correspond to different Fourfront configurations and store their results separately of each other. For example, Fourfront has production and staging environments, which should have tests run individually on them. Environments are dynamically initialized for each Foursight API requests and are based off of items in S3. Both stages of Foursight have access to each individual environment, but the results for checks get stored separately. For example, there checks are stored separately for the production environment on dev stage and the production environment on prod stage. There would also be a unique bucket for checks on the staging environment on dev stage and the staging environment on prod stage, etc. Thus, there is a unique storage location for each combination of stage and environment. To read more about environments, see the [environments documentation](./environments.md).
 
 ## Creating a check
 The most fundamental unit of Foursight is the check. These encapsulate code that will be run using AWS Lambda and will store results in S3, which can later be visualized and queried. For the following, it's assumed that you want to create a check within an existing check module (i.e. file containing checks). Such a file is chalicelib/system_checks.py.
