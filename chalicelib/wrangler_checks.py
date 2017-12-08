@@ -117,7 +117,7 @@ def items_released_in_the_past_day(connection, **kwargs):
     full_output = check.full_output if check.full_output else {}
     item_output = []
     for res in results:
-        delta = datetime.timedelta(days=30)
+        delta = datetime.timedelta(days=1)
         if wrangler_utils.check_time_diff(res.get('date_created'), delta):
             item_output.append({
                 'uuid': res.get('uuid'),

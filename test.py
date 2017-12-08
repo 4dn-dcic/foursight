@@ -48,11 +48,8 @@ class TestFSConnection(unittest.TestCase):
 
 
 class TestAppRoutes(unittest.TestCase):
-    environ = 'mastertest' # hopefully this is up
+    environ = 'staging' # hopefully this is up
     conn, _ = app.init_connection(environ)
-    if conn is None:
-        environ = 'hotseat' # back up if self.environ is down
-        conn, _ = app.init_connection(environ)
 
     def home_route(self):
         res = app.index()
@@ -61,10 +58,10 @@ class TestAppRoutes(unittest.TestCase):
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
         # test the ff connection
-        self.assertTrue(self.conn.fs_environment == 'mastertest')
+        self.assertTrue(self.conn.fs_environment == 'staging')
         self.assertTrue(self.conn.ff)
         self.assertTrue(self.conn.es)
-        self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
+        self.assertTrue(self.conn.ff_env == 'fourfront-webprod')
 
     def test_init_environments(self):
         app.init_environments() # default to 'all' environments
@@ -152,11 +149,8 @@ class TestAppRoutes(unittest.TestCase):
 
 
 class TestCheckUtils(unittest.TestCase):
-    environ = 'mastertest' # hopefully this is up
+    environ = 'staging' # hopefully this is up
     conn, _ = app.init_connection(environ)
-    if conn is None:
-        environ = 'hotseat' # back up if self.environ is down
-        conn, _ = app.init_connection(environ)
 
     def test_get_check_strings(self):
         # do this for every check
@@ -190,6 +184,8 @@ class TestCheckUtils(unittest.TestCase):
         daily_check_strs = [chk_str[0] for chk_str in daily_checks]
         all_check_strs = [chk_str[0] for chk_str in all_checks]
         self.assertTrue(set(daily_check_strs) <= set(all_check_strs))
+        # make sure there are not duplicate check check names
+        self.assertTrue(len(all_check_strs) == len(set(all_check_strs)))
         # non-existant check group
         bad_checks = check_utils.fetch_check_group('not_a_check_group')
         self.assertTrue(bad_checks is None)
@@ -201,6 +197,7 @@ class TestCheckUtils(unittest.TestCase):
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
+            self.assertTrue('timestamp' in check_res)
         # non-existant check group
         bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
         assert(bad_checks_res == [])
@@ -209,6 +206,20 @@ class TestCheckUtils(unittest.TestCase):
         assert("ERROR with [{}, []] in group: malformed_test_checks" in test_checks_res)
         assert("ERROR with ['system_checks/indexing_progress', []] in group: malformed_test_checks" in test_checks_res)
         assert("ERROR with ['system_checks/indexing_progress', {}] in group: malformed_test_checks" in test_checks_res)
+
+    def run_check_group_repeats(self):
+        repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_group')
+        unified_timestamp = None
+        for check_res in repeat_res:
+            self.assertTrue(isinstance(check_res, dict))
+            self.assertTrue('name' in check_res)
+            self.assertTrue('status' in check_res)
+            self.assertTrue('timestamp' in check_res)
+            if unified_timestamp:
+                self.assertTrue(check_res['timestamp'] == unified_timestamp)
+            else:
+                # gotta set it on the first iteration
+                unified_timestamp = check_res['timestamp']
 
     def test_get_check_group_latest(self):
         all_res = check_utils.get_check_group_latest(self.conn, 'all')

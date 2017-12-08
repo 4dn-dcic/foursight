@@ -23,15 +23,17 @@ two_hour_checks = [
     ['wrangler_checks/item_counts_by_type', {}, []]
 ]
 
-wrangler_test_group = [
-    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'Biosample'}, []],
-    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
-    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'FileFastq'}, []]
-]
 
-# don't use this check group! just for testing
+
+# don't use these check groups! just for testing
 malformed_test_checks = [
     [{}, []], # bad
     ['system_checks/indexing_progress', []], # bad
     ['system_checks/indexing_progress', {}], # bad
+]
+
+wrangler_test_group = [
+    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'Biosample'}, []],
+    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
+    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'FileFastq'}, []]
 ]
