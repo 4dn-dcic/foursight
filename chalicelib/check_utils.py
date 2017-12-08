@@ -4,6 +4,7 @@ from .checkresult import CheckResult
 from .check_groups import *
 import sys
 import importlib
+import datetime
 
 # import modules that contain the checks
 for check_mod in CHECK_MODULES:
@@ -44,12 +45,19 @@ def run_check_group(connection, name):
     check_group = fetch_check_group(name)
     if not check_group:
         return check_results
+    group_timestamp = datetime.datetime.utcnow().isoformat()
     for check_info in check_group:
         if len(check_info) != 3:
             check_results.append(' '.join(['ERROR with', str(check_info), 'in group:', name]))
         else:
+            # add timestamp to each kwargs dict if not already specified
+            # this will have the effect of giving all checks the same id
+            # and combining results from repeats in the same check_group
+            [check_str, check_kwargs, check_deps] = check_info
+            if 'timestamp' not in check_kwargs:
+                check_kwargs['timestamp'] = group_timestamp
             # nothing done with dependencies yet
-            result = run_check(connection, check_info[0], check_info[1])
+            result = run_check(connection, check_str, check_kwargs)
             if result:
                 check_results.append(result)
     return check_results

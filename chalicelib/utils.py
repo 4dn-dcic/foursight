@@ -9,14 +9,14 @@ from .checkresult import CheckResult
 CHECK_DECO = 'check_function'
 
 
-def init_check_res(connection, name, title=None, description=None, extension=".json"):
+def init_check_res(connection, name, title=None, description=None, timestamp=None, extension=".json"):
     """
     Initialize a CheckResult object, which holds all information for a
     check and methods necessary to store and retrieve latest/historical
     results. name is the only required parameter and MUST be equal to
     the method name of the check as defined in CheckSuite.
     """
-    return CheckResult(connection.s3_connection, name, title, description, extension)
+    return CheckResult(connection.s3_connection, name, title, description, timestamp, extension)
 
 
 def build_dummy_result(check_name):

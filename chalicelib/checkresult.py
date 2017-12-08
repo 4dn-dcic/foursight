@@ -10,8 +10,26 @@ import json
 # holds a reference to the overall s3 connection as well
 
 class CheckResult(object):
-    def __init__(self, s3_connection, name, title=None, description=None, extension=".json"):
+    def __init__(self, s3_connection, name, title=None, description=None, timestamp=None, extension=".json"):
         self.s3_connection = s3_connection
+        # timestamp arg used if you want to overwrite an existing check
+        if timestamp:
+            ts_key = ''.join([name, '/', timestamp, extension])
+            stamp_res = s3_connection.get_object(ts_key)
+            if stamp_res:
+                # see if json
+                try:
+                    parsed_res = json.loads(stamp_res)
+                except ValueError:
+                    parsed_res = stamp_res
+                for key, val in parsed_res.items():
+                    setattr(self, key, val)
+                return
+            else:
+                # no previous results exist for this timestamp yet
+                self.timestamp = timestamp
+        else:
+            self.timestamp = None
         self.name = name
         if title is None:
             self.title = ' '.join(self.name.split('_')).title()
@@ -85,7 +103,8 @@ class CheckResult(object):
         if self.status.upper() not in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE']:
             self.status = 'ERROR'
             self.description = 'Malformed status; look at Foursight check definition.'
-        timestamp = datetime.datetime.utcnow().isoformat()
+        # if there's a set timestamp field, use that instead of curr utc time
+        timestamp = self.timestamp if self.timestamp else datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(timestamp)
         time_key = ''.join([self.name, '/', timestamp, self.extension])
         latest_key = ''.join([self.name, '/latest', self.extension])

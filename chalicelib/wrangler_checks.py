@@ -1,7 +1,7 @@
 from __future__ import print_function, unicode_literals
 from .utils import check_function, init_check_res
 import wrangler_utils
-import dcicutils
+from dcicutils import ff_utils
 import requests
 import sys
 import json
@@ -103,22 +103,34 @@ def change_in_item_counts(connection, **kwargs):
 
 @check_function(item_type='ExperimentSetReplicate')
 def items_released_in_the_past_day(connection, **kwargs):
-    check = check.init_check_res(connection, 'items_released_in_the_past_day')
+    item_type = kwargs.get('item_type')
+    ts_id = kwargs.get('timestamp')
+    check = init_check_res(connection, 'items_released_in_the_past_day', timestamp=ts_id)
     fdn_conn = wrangler_utils.get_FDN_Connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-    search_res = ff_utils.get_metadata('/search/?type=' + item_type, connection=fdn_conn, frame='raw')
+    # this could be done with an intelligent search with a query string...
+    # q=date_created:>=<one day ago>, with day ago in form YYYY-MM-DD
+    search_res = ff_utils.get_metadata('/search/?type=' + item_type, connection=fdn_conn, frame='object')
     results = search_res.get('@graph', [])
-    check.full_output = []
+    full_output = check.full_output if check.full_output else {}
+    item_output = []
     for res in results:
-        delta = datetime.time_delta(days=1)
+        delta = datetime.timedelta(days=30)
         if wrangler_utils.check_time_diff(res.get('date_created'), delta):
-            check.full_output.append({
+            item_output.append({
                 'uuid': res.get('uuid'),
                 '@id': res.get('@id'),
                 'date_created': res.get('date_created')
             })
-    if check.full_output:
+    if item_output:
+        full_output[item_type] = item_output
+    check.full_output = full_output
+    if full_output:
         check.status = 'WARN'
-        check.description = 'Items have been created in the past day'
+        check.description = 'Items have been created in the past day.'
+    else:
+        check.status = 'PASS'
+        check.description = 'No items have been created in the past day.'
+    return check.store_result()
