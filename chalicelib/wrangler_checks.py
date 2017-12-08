@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 from .utils import check_function, init_check_res
-from collections import OrderedDict
+import wrangler_utils
+import dcicutils
 import requests
 import sys
 import json
@@ -98,3 +99,26 @@ def change_in_item_counts(connection, **kwargs):
     else:
         check.status = 'PASS'
     return check.store_result()
+
+
+@check_function(item_type='ExperimentSetReplicate')
+def items_released_in_the_past_day(connection, **kwargs):
+    check = check.init_check_res(connection, 'items_released_in_the_past_day')
+    fdn_conn = wrangler_utils.get_FDN_Connection(connection)
+    if not fdn_conn:
+        check.status = 'ERROR'
+        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
+    search_res = ff_utils.get_metadata('/search/?type=' + item_type, connection=fdn_conn, frame='raw')
+    results = search_res.get('@graph', [])
+    check.full_output = []
+    for res in results:
+        delta = datetime.time_delta(days=1)
+        if wrangler_utils.check_time_diff(res.get('date_created'), delta):
+            check.full_output.append({
+                'uuid': res.get('uuid'),
+                '@id': res.get('@id'),
+                'date_created': res.get('date_created')
+            })
+    if check.full_output:
+        check.status = 'WARN'
+        check.description = 'Items have been created in the past day'

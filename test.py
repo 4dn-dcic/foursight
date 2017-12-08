@@ -266,8 +266,10 @@ class TestUtils(unittest.TestCase):
         # kwargs of decorated function if none are provided
         kwargs_default = self.test_function_dummy()
         self.assertTrue(kwargs_default == {'abc': 123})
-        kwargs_override = self.test_function_dummy(bcd=234)
-        self.assertTrue(kwargs_override == {'bcd': 234})
+        kwargs_add = self.test_function_dummy(bcd=234)
+        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234})
+        kwargs_override = self.test_function_dummy(abc=234)
+        self.assertTrue(kwargs_override == {'abc': 234})
 
     def test_build_dummy_result(self):
         dummy_check = 'dumb_test'

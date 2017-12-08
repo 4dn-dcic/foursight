@@ -62,8 +62,10 @@ def check_function(*default_args, **default_kwargs):
     def check_deco(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if kwargs == {}:
-                kwargs.update(default_kwargs)
+            # add all default args that are not defined in kwargs
+            for key in default_kwargs:
+                if key not in kwargs:
+                    kwargs[key] = default_kwargs[key]
             return func(*args, **kwargs)
         wrapper.check_decorator = CHECK_DECO
         return wrapper
