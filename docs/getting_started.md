@@ -59,6 +59,8 @@ def my_first_check(connection, **kwargs):
     check.store_result()
 ```
 
+Calling `check.store_result()` at the end of the check causes the result of the check to be written to S3 with a unique key created by the check name and time the check was initiated. In addition, each run of a check will overwrite the last "latest" check result, which is the one displayed from the Foursight front end. This is an important behavior of Foursight--the latest result is the one displayed.
+
 There are many possibilities to what a check can do. Please visit the ```writing_checks.md``` document for more information.
 
 ## Adding a check group

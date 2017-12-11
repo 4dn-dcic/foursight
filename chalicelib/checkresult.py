@@ -10,11 +10,12 @@ import json
 # holds a reference to the overall s3 connection as well
 
 class CheckResult(object):
-    def __init__(self, s3_connection, name, title=None, description=None, timestamp=None, extension=".json"):
+    def __init__(self, s3_connection, name, title=None, description=None, uuid=None, extension=".json"):
         self.s3_connection = s3_connection
-        # timestamp arg used if you want to overwrite an existing check
-        if timestamp:
-            ts_key = ''.join([name, '/', timestamp, extension])
+        # uuid arg used if you want to overwrite an existing check
+        # uuid is in the stringified datetime format
+        if uuid:
+            ts_key = ''.join([name, '/', uuid, extension])
             stamp_res = s3_connection.get_object(ts_key)
             if stamp_res:
                 # see if json
@@ -26,10 +27,10 @@ class CheckResult(object):
                     setattr(self, key, val)
                 return
             else:
-                # no previous results exist for this timestamp yet
-                self.timestamp = timestamp
+                # no previous results exist for this uuid yet
+                self.uuid = uuid
         else:
-            self.timestamp = None
+            self.uuid = None
         self.name = name
         if title is None:
             self.title = ' '.join(self.name.split('_')).title()
@@ -44,13 +45,13 @@ class CheckResult(object):
         self.full_output = None
 
 
-    def format_result(self, timestamp):
+    def format_result(self, uuid):
         return {
             'name': self.name,
             'title': self.title,
             'description': self.description,
             'status': self.status.upper(),
-            'timestamp': timestamp,
+            'uuid': uuid,
             'extension': self.extension,
             'brief_output': self.brief_output,
             'full_output': self.full_output
@@ -71,13 +72,13 @@ class CheckResult(object):
 
 
     def get_closest_check(self, diff_hours, diff_mins=0):
-        # check_tuples is a list of items of form (s3key, datetime timestamp)
+        # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
         relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
         if not relevant_checks:
             return None
-        # now use only s3 objects with a valid timestamp
+        # now use only s3 objects with a valid uuid
         for check in relevant_checks:
             if check.startswith(s3_prefix) and check.endswith(self.extension):
                 time_str = check[len(s3_prefix):-len(self.extension)]
@@ -103,10 +104,10 @@ class CheckResult(object):
         if self.status.upper() not in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE']:
             self.status = 'ERROR'
             self.description = 'Malformed status; look at Foursight check definition.'
-        # if there's a set timestamp field, use that instead of curr utc time
-        timestamp = self.timestamp if self.timestamp else datetime.datetime.utcnow().isoformat()
-        formatted = self.format_result(timestamp)
-        time_key = ''.join([self.name, '/', timestamp, self.extension])
+        # if there's a set uuid field, use that instead of curr utc time
+        uuid = self.uuid if self.uuid else datetime.datetime.utcnow().isoformat()
+        formatted = self.format_result(uuid)
+        time_key = ''.join([self.name, '/', uuid, self.extension])
         latest_key = ''.join([self.name, '/latest', self.extension])
         if self.extension == ".json":
             s3_formatted = json.dumps(formatted)

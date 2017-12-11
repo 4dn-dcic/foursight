@@ -50,12 +50,12 @@ def run_check_group(connection, name):
         if len(check_info) != 3:
             check_results.append(' '.join(['ERROR with', str(check_info), 'in group:', name]))
         else:
-            # add timestamp to each kwargs dict if not already specified
+            # add uuid to each kwargs dict if not already specified
             # this will have the effect of giving all checks the same id
             # and combining results from repeats in the same check_group
             [check_str, check_kwargs, check_deps] = check_info
-            if 'timestamp' not in check_kwargs:
-                check_kwargs['timestamp'] = group_timestamp
+            if 'uuid' not in check_kwargs:
+                check_kwargs['uuid'] = group_timestamp
             # nothing done with dependencies yet
             result = run_check(connection, check_str, check_kwargs)
             if result:

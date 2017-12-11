@@ -9,14 +9,17 @@ from .checkresult import CheckResult
 CHECK_DECO = 'check_function'
 
 
-def init_check_res(connection, name, title=None, description=None, timestamp=None, extension=".json"):
+def init_check_res(connection, name, title=None, description=None, uuid=None, extension=".json"):
     """
     Initialize a CheckResult object, which holds all information for a
     check and methods necessary to store and retrieve latest/historical
     results. name is the only required parameter and MUST be equal to
     the method name of the check as defined in CheckSuite.
+
+    uuid is a timestamp-style unique identifier taht can be used to control
+    where the output of the check is written.
     """
-    return CheckResult(connection.s3_connection, name, title, description, timestamp, extension)
+    return CheckResult(connection.s3_connection, name, title, description, uuid, extension)
 
 
 def build_dummy_result(check_name):
@@ -27,7 +30,7 @@ def build_dummy_result(check_name):
     return {
         'status': 'IGNORE',
         'name': check_name,
-        'timestamp': datetime.datetime.utcnow().isoformat()
+        'uuid': datetime.datetime.utcnow().isoformat()
     }
 
 

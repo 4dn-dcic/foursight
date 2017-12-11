@@ -101,29 +101,29 @@ def change_in_item_counts(connection, **kwargs):
     return check.store_result()
 
 
-@check_function(item_type='ExperimentSetReplicate')
+@check_function(item_type='Item')
 def items_released_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
-    ts_id = kwargs.get('timestamp')
-    check = init_check_res(connection, 'items_released_in_the_past_day', timestamp=ts_id)
+    ts_uuid = kwargs.get('uuid')
+    check = init_check_res(connection, 'items_released_in_the_past_day', uuid=ts_uuid)
     fdn_conn = wrangler_utils.get_FDN_Connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-    # this could be done with an intelligent search with a query string...
-    # q=date_created:>=<one day ago>, with day ago in form YYYY-MM-DD
-    search_res = ff_utils.get_metadata('/search/?type=' + item_type, connection=fdn_conn, frame='object')
+        check.store_result()
+    # date string of approx. one day ago in form YYYY-MM-DD
+    date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    search_query = ''.join(['/search/?type=', item_type, '&q=date_created:>=', date_str])
+    search_res = ff_utils.get_metadata(search_query, connection=fdn_conn, frame='object')
     results = search_res.get('@graph', [])
     full_output = check.full_output if check.full_output else {}
     item_output = []
     for res in results:
-        delta = datetime.timedelta(days=1)
-        if wrangler_utils.check_time_diff(res.get('date_created'), delta):
-            item_output.append({
-                'uuid': res.get('uuid'),
-                '@id': res.get('@id'),
-                'date_created': res.get('date_created')
-            })
+        item_output.append({
+            'uuid': res.get('uuid'),
+            '@id': res.get('@id'),
+            'date_created': res.get('date_created')
+        })
     if item_output:
         full_output[item_type] = item_output
     check.full_output = full_output

@@ -77,7 +77,7 @@
                                     <span>{{check.title}}</span>
                                 {% endif %}
                                 <span class="pull-right">
-                                    {{check.timestamp}}
+                                    {{check.uuid}}
                                 </span>
                                 <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
                                     <button class="btn btn-link" type="submit">

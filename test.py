@@ -48,7 +48,7 @@ class TestFSConnection(unittest.TestCase):
 
 
 class TestAppRoutes(unittest.TestCase):
-    environ = 'staging' # hopefully this is up
+    environ = 'mastertest' # hopefully this is up
     conn, _ = app.init_connection(environ)
 
     def home_route(self):
@@ -58,10 +58,10 @@ class TestAppRoutes(unittest.TestCase):
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
         # test the ff connection
-        self.assertTrue(self.conn.fs_environment == 'staging')
+        self.assertTrue(self.conn.fs_environment == 'mastertest')
         self.assertTrue(self.conn.ff)
         self.assertTrue(self.conn.es)
-        self.assertTrue(self.conn.ff_env == 'fourfront-webprod')
+        self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
 
     def test_init_environments(self):
         app.init_environments() # default to 'all' environments
@@ -149,7 +149,7 @@ class TestAppRoutes(unittest.TestCase):
 
 
 class TestCheckUtils(unittest.TestCase):
-    environ = 'staging' # hopefully this is up
+    environ = 'mastertest' # hopefully this is up
     conn, _ = app.init_connection(environ)
 
     def test_get_check_strings(self):

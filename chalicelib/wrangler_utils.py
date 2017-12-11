@@ -27,13 +27,13 @@ def get_FDN_Connection(connection):
     return fdn_conn if fdn_conn else None
 
 
-def check_time_diff(time_str, time_delta):
+def check_if_time_str_within_delta(time_str, time_delta):
     """
     Return True if the given datetime string is within the given time delta
     from the current time (current - delta). Otherwise return False.
     Could be used to see if an object was released within a given time range.
     """
-    time_obj_utc = parse_datetime_with_tzto_utc(time_str)
+    time_obj_utc = parse_datetime_with_tz_to_utc(time_str)
     if not time_obj_utc:
         return False
     # add timezone info
@@ -41,7 +41,7 @@ def check_time_diff(time_str, time_delta):
     return time_obj_utc >= (utc_now - time_delta)
 
 
-def parse_datetime_with_tzto_utc(time_str):
+def parse_datetime_with_tz_to_utc(time_str):
     if len(time_str) > 26 and time_str[26] in ['+', '-']:
         try:
             timeobj = datetime.strptime(time_str[:26],'%Y-%m-%dT%H:%M:%S.%f')

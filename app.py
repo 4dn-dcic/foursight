@@ -176,18 +176,18 @@ def view_foursight(environ):
                         'content': True,
                         'title': 'Check System Error',
                         'description': res,
-                        'timestamp': 'Did not run.'
+                        'uuid': 'Did not run.'
                     }
                     processed_results.append(error_res)
                     continue
                 # change timezone to local
                 from_zone = tz.tzutc()
                 to_zone = tz.tzlocal()
-                ts_utc = datetime.strptime(res['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+                ts_utc = datetime.strptime(res['uuid'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
                 ts_utc = ts_utc.replace(tzinfo=from_zone)
                 ts_local = ts_utc.astimezone(to_zone)
                 proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
-                res['timestamp'] = proc_ts
+                res['uuid'] = proc_ts
                 if not res.get('description') and not res.get('brief_output') and not res.get('full_output'):
                     res['content'] = False
                 else:
