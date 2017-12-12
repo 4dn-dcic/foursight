@@ -71,6 +71,17 @@ class CheckResult(object):
         return json_result
 
 
+    def get_all_checks(self):
+        # return all results for this check. Should use with care
+        all_results = []
+        s3_prefix = ''.join([self.name, '/'])
+        relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
+        for check in relevant_checks:
+            if check.startswith(s3_prefix) and check.endswith(self.extension):
+                all_results.append(self.s3_connection.get_object(check))
+        return all_results
+
+
     def get_closest_check(self, diff_hours, diff_mins=0):
         # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []

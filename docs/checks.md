@@ -11,7 +11,6 @@ It is assumed that you've already read the getting started documentation. If not
 * Checks should end by returning the value of the stored check result: `return check.store_result()`.
 
 ## Our example check
-
 Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
 
 ```
@@ -81,7 +80,6 @@ There are a couple funky things happening in the check above. First, the ff_util
 This check is fully functional as written above, but it has a couple limitations. For example, it only operates on the `item_type` Item, which is the most generalized type of item and may cause a timeout in the lambda running this function if the resulting search result is very large. In the next section, we will use default check arguments and the check_group to further break down the check into different runs for different item types.
 
 ## Check arguments
-
 A key word arguments (kwargs) object can be passed into your checks for internal use a couple ways. The first is through the `check_function` decorator. Any kwargs used in it's declaration will be available in the check. For example, the `item_type` variable in the check above would be better set as a default kwarg for the check as-so:
 
 ```
@@ -112,12 +110,47 @@ This would execute the `items_released_in_the_past_day` check with the default k
 
 Default kwargs are very important to set if they are required for a check, since there are instances in which your check can be run outside of a check group. In such a case, it may break if those arguments are not provided. Really, this is up to the user to design his or her checks in a robust way.
 
-## Check groups
+## Accessing previous/other check results
+Another possibility for a check is to operate on the previous results of the same or other checks. To get results for the same check, you can use the same CheckResult object that is defined using the check name at the beginning of the check:
 
+```
+check = init_check_res(connection, 'change_in_item_counts')
+```
+
+Using the CheckResult `check` object, you have access to all CheckResult methods, which include the `get_latest_check` and `get_closest_check` methods, which both return dictionary representations of those historic check results. Getting the latest check will always return the result with the "latest" tag, which is also the one displayed on the Foursight front end. The `get_closest_check` method can be used to get the check result that is closest the given time difference from the current time. See the example below:
+
+```
+check = init_check_res(connection, 'change_in_item_counts')
+# get the latest dictionary result for this check
+latest = check.get_latest_check()
+
+# get the dictionary results for this result run closest to 10 hours, 30 mins ago
+# args are in form (hours, minutes)
+older = check.get_closest_check(10, 30)
+```
+
+The functions can be used to easily make a check that is aware of its own previous results. You can also make checks that use the results of other checks; to do this, define another check result object with the name of a different check. Consider the following example:
+
+```
+@check_function()
+def change_in_item_counts(connection, **kwargs):
+    # use this check to get the comparison
+    check = init_check_res(connection, 'change_in_item_counts')
+    counts_check = init_check_res(connection, 'item_counts_by_type')
+    latest = counts_check.get_latest_check()
+    # get_item_counts run closest to 24 hours ago
+    prior = counts_check.get_closest_check(24)
+
+    # now do something with the latest and prior dictionaries
+    # and set the fields of check accordingly
+```
+
+This check would compare the latest result and the result run closest to 24 hours ago from the current time for `counts_check`. After any comparison is done, the fields of `check` would be set and finally `check.store_result()` would be called to save them.
+
+## Check groups
 As we have seen in the previous section, kwargs can be set individually for each check in the check group, allowing a high level of flexibility with what can be done even with a single check. There are a couple more important points to mention about check groups.
 
 ### Passing kwargs to checks
-
 First, check groups containing the same check multiple times will overwrite the same output rather than writing an output for each check. Take the following check group:
 
 ```
@@ -142,12 +175,10 @@ for item_type in item_types:
 ```
 
 ### Dependencies in check groups
-
 This functionality is not yet implemented. For now, checks in a check group are executed in order within the same lambda.
 
 
 ### Implementing your check groups
-
 All that you need to do to get your check group up and running is build it within the chalicelib/check_groups.py file. In the same file, make sure to add the string module name (without the `.py`) to the `CHECK_MODULES` list at the top of the file. That's all you need to do! Your check group can now be run using the following endpoint:
 
 ```
