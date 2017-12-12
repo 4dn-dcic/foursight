@@ -1,0 +1,37 @@
+Collecting dcicutils
+  Downloading dcicutils-0.1.63.tar.gz
+Requirement already satisfied: pytest-runner in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from dcicutils)
+Requirement already satisfied: Submit4DN in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from dcicutils)
+Requirement already satisfied: boto3 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from dcicutils)
+Requirement already satisfied: six in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: py>=1.4.31 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: xlrd in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: wheel>=0.24.0 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: xlwt>=1.1.2 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: attrs in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: requests in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: python-magic>=0.4.12 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: Pillow in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: awscli in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Submit4DN->dcicutils)
+Requirement already satisfied: s3transfer<0.2.0,>=0.1.10 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from boto3->dcicutils)
+Requirement already satisfied: jmespath<1.0.0,>=0.7.1 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from boto3->dcicutils)
+Requirement already satisfied: botocore<1.8.0,>=1.7.0 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from boto3->dcicutils)
+Requirement already satisfied: certifi>=2017.4.17 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from requests->Submit4DN->dcicutils)
+Requirement already satisfied: chardet<3.1.0,>=3.0.2 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from requests->Submit4DN->dcicutils)
+Requirement already satisfied: idna<2.7,>=2.5 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from requests->Submit4DN->dcicutils)
+Requirement already satisfied: urllib3<1.23,>=1.21.1 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from requests->Submit4DN->dcicutils)
+Requirement already satisfied: olefile in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from Pillow->Submit4DN->dcicutils)
+Requirement already satisfied: colorama<=0.3.7,>=0.2.5 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from awscli->Submit4DN->dcicutils)
+Requirement already satisfied: docutils>=0.10 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from awscli->Submit4DN->dcicutils)
+Requirement already satisfied: rsa<=3.5.0,>=3.1.2 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from awscli->Submit4DN->dcicutils)
+Requirement already satisfied: PyYAML<=3.12,>=3.10 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from awscli->Submit4DN->dcicutils)
+Requirement already satisfied: futures<4.0.0,>=2.2.0; python_version == "2.6" or python_version == "2.7" in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from s3transfer<0.2.0,>=0.1.10->boto3->dcicutils)
+Requirement already satisfied: python-dateutil<3.0.0,>=2.1 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from botocore<1.8.0,>=1.7.0->boto3->dcicutils)
+Requirement already satisfied: pyasn1>=0.1.3 in /Users/carl/.virtualenvs/foursight/lib/python2.7/site-packages (from rsa<=3.5.0,>=3.1.2->awscli->Submit4DN->dcicutils)
+Building wheels for collected packages: dcicutils
+  Running setup.py bdist_wheel for dcicutils: started
+  Running setup.py bdist_wheel for dcicutils: finished with status 'done'
+  Stored in directory: /Users/carl/Library/Caches/pip/wheels/b2/78/03/d60469f1b4fb4738d6b05ec4d87b4a0c9212ba25d2bba0890e
+Successfully built dcicutils
+Installing collected packages: dcicutils
+Successfully installed dcicutils-0.1.63
