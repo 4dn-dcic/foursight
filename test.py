@@ -25,6 +25,7 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(self.connection.ff_env == 'test3')
 
     def test_run_check_with_bad_connection(self):
+        import pdb; pdb.set_trace()
         check_res = check_utils.run_check(self.connection, 'wrangler_checks/item_counts_by_type', {})
         # run_check returns a dict with results
         self.assertTrue(check_res.get('status') == 'ERROR')
@@ -177,6 +178,7 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue(bad_check_str is None)
 
     def test_fetch_check_group(self):
+        import pdb; pdb.set_trace()
         all_checks = check_utils.fetch_check_group('all')
         self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
         daily_checks = check_utils.fetch_check_group('daily_checks')

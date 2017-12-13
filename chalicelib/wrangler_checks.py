@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 from .utils import check_function, init_check_res
-import wrangler_utils
+from .wrangler_utils import *
 from dcicutils import ff_utils
 import requests
 import sys
@@ -106,7 +106,7 @@ def items_released_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
     ts_uuid = kwargs.get('uuid')
     check = init_check_res(connection, 'items_released_in_the_past_day', uuid=ts_uuid)
-    fdn_conn = wrangler_utils.get_FDN_Connection(connection)
+    fdn_conn = get_FDN_Connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
