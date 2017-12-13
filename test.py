@@ -164,7 +164,7 @@ class TestCheckUtils(unittest.TestCase):
                 self.assertTrue(body.get('checks_found') == get_check)
                 self.assertTrue(body.get('checks', {}).get('name') == get_check)
                 self.assertTrue(body.get('checks', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
-                self.assertTrue('timestamp' in body.get('checks', {}))
+                self.assertTrue('uuid' in body.get('checks', {}))
             elif body.get('status') == 'error':
                 error_msg = "Could not get results for: " + get_check + ". Maybe no such check result exists?"
                 self.assertTrue(body.get('description') == error_msg)
@@ -197,7 +197,7 @@ class TestCheckUtils(unittest.TestCase):
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
-            self.assertTrue('timestamp' in check_res)
+            self.assertTrue('uuid' in check_res)
         # non-existant check group
         bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
         assert(bad_checks_res == [])
@@ -209,17 +209,17 @@ class TestCheckUtils(unittest.TestCase):
 
     def run_check_group_repeats(self):
         repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_group')
-        unified_timestamp = None
+        unified_uuid = None
         for check_res in repeat_res:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
-            self.assertTrue('timestamp' in check_res)
-            if unified_timestamp:
-                self.assertTrue(check_res['timestamp'] == unified_timestamp)
+            self.assertTrue('uuid' in check_res)
+            if unified_uuid:
+                self.assertTrue(check_res['uuid'] == unified_uuid)
             else:
                 # gotta set it on the first iteration
-                unified_timestamp = check_res['timestamp']
+                unified_uuid = check_res['uuid']
 
     def test_get_check_group_latest(self):
         all_res = check_utils.get_check_group_latest(self.conn, 'all')
@@ -287,7 +287,7 @@ class TestUtils(unittest.TestCase):
         dummy_res = utils.build_dummy_result(dummy_check)
         self.assertTrue(dummy_res['status'] == 'IGNORE')
         self.assertTrue(dummy_res['name']) == dummy_check
-        self.assertTrue('timestamp' in dummy_res)
+        self.assertTrue('uuid' in dummy_res)
 
 
 if __name__ == '__main__':
