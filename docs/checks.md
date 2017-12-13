@@ -79,6 +79,30 @@ There are a couple funky things happening in the check above. First, the ff_util
 
 This check is fully functional as written above, but it has a couple limitations. For example, it only operates on the `item_type` Item, which is the most generalized type of item and may cause a timeout in the lambda running this function if the resulting search result is very large. In the next section, we will use default check arguments and the check_group to further break down the check into different runs for different item types.
 
+## Attributes you can set on a check result
+As we have seen from the examples so far, the check result (i.e. the output of running `init_check_res`) has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the results should stored at the end of the check by using `check.store_result()`. Any of the following attributes can be set like this:
+
+```
+check = init_check_res(connection, 'my_check_name')
+check.status = 'PASS'
+check.description = 'Test descritpion'
+check.<other_attr> = <value>
+...
+return check.store_result()
+```
+
+Here is a list of attributes with brief descriptions:
+* **s3_connection**: is set automatically when you use `init_check_res`.
+* **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
+* **title**: generated automatically from the name attribute unless it is set manually.
+* **description**: string description of what the check is doing or explaining the output. Will be displayed on the UI.
+* **status**: string value. Must be one of: 'PASS', 'WARN', 'FAIL', 'ERROR', or 'IGNORE', otherwise it will be set to 'ERROR' automatically. 'IGNORE' by default, which means the check result will not be displayed on the UI.
+* **brief_output**: Any value that will be displayed on the UI if set. The intended use of this attribute is as any output relevant to a check having a non-PASS status.
+* **full_output**: same as brief_output, but is intended to hold the entirety of the check data.
+* **uuid**: this is explained further later in this document. The only reason to use this is if you want a check to be automatically populated by a previous result.
+* **ff_link**: a link to (presumably) Fourfront that will be displayed in the UI if provided. Should be relevant to the check.
+* **extension**: the extension and format of the s3 object storing the check result. Is automatically set to `.json` and should not be changed.
+
 ## Check arguments
 A key word arguments (kwargs) object can be passed into your checks for internal use a couple ways. The first is through the `check_function` decorator. Any kwargs used in it's declaration will be available in the check. For example, the `item_type` variable in the check above would be better set as a default kwarg for the check as-so:
 
