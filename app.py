@@ -190,7 +190,7 @@ def view_foursight(environ):
                 ts_local = ts_utc.astimezone(to_zone)
                 proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
                 res['uuid'] = proc_ts
-                if not res.get('description') and not res.get('brief_output') and not res.get('full_output'):
+                if not res.get('description') and not res.get('brief_output') and not res.get('full_output') and not res.get('ff_link'):
                     res['content'] = False
                 else:
                     res['content'] = True

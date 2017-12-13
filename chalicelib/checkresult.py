@@ -10,7 +10,7 @@ import json
 # holds a reference to the overall s3 connection as well
 
 class CheckResult(object):
-    def __init__(self, s3_connection, name, title=None, description=None, uuid=None, extension=".json"):
+    def __init__(self, s3_connection, name, title=None, description=None, uuid=None, ff_link=None, extension=".json"):
         self.s3_connection = s3_connection
         # uuid arg used if you want to overwrite an existing check
         # uuid is in the stringified datetime format
@@ -44,6 +44,9 @@ class CheckResult(object):
         self.extension = extension
         self.brief_output = None
         self.full_output = None
+        # ff_link is a string location that will be displayed to create
+        # an easily-accessible link from the check
+        self.ff_link = None
 
 
     def format_result(self, uuid):
@@ -55,7 +58,8 @@ class CheckResult(object):
             'uuid': uuid,
             'extension': self.extension,
             'brief_output': self.brief_output,
-            'full_output': self.full_output
+            'full_output': self.full_output,
+            'ff_link': self.ff_link
         }
 
 

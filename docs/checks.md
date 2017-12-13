@@ -154,7 +154,7 @@ As we have seen in the previous section, kwargs can be set individually for each
 First, check groups containing the same check multiple times will overwrite the same output rather than writing an output for each check. Take the following check group:
 
 ```
-wrangler_test_group = [
+wrangler_test_checks = [
     ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'Biosample'}, []],
     ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
     ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'FileFastq'}, []]
@@ -167,9 +167,9 @@ This functionality also allows check groups to be dynamically made. Consider the
 
 ```
 item_types = ['Biosample', 'Biosource', 'Experiment', 'File']
-wrangler_test_group = []
+wrangler_test_checks = []
 for item_type in item_types:
-    wrangler_test_group.append(
+    wrangler_test_checks.append(
         ['wrangler_checks/items_released_in_the_past_day', {'item_type': item_type}, []]
     )
 ```

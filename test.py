@@ -239,7 +239,7 @@ class TestCheckUtils(unittest.TestCase):
         assert("ERROR with ['system_checks/indexing_progress', {}] in group: malformed_test_checks" in test_checks_res)
 
     def run_check_group_repeats(self):
-        repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_group')
+        repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_checks')
         unified_uuid = None
         for check_res in repeat_res:
             self.assertTrue(isinstance(check_res, dict))

@@ -130,6 +130,8 @@ def items_released_in_the_past_day(connection, **kwargs):
     if full_output:
         check.status = 'WARN'
         check.description = 'Items have been created in the past day.'
+        # create a ff_link
+        check.ff_link = ''.join([connection.ff, '/search/?type=Item&q=date_created:>=', date_str])
     else:
         check.status = 'PASS'
         check.description = 'No items have been created in the past day.'
