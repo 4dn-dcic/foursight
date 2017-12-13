@@ -8,6 +8,8 @@ CHECK_MODULES = [
 # each group is an array with entries corresponding to one check's run
 # info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies]
 
+# check group names should end in "_checks" by convention
+
 daily_checks = [
     ['system_checks/elastic_beanstalk_health', {}, []],
     ['system_checks/status_of_elasticsearch_indices', {}, []],
@@ -19,4 +21,19 @@ daily_checks = [
 two_hour_checks = [
     ['system_checks/indexing_progress', {}, []],
     ['wrangler_checks/item_counts_by_type', {}, []]
+]
+
+
+
+# don't use these check groups! just for testing
+malformed_test_checks = [
+    [{}, []], # bad
+    ['system_checks/indexing_progress', []], # bad
+    ['system_checks/indexing_progress', {}], # bad
+]
+
+wrangler_test_group = [
+    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'Biosample'}, []],
+    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
+    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'FileFastq'}, []]
 ]

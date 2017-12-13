@@ -1,0 +1,7 @@
+[run]
+omit =
+    *virtualenv*
+    /docs/*
+    deploy.py
+    test.py
+    /chalicelib/templates/*

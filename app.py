@@ -176,18 +176,18 @@ def view_foursight(environ):
                         'content': True,
                         'title': 'Check System Error',
                         'description': res,
-                        'timestamp': 'Did not run.'
+                        'uuid': 'Did not run.'
                     }
                     processed_results.append(error_res)
                     continue
                 # change timezone to local
                 from_zone = tz.tzutc()
                 to_zone = tz.tzlocal()
-                ts_utc = datetime.strptime(res['timestamp'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+                ts_utc = datetime.strptime(res['uuid'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
                 ts_utc = ts_utc.replace(tzinfo=from_zone)
                 ts_local = ts_utc.astimezone(to_zone)
                 proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
-                res['timestamp'] = proc_ts
+                res['uuid'] = proc_ts
                 if not res.get('description') and not res.get('brief_output') and not res.get('full_output'):
                     res['content'] = False
                 else:
@@ -430,38 +430,3 @@ def two_hour_checks(event):
         connection, error_res = init_connection(environ)
         if connection:
             run_check_group(connection, 'two_hour_checks')
-
-
-### NON-STANDARD ENDPOINTS ###
-
-
-# @app.route('/cleanup/{environ}', methods=['GET'])
-# def cleanup(environ):
-#     """
-#     For a given environment, remove all tests records from S3 that are no
-#     long being used (i.e. not currently defined within checksuite).
-#     Will not remove auth.
-#     """
-#     connection, response = init_response(environ)
-#     if not connection:
-#         return response
-#     all_keys = set(connection.s3_connection.list_all_keys())
-#     # never delete these keys
-#     if 'auth' in all_keys:
-#         all_keys.remove('auth')
-#     check_strs = get_check_strings()
-#     for check_str in check_strs:
-#         name = check_str.split('/')[1]
-#         # remove all keys with prefix equal to this method name
-#         method_keys = set(connection.s3_connection.list_keys_w_prefix(name))
-#         all_keys = all_keys - method_keys
-#     if len(all_keys) > 0:
-#         connection.s3_connection.delete_keys(list(all_keys))
-#     response.body = {
-#         'status': 'success',
-#         'environment': environ,
-#         'number_cleaned': ' '.join([str(len(all_keys)), 'items']),
-#         'keys_cleaned': list(all_keys)
-#     }
-#     response.status_code = 200
-#     return response

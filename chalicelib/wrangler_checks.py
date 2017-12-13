@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, set_default_kwargs
-from collections import OrderedDict
+from .utils import check_function, init_check_res
+from .wrangler_utils import *
+from dcicutils import ff_utils
 import requests
 import sys
 import json
@@ -8,7 +9,7 @@ import datetime
 import boto3
 
 
-@check_function
+@check_function()
 def item_counts_by_type(connection, **kwargs):
     def process_counts(count_str):
         # specifically formatted for FF health page
@@ -62,7 +63,7 @@ def item_counts_by_type(connection, **kwargs):
     return check.store_result()
 
 
-@check_function
+@check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts')
@@ -97,4 +98,39 @@ def change_in_item_counts(connection, **kwargs):
         check.description = 'DB counts have changed in past day; positive numbers represent an increase in current counts.'
     else:
         check.status = 'PASS'
+    return check.store_result()
+
+
+@check_function(item_type='Item')
+def items_released_in_the_past_day(connection, **kwargs):
+    item_type = kwargs.get('item_type')
+    ts_uuid = kwargs.get('uuid')
+    check = init_check_res(connection, 'items_released_in_the_past_day', uuid=ts_uuid)
+    fdn_conn = get_FDN_Connection(connection)
+    if not fdn_conn:
+        check.status = 'ERROR'
+        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
+        check.store_result()
+    # date string of approx. one day ago in form YYYY-MM-DD
+    date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    search_query = ''.join(['/search/?type=', item_type, '&q=date_created:>=', date_str])
+    search_res = ff_utils.get_metadata(search_query, connection=fdn_conn, frame='object')
+    results = search_res.get('@graph', [])
+    full_output = check.full_output if check.full_output else {}
+    item_output = []
+    for res in results:
+        item_output.append({
+            'uuid': res.get('uuid'),
+            '@id': res.get('@id'),
+            'date_created': res.get('date_created')
+        })
+    if item_output:
+        full_output[item_type] = item_output
+    check.full_output = full_output
+    if full_output:
+        check.status = 'WARN'
+        check.description = 'Items have been created in the past day.'
+    else:
+        check.status = 'PASS'
+        check.description = 'No items have been created in the past day.'
     return check.store_result()

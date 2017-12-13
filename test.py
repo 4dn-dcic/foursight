@@ -4,8 +4,9 @@ import unittest
 import datetime
 import json
 import app
-from chalicelib import check_utils, utils, check_groups
+from chalicelib import check_utils, utils, check_groups, wrangler_utils, checkresult
 from chalicelib.fs_connection import FSConnection
+from dateutil import tz
 
 
 class TestFSConnection(unittest.TestCase):
@@ -37,11 +38,12 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(test_check.get_closest_check(1) is None)
         self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
-        self.assertTrue(formatted_res.get('status') == 'PEND')
+        self.assertTrue(formatted_res.get('status') == 'IGNORE')
         self.assertTrue(formatted_res.get('title') == 'Test Check')
         self.assertTrue(formatted_res.get('description') == 'Unittest check')
+        # set a bad status on purpose
+        test_check.status = "BAD_STATUS"
         check_res = test_check.store_result()
-        self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == formatted_res.get('name'))
         self.assertTrue(check_res.get('description') == "Malformed status; look at Foursight check definition.")
         self.assertTrue(check_res.get('brief_output') == formatted_res.get('brief_output') == None)
@@ -50,9 +52,10 @@ class TestFSConnection(unittest.TestCase):
 class TestAppRoutes(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app.init_connection(environ)
-    if conn is None:
-        environ = 'hotseat' # back up if self.environ is down
-        conn, _ = app.init_connection(environ)
+
+    def home_route(self):
+        res = app.index()
+        self.assertTrue(json.loads(res) == {'foursight': 'insight into fourfront'})
 
     def test_init_connection(self):
         self.assertFalse(self.conn is None)
@@ -90,7 +93,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
         # this is pretty weak
-        res2 = app.view_rerun('environ', 'indexing_progress')
+        res2 = app.view_rerun(self.environ, 'indexing_progress')
         self.assertTrue('<!DOCTYPE html>' in res2.body)
         self.assertTrue('Foursight' in res2.body)
         self.assertFalse(res2 == res)
@@ -147,12 +150,38 @@ class TestAppRoutes(unittest.TestCase):
         # still need to figure out how to to test put_check and put_environment
 
 
+class TestCheckResult(unittest.TestCase):
+    # use a fake check name and store on mastertest
+    check_name = 'test_only_check'
+    environ = 'mastertest' # hopefully this is up
+    connection, _ = app.init_connection(environ)
+
+    def test_check_result_methods(self):
+        check = checkresult.CheckResult(self.connection.s3_connection, self.check_name)
+        # default status
+        self.assertTrue(check.status == 'IGNORE')
+        check.description = 'This check is just for testing purposes.'
+        check.status = 'PASS'
+        check.full_output = ['first_item']
+        res = check.store_result()
+        # fetch this check. latest and closest result with 0 diff should be the same
+        late_res = check.get_latest_check()
+        self.assertTrue(late_res == res)
+        close_res = check.get_closest_check(0, 0)
+        self.assertTrue(close_res == res)
+        all_res = check.get_all_checks()
+        self.assertTrue(len(all_res) > 0)
+        # this should be true since all results will be identical
+        self.assertTrue(all_res[-1].get('description') == res.get('description'))
+        # ensure that previous check results can be fetch using the uuid functionality
+        res_uuid = res['uuid']
+        check_copy = checkresult.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        self.assertTrue(res == check_copy.store_result())
+
+
 class TestCheckUtils(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app.init_connection(environ)
-    if conn is None:
-        environ = 'hotseat' # back up if self.environ is down
-        conn, _ = app.init_connection(environ)
 
     def test_get_check_strings(self):
         # do this for every check
@@ -166,7 +195,7 @@ class TestCheckUtils(unittest.TestCase):
                 self.assertTrue(body.get('checks_found') == get_check)
                 self.assertTrue(body.get('checks', {}).get('name') == get_check)
                 self.assertTrue(body.get('checks', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
-                self.assertTrue('timestamp' in body.get('checks', {}))
+                self.assertTrue('uuid' in body.get('checks', {}))
             elif body.get('status') == 'error':
                 error_msg = "Could not get results for: " + get_check + ". Maybe no such check result exists?"
                 self.assertTrue(body.get('description') == error_msg)
@@ -174,6 +203,9 @@ class TestCheckUtils(unittest.TestCase):
         one_check_str = check_utils.get_check_strings('indexing_progress')
         self.assertTrue(one_check_str == 'system_checks/indexing_progress')
         self.assertTrue(one_check_str in all_check_strs)
+        # test a specific check that doesn't exist
+        bad_check_str = check_utils.get_check_strings('not_a_real_check')
+        self.assertTrue(bad_check_str is None)
 
     def test_fetch_check_group(self):
         all_checks = check_utils.fetch_check_group('all')
@@ -183,6 +215,8 @@ class TestCheckUtils(unittest.TestCase):
         daily_check_strs = [chk_str[0] for chk_str in daily_checks]
         all_check_strs = [chk_str[0] for chk_str in all_checks]
         self.assertTrue(set(daily_check_strs) <= set(all_check_strs))
+        # make sure there are not duplicate check check names
+        self.assertTrue(len(all_check_strs) == len(set(all_check_strs)))
         # non-existant check group
         bad_checks = check_utils.fetch_check_group('not_a_check_group')
         self.assertTrue(bad_checks is None)
@@ -194,9 +228,29 @@ class TestCheckUtils(unittest.TestCase):
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
+            self.assertTrue('uuid' in check_res)
         # non-existant check group
         bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
         assert(bad_checks_res == [])
+        # use a bad check groups
+        test_checks_res = check_utils.run_check_group(self.conn, 'malformed_test_checks')
+        assert("ERROR with [{}, []] in group: malformed_test_checks" in test_checks_res)
+        assert("ERROR with ['system_checks/indexing_progress', []] in group: malformed_test_checks" in test_checks_res)
+        assert("ERROR with ['system_checks/indexing_progress', {}] in group: malformed_test_checks" in test_checks_res)
+
+    def run_check_group_repeats(self):
+        repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_group')
+        unified_uuid = None
+        for check_res in repeat_res:
+            self.assertTrue(isinstance(check_res, dict))
+            self.assertTrue('name' in check_res)
+            self.assertTrue('status' in check_res)
+            self.assertTrue('uuid' in check_res)
+            if unified_uuid:
+                self.assertTrue(check_res['uuid'] == unified_uuid)
+            else:
+                # gotta set it on the first iteration
+                unified_uuid = check_res['uuid']
 
     def test_get_check_group_latest(self):
         all_res = check_utils.get_check_group_latest(self.conn, 'all')
@@ -207,6 +261,9 @@ class TestCheckUtils(unittest.TestCase):
         # non-existant check group
         bad_res = check_utils.get_check_group_latest(self.conn, 'not_a_check_group')
         assert(bad_res == [])
+        # bad check group. will skip all malformed checks
+        test_res = check_utils.get_check_group_latest(self.conn, 'malformed_test_checks')
+        assert(len(test_res) == 0)
 
     def test_run_check(self):
         test_info = ['system_checks/indexing_records', {}, []]
@@ -233,9 +290,66 @@ class TestCheckUtils(unittest.TestCase):
         for key, val in check_groups.__dict__.items():
             if '_checks' in key and isinstance(val, list):
                 for check_info in val:
-                    self.assertTrue(len(check_info) == 3)
-                    self.assertTrue(isinstance(check_info[1], dict))
-                    self.assertTrue(isinstance(check_info[2], list))
+                    if key != 'malformed_test_checks':
+                        self.assertTrue(len(check_info) == 3)
+                        self.assertTrue(isinstance(check_info[1], dict))
+                        self.assertTrue(isinstance(check_info[2], list))
+                    else:
+                        self.assertTrue(len(check_info) != 3)
+
+
+class TestUtils(unittest.TestCase):
+    @utils.check_function(abc=123)
+    def test_function_dummy(*args, **kwargs):
+        return kwargs
+
+    def test_check_function_deco_default_kwargs(self):
+        # test to see if the check_function decorator correctly overrides
+        # kwargs of decorated function if none are provided
+        kwargs_default = self.test_function_dummy()
+        self.assertTrue(kwargs_default == {'abc': 123})
+        kwargs_add = self.test_function_dummy(bcd=234)
+        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234})
+        kwargs_override = self.test_function_dummy(abc=234)
+        self.assertTrue(kwargs_override == {'abc': 234})
+
+    def test_build_dummy_result(self):
+        dummy_check = 'dumb_test'
+        dummy_res = utils.build_dummy_result(dummy_check)
+        self.assertTrue(dummy_res['status'] == 'IGNORE')
+        self.assertTrue(dummy_res['name']) == dummy_check
+        self.assertTrue('uuid' in dummy_res)
+
+
+class TestWranglerUtils(unittest.TestCase):
+    timestr_1 = '2017-04-09T17:34:53.423589+00:00' # UTC
+    timestr_2 = '2017-04-09T17:34:53.423589+05:00' # 5 hours ahead of UTC
+    timestr_3 = '2017-04-09T17:34:53.423589'
+    timestr_4 = '2017-04-09T17:34:53'
+    timestr_bad = '2017-04-0589+00:00'
+
+    def test_parse_datetime_with_tz_to_utc(self):
+        dt_tz_a = None
+        dt_tz_b = None
+        for t_str in [self.timestr_1, self.timestr_2, self.timestr_3, self.timestr_4]:
+            dt = wrangler_utils.parse_datetime_with_tz_to_utc(t_str)
+            self.assertTrue(dt is not None)
+            self.assertTrue(dt.tzinfo is not None and dt.tzinfo == tz.tzutc())
+            if t_str == self.timestr_1:
+                dt_tz_a = dt
+            elif t_str == self.timestr_2:
+                dt_tz_b = dt
+        self.assertTrue(dt_tz_a > dt_tz_b)
+        dt_bad = wrangler_utils.parse_datetime_with_tz_to_utc(self.timestr_bad)
+        self.assertTrue(dt_bad is None)
+
+    def test_get_FDN_Connection(self):
+        # run this for all environments to ensure access keys are in place
+        app.init_environments()
+        for env in app.ENVIRONMENTS:
+            conn, _ = app.init_connection(env)
+            fdn_conn = wrangler_utils.get_FDN_Connection(conn)
+            self.assertTrue(fdn_conn is not None)
 
 
 if __name__ == '__main__':

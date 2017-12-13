@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, set_default_kwargs, build_dummy_result
+from .utils import check_function, init_check_res, build_dummy_result
 from collections import OrderedDict
 import requests
 import sys
@@ -11,7 +11,7 @@ def test_function_unused():
     # this is just here for testing purposes
     return
 
-@check_function
+@check_function()
 def elastic_beanstalk_health(connection, **kwargs):
     """
     Check both environment health and health of individual instances
@@ -80,7 +80,7 @@ def elastic_beanstalk_health(connection, **kwargs):
     return check.store_result()
 
 
-@check_function
+@check_function()
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
@@ -115,7 +115,7 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     return check.store_result()
 
 
-@check_function
+@check_function()
 def indexing_progress(connection, **kwargs):
     check = init_check_res(connection, 'indexing_progress')
     # get latest and db/es counts closest to 2 hrs ago
@@ -146,7 +146,7 @@ def indexing_progress(connection, **kwargs):
     return check.store_result()
 
 
-@check_function
+@check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
     es = connection.es
@@ -172,7 +172,7 @@ def indexing_records(connection, **kwargs):
                     'finished': False
                 }
                 warn_records.append(this_record)
-                if check.status == 'PEND': check.status = 'WARN'
+                if check.status == 'IGNORE': check.status = 'WARN'
             else:
                 this_record = {'record': body}
                 elapsed = body.get('indexing_elapsed')
@@ -212,7 +212,7 @@ def indexing_records(connection, **kwargs):
     return check.store_result()
 
 
-@check_function
+@check_function()
 def staging_deployment(connection, **kwargs):
     # dummy function since we don't want this to store results when run
     return build_dummy_result('staging_deployment')

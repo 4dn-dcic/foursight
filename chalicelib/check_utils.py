@@ -1,9 +1,10 @@
 from __future__ import print_function, unicode_literals
-from .utils import get_methods_by_deco, check_method_deco, check_function
+from .utils import get_methods_by_deco, check_method_deco, CHECK_DECO
 from .checkresult import CheckResult
 from .check_groups import *
 import sys
 import importlib
+import datetime
 
 # import modules that contain the checks
 for check_mod in CHECK_MODULES:
@@ -22,7 +23,7 @@ def get_check_strings(specific_check=None):
     all_checks = []
     for check_mod in CHECK_MODULES:
         if globals().get(check_mod):
-            methods = get_methods_by_deco(globals()[check_mod], check_function)
+            methods = get_methods_by_deco(globals()[check_mod], CHECK_DECO)
             for method in methods:
                 check_str = '/'.join([check_mod, method.__name__])
                 if specific_check and specific_check == method.__name__:
@@ -44,12 +45,19 @@ def run_check_group(connection, name):
     check_group = fetch_check_group(name)
     if not check_group:
         return check_results
+    group_timestamp = datetime.datetime.utcnow().isoformat()
     for check_info in check_group:
         if len(check_info) != 3:
             check_results.append(' '.join(['ERROR with', str(check_info), 'in group:', name]))
         else:
+            # add uuid to each kwargs dict if not already specified
+            # this will have the effect of giving all checks the same id
+            # and combining results from repeats in the same check_group
+            [check_str, check_kwargs, check_deps] = check_info
+            if 'uuid' not in check_kwargs:
+                check_kwargs['uuid'] = group_timestamp
             # nothing done with dependencies yet
-            result = run_check(connection, check_info[0], check_info[1])
+            result = run_check(connection, check_str, check_kwargs)
             if result:
                 check_results.append(result)
     return check_results
@@ -118,48 +126,6 @@ def run_check(connection, check_str, check_kwargs):
     check_method = check_mod.__dict__.get(check_name_str)
     if not check_method:
         return ' '.join(['ERROR. Check name is not valid.', error_str])
-    if not check_method_deco(check_method, check_function):
+    if not check_method_deco(check_method, CHECK_DECO):
         return ' '.join(['ERROR. Ensure the check_function decorator is present.', error_str])
     return check_method(connection, **check_kwargs)
-
-
-"""
-This class represents the entirety of the checks run in Foursight.
-To create a new check, simply create a method for this class and add
-the '@daily_check' or '@rate_check decorator to it.
-This decorator MUST be used or the check will not be shown in fourfront.
-@daily_check should be used for checks that are scheduled to run every day
-using the app.run function, which runs at 10am UTC.
-@rate_check should be used for any non-daily check that will have a cron/
-rate defined for it in app.py.
-@daily_check methods MAY be run at custom intervals, but @rate_check
-methods will never run daily.
-
-Each check method should initialize a CheckResult object, which holds the
-name, status, output, and more for the check. This object should be
-initialized using the init_check function, which MUST be passed a name
-argument EXACTLY equal to the check name (i.e. method name).
-
-For example, the 'elastic_beanstalk_health' check initilizes a CheckResult like so:
-check = self.init_check('elastic_beanstalk_health')
-Then, fields on that CheckResult (named check) can be easily set:
->> check.status = 'PASS'
-Lastly, once the check is finished, finalize and store S3 results using:
->> return check.store_result()
-Returning the result from store_result(), or a custom value, is
-encouraged because the /run/ function uses these to report that tests
-have succesfully run.
-Returning None or no value without calling store_result() will effectively
-abort the check.
-
-You can get results from past/latest checks with any name in any check
-method by initializing a CheckResult with the corresponding name.
-For example, get the result of 'item_counts_by_type' check 24 hours ago:
->> counts_check = self.init_check('item_counts_by_type')
->> prior = counts_check.get_closest_check(24)
-get_closest_check() returns a Python dict of the check result, which
-can be interrogated in ways such as:
->> prior['status']
-There is also a get_latest_check() method that returns the same type
-of object for the latest result of a given check.
-"""
