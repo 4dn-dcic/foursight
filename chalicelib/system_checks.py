@@ -172,7 +172,7 @@ def indexing_records(connection, **kwargs):
                     'finished': False
                 }
                 warn_records.append(this_record)
-                if check.status == 'PEND': check.status = 'WARN'
+                if check.status == 'IGNORE': check.status = 'WARN'
             else:
                 this_record = {'record': body}
                 elapsed = body.get('indexing_elapsed')

@@ -12,7 +12,12 @@ def get_FDN_Connection(connection):
     key needed to build a FDN_Connection object. Returns None if the process
     fails or the FDN_Connection if successful.
     """
-    s3Obj = s3_utils.s3Utils(env=connection.ff_env)
+    # custom handling of data and staging
+    if connection.fs_environment in ['data', 'staging']:
+        use_env = 'fourfront-webprod'
+    else:
+        use_env = connection.ff_env
+    s3Obj = s3_utils.s3Utils(env=use_env)
     # workaround to check if key is in the bucket
     contents = s3_utils.s3.list_objects_v2(Bucket=s3Obj.sys_bucket)
     key_names = [obj['Key'] for obj in contents.get('Contents', [])]

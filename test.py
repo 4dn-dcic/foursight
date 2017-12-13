@@ -4,8 +4,9 @@ import unittest
 import datetime
 import json
 import app
-from chalicelib import check_utils, utils, check_groups
+from chalicelib import check_utils, utils, check_groups, wrangler_utils, checkresult
 from chalicelib.fs_connection import FSConnection
+from dateutil import tz
 
 
 class TestFSConnection(unittest.TestCase):
@@ -25,7 +26,6 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(self.connection.ff_env == 'test3')
 
     def test_run_check_with_bad_connection(self):
-        import pdb; pdb.set_trace()
         check_res = check_utils.run_check(self.connection, 'wrangler_checks/item_counts_by_type', {})
         # run_check returns a dict with results
         self.assertTrue(check_res.get('status') == 'ERROR')
@@ -38,11 +38,12 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(test_check.get_closest_check(1) is None)
         self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
-        self.assertTrue(formatted_res.get('status') == 'PEND')
+        self.assertTrue(formatted_res.get('status') == 'IGNORE')
         self.assertTrue(formatted_res.get('title') == 'Test Check')
         self.assertTrue(formatted_res.get('description') == 'Unittest check')
+        # set a bad status on purpose
+        test_check.status = "BAD_STATUS"
         check_res = test_check.store_result()
-        self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == formatted_res.get('name'))
         self.assertTrue(check_res.get('description') == "Malformed status; look at Foursight check definition.")
         self.assertTrue(check_res.get('brief_output') == formatted_res.get('brief_output') == None)
@@ -149,6 +150,35 @@ class TestAppRoutes(unittest.TestCase):
         # still need to figure out how to to test put_check and put_environment
 
 
+class TestCheckResult(unittest.TestCase):
+    # use a fake check name and store on mastertest
+    check_name = 'test_only_check'
+    environ = 'mastertest' # hopefully this is up
+    connection, _ = app.init_connection(environ)
+
+    def test_check_result_methods(self):
+        check = checkresult.CheckResult(self.connection.s3_connection, self.check_name)
+        # default status
+        self.assertTrue(check.status == 'IGNORE')
+        check.description = 'This check is just for testing purposes.'
+        check.status = 'PASS'
+        check.full_output = ['first_item']
+        res = check.store_result()
+        # fetch this check. latest and closest result with 0 diff should be the same
+        late_res = check.get_latest_check()
+        self.assertTrue(late_res == res)
+        close_res = check.get_closest_check(0, 0)
+        self.assertTrue(close_res == res)
+        all_res = check.get_all_checks()
+        self.assertTrue(len(all_res) > 0)
+        # this should be true since all results will be identical
+        self.assertTrue(all_res[-1].get('description') == res.get('description'))
+        # ensure that previous check results can be fetch using the uuid functionality
+        res_uuid = res['uuid']
+        check_copy = checkresult.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        self.assertTrue(res == check_copy.store_result())
+
+
 class TestCheckUtils(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app.init_connection(environ)
@@ -178,7 +208,6 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue(bad_check_str is None)
 
     def test_fetch_check_group(self):
-        import pdb; pdb.set_trace()
         all_checks = check_utils.fetch_check_group('all')
         self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
         daily_checks = check_utils.fetch_check_group('daily_checks')
@@ -290,6 +319,37 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(dummy_res['status'] == 'IGNORE')
         self.assertTrue(dummy_res['name']) == dummy_check
         self.assertTrue('uuid' in dummy_res)
+
+
+class TestWranglerUtils(unittest.TestCase):
+    timestr_1 = '2017-04-09T17:34:53.423589+00:00' # UTC
+    timestr_2 = '2017-04-09T17:34:53.423589+05:00' # 5 hours ahead of UTC
+    timestr_3 = '2017-04-09T17:34:53.423589'
+    timestr_4 = '2017-04-09T17:34:53'
+    timestr_bad = '2017-04-0589+00:00'
+
+    def test_parse_datetime_with_tz_to_utc(self):
+        dt_tz_a = None
+        dt_tz_b = None
+        for t_str in [self.timestr_1, self.timestr_2, self.timestr_3, self.timestr_4]:
+            dt = wrangler_utils.parse_datetime_with_tz_to_utc(t_str)
+            self.assertTrue(dt is not None)
+            self.assertTrue(dt.tzinfo is not None and dt.tzinfo == tz.tzutc())
+            if t_str == self.timestr_1:
+                dt_tz_a = dt
+            elif t_str == self.timestr_2:
+                dt_tz_b = dt
+        self.assertTrue(dt_tz_a > dt_tz_b)
+        dt_bad = wrangler_utils.parse_datetime_with_tz_to_utc(self.timestr_bad)
+        self.assertTrue(dt_bad is None)
+
+    def test_get_FDN_Connection(self):
+        # run this for all environments to ensure access keys are in place
+        app.init_environments()
+        for env in app.ENVIRONMENTS:
+            conn, _ = app.init_connection(env)
+            fdn_conn = wrangler_utils.get_FDN_Connection(conn)
+            self.assertTrue(fdn_conn is not None)
 
 
 if __name__ == '__main__':

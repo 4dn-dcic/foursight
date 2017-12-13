@@ -38,8 +38,9 @@ class CheckResult(object):
             self.title = title
         self.description = description
         # should I make an enum for status?
-        # valid values are: 'PEND', 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
-        self.status = 'PEND'
+        # valid values are: 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
+        # start with IGNORE as the default check status
+        self.status = 'IGNORE'
         self.extension = extension
         self.brief_output = None
         self.full_output = None
@@ -78,7 +79,12 @@ class CheckResult(object):
         relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
         for check in relevant_checks:
             if check.startswith(s3_prefix) and check.endswith(self.extension):
-                all_results.append(self.s3_connection.get_object(check))
+                result = self.s3_connection.get_object(check)
+                try:
+                    result = json.loads(result)
+                except ValueError:
+                    pass
+                all_results.append(result)
         return all_results
 
 
