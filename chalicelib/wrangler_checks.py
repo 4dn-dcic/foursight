@@ -29,14 +29,6 @@ def item_counts_by_type(connection, **kwargs):
     except:
         check.status = 'ERROR'
         return check.store_result()
-    ##### temporary back up while counts endpoint gets worked into FF
-    if counts_res.status_code != 200:
-        try:
-            counts_res = requests.get(''.join([server,'health?format=json']))
-        except:
-            check.status = 'ERROR'
-            return check.store_result()
-    #####
     if counts_res.status_code != 200:
         check.status = 'ERROR'
         return check.store_result()
