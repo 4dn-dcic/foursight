@@ -295,11 +295,19 @@ def put_check(environ, check):
     If uuid is provided and a previous check is found, the default
     behavior is to append brief_output and full_output.
     """
+    request = app.current_request
+    put_data = request.json_body
+    return run_put_check(environ, put_data)
+
+
+def run_put_check(environ, put_data):
+    """
+    Abstraction of put_check functionality to allow for testing outside of chalice
+    framework. Returns a response object
+    """
     connection, response = init_response(environ)
     if not connection:
         return response
-    request = app.current_request
-    put_data = request.json_body
     if not isinstance(put_data, dict):
         response.body = {
             'status': 'error',
