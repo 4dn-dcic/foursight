@@ -359,6 +359,14 @@ def put_environment(environ):
     """
     request = app.current_request
     env_data = request.json_body
+    return run_put_environment(environ, env_data)
+
+
+def run_put_environment(environ, env_data):
+    """
+    Abstraction of the functionality of put_environment without the current_request
+    to allow for testing.
+    """
     proc_environ = environ.split('-')[-1] if environ.startswith('fourfront-') else environ
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
         ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'
