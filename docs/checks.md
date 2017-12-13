@@ -15,17 +15,17 @@ Let's say we want to write a check that will check Fourfront for all items that 
 
 ```
 @check_function()
-def items_released_in_the_past_day(connection, **kwargs):
-    check = init_check_res(connection, 'items_released_in_the_past_day')
+def items_created_in_the_past_day(connection, **kwargs):
+    check = init_check_res(connection, 'items_created_in_the_past_day')
     return check.store_result()
 ```
 
-At the moment, this check won't do anything but write a result to the `items_released_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. Let's use some helper functions defined in chalicelib/wrangler_utils.py to establish a connection to Fourfront (a FDN_Connection, such as those used in Submit4DN). If making a new check module, remember to import these helper functions. If the connection fails, store that information in the check result and abort the check. Let's also set a description and status for the check if the connection is established.
+At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. Let's use some helper functions defined in chalicelib/wrangler_utils.py to establish a connection to Fourfront (a FDN_Connection, such as those used in Submit4DN). If making a new check module, remember to import these helper functions. If the connection fails, store that information in the check result and abort the check. Let's also set a description and status for the check if the connection is established.
 
 ```
 @check_function()
-def items_released_in_the_past_day(connection, **kwargs):
-    check = init_check_res(connection, 'items_released_in_the_past_day')
+def items_created_in_the_past_day(connection, **kwargs):
+    check = init_check_res(connection, 'items_created_in_the_past_day')
     fdn_conn = wrangler_utils.get_FDN_Connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
@@ -40,8 +40,8 @@ Okay, now we have a check that will attempt to make a Fourfront connection and f
 
 ```
 @check_function()
-def items_released_in_the_past_day(connection, **kwargs):
-    check = init_check_res(connection, 'items_released_in_the_past_day')
+def items_created_in_the_past_day(connection, **kwargs):
+    check = init_check_res(connection, 'items_created_in_the_past_day')
     fdn_conn = wrangler_utils.get_FDN_Connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
@@ -84,29 +84,29 @@ A key word arguments (kwargs) object can be passed into your checks for internal
 
 ```
 @check_function(item_type='Item')
-def items_released_in_the_past_day(connection, **kwargs):
+def items_created_in_the_past_day(connection, **kwargs):
     ...
 ```
 
-These kwargs defined in the check function can be overwritten by those defined in the check group. So, if we wanted to run the `items_released_in_the_past_day` check in a check group with `item_type = Experiment` we could add the following check info to a check group:
+These kwargs defined in the check function can be overwritten by those defined in the check group. So, if we wanted to run the `items_created_in_the_past_day` check in a check group with `item_type = Experiment` we could add the following check info to a check group:
 
 ```
-['wrangler_checks/items_released_in_the_past_day', {'item_type': 'Experiment'}, []]
+['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, []]
 ```
 
 This will cause the `item_type` to be overwritten in the check code. If you wanted to use the default `item_type` kwarg, you would just leave an empty dictionary for the check in the check group:
 
 ```
-['wrangler_checks/items_released_in_the_past_day', {}, []]
+['wrangler_checks/items_created_in_the_past_day', {}, []]
 ```
 
 Lastly, arguments that are not defined in the default kwargs through the `check_function` decorator can also be added to the dictionary:
 
 ```
-['wrangler_checks/items_released_in_the_past_day', {'another_arg': 'another_val'}, []]
+['wrangler_checks/items_created_in_the_past_day', {'another_arg': 'another_val'}, []]
 ```
 
-This would execute the `items_released_in_the_past_day` check with the default kwarg `item_type=Item` and the provided `another_arg=another_val` kwarg. This system allows checks to be with different parameters in check groups.
+This would execute the `items_created_in_the_past_day` check with the default kwarg `item_type=Item` and the provided `another_arg=another_val` kwarg. This system allows checks to be with different parameters in check groups.
 
 Default kwargs are very important to set if they are required for a check, since there are instances in which your check can be run outside of a check group. In such a case, it may break if those arguments are not provided. Really, this is up to the user to design his or her checks in a robust way.
 
@@ -155,9 +155,9 @@ First, check groups containing the same check multiple times will overwrite the 
 
 ```
 wrangler_test_checks = [
-    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'Biosample'}, []],
-    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
-    ['wrangler_checks/items_released_in_the_past_day', {'item_type': 'FileFastq'}, []]
+    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, []],
+    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
+    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'FileFastq'}, []]
 ]
 ```
 
@@ -170,7 +170,7 @@ item_types = ['Biosample', 'Biosource', 'Experiment', 'File']
 wrangler_test_checks = []
 for item_type in item_types:
     wrangler_test_checks.append(
-        ['wrangler_checks/items_released_in_the_past_day', {'item_type': item_type}, []]
+        ['wrangler_checks/items_created_in_the_past_day', {'item_type': item_type}, []]
     )
 ```
 
