@@ -102,10 +102,10 @@ def change_in_item_counts(connection, **kwargs):
 
 
 @check_function(item_type='Item')
-def items_released_in_the_past_day(connection, **kwargs):
+def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
     ts_uuid = kwargs.get('uuid')
-    check = init_check_res(connection, 'items_released_in_the_past_day', uuid=ts_uuid)
+    check = init_check_res(connection, 'items_created_in_the_past_day', uuid=ts_uuid)
     fdn_conn = get_FDN_Connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
@@ -130,6 +130,8 @@ def items_released_in_the_past_day(connection, **kwargs):
     if full_output:
         check.status = 'WARN'
         check.description = 'Items have been created in the past day.'
+        # create a ff_link
+        check.ff_link = ''.join([connection.ff, 'search/?type=Item&q=date_created:>=', date_str])
     else:
         check.status = 'PASS'
         check.description = 'No items have been created in the past day.'

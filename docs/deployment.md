@@ -6,7 +6,7 @@ As mentioned in the [getting started](./getting_started.md) documentation, there
 python -m deploy <stage>
 ```
 
-Where ```<stage>``` is either dev or prod. If there is a packaging issue with your code, Chalice will catch it and log messages accordingly.
+Where ```<stage>``` is either `dev` or `prod`. If there is a packaging issue with your code, Chalice will catch it and log messages accordingly.
 
 ## Automatic deployments
 The Github repository for Chalice is outfitted with Travis CI testing and will deploy automatically when code is merged into the master or production branch. When you merge into master and all the tests pass, Foursight will be automatically deployed to the dev stage. When you merge into production and tests pass, automatic deployment to the prod stage will occur.

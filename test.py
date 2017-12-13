@@ -32,7 +32,7 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
     def test_checkresult_basics(self):
-        test_check = utils.init_check_res(self.connection, 'test_check', description='Unittest check')
+        test_check = utils.init_check_res(self.connection, 'test_check', description='Unittest check', ff_link='not_a_real_http_link')
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
@@ -47,6 +47,7 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(check_res.get('name') == formatted_res.get('name'))
         self.assertTrue(check_res.get('description') == "Malformed status; look at Foursight check definition.")
         self.assertTrue(check_res.get('brief_output') == formatted_res.get('brief_output') == None)
+        self.assertTrue(check_res.get('ff_link') == 'not_a_real_http_link')
 
 
 class TestAppRoutes(unittest.TestCase):
@@ -239,7 +240,7 @@ class TestCheckUtils(unittest.TestCase):
         assert("ERROR with ['system_checks/indexing_progress', {}] in group: malformed_test_checks" in test_checks_res)
 
     def run_check_group_repeats(self):
-        repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_group')
+        repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_checks')
         unified_uuid = None
         for check_res in repeat_res:
             self.assertTrue(isinstance(check_res, dict))

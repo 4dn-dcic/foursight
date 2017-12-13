@@ -24,6 +24,10 @@ def get_FDN_Connection(connection):
     if 'illnevertell' not in key_names:
         return None
     access_key = s3Obj.get_key()
+    # need to overwrite the staging environment at the moment because
+    # data and staging share a sys bucket
+    if connection.fs_environment == 'staging':
+        access_key['default']['server'] = 'http://staging.4dnucleome.org'
     # try to establish fdn_connection
     try:
         fdn_conn = ff_utils.fdn_connection(key=access_key)
