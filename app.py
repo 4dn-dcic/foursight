@@ -183,7 +183,9 @@ def view_foursight(environ):
                 # change timezone to local
                 from_zone = tz.tzutc()
                 to_zone = tz.tzlocal()
-                ts_utc = datetime.strptime(res['uuid'], "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+                # this can be removed once uuid has been around long enough
+                ts_utc = res['uuid'] in 'uuid' in res else res['timestamp']
+                ts_utc = datetime.strptime(ts_utc, "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
                 ts_utc = ts_utc.replace(tzinfo=from_zone)
                 ts_local = ts_utc.astimezone(to_zone)
                 proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
