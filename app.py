@@ -184,7 +184,7 @@ def view_foursight(environ):
                 from_zone = tz.tzutc()
                 to_zone = tz.tzlocal()
                 # this can be removed once uuid has been around long enough
-                ts_utc = res['uuid'] in 'uuid' in res else res['timestamp']
+                ts_utc = res['uuid'] if 'uuid' in res else res['timestamp']
                 ts_utc = datetime.strptime(ts_utc, "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
                 ts_utc = ts_utc.replace(tzinfo=from_zone)
                 ts_local = ts_utc.astimezone(to_zone)
