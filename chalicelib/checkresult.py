@@ -46,7 +46,7 @@ class CheckResult(object):
         self.full_output = None
         # ff_link is a string location that will be displayed to create
         # an easily-accessible link from the check
-        self.ff_link = None
+        self.ff_link = ff_link
 
 
     def format_result(self, uuid):
