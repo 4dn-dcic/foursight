@@ -297,10 +297,10 @@ def put_check(environ, check):
     """
     request = app.current_request
     put_data = request.json_body
-    return run_put_check(environ, put_data)
+    return run_put_check(environ, check, put_data)
 
 
-def run_put_check(environ, put_data):
+def run_put_check(environ, check, put_data):
     """
     Abstraction of put_check functionality to allow for testing outside of chalice
     framework. Returns a response object
@@ -313,7 +313,7 @@ def run_put_check(environ, put_data):
             'status': 'error',
             'endpoint': 'put_check',
             'check': check,
-            'description': ' '.join(['PUT request is malformed:', put_data]),
+            'description': ' '.join(['PUT request is malformed:', str(put_data)]),
             'environment': environ
         }
         response.status_code = 400
@@ -331,12 +331,17 @@ def run_put_check(environ, put_data):
             if prev_content and field in ['full_output', 'brief_output']:
                 # will be list, dict, or string. make sure they are same type
                 if isinstance(prev_content, dict) and isinstance(put_content, dict):
-                    put_content = prev_content.update(put_content)
+                    prev_content.update(put_content)
                 elif isinstance(prev_content, list) and isinstance(put_content, list):
-                    put_content = prev_content.append(put_content)
+                    prev_content.extend(put_content)
                 elif isinstance(prev_content, unicode) and isinstance(put_content, unicode):
-                    put_content = prev_content + put_content
-            setattr(putCheck, field, put_content)
+                    prev_content = prev_content + put_content
+                else:
+                    # cannot append, just update with new
+                    prev_content = put_content
+                setattr(putCheck, field, prev_content)
+            else:
+                setattr(putCheck, field, put_content)
     stored = putCheck.store_result()
     response.body = {
         'status': 'success',

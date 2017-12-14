@@ -148,7 +148,51 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(res.status_code == 400)
         self.assertTrue(res.body['status'] == 'error')
         self.assertTrue(res.body['description'] == 'Could not get results for: not_a_real_check. Maybe no such check result exists?')
-        # still need to figure out how to to test put_check and put_environment
+
+    def test_put_check(self):
+        # actually tests run_put_check, which holds all functionality
+        # besides app.current_request
+        check_name = 'test_put_check'
+        ts_uuid = datetime.datetime.utcnow().isoformat()
+        put_data = {
+            'description': 'Just a test for run_put_check',
+            'brief_output': ['res1'],
+            'full_output': {'key1': 'res1', 'key2': 'res2'},
+            'uuid': ts_uuid
+        }
+        res = app.run_put_check(self.environ, check_name, put_data)
+        self.assertTrue(res.status_code == 200)
+        self.assertTrue(res.body['environment'] == self.environ)
+        self.assertTrue(res.body['status'] == 'success')
+        self.assertTrue(res.body['check'] == check_name)
+        put_res = res.body['updated_content']
+        self.assertTrue(put_res is not None)
+        self.assertTrue(put_res.get('uuid') == ts_uuid)
+        # now put another one with the same uuid
+        put_data['brief_output'] = ['res2']
+        put_data['full_output'] = {'key2': 'res3'}
+        res = app.run_put_check(self.environ, check_name, put_data)
+        self.assertTrue(res.status_code == 200)
+        put_res = res.body['updated_content']
+        self.assertTrue(put_res['brief_output'] == ['res1', 'res2'])
+        self.assertTrue(put_res['full_output'] == {'key1': 'res1', 'key2': 'res3'})
+        # now do it with strings. brief_output should be unchanged if we don't overwrite it
+        del put_data['brief_output']
+        put_data['full_output'] = 'abc '
+        res = app.run_put_check(self.environ, check_name, put_data)
+        self.assertTrue(res.status_code == 200)
+        put_data['full_output'] = '123'
+        res = app.run_put_check(self.environ, check_name, put_data)
+        self.assertTrue(res.status_code == 200)
+        put_res = res.body['updated_content']
+        self.assertTrue(put_res['brief_output'] == ['res1', 'res2'])
+        self.assertTrue(put_res['full_output'] == 'abc 123')
+        # lastly, cover bad output
+        put_data = 'NOT_A_DICT'
+        res = app.run_put_check(self.environ, check_name, put_data)
+        self.assertTrue(res.status_code == 400)
+        self.assertTrue(res.body['status'] == 'error')
+        self.assertTrue(res.body['description'] == 'PUT request is malformed: NOT_A_DICT')
 
 
 class TestCheckResult(unittest.TestCase):
