@@ -147,7 +147,7 @@ def indexing_progress(connection, **kwargs):
 
 
 @check_function()
-def indexing_records(connection, **kwargs):
+def indexing_records(connection, **kwargs, runnable=True):
     check = init_check_res(connection, 'indexing_records')
     es = connection.es
     es_resp = requests.get(''.join([es,'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc']))

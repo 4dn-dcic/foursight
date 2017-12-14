@@ -61,7 +61,8 @@ class CheckResult(object):
             'extension': self.extension,
             'brief_output': self.brief_output,
             'full_output': self.full_output,
-            'ff_link': self.ff_link
+            'ff_link': self.ff_link,
+            'runnable': self.runnable
         }
 
 

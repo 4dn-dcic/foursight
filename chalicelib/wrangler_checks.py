@@ -10,7 +10,7 @@ import boto3
 
 
 @check_function()
-def item_counts_by_type(connection, **kwargs):
+def item_counts_by_type(connection, **kwargs, runnable=True):
     def process_counts(count_str):
         # specifically formatted for FF health page
         ret = {}
