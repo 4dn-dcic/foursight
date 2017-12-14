@@ -82,11 +82,13 @@
                                 <span class="pull-right">
                                     {{check.uuid}}
                                 </span>
-                                <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
-                                    <button class="btn btn-link" type="submit">
-                                        <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
-                                    </button>
-                                </form>
+                                {% if check.get('runnable') %}
+                                    <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
+                                        <button class="btn btn-link" type="submit">
+                                            <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
+                                        </button>
+                                    </form>
+                                {% endif %}
                             </h5>
                             {% if check.content %}
                             <div class="collapse commonstyle" id={{env['environment'] + '-' + check['name']}}>
