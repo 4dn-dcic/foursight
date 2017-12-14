@@ -23,6 +23,8 @@
         border-radius: 8px;
     }
     .color-hover {
+        border: 1px solid #ccc;
+        border-radius: 8px;
         background-color: #f8f8f8;
     }
     .color-hover:hover {
@@ -132,7 +134,7 @@
                         {% for group in groups %}
                             <div class="col-sm-2">
                                 <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
-                                    <button class="btn boxstyle color-hover" type="submit">
+                                    <button class="btn center-block color-hover" type="submit">
                                         <span>{{group}}</span>
                                     </button>
                                 </form>
