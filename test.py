@@ -134,6 +134,30 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(resp2.body['status'] == 'error')
         self.assertTrue('Invalid environment provided' in resp2.body['description'])
 
+    def test_put_environment(self):
+        # this one is interesting... will be tested by putting a clone of
+        # mastertest into itself. actual fxn run is run_put_environment
+        get_res = app.get_environment(self.environ)
+        env_data = get_res.body.get('details')
+        # make sure the environ we have is legit
+        self.assertTrue(env_data and 'fourfront' in env_data and 'es' in env_data and 'ff_env' in env_data)
+        env_res = app.run_put_environment(self.environ, env_data)
+        self.assertTrue(env_res.status_code == 200)
+        self.assertTrue(env_res.body.get('status') == 'success')
+        self.assertTrue(env_res.body.get('environment') == self.environ)
+        self.assertTrue(env_res.body.get('description') == 'Succesfully made: ' + self.environ)
+        checks_run = env_res.body.get('initial_checks')
+        self.assertTrue(isinstance(checks_run, list) and len(checks_run) > 0)
+        # failure case
+        bad_res = app.run_put_environment(self.environ, {'key1': 'res1'})
+        self.assertTrue(bad_res.status_code == 400)
+        self.assertTrue(bad_res.body.get('status') == 'error')
+        self.assertTrue(bad_res.body.get('body') == {'key1': 'res1'})
+        self.assertTrue(bad_res.body.get('description') == 'Environment creation failed')
+        # make sure they match after run_put_environment
+        get_res2 = app.get_environment(self.environ)
+        self.assertTrue(get_res.body == get_res2.body)
+
     def test_get_check(self):
         test_check = 'indexing_progress'
         res = app.get_check(self.environ, test_check)
