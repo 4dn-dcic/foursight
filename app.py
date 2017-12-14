@@ -23,6 +23,13 @@ ENVIRONMENTS = {}
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 
+# compare strings in both python 2 and python 3
+# in other files, compare with app.basestring
+try:
+    basestring = basestring
+except NameError:
+    basestring = str
+
 
 def init_environments(env='all'):
     """
@@ -291,30 +298,57 @@ def put_check(environ, check):
     """
     Take a PUT request. Body of the request should be a json object with keys
     corresponding to the fields in CheckResult, namely:
-    title, status, description, brief_output, full_output.
+    title, status, description, brief_output, full_output, uuid.
+    If uuid is provided and a previous check is found, the default
+    behavior is to append brief_output and full_output.
+    """
+    request = app.current_request
+    put_data = request.json_body
+    return run_put_check(environ, check, put_data)
+
+
+def run_put_check(environ, check, put_data):
+    """
+    Abstraction of put_check functionality to allow for testing outside of chalice
+    framework. Returns a response object
     """
     connection, response = init_response(environ)
     if not connection:
         return response
-    request = app.current_request
-    put_data = request.json_body
     if not isinstance(put_data, dict):
         response.body = {
             'status': 'error',
             'endpoint': 'put_check',
             'check': check,
-            'description': ' '.join(['PUT request is malformed:', put_data]),
+            'description': ' '.join(['PUT request is malformed:', str(put_data)]),
             'environment': environ
         }
         response.status_code = 400
         return response
-    putCheck = CheckResult(connection.s3_connection, check)
+    put_uuid = put_data.get('uuid')
+    putCheck = CheckResult(connection.s3_connection, check, uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'description', 'brief_output', 'full_output']:
         put_content = put_data.get(field)
+        prev_content = getattr(putCheck, field, None)
         if put_content:
-            setattr(putCheck, field, put_content)
+            # append attribute data for _output fields if there are pre-existing
+            # values originating from an existing put_uuid
+            if prev_content and field in ['full_output', 'brief_output']:
+                # will be list, dict, or string. make sure they are same type
+                if isinstance(prev_content, dict) and isinstance(put_content, dict):
+                    prev_content.update(put_content)
+                elif isinstance(prev_content, list) and isinstance(put_content, list):
+                    prev_content.extend(put_content)
+                elif isinstance(prev_content, basestring) and isinstance(put_content, basestring):
+                    prev_content = prev_content + put_content
+                else:
+                    # cannot append, just update with new
+                    prev_content = put_content
+                setattr(putCheck, field, prev_content)
+            else:
+                setattr(putCheck, field, put_content)
     stored = putCheck.store_result()
     response.body = {
         'status': 'success',
@@ -337,6 +371,14 @@ def put_environment(environ):
     """
     request = app.current_request
     env_data = request.json_body
+    return run_put_environment(environ, env_data)
+
+
+def run_put_environment(environ, env_data):
+    """
+    Abstraction of the functionality of put_environment without the current_request
+    to allow for testing.
+    """
     proc_environ = environ.split('-')[-1] if environ.startswith('fourfront-') else environ
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
         ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'

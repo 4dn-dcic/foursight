@@ -15,13 +15,15 @@ daily_checks = [
     ['system_checks/status_of_elasticsearch_indices', {}, []],
     ['system_checks/indexing_records', {}, []],
     ['system_checks/staging_deployment', {}, []],
+    ['wrangler_checks/item_counts_by_type', {}, []],
     ['wrangler_checks/change_in_item_counts', {}, []],
+    ['system_checks/indexing_progress', {}, []],
     ['wrangler_checks/items_created_in_the_past_day', {}, []]
 ]
 
 two_hour_checks = [
-    ['system_checks/indexing_progress', {}, []],
-    ['wrangler_checks/item_counts_by_type', {}, []]
+    ['wrangler_checks/item_counts_by_type', {}, []],
+    ['system_checks/indexing_progress', {}, []]
 ]
 
 
