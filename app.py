@@ -23,6 +23,13 @@ ENVIRONMENTS = {}
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 
+# compare strings in both python 2 and python 3
+# in other files, compare with app.basestring
+try:
+    basestring = basestring
+except NameError:
+    basestring = str
+
 
 def init_environments(env='all'):
     """
@@ -334,7 +341,7 @@ def run_put_check(environ, check, put_data):
                     prev_content.update(put_content)
                 elif isinstance(prev_content, list) and isinstance(put_content, list):
                     prev_content.extend(put_content)
-                elif isinstance(prev_content, unicode) and isinstance(put_content, unicode):
+                elif isinstance(prev_content, basestring) and isinstance(put_content, basestring):
                     prev_content = prev_content + put_content
                 else:
                     # cannot append, just update with new
