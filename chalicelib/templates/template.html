@@ -22,6 +22,12 @@
         margin-bottom: 5px;
         border-radius: 8px;
     }
+    .color-hover {
+        background-color: #f8f8f8;
+    }
+    .color-hover:hover {
+        background-color: #d9d9d9;
+    }
     .commonstyle {
         margin: 0px 5px 5px 5px;
     }
@@ -67,7 +73,7 @@
             {% for env in envs %}
             <li>
                 <h4>
-                    <span>{{env.environment}}</span>
+                    <span>{{'Environment: ' + env.environment}}</span>
                 </h4>
                 <ul>
                     {% for check in env['checks'] %}
@@ -120,13 +126,13 @@
                     </li>
                     {% endfor %}
                 </ul>
-                <div class="commonstyle own-line">{{'Run check group:'}}</div>
-                <div class='container'>
+                <h5>{{'Run group:'}}</h5>
+                <div class='container-fluid'>
                     <div class='row'>
                         {% for group in groups %}
-                            <div class="col">
+                            <div class="col-sm-2">
                                 <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
-                                    <button class="btn btn-link" type="submit">
+                                    <button class="btn boxstyle color-hover" type="submit">
                                         <span>{{group}}</span>
                                     </button>
                                 </form>
