@@ -41,6 +41,7 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(formatted_res.get('status') == 'IGNORE')
         self.assertTrue(formatted_res.get('title') == 'Test Check')
         self.assertTrue(formatted_res.get('description') == 'Unittest check')
+        self.assertTrue(formatted_res.get('runnable') == False)
         # set a bad status on purpose
         test_check.status = "BAD_STATUS"
         check_res = test_check.store_result()
@@ -355,16 +356,30 @@ class TestCheckUtils(unittest.TestCase):
             self.assertTrue('ERROR' in check_res)
 
     def test_check_groups(self):
-        # this may not be the best approach
-        for key, val in check_groups.__dict__.items():
-            if '_checks' in key and isinstance(val, list):
-                for check_info in val:
-                    if key != 'malformed_test_checks':
-                        self.assertTrue(len(check_info) == 3)
-                        self.assertTrue(isinstance(check_info[1], dict))
-                        self.assertTrue(isinstance(check_info[2], list))
-                    else:
-                        self.assertTrue(len(check_info) != 3)
+        # make sure check groups are dicts
+        self.assertTrue(isinstance(check_groups.CHECK_GROUPS, dict))
+        self.assertTrue(isinstance(check_groups.TEST_CHECK_GROUPS, dict))
+        # ensure check groups look good
+        for key, val in check_groups.CHECK_GROUPS.items():
+            self.assertTrue('_checks' in key)
+            self.assertTrue(isinstance(val, list))
+            for check_info in val:
+                self.assertTrue(len(check_info) == 3)
+                self.assertTrue(isinstance(check_info[1], dict))
+                self.assertTrue(isinstance(check_info[2], list))
+        # this is a bit janky
+        for key, val in check_groups.TEST_CHECK_GROUPS.items():
+            self.assertTrue('_test_checks' in key)
+            self.assertTrue(isinstance(val, list))
+            for check_info in val:
+                if 'malformed' in key:
+                    self.assertTrue(len(check_info) != 3)
+                else:
+                    self.assertTrue(len(check_info) == 3)
+                    self.assertTrue(isinstance(check_info[1], dict))
+                    self.assertTrue(isinstance(check_info[2], list))
+
+
 
 
 class TestUtils(unittest.TestCase):

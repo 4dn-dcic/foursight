@@ -10,6 +10,8 @@ from chalicelib.fs_connection import FSConnection
 from chalicelib.check_utils import run_check_group, get_check_group_latest, run_check, get_check_strings
 from chalicelib.checkresult import CheckResult
 from chalicelib.s3_connection import S3Connection
+from chalicelib.utils import basestring
+from chalicelib.check_groups import CHECK_GROUPS
 
 app = Chalice(app_name='foursight')
 app.debug = True
@@ -22,13 +24,6 @@ jin_env = Environment(
 ENVIRONMENTS = {}
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
-
-# compare strings in both python 2 and python 3
-# in other files, compare with app.basestring
-try:
-    basestring = basestring
-except NameError:
-    basestring = str
 
 
 def init_environments(env='all'):
@@ -147,12 +142,17 @@ def view_rerun(environ, check):
     Called from the view endpoint (or manually, I guess), this re-runs the given
     checks for the given environment (CANNOT be 'all'; too slow) and returns the
     view_foursight templated result with the new check result.
+
+    This also be used to run a check group. This is checked before individual check names
     """
     connection, error_res = init_connection(environ)
     if connection:
-        check_str = get_check_strings(check)
-        if check_str:
-            run_check(connection, check_str, {})
+        if check in CHECK_GROUPS:
+            run_check_group(connection, check)
+        else:
+            check_str = get_check_strings(check)
+            if check_str:
+                run_check(connection, check_str, {})
     return view_foursight(environ)
 
 
@@ -215,7 +215,7 @@ def view_foursight(environ):
     env_order = ['data', 'staging', 'webdev', 'hotseat']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
     template = jin_env.get_template('template.html')
-    html_resp.body = template.render(envs=total_envs, stage=STAGE)
+    html_resp.body = template.render(envs=total_envs, groups=CHECK_GROUPS, stage=STAGE)
     html_resp.status_code = 200
     return html_resp
 

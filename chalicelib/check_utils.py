@@ -95,7 +95,10 @@ def fetch_check_group(name):
         all_checks_strs = get_check_strings()
         all_checks_group = [[check_str, {}, []] for check_str in all_checks_strs]
         return all_checks_group
-    group = globals().get(name, None)
+    group = CHECK_GROUPS.get(name, None)
+    # maybe it's a test groups
+    if not group:
+        group = TEST_CHECK_GROUPS.get(name, None)
     # ensure it is non-empty list
     if not isinstance(group, list) or len(group) == 0:
         return None

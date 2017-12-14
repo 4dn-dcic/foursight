@@ -120,6 +120,20 @@
                     </li>
                     {% endfor %}
                 </ul>
+                <div class="commonstyle own-line">{{'Run check group:'}}</div>
+                <div class='container'>
+                    <div class='row'>
+                        {% for group in groups %}
+                            <div class="col">
+                                <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
+                                    <button class="btn btn-link" type="submit">
+                                        <span>{{group}}</span>
+                                    </button>
+                                </form>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </li>
             {% endfor %}
         </ul>
