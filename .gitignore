@@ -3,3 +3,4 @@
 .chalice/config.json
 *.pyc
 __pycache__
+.coverage
