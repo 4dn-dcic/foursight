@@ -16,7 +16,7 @@ def elastic_beanstalk_health(connection, **kwargs):
     """
     Check both environment health and health of individual instances
     """
-    check = init_check_res(connection, 'elastic_beanstalk_health')
+    check = init_check_res(connection, 'elastic_beanstalk_health', runnable=True)
     full_output = {}
     eb_client = boto3.client('elasticbeanstalk')
     try:
@@ -82,7 +82,7 @@ def elastic_beanstalk_health(connection, **kwargs):
 
 @check_function()
 def status_of_elasticsearch_indices(connection, **kwargs):
-    check = init_check_res(connection, 'status_of_elasticsearch_indices')
+    check = init_check_res(connection, 'status_of_elasticsearch_indices', runnable=True)
     ### the check
     es = connection.es
     resp = requests.get(''.join([es,'_cat/indices?v']))

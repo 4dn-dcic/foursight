@@ -58,7 +58,7 @@ def item_counts_by_type(connection, **kwargs):
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
-    check = init_check_res(connection, 'change_in_item_counts')
+    check = init_check_res(connection, 'change_in_item_counts', runnable=True)
     counts_check = init_check_res(connection, 'item_counts_by_type')
     latest = counts_check.get_latest_check()
     # get_item_counts run closest to 24 hours ago
@@ -97,7 +97,7 @@ def change_in_item_counts(connection, **kwargs):
 def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
     ts_uuid = kwargs.get('uuid')
-    check = init_check_res(connection, 'items_created_in_the_past_day', uuid=ts_uuid)
+    check = init_check_res(connection, 'items_created_in_the_past_day', uuid=ts_uuid, runnable=True)
     fdn_conn = get_FDN_Connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
