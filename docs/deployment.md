@@ -15,5 +15,7 @@ The Github repository for Chalice is outfitted with Travis CI testing and will d
 As you add checks to Foursight, please take the time to create tests for them. The current test setup is pretty basic: the Python ```unittest``` package can be executed locally from the root directory with the following command:
 
 ```
-python -m test
+python -m test # run all tests
+# can also run with <optional test class>.<optional test fxn>
+python -m TestCheckUtils.test_fetch_check_group
 ```

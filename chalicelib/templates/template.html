@@ -22,6 +22,14 @@
         margin-bottom: 5px;
         border-radius: 8px;
     }
+    .color-hover {
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #f8f8f8;
+    }
+    .color-hover:hover {
+        background-color: #d9d9d9;
+    }
     .commonstyle {
         margin: 0px 5px 5px 5px;
     }
@@ -67,7 +75,7 @@
             {% for env in envs %}
             <li>
                 <h4>
-                    <span>{{env.environment}}</span>
+                    <span>{{'Environment: ' + env.environment}}</span>
                 </h4>
                 <ul>
                     {% for check in env['checks'] %}
@@ -82,11 +90,13 @@
                                 <span class="pull-right">
                                     {{check.uuid}}
                                 </span>
-                                <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
-                                    <button class="btn btn-link" type="submit">
-                                        <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
-                                    </button>
-                                </form>
+                                {% if check.get('runnable') %}
+                                    <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
+                                        <button class="btn btn-link" type="submit">
+                                            <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
+                                        </button>
+                                    </form>
+                                {% endif %}
                             </h5>
                             {% if check.content %}
                             <div class="collapse commonstyle" id={{env['environment'] + '-' + check['name']}}>
@@ -118,7 +128,24 @@
                     </li>
                     {% endfor %}
                 </ul>
+                <h5>{{'Run group:'}}</h5>
+                <div class='container-fluid'>
+                    <div class='row'>
+                        {% for groups in groups_4 %}
+                            {% for group in groups %}
+                                <div class="col-sm-3">
+                                    <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
+                                        <button class="btn center-block color-hover" type="submit">
+                                            <span>{{group}}</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
             </li>
+            <hr>
             {% endfor %}
         </ul>
     </div>

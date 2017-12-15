@@ -175,10 +175,10 @@ This check would compare the latest result and the result run closest to 24 hour
 As we have seen in the previous section, kwargs can be set individually for each check in the check group, allowing a high level of flexibility with what can be done even with a single check. There are a couple more important points to mention about check groups.
 
 ### Passing kwargs to checks
-First, check groups containing the same check multiple times will overwrite the same output rather than writing an output for each check. Take the following check group:
+First, check groups containing the same check multiple times will overwrite the same output rather than writing an output for each check. Take the following check group, within the overall CHECK_GROUPS object:
 
 ```
-wrangler_test_checks = [
+'wrangler_test_checks': [
     ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, []],
     ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
     ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'FileFastq'}, []]
