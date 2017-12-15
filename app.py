@@ -215,7 +215,10 @@ def view_foursight(environ):
     env_order = ['data', 'staging', 'webdev', 'hotseat']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
     template = jin_env.get_template('template.html')
-    html_resp.body = template.render(envs=total_envs, groups=CHECK_GROUPS, stage=STAGE)
+    groups = list(CHECK_GROUPS.keys()) # only the keys needed
+    # get these into groups of 4
+    groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
+    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE)
     html_resp.status_code = 200
     return html_resp
 

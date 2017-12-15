@@ -64,10 +64,10 @@ Calling `check.store_result()` at the end of the check causes the result of the 
 There are many possibilities to what a check can do. Please visit the ```writing_checks.md``` document for more information.
 
 ## Adding a check group
-Let's say we've created two check in the system_checks.py check module, named ```my_first_check``` and ```my_second_check```. We also have a third check named ```my_third_check``` in wrangler_checks.py. To get these checks to run as a cohesive unit, we need to create a check group for them. This is done within the chalicelib.check_groups.py file. Each item in a check group is a list with three elements. The first element is a string (called a check string) in the form ```<check_module>/<check_name>```, the second element is a dictionary of kwargs for the check, and the third element is a list of check strings dependencies within the check group. The dependencies would be used in the case that we want to wait for one check to finish before running another. Let's say we want some kwargs passed into ```my_first_check``` and we want ```my_third_check``` to run after ```my_second_check```. A check group would look like this:
+Let's say we've created two check in the system_checks.py check module, named ```my_first_check``` and ```my_second_check```. We also have a third check named ```my_third_check``` in wrangler_checks.py. To get these checks to run as a cohesive unit, we need to create a check group for them. This is done within the chalicelib.check_groups.py file. Each item in a check group is a list with three elements. The first element is a string (called a check string) in the form ```<check_module>/<check_name>```, the second element is a dictionary of kwargs for the check, and the third element is a list of check strings dependencies within the check group. The dependencies would be used in the case that we want to wait for one check to finish before running another. Let's say we want some kwargs passed into ```my_first_check``` and we want ```my_third_check``` to run after ```my_second_check```. A check group would look like this, and are written as items in the CHECK_GROUPS dictionary in the check_groups.py file.
 
 ```
-my_test_checks = [
+'my_test_checks': [
     ['system_checks/my_first_check', {'arg_key': 'arg_value'}, []],
     ['system_checks/my_second_check', {}, []],
     ['wrangler_checks/my_third_check', {}, ['system_checks/my_second_check']]
