@@ -206,7 +206,7 @@ This functionality is not yet implemented. For now, checks in a check group are 
 All that you need to do to get your check group up and running is build it within the chalicelib/check_groups.py file. In the same file, make sure to add the string module name (without the `.py`) to the `CHECK_MODULES` list at the top of the file. That's all you need to do! Your check group can now be run using the following endpoint:
 
 ```
-curl -X PUT https://foursight.4dnucleome.org/api/run/<environment>/<my_check_group>
+https://foursight.4dnucleome.org/api/run/<environment>/<my_check_group>
 ```
 
-You can get the latest results for checks defined in your check group by running the GET command or visiting that same endpoint in your browser.
+You can get the latest results for checks defined in your check group by running the GET command or visiting that same endpoint in your browser (you must be logged in as 4DN admin to run check groups outside of the schedule).

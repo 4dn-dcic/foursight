@@ -94,21 +94,27 @@ def one_hour_checks(event):
 This schedule will run ```my_test_checks``` on all Foursight environments every one hour. For more information on using a CRON scheduler, check out [this AWS page](http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html). The code above will run on all environments, but could be easily constricted to specific ones.
 
 ## Foursight API basics
-The most import endpoints are described below. The can be invoekd from the command line, programatically accessed, or visited through your browser. The Foursight address used below is the default address for the prod stage. The URLs are in form: ```<Foursight address>/api/<endpoint>/<environment>/<check_group>```.
+The most import endpoints are described below. The can be invoked from the command line, programatically accessed, or visited through your browser. The Foursight address used below is the default address for the prod stage. The URLs are in form: ```<Foursight address>/api/<endpoint>/<environment>/<check_group>```.
+
+**NOTE**: to hit endpoints from the command line you must provide the secret authorization string under the `Authorization` header. You can do so with the http library as shown below. Alternately, you can log in on the UI using the 4DN administrator account.
+
+```
+http https://foursight.4dnucleome.org/api/run/data/my_test_checks 'Authorization: XXXXXXXXXXX'
+```
 
 The run endpoint with a GET request fetches the latest results for the given check group on the given environment (```data``` in this case).
 ```
-curl -X GET https://foursight.4dnucleome.org/api/run/data/my_test_checks
+GET https://foursight.4dnucleome.org/api/run/data/my_test_checks
 ```
 
 The run endpoint with a PUT request runs the check group on the given environment and returns the results.
 ```
-curl -X PUT https://foursight.4dnucleome.org/api/run/data/my_test_checks
+PUT https://foursight.4dnucleome.org/api/run/data/my_test_checks
 ```
 
 The view endpoint with a GET request returns a HTML visualization of the check results for the given environments. Environments may be a comma separated list (such as: ```staging,data```) or ```all``` for all environments. The view endpoint is best used with a browser.
 ```
-curl -X GET https://foursight.4dnucleome.org/api/view/all
+GET https://foursight.4dnucleome.org/api/view/all
 
-curl -X GET https://foursight.4dnucleome.org/api/view/staging,data
+GET https://foursight.4dnucleome.org/api/view/staging,data
 ```

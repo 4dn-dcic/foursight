@@ -10,10 +10,10 @@ As an initial disclaimer, Foursight environments are specifically made to work w
 `ff_env`: the Fourfront environment name, which is generated automatically if not provided.
 `bucket`: the S3 bucket location for check results for this environment, generated automatically.
 
-You can perform a GET request to see the information for any environment (```staging``` in the example below):
+You can perform a GET request to see the information for any environment (```staging``` in the example below). Please note that you must be logged in as admin to see this information or provide the correct `Authorization` header with your request.
 
 ```
-curl -X GET https://foursight.4dnucleome.org/api/environments/staging
+https://foursight.4dnucleome.org/api/environments/staging
 ```
 
 ## Dynamically creating environments
