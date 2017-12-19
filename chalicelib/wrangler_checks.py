@@ -102,7 +102,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        check.store_result()
+        return check.store_result()
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join(['/search/?type=', item_type, '&q=date_created:>=', date_str])
