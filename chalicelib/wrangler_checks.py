@@ -124,6 +124,8 @@ def items_created_in_the_past_day(connection, **kwargs):
         check.description = 'Items have been created in the past day.'
         # create a ff_link
         check.ff_link = ''.join([connection.ff, 'search/?type=Item&q=date_created:>=', date_str])
+        # test admin output
+        check.admin_output = check.ff_link
     else:
         check.status = 'PASS'
         check.description = 'No items have been created in the past day.'

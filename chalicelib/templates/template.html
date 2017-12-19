@@ -136,6 +136,14 @@
                                         <pre><code>{{check.full_output}}</code></pre>
                                     </div>
                                 {% endif %}
+                                {% if check.get('admin_output') and is_admin %}
+                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-admin'}}>
+                                        Toggle admin output
+                                    </button>
+                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-admin'}}>
+                                        <pre><code>{{check.admin_output}}</code></pre>
+                                    </div>
+                                {% endif %}
                             </div>
                             {% endif %}
                         </div>
