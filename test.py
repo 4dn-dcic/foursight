@@ -95,7 +95,10 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue('Foursight' in res.body)
         # this is pretty weak
         res2 = app_utils.view_rerun(self.environ, 'indexing_progress')
-        self.assertTrue(res.status_code == 301)
+        self.assertTrue(res.status_code == 200)
+        self.assertTrue('<!DOCTYPE html>' in res.body)
+        self.assertTrue('Foursight' in res.body)
+        self.assertTrue(res.body != res2.body)
 
     def test_run_foursight_checks(self):
         res = app_utils.run_foursight_checks(self.environ, 'all')

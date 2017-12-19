@@ -76,9 +76,13 @@
 </head>
 <body>
     <div class="container">
-        <h3 class="center-element">{{'Foursight (' + stage + ')'}}</h3>
+        <h3 class="center-element">
+            <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src="http://fourfront-mastertest.9wzadzju3p.us-east-1.elasticbeanstalk.com/static/img/favicon-fs.ico"></img>
+            <span>{{'Foursight (' + stage + ')'}}</span>
+        </h3>
         {% if is_admin %}
             <h5 class="center-element">
+
                 <span>{{'Currently logged in as admin.'}}</span>
             </h5>
         {% else %}
