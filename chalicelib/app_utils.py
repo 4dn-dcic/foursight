@@ -224,6 +224,11 @@ def view_foursight(environ, is_admin=False):
                     res['brief_output'] = json.dumps(res['brief_output'], indent=4)
                 if res.get('full_output'):
                     res['full_output'] = json.dumps(res['full_output'], indent=4)
+                # only return admin_output if an admin is logged in
+                if res.get('admin_output') and is_admin:
+                    res['admin_output'] = json.dumps(res['admin_output'], indent=4)
+                else:
+                    res['admin_output'] = None
                 processed_results.append(res)
             total_envs.append({
                 'status': 'success',
