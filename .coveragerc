@@ -4,5 +4,6 @@ omit =
     ./docs/*
     deploy.py
     test.py
+    app.py
     ./chalicelib/*_checks.py
     ./chalicelib/templates/*

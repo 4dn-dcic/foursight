@@ -5,6 +5,7 @@ Takes on parameter for now: stage (either "dev" or "prod")
 
 from __future__ import print_function, unicode_literals
 import os
+import sys
 import argparse
 import json
 import subprocess
@@ -36,8 +37,16 @@ CONFIG_BASE = {
 
 
 def build_config_and_deploy(stage):
-    CONFIG_BASE['stages']['dev']['environment_variables']['SECRET'] = os.environ.get("SECRET", "")
-    CONFIG_BASE['stages']['prod']['environment_variables']['SECRET'] = os.environ.get("SECRET", "")
+    akey_secret = os.environ.get("SECRET")
+    client_id = os.environ.get("CLIENT_ID")
+    client_secret = os.environ.get("CLIENT_SECRET")
+    if not akey_secret or not client_id or not client_secret:
+        print('ERROR. You are missing one more more environment variables needed to deploy Foursight.')
+        sys.exit()
+    for curr_stage in ['dev', 'prod']:
+        CONFIG_BASE['stages'][curr_stage]['environment_variables']['SECRET'] = akey_secret
+        CONFIG_BASE['stages'][curr_stage]['environment_variables']['CLIENT_ID'] = client_id
+        CONFIG_BASE['stages'][curr_stage]['environment_variables']['CLIENT_SECRET'] = client_secret
     file_dir, _ = os.path.split(os.path.abspath(__file__))
     filename = os.path.join(file_dir, '.chalice/config.json')
     print(''.join(['Writing: ', filename]))

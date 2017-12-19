@@ -8,13 +8,6 @@ from .checkresult import CheckResult
 
 CHECK_DECO = 'check_function'
 
-# compare strings in both python 2 and python 3
-# in other files, compare with utils.basestring
-try:
-    basestring = basestring
-except NameError:
-    basestring = str
-
 
 def init_check_res(connection, name, title=None, description=None, uuid=None, ff_link=None, runnable=False, extension=".json"):
     """

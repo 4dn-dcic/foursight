@@ -26,6 +26,7 @@
         border: 1px solid #ccc;
         border-radius: 8px;
         background-color: #f8f8f8;
+        font-weight: 350;
     }
     .color-hover:hover {
         background-color: #d9d9d9;
@@ -35,6 +36,9 @@
     }
     .own-line {
         display: block;
+    }
+    .in-line{
+        display: inline-block;
     }
     .check-pass {
         background-color: #dff0d8;
@@ -55,6 +59,9 @@
     .check-ignore {
         display: none;
     }
+    .center-element {
+        text-align: center;
+    }
     li {
         list-style-type: none;
         padding: 0;
@@ -63,14 +70,21 @@
     a {
         color: inherit;
     }
-    h3 {
-        text-align: center;
-    }
     </style>
 </head>
 <body>
     <div class="container">
-        <h3>{{'Foursight (' + stage + ')'}}</h3>
+        <h3 class="center-element">{{'Foursight (' + stage + ')'}}</h3>
+        {% if is_admin %}
+            <h5 class="center-element">
+                <span>{{'Currently logged in as admin.'}}</span>
+            </h5>
+        {% else %}
+            <h5 class="center-element">
+                <span>{{'Not logged in as admin.'}}</span>
+                <button class="color-hover in-line" onclick="lock.show();">Log in</button>
+            </h5>
+        {% endif %}
         <ul>
             {% for env in envs %}
             <li>
@@ -90,7 +104,7 @@
                                 <span class="pull-right">
                                     {{check.uuid}}
                                 </span>
-                                {% if check.get('runnable') %}
+                                {% if check.get('runnable') and is_admin %}
                                     <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
                                         <button class="btn btn-link" type="submit">
                                             <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
@@ -128,22 +142,24 @@
                     </li>
                     {% endfor %}
                 </ul>
-                <h5>{{'Run group:'}}</h5>
-                <div class='container-fluid'>
-                    <div class='row'>
-                        {% for groups in groups_4 %}
-                            {% for group in groups %}
-                                <div class="col-sm-3">
-                                    <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
-                                        <button class="btn center-block color-hover" type="submit">
-                                            <span>{{group}}</span>
-                                        </button>
-                                    </form>
-                                </div>
+                {% if is_admin %}
+                    <h5>{{'Run group:'}}</h5>
+                    <div class='container-fluid'>
+                        <div class='row'>
+                            {% for groups in groups_4 %}
+                                {% for group in groups %}
+                                    <div class="col-sm-3">
+                                        <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
+                                            <button class="btn center-block color-hover" type="submit">
+                                                <span>{{group}}</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endfor %}
                             {% endfor %}
-                        {% endfor %}
+                        </div>
                     </div>
-                </div>
+                {% endif %}
             </li>
             <hr>
             {% endfor %}
@@ -151,5 +167,19 @@
     </div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://cdn.auth0.com/js/lock/10.24.1/lock.min.js"></script>
+    <script>
+        var lock = new Auth0Lock('DPxEwsZRnKDpk0VfVAxrStRKukN14ILB', 'hms-dbmi.auth0.com', {
+            auth: {
+                redirectUrl: 'https://m1kj6dypu3.execute-api.us-east-1.amazonaws.com/api/callback/',
+                responseType: 'code',
+                sso: false,
+                params: {scope: 'openid email', prompt: 'select_account'}
+            },
+            socialButtonStyle: 'big',
+            languageDictionary: { title: "Log in" },
+        allowedConnections: ['github', 'google-oauth2']
+        });
+    </script>
 </body>
 </html>
