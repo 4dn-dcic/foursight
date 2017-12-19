@@ -3,8 +3,7 @@ import chalice
 import unittest
 import datetime
 import json
-import app
-from chalicelib import check_utils, utils, check_groups, wrangler_utils, checkresult
+from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, checkresult
 from chalicelib.fs_connection import FSConnection
 from dateutil import tz
 
@@ -53,7 +52,7 @@ class TestFSConnection(unittest.TestCase):
 
 class TestAppRoutes(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
-    conn, _ = app.init_connection(environ)
+    conn, _ = app_utils.init_connection(environ)
 
     def home_route(self):
         res = app.index()
@@ -68,9 +67,9 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
 
     def test_init_environments(self):
-        app.init_environments() # default to 'all' environments
-        self.assertTrue(self.environ in app.ENVIRONMENTS)
-        for env, env_data in app.ENVIRONMENTS.items():
+        app_utils.init_environments() # default to 'all' environments
+        self.assertTrue(self.environ in app_utils.ENVIRONMENTS)
+        for env, env_data in app_utils.ENVIRONMENTS.items():
             self.assertTrue('fourfront' in env_data)
             self.assertTrue('es' in env_data)
             self.assertTrue('bucket' in env_data)
@@ -78,30 +77,30 @@ class TestAppRoutes(unittest.TestCase):
 
     def test_init_response(self):
         # a good reponse
-        connection, response = app.init_response(self.environ)
+        connection, response = app_utils.init_response(self.environ)
         self.assertTrue(connection is not None)
         self.assertTrue(response.body == 'Foursight response')
         # a bad Response
-        connection, response = app.init_response('not_an_environment')
+        connection, response = app_utils.init_response('not_an_environment')
         self.assertTrue(connection is None)
         self.assertTrue(response.body != 'Foursight response')
         self.assertTrue(response.status_code == 400)
 
     def test_view_foursight(self):
-        res = app.view_foursight(self.environ)
+        res = app_utils.view_foursight(self.environ)
         self.assertTrue(res.headers == {u'Content-Type': u'text/html'})
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.to_dict().keys()) == set(['body', 'headers', 'statusCode']))
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
         # this is pretty weak
-        res2 = app.view_rerun(self.environ, 'indexing_progress')
+        res2 = app_utils.view_rerun(self.environ, 'indexing_progress')
         self.assertTrue('<!DOCTYPE html>' in res2.body)
         self.assertTrue('Foursight' in res2.body)
         self.assertFalse(res2 == res)
 
     def test_run_foursight_checks(self):
-        res = app.run_foursight_checks(self.environ, 'all')
+        res = app_utils.run_foursight_checks(self.environ, 'all')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
@@ -110,7 +109,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_foursight_checks(self):
-        res = app.get_foursight_checks(self.environ, 'all')
+        res = app_utils.get_foursight_checks(self.environ, 'all')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
@@ -119,7 +118,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_environment(self):
-        env_resp = app.get_environment(self.environ)
+        env_resp = app_utils.get_environment(self.environ)
         self.assertTrue(env_resp.status_code == 200)
         body = env_resp.body
         self.assertTrue(body.get('environment') == self.environ)
@@ -127,10 +126,10 @@ class TestAppRoutes(unittest.TestCase):
         details = body.get('details')
         self.assertTrue(details.get('bucket').startswith('foursight-'))
         self.assertTrue(details.get('bucket').endswith(self.environ))
-        this_env = app.ENVIRONMENTS.get(self.environ)
+        this_env = app_utils.ENVIRONMENTS.get(self.environ)
         self.assertTrue(this_env == details)
         # bad environment
-        resp2 = app.get_environment('not_an_environment')
+        resp2 = app_utils.get_environment('not_an_environment')
         self.assertTrue(resp2.status_code == 400)
         self.assertTrue(resp2.body['status'] == 'error')
         self.assertTrue('Invalid environment provided' in resp2.body['description'])
@@ -138,11 +137,11 @@ class TestAppRoutes(unittest.TestCase):
     def test_put_environment(self):
         # this one is interesting... will be tested by putting a clone of
         # mastertest into itself. actual fxn run is run_put_environment
-        get_res = app.get_environment(self.environ)
+        get_res = app_utils.get_environment(self.environ)
         env_data = get_res.body.get('details')
         # make sure the environ we have is legit
         self.assertTrue(env_data and 'fourfront' in env_data and 'es' in env_data and 'ff_env' in env_data)
-        env_res = app.run_put_environment(self.environ, env_data)
+        env_res = app_utils.run_put_environment(self.environ, env_data)
         self.assertTrue(env_res.status_code == 200)
         self.assertTrue(env_res.body.get('status') == 'success')
         self.assertTrue(env_res.body.get('environment') == self.environ)
@@ -150,18 +149,18 @@ class TestAppRoutes(unittest.TestCase):
         checks_run = env_res.body.get('initial_checks')
         self.assertTrue(isinstance(checks_run, list) and len(checks_run) > 0)
         # failure case
-        bad_res = app.run_put_environment(self.environ, {'key1': 'res1'})
+        bad_res = app_utils.run_put_environment(self.environ, {'key1': 'res1'})
         self.assertTrue(bad_res.status_code == 400)
         self.assertTrue(bad_res.body.get('status') == 'error')
         self.assertTrue(bad_res.body.get('body') == {'key1': 'res1'})
         self.assertTrue(bad_res.body.get('description') == 'Environment creation failed')
         # make sure they match after run_put_environment
-        get_res2 = app.get_environment(self.environ)
+        get_res2 = app_utils.get_environment(self.environ)
         self.assertTrue(get_res.body == get_res2.body)
 
     def test_get_check(self):
         test_check = 'indexing_progress'
-        res = app.get_check(self.environ, test_check)
+        res = app_utils.get_check(self.environ, test_check)
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'checks_found']))
         self.assertTrue(res.body['environment'] == self.environ)
@@ -169,7 +168,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(isinstance(res.body['checks'], dict) and res.body['checks']['name'] == test_check)
         self.assertTrue(res.body['checks_found'] == test_check)
         # bad response
-        res = app.get_check(self.environ, 'not_a_real_check')
+        res = app_utils.get_check(self.environ, 'not_a_real_check')
         self.assertTrue(res.status_code == 400)
         self.assertTrue(res.body['status'] == 'error')
         self.assertTrue(res.body['description'] == 'Could not get results for: not_a_real_check. Maybe no such check result exists?')
@@ -185,7 +184,7 @@ class TestAppRoutes(unittest.TestCase):
             'full_output': {'key1': 'res1', 'key2': 'res2'},
             'uuid': ts_uuid
         }
-        res = app.run_put_check(self.environ, check_name, put_data)
+        res = app_utils.run_put_check(self.environ, check_name, put_data)
         self.assertTrue(res.status_code == 200)
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
@@ -196,7 +195,7 @@ class TestAppRoutes(unittest.TestCase):
         # now put another one with the same uuid
         put_data['brief_output'] = ['res2']
         put_data['full_output'] = {'key2': 'res3'}
-        res = app.run_put_check(self.environ, check_name, put_data)
+        res = app_utils.run_put_check(self.environ, check_name, put_data)
         self.assertTrue(res.status_code == 200)
         put_res = res.body['updated_content']
         self.assertTrue(put_res['brief_output'] == ['res1', 'res2'])
@@ -204,17 +203,17 @@ class TestAppRoutes(unittest.TestCase):
         # now do it with strings. brief_output should be unchanged if we don't overwrite it
         del put_data['brief_output']
         put_data['full_output'] = 'abc '
-        res = app.run_put_check(self.environ, check_name, put_data)
+        res = app_utils.run_put_check(self.environ, check_name, put_data)
         self.assertTrue(res.status_code == 200)
         put_data['full_output'] = '123'
-        res = app.run_put_check(self.environ, check_name, put_data)
+        res = app_utils.run_put_check(self.environ, check_name, put_data)
         self.assertTrue(res.status_code == 200)
         put_res = res.body['updated_content']
         self.assertTrue(put_res['brief_output'] == ['res1', 'res2'])
         self.assertTrue(put_res['full_output'] == 'abc 123')
         # lastly, cover bad output
         put_data = 'NOT_A_DICT'
-        res = app.run_put_check(self.environ, check_name, put_data)
+        res = app_utils.run_put_check(self.environ, check_name, put_data)
         self.assertTrue(res.status_code == 400)
         self.assertTrue(res.body['status'] == 'error')
         self.assertTrue(res.body['description'] == 'PUT request is malformed: NOT_A_DICT')
@@ -224,7 +223,7 @@ class TestCheckResult(unittest.TestCase):
     # use a fake check name and store on mastertest
     check_name = 'test_only_check'
     environ = 'mastertest' # hopefully this is up
-    connection, _ = app.init_connection(environ)
+    connection, _ = app_utils.init_connection(environ)
 
     def test_check_result_methods(self):
         check = checkresult.CheckResult(self.connection.s3_connection, self.check_name)
@@ -251,14 +250,14 @@ class TestCheckResult(unittest.TestCase):
 
 class TestCheckUtils(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
-    conn, _ = app.init_connection(environ)
+    conn, _ = app_utils.init_connection(environ)
 
     def test_get_check_strings(self):
         # do this for every check
         all_check_strs = check_utils.get_check_strings()
         for check_str in all_check_strs:
             get_check = check_str.split('/')[1]
-            chalice_resp = app.get_check(self.environ, get_check)
+            chalice_resp = app_utils.get_check(self.environ, get_check)
             body = chalice_resp.body
             if body.get('status') == 'success':
                 self.assertTrue(chalice_resp.status_code == 200)
@@ -429,9 +428,9 @@ class TestWranglerUtils(unittest.TestCase):
 
     def test_get_FDN_Connection(self):
         # run this for all environments to ensure access keys are in place
-        app.init_environments()
-        for env in app.ENVIRONMENTS:
-            conn, _ = app.init_connection(env)
+        app_utils.init_environments()
+        for env in app_utils.ENVIRONMENTS:
+            conn, _ = app_utils.init_connection(env)
             fdn_conn = wrangler_utils.get_FDN_Connection(conn)
             self.assertTrue(fdn_conn is not None)
 
