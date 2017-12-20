@@ -3,8 +3,8 @@ import chalice
 import unittest
 import datetime
 import json
-from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, checkresult
-from chalicelib.fs_connection import FSConnection
+import os
+from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, checkresult, fs_connection
 from dateutil import tz
 
 
@@ -15,7 +15,7 @@ class TestFSConnection(unittest.TestCase):
         'bucket': None,
         'ff_env': 'test3'
     }
-    connection = FSConnection('test', environ_info)
+    connection = fs_connection.FSConnection('test', environ_info)
 
     def test_connection_fields(self):
         self.assertTrue(self.connection.fs_environment == 'test')
@@ -74,6 +74,12 @@ class TestAppRoutes(unittest.TestCase):
             self.assertTrue('es' in env_data)
             self.assertTrue('bucket' in env_data)
             self.assertTrue('ff_env' in env_data)
+        # redo to hit cached environments
+        app_utils.init_environments('mastertest')
+        self.assertTrue('mastertest' in app_utils.ENVIRONMENTS)
+        # bad environment
+        bad_envs = app_utils.init_environments('not_an_environment')
+        self.assertTrue(bad_envs == ['not_an_environment'])
 
     def test_init_response(self):
         # a good reponse
@@ -86,19 +92,46 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(response.body != 'Foursight response')
         self.assertTrue(response.status_code == 400)
 
+    def test_check_authorization(self):
+        # first test with dev auth secret
+        # should be admin authorization (return True)
+        req_dict = {'headers': {'authorization': os.environ.get('DEV_SECRET')}}
+        auth = app_utils.check_authorization(req_dict)
+        self.assertTrue(auth)
+        # try with a non-valid jwt
+        # this should fully test app_utils.get_jwt
+        req_dict = {'headers': {'cookie': 'jwtToken=not_a_jwt;other=blah;'}}
+        auth = app_utils.check_authorization(req_dict)
+        self.assertFalse(auth)
+        jwtToken = app_utils.get_jwt(req_dict)
+        self.assertTrue(jwtToken == 'not_a_jwt')
+        # try with an empty dict
+        auth = app_utils.check_authorization({})
+        self.assertFalse(auth)
+
+    def test_forbidden_response(self):
+        res = app_utils.forbidden_response()
+        self.assertTrue(res.status_code == 403)
+        self.assertTrue(res.body == 'Forbidden. Login on the /api/view/<environ> page.')
+
     def test_view_foursight(self):
-        res = app_utils.view_foursight(self.environ)
+        res = app_utils.view_foursight(self.environ) # not is_admin
         self.assertTrue(res.headers == {u'Content-Type': u'text/html'})
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.to_dict().keys()) == set(['body', 'headers', 'statusCode']))
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
+        self.assertTrue('admin_output' not in res.body)
         # this is pretty weak
         res2 = app_utils.view_rerun(self.environ, 'indexing_progress')
         self.assertTrue(res.status_code == 200)
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
         self.assertTrue(res.body != res2.body)
+        # lastly, check with is_admin
+        res = app_utils.view_foursight(self.environ, True) # is_admin
+        self.assertTrue(res.status_code == 200)
+        self.assertTrue('admin_output' not in res.body)
 
     def test_run_foursight_checks(self):
         res = app_utils.run_foursight_checks(self.environ, 'all')
@@ -183,6 +216,7 @@ class TestAppRoutes(unittest.TestCase):
             'description': 'Just a test for run_put_check',
             'brief_output': ['res1'],
             'full_output': {'key1': 'res1', 'key2': 'res2'},
+            'admin_output': 'xyz',
             'uuid': ts_uuid
         }
         res = app_utils.run_put_check(self.environ, check_name, put_data)
@@ -196,11 +230,13 @@ class TestAppRoutes(unittest.TestCase):
         # now put another one with the same uuid
         put_data['brief_output'] = ['res2']
         put_data['full_output'] = {'key2': 'res3'}
+        put_data['admin_output'] = '890'
         res = app_utils.run_put_check(self.environ, check_name, put_data)
         self.assertTrue(res.status_code == 200)
         put_res = res.body['updated_content']
         self.assertTrue(put_res['brief_output'] == ['res1', 'res2'])
         self.assertTrue(put_res['full_output'] == {'key1': 'res1', 'key2': 'res3'})
+        self.assertTrue(put_res['admin_output'] == 'xyz890')
         # now do it with strings. brief_output should be unchanged if we don't overwrite it
         del put_data['brief_output']
         put_data['full_output'] = 'abc '

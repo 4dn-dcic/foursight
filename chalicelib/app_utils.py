@@ -120,8 +120,7 @@ def check_authorization(request_dict):
     if auth0_client and auth0_secret and token:
         try:
             # leeway accounts for clock drift between us and auth0
-            payload = jwt.decode(token, b64decode(auth0_secret, '-_'),
-                                 audience=auth0_client, leeway=30)
+            payload = jwt.decode(token, b64decode(auth0_secret, '-_'), audience=auth0_client, leeway=30)
             if payload.get('email') == ADMIN and payload.get('email_verified') is True:
                 # fully authorized
                 return True
