@@ -40,12 +40,12 @@ def auth0_callback():
     """
     request = app.current_request
     req_dict = request.to_dict()
-    if not req_dict:
-        return forbidden_response()
     resp_headers = {'Location': '/api/view/data,staging'}
-    # resp_headers = {}
     domain = req_dict.get('headers', {}).get('host')
-    auth0_code = req_dict.get('query_params', {}).get('code', None)
+    params = req_dict.get('query_params', {})
+    if not params:
+        return forbidden_response()
+    auth0_code = params.get('code', None)
     auth0_client = os.environ.get('CLIENT_ID', None)
     auth0_secret = os.environ.get('CLIENT_SECRET', None)
     if not (domain and auth0_code and auth0_client and auth0_secret):
