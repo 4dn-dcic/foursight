@@ -99,6 +99,7 @@ Here is a list of attributes with brief descriptions:
 * **status**: string value. Must be one of: 'PASS', 'WARN', 'FAIL', 'ERROR', or 'IGNORE', otherwise it will be set to 'ERROR' automatically. 'IGNORE' by default, which means the check result will not be displayed on the UI.
 * **brief_output**: Any value that will be displayed on the UI if set. The intended use of this attribute is as any output relevant to a check having a non-PASS status.
 * **full_output**: same as brief_output, but is intended to hold the entirety of the check data.
+* **admin_output**: same as brief_output, but is only visible to admins to view on the UI. Use for sensitive data.
 * **uuid**: this is explained further later in this document. The only reason to use this is if you want a check to be automatically populated by a previous result.
 * **ff_link**: a link to (presumably) Fourfront that will be displayed in the UI if provided. Should be relevant to the check.
 * **extension**: the extension and format of the s3 object storing the check result. Is automatically set to `.json` and should not be changed.

@@ -344,13 +344,13 @@ def run_put_check(environ, check, put_data):
     putCheck = CheckResult(connection.s3_connection, check, uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
-    for field in ['title', 'status', 'description', 'brief_output', 'full_output']:
+    for field in ['title', 'status', 'description', 'brief_output', 'full_output', 'admin_output']:
         put_content = put_data.get(field)
         prev_content = getattr(putCheck, field, None)
         if put_content:
             # append attribute data for _output fields if there are pre-existing
             # values originating from an existing put_uuid
-            if prev_content and field in ['full_output', 'brief_output']:
+            if prev_content and field in ['full_output', 'brief_output', 'admin_output']:
                 # will be list, dict, or string. make sure they are same type
                 if isinstance(prev_content, dict) and isinstance(put_content, dict):
                     prev_content.update(put_content)
