@@ -179,11 +179,12 @@ def view_rerun(environ, check):
         headers=resp_headers)
 
 
-def view_foursight(environ, is_admin=False):
+def view_foursight(environ, is_admin=False, domain=""):
     """
     View a template of all checks from the given environment(s).
     Environ may be 'all' or a specific FS environments separated by commas.
     With 'all', this function can be somewhat slow.
+    Domain is the current FS domain, needed for Auth0 redirect.
     Returns a response with html content.
     Non-protected route
     """
@@ -246,7 +247,7 @@ def view_foursight(environ, is_admin=False):
     groups = list(CHECK_GROUPS.keys()) # only the keys needed
     # get these into groups of 4
     groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
-    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin)
+    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin, domain=domain)
     html_resp.status_code = 200
     return html_resp
 
