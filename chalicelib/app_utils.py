@@ -172,9 +172,9 @@ def view_rerun(environ, check):
             if check_str:
                 run_check(connection, check_str, {})
     resp_headers = {'Location': '/api/view/' + environ}
-    # redirect to view_foursight page
+    # redirect to view_foursight page with a 302 so it isn't cached
     return Response(
-        status_code=301,
+        status_code=302,
         body=json.dumps(resp_headers),
         headers=resp_headers)
 

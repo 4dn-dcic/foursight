@@ -40,6 +40,8 @@ def auth0_callback():
     """
     request = app.current_request
     req_dict = request.to_dict()
+    if not req_dict:
+        return forbidden_response()
     resp_headers = {'Location': '/api/view/data,staging'}
     # resp_headers = {}
     domain = req_dict.get('headers', {}).get('host')
@@ -95,10 +97,7 @@ def introspect():
             body=json.dumps(app.current_request.to_dict())
             )
     else:
-        return Response(
-            status_code=403,
-            body=json.dumps(app.current_request.to_dict())
-            )
+        return forbidden_response()
 
 
 @app.route('/view/{environ}/{check}', methods=['GET'])
