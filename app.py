@@ -118,7 +118,7 @@ def view_route(environ):
     """
     req_dict = app.current_request.to_dict()
     domain = req_dict.get('headers', {}).get('host', "")
-    return view_foursight(environ, check_authorization(app.current_request.to_dict()), domain)
+    return view_foursight(environ, check_authorization(req_dict), domain)
 
 
 @app.route('/run/{environ}/{check_group}', methods=['PUT', 'GET'])
