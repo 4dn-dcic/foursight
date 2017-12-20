@@ -7,11 +7,11 @@ import jwt
 import datetime
 from dateutil import tz
 from base64 import b64decode
-from fs_connection import FSConnection
-from check_utils import run_check_group, get_check_group_latest, run_check, get_check_strings
-from checkresult import CheckResult
-from s3_connection import S3Connection
-from check_groups import CHECK_GROUPS
+from .fs_connection import FSConnection
+from .check_utils import run_check_group, get_check_group_latest, run_check, get_check_strings
+from .checkresult import CheckResult
+from .s3_connection import S3Connection
+from .check_groups import CHECK_GROUPS
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
