@@ -42,7 +42,7 @@ def auth0_callback():
     req_dict = request.to_dict()
     resp_headers = {'Location': '/api/view/data,staging'}
     domain = req_dict.get('headers', {}).get('host')
-    params = req_dict.get('query_params', {})
+    params = req_dict.get('query_params')
     if not params:
         return forbidden_response()
     auth0_code = params.get('code', None)
