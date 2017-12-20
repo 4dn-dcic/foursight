@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
     <!-- Update with data soon -->
     <link rel="shortcut icon" type="image/x-icon" href="http://fourfront-mastertest.9wzadzju3p.us-east-1.elasticbeanstalk.com/static/img/favicon-fs.ico">
+    <!-- Get variables needed within js from jinja -->
+    <meta id="fs_domain" data-domain="{{domain}}">
     <style type="text/css">
     .container {
         max-width: 1400px;
@@ -183,9 +185,10 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script src="https://cdn.auth0.com/js/lock/10.24.1/lock.min.js"></script>
     <script>
+        var domain = $("#fs_domain").data("domain");
         var lock = new Auth0Lock('DPxEwsZRnKDpk0VfVAxrStRKukN14ILB', 'hms-dbmi.auth0.com', {
             auth: {
-                redirectUrl: 'https://m1kj6dypu3.execute-api.us-east-1.amazonaws.com/api/callback/',
+                redirectUrl: 'https://' + domain + '/api/callback/',
                 responseType: 'code',
                 sso: false,
                 params: {scope: 'openid email', prompt: 'select_account'}

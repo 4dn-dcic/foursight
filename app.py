@@ -116,7 +116,9 @@ def view_route(environ):
     """
     Non-protected route
     """
-    return view_foursight(environ, check_authorization(app.current_request.to_dict()))
+    req_dict = app.current_request.to_dict()
+    domain = req_dict.get('headers', {}).get('host', "")
+    return view_foursight(environ, check_authorization(app.current_request.to_dict()), domain)
 
 
 @app.route('/run/{environ}/{check_group}', methods=['PUT', 'GET'])
