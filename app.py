@@ -191,10 +191,3 @@ def get_environment_route(environ):
         return get_environment(environ)
     else:
         return forbidden_response()
-
-
-# @app.route('/favicon.ico')
-# def return_favicon():
-#     """
-#     Unprotected route to return favicon
-#     """
