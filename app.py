@@ -72,7 +72,7 @@ def auth0_callback():
             cookie_str +=  (' Expires=' + expires.strftime("%a, %d %b %Y %H:%M:%S GMT") + ';')
         resp_headers['Set-Cookie'] = cookie_str
     return Response(
-        status_code=301,
+        status_code=302,
         body=json.dumps(resp_headers),
         headers=resp_headers)
 
