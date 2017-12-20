@@ -44,6 +44,8 @@ class CheckResult(object):
         self.extension = extension
         self.brief_output = None
         self.full_output = None
+        # admin output is only seen by admins on the UI
+        self.admin_output = None
         # ff_link is a string location that will be displayed to create
         # an easily-accessible link from the check
         self.ff_link = ff_link
@@ -61,6 +63,7 @@ class CheckResult(object):
             'extension': self.extension,
             'brief_output': self.brief_output,
             'full_output': self.full_output,
+            'admin_output': self.admin_output,
             'ff_link': self.ff_link,
             'runnable': self.runnable
         }

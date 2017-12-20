@@ -99,6 +99,7 @@ Here is a list of attributes with brief descriptions:
 * **status**: string value. Must be one of: 'PASS', 'WARN', 'FAIL', 'ERROR', or 'IGNORE', otherwise it will be set to 'ERROR' automatically. 'IGNORE' by default, which means the check result will not be displayed on the UI.
 * **brief_output**: Any value that will be displayed on the UI if set. The intended use of this attribute is as any output relevant to a check having a non-PASS status.
 * **full_output**: same as brief_output, but is intended to hold the entirety of the check data.
+* **admin_output**: same as brief_output, but is only visible to admins to view on the UI. Use for sensitive data.
 * **uuid**: this is explained further later in this document. The only reason to use this is if you want a check to be automatically populated by a previous result.
 * **ff_link**: a link to (presumably) Fourfront that will be displayed in the UI if provided. Should be relevant to the check.
 * **extension**: the extension and format of the s3 object storing the check result. Is automatically set to `.json` and should not be changed.
@@ -206,7 +207,7 @@ This functionality is not yet implemented. For now, checks in a check group are 
 All that you need to do to get your check group up and running is build it within the chalicelib/check_groups.py file. In the same file, make sure to add the string module name (without the `.py`) to the `CHECK_MODULES` list at the top of the file. That's all you need to do! Your check group can now be run using the following endpoint:
 
 ```
-curl -X PUT https://foursight.4dnucleome.org/api/run/<environment>/<my_check_group>
+https://foursight.4dnucleome.org/api/run/<environment>/<my_check_group>
 ```
 
-You can get the latest results for checks defined in your check group by running the GET command or visiting that same endpoint in your browser.
+You can get the latest results for checks defined in your check group by running the GET command or visiting that same endpoint in your browser (you must be logged in as 4DN admin to run check groups outside of the schedule).

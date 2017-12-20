@@ -5,6 +5,7 @@ from .check_groups import *
 import sys
 import importlib
 import datetime
+import copy
 
 # import modules that contain the checks
 for check_mod in CHECK_MODULES:
@@ -102,7 +103,8 @@ def fetch_check_group(name):
     # ensure it is non-empty list
     if not isinstance(group, list) or len(group) == 0:
         return None
-    return group
+    # copy it and return
+    return copy.deepcopy(group)
 
 
 def run_check(connection, check_str, check_kwargs):
