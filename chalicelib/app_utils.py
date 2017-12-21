@@ -18,7 +18,6 @@ jin_env = Environment(
     autoescape=select_autoescape(['html', 'xml'])
 )
 
-ENVIRONMENTS = {}
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 ADMIN = "4dndcic@gmail.com"
@@ -31,23 +30,28 @@ except NameError:
     basestring = str
 
 
+def list_environments():
+    """
+    Lists all environments in the foursight-envs s3. Returns a list of names
+    """
+    s3_connection = S3Connection('foursight-envs')
+    return s3_connection.list_all_keys()
+
+
 def init_environments(env='all'):
     """
-    Generate environments for ENVIRONMENTS global variable by reading
-    the foursight-dev bucket.
-    Returns a list of environments/keys that are not valid.
+    Generate environment information from the foursight-envs bucket in s3.
+    Returns a dictionary keyed by environment name with value of a sub-dict
+    with the fields needed to initiate a connection.
     """
     s3_connection = S3Connection('foursight-envs')
     env_keys = s3_connection.list_all_keys()
-    bad_keys = []
+    environments = {}
     if env != 'all':
         if env in env_keys:
             env_keys = [env]
         else:
-            return [env]
-    else: # reset ENVIRONMENTS if we're trying to init all
-        global ENVIRONMENTS
-        ENVIRONMENTS = {}
+            return {} # provided env is not in s3
     for env_key in env_keys:
         env_res = json.loads(s3_connection.get_object(env_key))
         # check that the keys we need are in the object
@@ -58,10 +62,8 @@ def init_environments(env='all'):
                 'ff_env': env_res.get('ff_env', ''.join(['fourfront-', env_key])),
                 'bucket': ''.join(['foursight-', STAGE, '-', env_key])
             }
-            ENVIRONMENTS[env_key] = env_entry
-        else:
-            bad_keys.append(env_key)
-    return bad_keys
+            environments[env_key] = env_entry
+    return environments
 
 
 def init_connection(environ):
@@ -72,19 +74,17 @@ def init_connection(environ):
     error response.
     """
     error_res = {}
-    # try re-initializing ENVIRONMENTS if environ is not found
-    if environ not in ENVIRONMENTS:
-        init_environments()
+    environments = init_environments()
     # if still not there, return an error
-    if environ not in ENVIRONMENTS:
+    if environ not in environments:
         error_res = {
             'status': 'error',
-            'description': 'invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
+            'description': 'invalid environment provided. Should be one of: %s' % (str(list(environments.keys()))),
             'environment': environ,
             'checks': {}
         }
         return None, error_res
-    connection = FSConnection(environ, ENVIRONMENTS[environ])
+    connection = FSConnection(environ, environments[environ])
     return connection, error_res
 
 
@@ -190,9 +190,9 @@ def view_foursight(environ, is_admin=False, domain=""):
     """
     html_resp = Response('Foursight viewing suite')
     html_resp.headers = {'Content-Type': 'text/html'}
-    init_environments()
+    environments = init_environments()
     total_envs = []
-    view_envs = ENVIRONMENTS.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
+    view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         connection, error_res = init_connection(this_environ)
         if connection:
@@ -434,12 +434,12 @@ def get_environment(environ):
     Return config information about a given environment, or throw an error
     if it is not valid.
     """
-    init_environments()
-    if environ in ENVIRONMENTS:
+    environments = init_environments()
+    if environ in environments:
         return Response(
             body = {
                 'status': 'success',
-                'details': ENVIRONMENTS[environ],
+                'details': environments[environ],
                 'environment': environ
             },
             status_code = 200
@@ -448,7 +448,7 @@ def get_environment(environ):
         return Response(
             body = {
                 'status': 'error',
-                'description': 'Invalid environment provided. Should be one of: %s' % (str(list(ENVIRONMENTS.keys()))),
+                'description': 'Invalid environment provided. Should be one of: %s' % (str(list(environments.keys()))),
                 'environment': environ
             },
             status_code = 400

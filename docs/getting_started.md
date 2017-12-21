@@ -84,8 +84,8 @@ To get your check group running on a CRON or rate schedule, the current method i
 ```
 @app.schedule(Rate(1, unit=Rate.HOURS))
 def one_hour_checks(event):
-    init_environments()
-    for environ in ENVIRONMENTS:
+    environments = list_environments()
+    for environ in environments:
         connection, error_res = init_connection(environ)
         if connection:
             run_check_group(connection, 'my_test_checks')
