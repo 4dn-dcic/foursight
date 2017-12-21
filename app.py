@@ -22,7 +22,7 @@ def daily_checks(event):
 
 
 # run every 2 hrs
-@app.schedule(Rate(2, unit=Rate.MINUTES))
+@app.schedule(Rate(2, unit=Rate.HOURS))
 def two_hour_checks(event):
     environments = list_environments()
     for environ in environments:
