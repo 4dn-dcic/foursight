@@ -68,7 +68,7 @@ class TestAppRoutes(unittest.TestCase):
 
     def test_init_environments(self):
         environments = app_utils.init_environments() # default to 'all' environments
-        self.assertTrue(self.environ in app_utils.environments)
+        self.assertTrue(self.environ in environments)
         for env, env_data in environments.items():
             self.assertTrue('fourfront' in env_data)
             self.assertTrue('es' in env_data)
@@ -81,7 +81,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(bad_envs == {})
 
     def test_list_environments(self):
-        env_list = app_utils.list(environments)
+        env_list = app_utils.list_environments()
         # assume we have at least one environments
         self.assertTrue(isinstance(env_list, list))
         self.assertTrue(self.environ in env_list)
