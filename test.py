@@ -67,19 +67,24 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
 
     def test_init_environments(self):
-        app_utils.init_environments() # default to 'all' environments
-        self.assertTrue(self.environ in app_utils.ENVIRONMENTS)
-        for env, env_data in app_utils.ENVIRONMENTS.items():
+        environments = app_utils.init_environments() # default to 'all' environments
+        self.assertTrue(self.environ in app_utils.environments)
+        for env, env_data in environments.items():
             self.assertTrue('fourfront' in env_data)
             self.assertTrue('es' in env_data)
             self.assertTrue('bucket' in env_data)
             self.assertTrue('ff_env' in env_data)
-        # redo to hit cached environments
-        app_utils.init_environments('mastertest')
-        self.assertTrue('mastertest' in app_utils.ENVIRONMENTS)
+        environments = app_utils.init_environments('mastertest')
+        self.assertTrue('mastertest' in environments)
         # bad environment
         bad_envs = app_utils.init_environments('not_an_environment')
-        self.assertTrue(bad_envs == ['not_an_environment'])
+        self.assertTrue(bad_envs == {})
+
+    def test_list_environments(self):
+        env_list = app_utils.list(environments)
+        # assume we have at least one environments
+        self.assertTrue(isinstance(env_list, list))
+        self.assertTrue(self.environ in env_list)
 
     def test_init_response(self):
         # a good reponse
@@ -152,6 +157,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_environment(self):
+        environments = app_utils.init_environments()
         env_resp = app_utils.get_environment(self.environ)
         self.assertTrue(env_resp.status_code == 200)
         body = env_resp.body
@@ -160,7 +166,7 @@ class TestAppRoutes(unittest.TestCase):
         details = body.get('details')
         self.assertTrue(details.get('bucket').startswith('foursight-'))
         self.assertTrue(details.get('bucket').endswith(self.environ))
-        this_env = app_utils.ENVIRONMENTS.get(self.environ)
+        this_env = environments.get(self.environ)
         self.assertTrue(this_env == details)
         # bad environment
         resp2 = app_utils.get_environment('not_an_environment')
@@ -470,8 +476,8 @@ class TestWranglerUtils(unittest.TestCase):
 
     def test_get_FDN_Connection(self):
         # run this for all environments to ensure access keys are in place
-        app_utils.init_environments()
-        for env in app_utils.ENVIRONMENTS:
+        environments = app_utils.init_environments()
+        for env in environments:
             conn, _ = app_utils.init_connection(env)
             fdn_conn = wrangler_utils.get_FDN_Connection(conn)
             self.assertTrue(fdn_conn is not None)

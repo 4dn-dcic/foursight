@@ -14,18 +14,18 @@ app.debug = True
 # run at 10 am UTC every day
 @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
 def daily_checks(event):
-    init_environments()
-    for environ in ENVIRONMENTS:
+    environments = list_environments()
+    for environ in environments:
         connection, error_res = init_connection(environ)
         if connection:
             run_check_group(connection, 'daily_checks')
 
 
 # run every 2 hrs
-@app.schedule(Rate(2, unit=Rate.HOURS))
+@app.schedule(Rate(2, unit=Rate.MINUTES))
 def two_hour_checks(event):
-    init_environments()
-    for environ in ENVIRONMENTS:
+    environments = list_enviroments()
+    for environ in environments:
         connection, error_res = init_connection(environ)
         if connection:
             run_check_group(connection, 'two_hour_checks')

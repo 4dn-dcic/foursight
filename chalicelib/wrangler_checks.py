@@ -99,7 +99,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     ts_uuid = kwargs.get('uuid')
     check = init_check_res(connection, 'items_created_in_the_past_day', uuid=ts_uuid, runnable=True)
     fdn_conn = get_FDN_Connection(connection)
-    if not fdn_conn:
+    if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return check.store_result()
