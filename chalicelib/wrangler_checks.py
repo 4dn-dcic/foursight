@@ -105,7 +105,7 @@ def items_created_in_the_past_day(connection, **kwargs):
         return check.store_result()
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-    search_query = ''.join(['/search/?type=', item_type, '&q=date_created:>=', date_str])
+    search_query = ''.join(['/search/?type=', item_type, '&limit=all&q=date_created:>=', date_str])
     search_res = ff_utils.get_metadata(search_query, connection=fdn_conn, frame='object')
     results = search_res.get('@graph', [])
     full_output = check.full_output if check.full_output else {}
@@ -123,7 +123,7 @@ def items_created_in_the_past_day(connection, **kwargs):
         check.status = 'WARN'
         check.description = 'Items have been created in the past day.'
         # create a ff_link
-        check.ff_link = ''.join([connection.ff, 'search/?type=Item&q=date_created:>=', date_str])
+        check.ff_link = ''.join([connection.ff, 'search/?type=Item&limit=all&q=date_created:>=', date_str])
         # test admin output
         check.admin_output = check.ff_link
     else:
