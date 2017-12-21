@@ -44,7 +44,8 @@ def init_environments(env='all'):
     Returns a dictionary keyed by environment name with value of a sub-dict
     with the fields needed to initiate a connection.
     """
-    env_keys = list_environments() # all possible environments based on s3 keys
+    s3_connection = S3Connection('foursight-envs')
+    env_keys = s3_connection.list_all_keys()
     environments = {}
     if env != 'all':
         if env in env_keys:
