@@ -226,10 +226,10 @@ def replicate_file_reporting(connection, **kwargs):
         return check.store_result()
     report = []
     # new experiment sets
-    latest_unique = list(set(latest_results.keys()) - set(prior_results.keys()))
-    for new in latest_unique:
-        for new_file_acc in latest_unique[new]:
-            new_file = latest_unique[new][new_file_acc]
+    new_sets = list(set(latest_results.keys()) - set(prior_results.keys()))
+    for new in new_sets:
+        for new_file_acc in new_sets[new]:
+            new_file = new_sets[new][new_file_acc]
             new_acc = new_file.get('accession')
             new_set_acc = new_file.get('exp_set_accession')
             new_exp_acc = new_file.get('exp_accession')
