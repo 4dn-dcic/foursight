@@ -144,7 +144,7 @@ def files_associated_with_replicates(connection, **kwargs):
         return acc, extracted
 
     check = init_check_res(connection, 'files_associated_with_replicates')
-    # this check should probably always have status=IGNORE, but display for now
+    check.status = 'IGNORE'
     fdn_conn = get_FDN_Connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
@@ -178,12 +178,6 @@ def files_associated_with_replicates(connection, **kwargs):
             set_files[set_acc] = files
         curr_from += limit
     check.full_output = set_files
-    if set_files:
-        check.status = 'PASS'
-        check.description = 'File information was found for experiment set replicates.'
-    else:
-        check.status = 'WARN'
-        check.description = 'No file information was found for experiment set replicates.'
     return check.store_result()
 
 

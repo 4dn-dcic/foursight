@@ -79,8 +79,8 @@ def get_check_group_latest(connection, name):
         check_name = check_info[0].strip().split('/')[1]
         TempCheck = CheckResult(connection.s3_connection, check_name)
         found = TempCheck.get_latest_check()
-        # checks with no records will return None
-        if found:
+        # checks with no records will return None. Skip IGNORE checks
+        if found and found.get('status') != 'IGNORE':
             latest_results.append(found)
     # sort them alphabetically
     latest_results = sorted(latest_results, key=lambda v: v['name'].lower())
