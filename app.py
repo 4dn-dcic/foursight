@@ -24,7 +24,7 @@ def daily_checks(event):
 # run every 2 hrs
 @app.schedule(Rate(2, unit=Rate.MINUTES))
 def two_hour_checks(event):
-    environments = list_enviroments()
+    environments = list_environments()
     for environ in environments:
         connection, error_res = init_connection(environ)
         if connection:
