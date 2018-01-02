@@ -196,7 +196,7 @@ def replicate_file_reporting(connection, **kwargs):
         latest_md5 = latest_file.get('md5sum')
         prior_md5 = prior_file.get('md5sum')
         latest_stat = latest_file.get('status')
-        prior_stat = prior_file.get('md5sum')
+        prior_stat = prior_file.get('status')
         if exp_acc:
             file_str = ''.join(['File ', file_acc, ' of experiment ', exp_acc, ' in experiment set ', set_acc, ' has changed.'])
         else:
@@ -238,8 +238,8 @@ def replicate_file_reporting(connection, **kwargs):
         if existing not in latest_results:
             continue # this shouldn't happen
         for set_file_acc in latest_results[existing]:
-            latest_file = latest_results[existing][set_file_acc]
-            prior_file = prior_results[existing][set_file_acc]
+            latest_file = latest_results[existing].get(set_file_acc, {})
+            prior_file = prior_results[existing].get(set_file_acc, {})
             file_str = build_report_string(latest_file, prior_file)
             if file_str:
                 report.append(file_str)
