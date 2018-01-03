@@ -341,6 +341,8 @@ class TestCheckUtils(unittest.TestCase):
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
             self.assertTrue('uuid' in check_res)
+            # assert the check actually ran
+            self.assertTrue(check_res.get('description') != 'Check failed to run. See full output.')
         # non-existant check group
         bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
         assert(bad_checks_res == [])

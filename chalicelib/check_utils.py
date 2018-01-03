@@ -133,4 +133,12 @@ def run_check(connection, check_str, check_kwargs):
         return ' '.join(['ERROR. Check name is not valid.', error_str])
     if not check_method_deco(check_method, CHECK_DECO):
         return ' '.join(['ERROR. Ensure the check_function decorator is present.', error_str])
-    return check_method(connection, **check_kwargs)
+    try:
+        check_result = check_method(connection, **check_kwargs)
+    except Exception as err:
+        err_check = CheckResult(connection.s3_connection, check_name_str)
+        err_check.status = 'ERROR'
+        err_check.description = 'Check failed to run. See full output.'
+        err_check.full_output = err
+        check_result = err_check.store_result()
+    return check_result
