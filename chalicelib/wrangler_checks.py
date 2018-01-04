@@ -152,7 +152,7 @@ def files_associated_with_replicates(connection, **kwargs):
         return check.store_result()
     total_replicates = None
     curr_from = 0
-    limit = 10
+    limit = 100
     set_files = {}
     while not total_replicates or curr_from < total_replicates:
         # sort by acession and grab 10 at a time to keep memory usage down
@@ -188,26 +188,36 @@ def replicate_file_reporting(connection, **kwargs):
     between the results for the aforementioned checks that we compare
     """
 
-    def build_report_string(latest_file, prior_file):
-        should_report = False
-        file_acc = latest_file.get('accession')
-        set_acc = latest_file.get('exp_set_accession')
-        exp_acc = latest_file.get('exp_accession')
+    def build_report(report, exp_set, latest_file, prior_file):
+        file_acc = latest_file.get('accession') if latest_file else prior_file.get('accession')
+        if not file_acc:
+            return
+        exp_acc = latest_file.get('exp_accession') if latest_file else prior_file.get('exp_accession')
         latest_md5 = latest_file.get('md5sum')
         prior_md5 = prior_file.get('md5sum')
-        latest_stat = latest_file.get('status')
-        prior_stat = prior_file.get('status')
+        latest_stat = latest_file.get('status', 'None')
+        prior_stat = prior_file.get('status', 'None')
         if exp_acc:
-            file_str = ''.join(['File ', file_acc, ' of experiment ', exp_acc, ' in experiment set ', set_acc, ' has changed.'])
+            file_str = ''.join(['File ', file_acc, ' of experiment ', exp_acc])
         else:
-            file_str = ''.join(['File ', file_acc, ' of experiment set ', set_acc, ' has changed.'])
-        if latest_stat and prior_stat and latest_stat != prior_stat and latest_stat in ['released', 'released to project']:
-            file_str = ''.join([file_str, ' The status has changed from ', prior_stat, ' to ', latest_stat, '.'])
-            should_report = True
-        if latest_md5 and prior_md5 and latest_md5 != prior_md5:
-            file_str = ''.join([file_str, ' The md5sum is different.'])
-            should_report = True
-        return file_str if should_report else None
+            file_str = ''.join(['File ', file_acc])
+        file_str_adds = []
+        if latest_file and not prior_file:
+            file_str_adds.append(' has been added')
+        elif prior_file and not latest_file:
+            file_str_adds.append(' has been removed')
+        # we only care about specifics if the file has been released
+        if any(i in ['released', 'released to project'] for i in [latest_stat, prior_stat]):
+            if latest_stat != prior_stat:
+                file_str_adds.append(''.join([' has status changed from ', prior_stat, ' to ', latest_stat]))
+            if latest_md5 != prior_md5 and latest_md5 and prior_md5:
+                file_str_adds.append(' has a changed md5sum')
+        if file_str_adds:
+            fin_str = file_str + ' and'.join(file_str_adds) + '.'
+            if exp_set in report:
+                report[exp_set].append(fin_str)
+            else:
+                report[exp_set] = [fin_str]
 
     delta_hours = kwargs.get('delta_hours')
     check = init_check_res(connection, 'replicate_file_reporting')
@@ -216,33 +226,19 @@ def replicate_file_reporting(connection, **kwargs):
     prior_results = files_check.get_closest_check(delta_hours).get('full_output')
     if not isinstance(latest_results, dict) or not isinstance(prior_results, dict):
         check.status = 'ERROR'
-        check.description = 'Could not generate report due to missing output of files checks.'
+        check.description = 'Could not generate report due to missing output of files_associated_with_replicates check.'
         return check.store_result()
-    report = []
-    # new experiment sets
-    new_sets = list(set(latest_results.keys()) - set(prior_results.keys()))
-    for new in new_sets:
-        for new_file_acc in new_sets[new]:
-            new_file = new_sets[new][new_file_acc]
-            new_acc = new_file.get('accession')
-            new_set_acc = new_file.get('exp_set_accession')
-            new_exp_acc = new_file.get('exp_accession')
-            new_stat = new_file.get('status')
-            if new_stat in ['released', 'released to project']:
-                if new_exp_acc:
-                    file_str = ''.join(['File ', new_acc, ' of experiment ', new_exp_acc, ' in new experiment set ', new_set_acc, ' has been added with status ', new_stat, '.'])
-                else:
-                    file_str = ''.join(['File ', new_acc, ' of new experiment set ', new_set_acc, ' has been added with status ', new_stat, '.'])
-                report.append(file_str)
-    for existing in prior_results:
-        if existing not in latest_results:
-            continue # this shouldn't happen
-        for set_file_acc in latest_results[existing]:
-            latest_file = latest_results[existing].get(set_file_acc, {})
-            prior_file = prior_results[existing].get(set_file_acc, {})
-            file_str = build_report_string(latest_file, prior_file)
-            if file_str:
-                report.append(file_str)
+    report = {}
+    all_sets = list(set(latest_results.keys()).union(set(prior_results.keys())))
+    for exp_set in all_sets:
+        latest_file_accs = latest_results.get(exp_set, {}).keys()
+        prior_file_accs = prior_results.get(exp_set, {}).keys()
+        file_accs = list(set(latest_file_accs).union(set(prior_file_accs)))
+        for file_acc in file_accs:
+            latest_file = latest_results.get(exp_set, {}).get(file_acc, {})
+            prior_file = prior_results.get(exp_set, {}).get(file_acc, {})
+            # modifies report in place
+            build_report(report, exp_set, latest_file, prior_file)
     check.full_output = report
     if report:
         check.status = 'WARN'
