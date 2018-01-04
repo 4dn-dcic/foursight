@@ -193,8 +193,8 @@ def replicate_file_reporting(connection, **kwargs):
         if not file_acc:
             return
         exp_acc = latest_file.get('exp_accession') if latest_file else prior_file.get('exp_accession')
-        latest_md5 = latest_file.get('md5sum', 'None')
-        prior_md5 = prior_file.get('md5sum', 'None')
+        latest_md5 = latest_file.get('md5sum')
+        prior_md5 = prior_file.get('md5sum')
         latest_stat = latest_file.get('status', 'None')
         prior_stat = prior_file.get('status', 'None')
         if exp_acc:
@@ -202,10 +202,16 @@ def replicate_file_reporting(connection, **kwargs):
         else:
             file_str = ''.join(['File ', file_acc])
         file_str_adds = []
-        if latest_stat != prior_stat and any(i in ['released', 'released to project'] for i in [latest_stat, prior_stat]):
-            file_str_adds.append(''.join([' has status changed from ', prior_stat, ' to ', latest_stat]))
-        if latest_md5 != prior_md5:
-            file_str_adds.append(' its md5sum has changed')
+        if latest_file and not prior_file:
+            file_str_adds.append(' has been added')
+        elif prior_file and not latest_file:
+            file_str_adds.append(' has been removed')
+        # we only care about specifics if the file has been released
+        if any(i in ['released', 'released to project'] for i in [latest_stat, prior_stat]):
+            if latest_stat != prior_stat:
+                file_str_adds.append(''.join([' has status changed from ', prior_stat, ' to ', latest_stat]))
+            if latest_md5 != prior_md5 and latest_md5 and prior_md5:
+                file_str_adds.append(' has a changed md5sum')
         if file_str_adds:
             fin_str = file_str + ' and'.join(file_str_adds) + '.'
             if exp_set in report:
