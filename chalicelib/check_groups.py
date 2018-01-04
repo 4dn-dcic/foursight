@@ -1,7 +1,8 @@
 # put the names of all modules that have checks within in them below
 CHECK_MODULES = [
     'system_checks',
-    'wrangler_checks'
+    'wrangler_checks',
+    'test_checks'
 ]
 
 # define check groups for schedules here

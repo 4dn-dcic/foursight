@@ -20,6 +20,8 @@ def get_check_strings(specific_check=None):
     Return check formatted check strings (<module>/<check_name>) for checks.
     By default runs on all checks (specific_check == None), but can be used
     to get the check string of a certain check name as well.
+
+    IMPORTANT: any checks in test_checks module are excluded from 'all'
     """
     all_checks = []
     for check_mod in CHECK_MODULES:
@@ -29,7 +31,7 @@ def get_check_strings(specific_check=None):
                 check_str = '/'.join([check_mod, method.__name__])
                 if specific_check and specific_check == method.__name__:
                     return check_str
-                else:
+                elif check_mod != 'test_checks': # exclude test checks from 'all'
                     all_checks.append(check_str)
     if specific_check:
         # if we've gotten here, it means the specific check was not checks_found
@@ -115,7 +117,9 @@ def run_check(connection, check_str, check_kwargs):
     check_str: 'system_checks/my_check'
     check_kwargs: '{"foo":123}'
     Fetches the check function and runs it (returning whatever it returns)
-    Return a string for failed results, CheckResult object otherwise
+    Return a string for failed results, CheckResult object otherwise.
+    If the check code itself fails, then an Errored CheckResult is stored for
+    easier debugging.
     """
     # make sure parameters are good
     error_str = ' '.join(['Info: CHECK:', str(check_str), 'KWARGS:', str(check_kwargs)])
@@ -139,6 +143,6 @@ def run_check(connection, check_str, check_kwargs):
         err_check = CheckResult(connection.s3_connection, check_name_str)
         err_check.status = 'ERROR'
         err_check.description = 'Check failed to run. See full output.'
-        err_check.full_output = err
+        err_check.full_output = str(err)
         check_result = err_check.store_result()
     return check_result

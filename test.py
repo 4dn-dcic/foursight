@@ -392,12 +392,18 @@ class TestCheckUtils(unittest.TestCase):
             ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', []],
             ['syscks/indexing_progress', {}, []],
             ['wrangler_checks/iteasdts_by_type', {}, []],
-            ['system_checks/test_function_unused', {}, []]
+            ['test_checks/test_function_unused', {}, []]
         ]
         for bad_check_info in bad_check_group:
             check_res = check_utils.run_check(self.conn, bad_check_info[0], bad_check_info[1])
             self.assertFalse(isinstance(check_res, dict))
             self.assertTrue('ERROR' in check_res)
+
+    def test_run_check_exception(self):
+        check_res = check_utils.run_check(self.conn, 'test_checks/test_check_error', {})
+        self.assertTrue(check_res['status'] == 'ERROR')
+        self.assertTrue(check_res['full_output'] == 'integer division or modulo by zero')
+        self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
 
     def test_check_groups(self):
         # make sure check groups are dicts
