@@ -12,7 +12,8 @@ app.debug = True
 ######### SCHEDULED FXNS #########
 
 # run at 10 am UTC every day
-@app.schedule(Cron(0, 10, '*', '*', '?', '*'))
+# @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
+@app.schedule(Rate(3, unit=Rate.MINUTES))
 def daily_checks(event):
     environments = list_environments()
     for environ in environments:
@@ -22,7 +23,8 @@ def daily_checks(event):
 
 
 # run every 6 hrs
-@app.schedule(Rate(6, unit=Rate.HOURS))
+# @app.schedule(Rate(6, unit=Rate.HOURS))
+@app.schedule(Rate(3, unit=Rate.MINUTES))
 def six_hour_checks(event):
     environments = list_environments()
     for environ in environments:
@@ -32,7 +34,8 @@ def six_hour_checks(event):
 
 
 # run every 2 hrs
-@app.schedule(Rate(2, unit=Rate.HOURS))
+# @app.schedule(Rate(2, unit=Rate.HOURS))
+@app.schedule(Rate(3, unit=Rate.MINUTES))
 def two_hour_checks(event):
     environments = list_environments()
     for environ in environments:
