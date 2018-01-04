@@ -12,8 +12,7 @@ app.debug = True
 ######### SCHEDULED FXNS #########
 
 # run at 10 am UTC every day
-# @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
-@app.schedule(Rate(10, unit=Rate.MINUTES))
+@app.schedule(Cron(0, 10, '*', '*', '?', '*'))
 def daily_checks(event):
     environments = list_environments()
     for environ in environments:
