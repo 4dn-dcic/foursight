@@ -143,11 +143,6 @@ def files_associated_with_replicates(connection, **kwargs):
                 acc = extracted[field]
         return acc, extracted
 
-    # import cProfile, pstats, StringIO
-    # pr = cProfile.Profile()
-    # pr.enable()
-
-
     check = init_check_res(connection, 'files_associated_with_replicates')
     check.status = 'IGNORE'
     fdn_conn = get_FDN_Connection(connection)
@@ -157,7 +152,7 @@ def files_associated_with_replicates(connection, **kwargs):
         return check.store_result()
     total_replicates = None
     curr_from = 0
-    limit = 50
+    limit = 100
     set_files = {}
     while not total_replicates or curr_from < total_replicates:
         # sort by acession and grab 10 at a time to keep memory usage down
@@ -183,15 +178,6 @@ def files_associated_with_replicates(connection, **kwargs):
             set_files[set_acc] = files
         curr_from += limit
     check.full_output = set_files
-
-    # pr.disable()
-    # s = StringIO.StringIO()
-    # sortby = 'cumulative'
-    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    # ps.print_stats()
-    # import pdb; pdb.set_trace()
-    # print(s.getvalue())
-
     return check.store_result()
 
 
