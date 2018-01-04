@@ -402,7 +402,7 @@ class TestCheckUtils(unittest.TestCase):
     def test_run_check_exception(self):
         check_res = check_utils.run_check(self.conn, 'test_checks/test_check_error', {})
         self.assertTrue(check_res['status'] == 'ERROR')
-        self.assertTrue(check_res['full_output'] == 'integer division or modulo by zero')
+        self.assertTrue('by zero' in check_res['full_output'])
         self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
 
     def test_check_groups(self):
