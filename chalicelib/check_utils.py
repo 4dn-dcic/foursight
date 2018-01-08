@@ -144,6 +144,6 @@ def run_check(connection, check_str, check_kwargs):
         err_check = CheckResult(connection.s3_connection, check_name_str)
         err_check.status = 'ERROR'
         err_check.description = 'Check failed to run. See full output.'
-        err_check.full_output = traceback.format_exc()
+        err_check.full_output = traceback.format_exc().split('\n')
         check_result = err_check.store_result()
     return check_result
