@@ -195,8 +195,8 @@ def replicate_file_reporting(connection, **kwargs):
         exp_acc = latest_file.get('exp_accession') if latest_file else prior_file.get('exp_accession')
         latest_md5 = latest_file.get('md5sum')
         prior_md5 = prior_file.get('md5sum')
-        latest_stat = latest_file.get('status', 'None')
-        prior_stat = prior_file.get('status', 'None')
+        latest_stat = latest_file.get('status') if latest_file else 'none'
+        prior_stat = prior_file.get('status') if prior_file else 'none'
         if exp_acc:
             file_str = ''.join(['File ', file_acc, ' of experiment ', exp_acc])
         else:
