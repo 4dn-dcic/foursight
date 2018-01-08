@@ -21,6 +21,8 @@ jin_env = Environment(
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 ADMIN = "4dndcic@gmail.com"
+QUEUE_NAME = '-'.join(['foursight', STAGE, 'check_queue.fifo'])
+RUNNER_NAME = '-'.join(['foursight', STAGE, 'check_runner'])
 
 # compare strings in both python 2 and python 3
 # in other files, compare with utils.basestring
