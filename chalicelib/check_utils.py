@@ -3,6 +3,7 @@ from .utils import get_methods_by_deco, check_method_deco, CHECK_DECO
 from .checkresult import CheckResult
 from .check_groups import *
 import sys
+import traceback
 import importlib
 import datetime
 import copy
@@ -139,10 +140,10 @@ def run_check(connection, check_str, check_kwargs):
         return ' '.join(['ERROR. Ensure the check_function decorator is present.', error_str])
     try:
         check_result = check_method(connection, **check_kwargs)
-    except Exception as err:
+    except Exception as e:
         err_check = CheckResult(connection.s3_connection, check_name_str)
         err_check.status = 'ERROR'
         err_check.description = 'Check failed to run. See full output.'
-        err_check.full_output = str(err)
+        err_check.full_output = traceback.format_exc().split('\n')
         check_result = err_check.store_result()
     return check_result
