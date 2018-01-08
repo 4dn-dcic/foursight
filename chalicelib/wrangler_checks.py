@@ -138,7 +138,7 @@ def files_associated_with_replicates(connection, **kwargs):
         extracted = kwargs
         acc = None
         for field in ['status', 'md5sum', 'accession']:
-            extracted[field] = res.get(field)
+            extracted[field] = res.get(field, 'None') # have str None fallback
             if field == 'accession':
                 acc = extracted[field]
         return acc, extracted
@@ -195,8 +195,8 @@ def replicate_file_reporting(connection, **kwargs):
         exp_acc = latest_file.get('exp_accession') if latest_file else prior_file.get('exp_accession')
         latest_md5 = latest_file.get('md5sum')
         prior_md5 = prior_file.get('md5sum')
-        latest_stat = latest_file.get('status', 'None')
-        prior_stat = prior_file.get('status', 'None')
+        latest_stat = latest_file.get('status')
+        prior_stat = prior_file.get('status')
         if exp_acc:
             file_str = ''.join(['File ', file_acc, ' of experiment ', exp_acc])
         else:
@@ -204,11 +204,13 @@ def replicate_file_reporting(connection, **kwargs):
         file_str_adds = []
         if latest_file and not prior_file:
             file_str_adds.append(' has been added')
+            if latest_stat in ['released', 'released to project']:
+                file_str_adds.append(''.join([' with status ', latest_stat]))
         elif prior_file and not latest_file:
             file_str_adds.append(' has been removed')
-        # we only care about specifics if the file has been released
-        if any(i in ['released', 'released to project'] for i in [latest_stat, prior_stat]):
-            if latest_stat != prior_stat:
+        elif any(i in ['released', 'released to project'] for i in [latest_stat, prior_stat]):
+            # we only care about specifics if the file has been released
+            if latest_stat != prior_stat and latest_stat and prior_stat:
                 file_str_adds.append(''.join([' has status changed from ', prior_stat, ' to ', latest_stat]))
             if latest_md5 != prior_md5 and latest_md5 and prior_md5:
                 file_str_adds.append(' has a changed md5sum')
