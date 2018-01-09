@@ -41,37 +41,6 @@ def two_hour_checks(event):
         if connection:
             run_check_group(connection, 'two_hour_checks')
 
-
-def queue_check_group(environ, check_group):
-    check_vals = CHECK_GROUPS.get(check_group)
-    if not check_vals:
-        print('%s is not a valid check group. Cannot queue it.' % (check_group))
-        return
-    sqs = boto3.resource('sqs')
-    try:
-        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
-    except:
-        queue = sqs.create_queue(
-            QueueName=QUEUE_NAME,
-            Attributes={
-                'VisibilityTimeout': '300',
-                'FifoQueue': 'true',
-                'ContentBasedDeduplication': 'true'
-            }
-        )
-    # append environ as first element to all check_vals
-    proc_vals = [[environ] + val for val in check_vals]
-    # uuid used as the MessageGroupId
-    uuid = datetime.datetime.utcnow().isoformat()
-    for val in proc_vals:
-        response = queue.send_message(
-            MessageBody=json.dumps(val),
-            MessageGroupId=uuid
-        )
-    invoke_lambda_runner(queue.url)
-    return queue.url # for testing purposes
-
-
 ######### END SCHEDULED FXNS #########
 
 @app.route('/callback')
@@ -239,6 +208,37 @@ def get_environment_route(environ):
 
 ### NEED TO ADD SOME FINISHED-CHECK MONITORING FOR HANDLING DEPENDENCIES
 
+def queue_check_group(environ, check_group):
+    check_vals = CHECK_GROUPS.get(check_group)
+    if not check_vals:
+        print('%s is not a valid check group. Cannot queue it.' % (check_group))
+        return
+    sqs = boto3.resource('sqs')
+    try:
+        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
+    except:
+        queue = sqs.create_queue(
+            QueueName=QUEUE_NAME,
+            Attributes={
+                'VisibilityTimeout': '300',
+                'FifoQueue': 'true',
+                'MessageRetentionPeriod': '3600',
+                'ContentBasedDeduplication': 'true'
+            }
+        )
+    # append environ as first element to all check_vals
+    proc_vals = [[environ] + val for val in check_vals]
+    # uuid used as the MessageGroupId
+    uuid = datetime.datetime.utcnow().isoformat()
+    for val in proc_vals:
+        response = queue.send_message(
+            MessageBody=json.dumps(val),
+            MessageGroupId=uuid
+        )
+    invoke_lambda_runner(queue.url)
+    return queue.url # for testing purposes
+
+
 def invoke_lambda_runner(url):
     client = boto3.client('lambda')
     # InvocationType=Event makes asynchronous
@@ -247,18 +247,17 @@ def invoke_lambda_runner(url):
         InvocationType='Event',
         Payload=json.dumps(url)
     )
+    print('invoked check_runner with payload: %s' % url)
     # expect http status code to be 202 for 'Event'
     return response
 
 
 @app.lambda_function()
 def check_runner(event, context):
-    print(event)
     if not event:
         return
-    # ValueError: No JSON object could be decoded
-    # ^^ error or json.loads(event)
-    queue_url = json.loads(event)
+    queue_url = event
+    print('Queue url: %s' % queue_url)
     if not queue_url or not isinstance(queue_url, basestring):
         # bail
         return
@@ -273,13 +272,15 @@ def check_runner(event, context):
     )
     message = response.get('Messages', [{'Body': None}])[0]
     body = message.get('Body')
+    print('Message body: %s' % body)
     if not body:
-        delete_message_and_deploy(client, queue_url, message.get('ReceiptHandle'))
+        delete_message_and_propogate(client, queue_url, message.get('ReceiptHandle'))
         return
     # if not a valid check str, remove the item from the SQS
     check_list = json.loads(body)
+    print('check_list: %s' % check_list)
     if not isinstance(check_list, list) or len(check_list) != 4:
-        delete_message_and_deploy(client, queue_url, message.get('ReceiptHandle'))
+        delete_message_and_propogate(client, queue_url, message.get('ReceiptHandle'))
         return
     # next, run the check using the check str
     # message visibility will timeout after 300 seconds if this fails and be
@@ -287,14 +288,17 @@ def check_runner(event, context):
     connection, error_res = init_connection(check_list[0])
     if connection:
         run_check(connection, check_list[1], check_list[2])
-        delete_message_and_deploy(client, queue_url, message.get('ReceiptHandle'))
+        delete_message_and_propogate(client, queue_url, message.get('ReceiptHandle'))
     else:
         invoke_lambda_runner(queue_url)
 
 
-def delete_message_and_deploy(client, queue_url, receipt):
+def delete_message_and_propogate(client, queue_url, receipt):
+    if not client or not queue_url or not receipt:
+        return
     client.delete_message(
         QueueUrl=queue_url,
         ReceiptHandle=receipt
     )
+    print('message deleted for: %s' % receipt)
     invoke_lambda_runner(queue_url)
