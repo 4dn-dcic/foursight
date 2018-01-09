@@ -22,14 +22,14 @@ CHECK_GROUPS = {
         ['system_checks/elastic_beanstalk_health', {}, []],
         ['system_checks/status_of_elasticsearch_indices', {}, []],
         ['system_checks/indexing_records', {}, []],
-        ['system_checks/staging_deployment', {}, []],
         ['wrangler_checks/item_counts_by_type', {}, []],
         ['wrangler_checks/change_in_item_counts', {}, []],
         ['system_checks/indexing_progress', {}, []]
     ],
     'two_hour_checks': [
         ['wrangler_checks/item_counts_by_type', {}, []],
-        ['system_checks/indexing_progress', {}, []]
+        ['system_checks/indexing_progress', {}, []],
+        ['system_checks/staging_deployment', {}, []]
     ]
 }
 

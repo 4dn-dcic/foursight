@@ -4,7 +4,6 @@ import json
 import os
 import requests
 import datetime
-import boto3
 from chalicelib.app_utils import *
 
 app = Chalice(app_name='foursight')
@@ -204,101 +203,15 @@ def get_environment_route(environ):
     else:
         return forbidden_response()
 
-######### PURE LAMBDA FUNCTIONS AND UTILS #########
-
-### NEED TO ADD SOME FINISHED-CHECK MONITORING FOR HANDLING DEPENDENCIES
-
-def queue_check_group(environ, check_group):
-    check_vals = CHECK_GROUPS.get(check_group)
-    if not check_vals:
-        print('%s is not a valid check group. Cannot queue it.' % (check_group))
-        return
-    sqs = boto3.resource('sqs')
-    try:
-        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
-    except:
-        queue = sqs.create_queue(
-            QueueName=QUEUE_NAME,
-            Attributes={
-                'VisibilityTimeout': '300',
-                'FifoQueue': 'true',
-                'MessageRetentionPeriod': '3600',
-                'ContentBasedDeduplication': 'true'
-            }
-        )
-    # append environ as first element to all check_vals
-    proc_vals = [[environ] + val for val in check_vals]
-    # uuid used as the MessageGroupId
-    uuid = datetime.datetime.utcnow().isoformat()
-    for val in proc_vals:
-        response = queue.send_message(
-            MessageBody=json.dumps(val),
-            MessageGroupId=uuid
-        )
-    invoke_lambda_runner(queue.url)
-    return queue.url # for testing purposes
-
-
-def invoke_lambda_runner(url):
-    client = boto3.client('lambda')
-    # InvocationType=Event makes asynchronous
-    response = client.invoke(
-        FunctionName=RUNNER_NAME,
-        InvocationType='Event',
-        Payload=json.dumps(url)
-    )
-    print('invoked check_runner with payload: %s' % url)
-    # expect http status code to be 202 for 'Event'
-    return response
-
+######### PURE LAMBDA FUNCTIONS #########
 
 @app.lambda_function()
 def check_runner(event, context):
+    """
+    Pure lambda function to pull run and check information from SQS and run
+    the checks. Self propogates. event is a dict of information passed into
+    the lambda at invocation time.
+    """
     if not event:
         return
-    queue_url = event
-    print('Queue url: %s' % queue_url)
-    if not queue_url or not isinstance(queue_url, basestring):
-        # bail
-        return
-    # do nothing with event as this point, which is built from Payload param in invoke()
-    # first, ReceiveMessage from the top of the SQS; this should be a check str
-    client = boto3.client('sqs')
-    response = client.receive_message(
-        QueueUrl=queue_url,
-        AttributeNames=['MessageGroupId'],
-        MaxNumberOfMessages=1,
-        VisibilityTimeout=300
-    )
-    message = response.get('Messages', [{'Body': None}])[0]
-    body = message.get('Body')
-    print('Message body: %s' % body)
-    if not body:
-        delete_message_and_propogate(client, queue_url, message.get('ReceiptHandle'))
-        return
-    # if not a valid check str, remove the item from the SQS
-    check_list = json.loads(body)
-    print('check_list: %s' % check_list)
-    if not isinstance(check_list, list) or len(check_list) != 4:
-        delete_message_and_propogate(client, queue_url, message.get('ReceiptHandle'))
-        return
-    # next, run the check using the check str
-    # message visibility will timeout after 300 seconds if this fails and be
-    # available from the queue
-    connection, error_res = init_connection(check_list[0])
-    if connection:
-        run_check(connection, check_list[1], check_list[2])
-        delete_message_and_propogate(client, queue_url, message.get('ReceiptHandle'))
-    else:
-        invoke_lambda_runner(queue_url)
-
-
-def delete_message_and_propogate(client, queue_url, receipt):
-    if not client or not queue_url or not receipt:
-        return
-    client.delete_message(
-        QueueUrl=queue_url,
-        ReceiptHandle=receipt
-    )
-    print('message deleted for: %s' % receipt)
-    invoke_lambda_runner(queue_url)
+    run_check_runner(event)
