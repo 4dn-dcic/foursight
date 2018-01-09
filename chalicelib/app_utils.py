@@ -530,15 +530,15 @@ def recover_message_and_propogate(runner_input, receipt):
     invoke_check_runner(runner_input)
 
 
-def record_run_info(run_uuid, check_name):
+def record_run_info(run_uuid, check_name, check_status):
     """
     Add a record of the completed check to the foursight-runs bucket with name
-    <run_uuid>/<check_name>. The object itself is empty.
+    <run_uuid>/<check_name>. The object itself is only the status of the run.
     Returns True on success, False otherwise
     """
     s3_connection = S3Connection('foursight-runs')
     record_key = '/'.join([run_uuid, check_name])
-    resp = s3_connection.put_object(record_key, json.dumps({}))
+    resp = s3_connection.put_object(record_key, json.dumps(check_status))
     return resp is not None
 
 
@@ -589,8 +589,8 @@ def run_check_runner(runner_input):
     connection, error_res = init_connection(run_env)
     if connection and finished_dependencies:
         # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
-        run_check(connection, check_name, check_kwargs)
-        recorded = record_run_info(run_uuid, check_name)
+        run_result = run_check(connection, check_name, check_kwargs)
+        recorded = record_run_info(run_uuid, check_name, run_result.get('status'))
     else:
         recorded = False
     if recorded:
