@@ -16,9 +16,7 @@ app.debug = True
 def daily_checks(event):
     environments = list_environments()
     for environ in environments:
-        connection, error_res = init_connection(environ)
-        if connection:
-            run_check_group(connection, 'daily_checks')
+        queue_check_group(environ, 'daily_checks')
 
 
 # run every 6 hrs
@@ -26,9 +24,7 @@ def daily_checks(event):
 def six_hour_checks(event):
     environments = list_environments()
     for environ in environments:
-        connection, error_res = init_connection(environ)
-        if connection:
-            run_check_group(connection, 'six_hour_checks')
+        queue_check_group(environ, 'six_hour_checks')
 
 
 # run every 2 hrs
@@ -36,9 +32,7 @@ def six_hour_checks(event):
 def two_hour_checks(event):
     environments = list_environments()
     for environ in environments:
-        connection, error_res = init_connection(environ)
-        if connection:
-            run_check_group(connection, 'two_hour_checks')
+        queue_check_group(environ, 'two_hour_checks')
 
 ######### END SCHEDULED FXNS #########
 

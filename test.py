@@ -385,11 +385,11 @@ class TestCheckUtils(unittest.TestCase):
 
     def test_run_check_errors(self):
         bad_check_group = [
-            ['indexing_progress', {}, []],
-            ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', []],
-            ['syscks/indexing_progress', {}, []],
-            ['wrangler_checks/iteasdts_by_type', {}, []],
-            ['test_checks/test_function_unused', {}, []]
+            ['indexing_progress', {}, [], 'xx1'],
+            ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', [], 'xx1'],
+            ['syscks/indexing_progress', {}, [], 'xx1'],
+            ['wrangler_checks/iteasdts_by_type', {}, [], 'xx1'],
+            ['test_checks/test_function_unused', {}, [], 'xx1']
         ]
         for bad_check_info in bad_check_group:
             check_res = check_utils.run_check(self.conn, bad_check_info[0], bad_check_info[1])
@@ -408,13 +408,20 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue(isinstance(check_groups.CHECK_GROUPS, dict))
         self.assertTrue(isinstance(check_groups.TEST_CHECK_GROUPS, dict))
         # ensure check groups look good
+        dependency_ids = []
         for key, val in check_groups.CHECK_GROUPS.items():
             self.assertTrue('_checks' in key)
             self.assertTrue(isinstance(val, list))
             for check_info in val:
-                self.assertTrue(len(check_info) == 3)
+                self.assertTrue(len(check_info) == 4)
+                self.assertTrue(isinstance(check_info[0], app_utils.basestring))
                 self.assertTrue(isinstance(check_info[1], dict))
                 self.assertTrue(isinstance(check_info[2], list))
+                self.assertTrue(isinstance(check_info[3], app_utils.basestring))
+                dependency_ids.append(check_info[3])
+        # ensure all dependency ids are unique
+        dependency_ids_unique = list(set(dependency_ids))
+        self.assertTrue(len(dependency_ids_unique) == len(dependency_ids))
         # this is a bit janky
         for key, val in check_groups.TEST_CHECK_GROUPS.items():
             self.assertTrue('_test_checks' in key)
@@ -423,11 +430,11 @@ class TestCheckUtils(unittest.TestCase):
                 if 'malformed' in key:
                     self.assertTrue(len(check_info) != 3)
                 else:
-                    self.assertTrue(len(check_info) == 3)
+                    self.assertTrue(len(check_info) == 4)
+                    self.assertTrue(isinstance(check_info[0], app_utils.basestring))
                     self.assertTrue(isinstance(check_info[1], dict))
                     self.assertTrue(isinstance(check_info[2], list))
-
-
+                    self.assertTrue(isinstance(check_info[3], app_utils.basestring))
 
 
 class TestUtils(unittest.TestCase):

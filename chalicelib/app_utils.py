@@ -556,14 +556,14 @@ def recover_message_and_propogate(runner_input, receipt):
     invoke_check_runner(runner_input)
 
 
-def record_run_info(run_uuid, check_name, check_status):
+def record_run_info(run_uuid, dep_id, check_status):
     """
     Add a record of the completed check to the foursight-runs bucket with name
-    <run_uuid>/<check_name>. The object itself is only the status of the run.
+    equal to the dependency id. The object itself is only the status of the run.
     Returns True on success, False otherwise
     """
     s3_connection = S3Connection('foursight-runs')
-    record_key = '/'.join([run_uuid, check_name])
+    record_key = '/'.join([run_uuid, dep_id])
     resp = s3_connection.put_object(record_key, json.dumps(check_status))
     return resp is not None
 
@@ -611,11 +611,11 @@ def run_check_runner(runner_input):
         # if no messages recieved in 20 seconds of long polling, terminate
         return
     check_list = json.loads(body)
-    if not isinstance(check_list, list) or len(check_list) != 5:
+    if not isinstance(check_list, list) or len(check_list) != 6:
         # if not a valid check str, remove the item from the SQS
         delete_message_and_propogate(runner_input, receipt)
         return
-    [run_env, run_uuid, check_name, check_kwargs, check_deps] = check_list
+    [run_env, run_uuid, check_name, check_kwargs, check_deps, dep_id] = check_list
     # find information from s3 about completed checks in this run
     if check_deps and isinstance(check_deps, list):
         already_run = collect_run_info(run_uuid)
@@ -633,7 +633,7 @@ def run_check_runner(runner_input):
         # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
         run_result = run_check(connection, check_name, check_kwargs)
         print('-RUN-> RESULT:  %s' % str(run_result))
-        recorded = record_run_info(run_uuid, check_name, run_result.get('status'))
+        recorded = record_run_info(run_uuid, dep_id, run_result.get('status'))
     else:
         recorded = False
     if recorded:
