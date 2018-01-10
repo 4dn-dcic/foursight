@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 from .utils import get_methods_by_deco, check_method_deco, CHECK_DECO
-from .checkresult import CheckResult
+from .check_result import CheckResult
 from .check_groups import *
 import sys
 import traceback

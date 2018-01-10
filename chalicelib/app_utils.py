@@ -11,7 +11,7 @@ from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
 from .check_utils import get_check_group_latest, run_check, get_check_strings, fetch_check_group
-from .checkresult import CheckResult
+from .check_result import CheckResult
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS
 
@@ -628,6 +628,7 @@ def run_check_runner(runner_input):
             check_kwargs['uuid'] = run_uuid
         # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
         run_result = run_check(connection, check_name, check_kwargs)
+        print('-RUN-> RESULT:  %s' % str(run_result))
         recorded = record_run_info(run_uuid, check_name, run_result.get('status'))
     else:
         recorded = False

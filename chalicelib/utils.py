@@ -4,7 +4,7 @@ import types
 import datetime
 from importlib import import_module
 from functools import wraps
-from .checkresult import CheckResult
+from .check_result import CheckResult
 
 CHECK_DECO = 'check_function'
 

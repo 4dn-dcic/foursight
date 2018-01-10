@@ -145,7 +145,7 @@ class CheckResult(object):
         return formatted
 
 
-### Utility functions for checkresult
+### Utility functions for check_result
 def get_closest(items, pivot):
     """
     Return the item in the list of items closest to the given pivot.

@@ -4,7 +4,7 @@ import unittest
 import datetime
 import json
 import os
-from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, checkresult, fs_connection
+from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, check_result, fs_connection
 from dateutil import tz
 
 
@@ -30,7 +30,7 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
-    def test_checkresult_basics(self):
+    def test_check_result_basics(self):
         test_check = utils.init_check_res(self.connection, 'test_check', description='Unittest check', ff_link='not_a_real_http_link')
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
@@ -269,7 +269,7 @@ class TestCheckResult(unittest.TestCase):
     connection, _ = app_utils.init_connection(environ)
 
     def test_check_result_methods(self):
-        check = checkresult.CheckResult(self.connection.s3_connection, self.check_name)
+        check = check_result.CheckResult(self.connection.s3_connection, self.check_name)
         # default status
         self.assertTrue(check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
@@ -287,7 +287,7 @@ class TestCheckResult(unittest.TestCase):
         self.assertTrue(all_res[-1].get('description') == res.get('description'))
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
-        check_copy = checkresult.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        check_copy = check_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
         self.assertTrue(res == check_copy.store_result())
 
 
