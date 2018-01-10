@@ -268,7 +268,7 @@ def identify_files_without_filesize(connection, **kwargs):
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
-        check.description = "One or more files that are released don't have file_size."
+        check.description = "One or more files that are released/released to project don't have file_size."
     else:
         check.status = 'PASS'
     return check.store_result()

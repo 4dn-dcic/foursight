@@ -28,6 +28,7 @@ CHECK_GROUPS = {
         ['system_checks/indexing_progress', {}, []]
     ],
     'two_hour_checks': [
+        ['wrangler_checks/identify_files_without_filesize', {}, []],
         ['wrangler_checks/item_counts_by_type', {}, []],
         ['system_checks/indexing_progress', {}, []]
     ]
