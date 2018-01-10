@@ -249,3 +249,26 @@ def replicate_file_reporting(connection, **kwargs):
         check.status = 'PASS'
         check.description = ''.join(['No significant file changes to one or more experiment sets have occured in the last ', str(delta_hours), ' hours.'])
     return check.store_result()
+
+
+@check_function()
+def identify_files_without_filesize(connection, **kwargs):
+    check = init_check_res(connection, 'identify_files_without_filesize', runnable=True)
+    fdn_conn = get_FDN_Connection(connection)
+    if not (fdn_conn and fdn_conn.check):
+        check.status = 'ERROR'
+        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
+        return check.store_result()
+    search_res = ff_utils.get_metadata('/search/?type=File&limit=all&status=released&status=released+to+project', connection=fdn_conn, frame='object')
+    problem_files = []
+    hits = search_res.get('@graph', [])
+    for hit in hits:
+        if hit.get('file_size') is None:
+            problem_files.append(hit.get('accession'))
+    check.full_output = problem_files
+    if problem_files:
+        check.status = 'WARN'
+        check.description = "One or more files that are released don't have file_size."
+    else:
+        check.status = 'PASS'
+    return check.store_result()
