@@ -623,6 +623,9 @@ def run_check_runner(runner_input):
         finished_dependencies = True
     connection, error_res = init_connection(run_env)
     if connection and finished_dependencies:
+        # add the run uuid as the uuid to kwargs so that checks will coordinate
+        if 'uuid' not in check_kwargs:
+            check_kwargs['uuid'] = run_uuid
         # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
         run_result = run_check(connection, check_name, check_kwargs)
         recorded = record_run_info(run_uuid, check_name, run_result.get('status'))
