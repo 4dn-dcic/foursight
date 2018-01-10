@@ -141,11 +141,10 @@ class TestAppRoutes(unittest.TestCase):
     def test_run_foursight_checks(self):
         res = app_utils.run_foursight_checks(self.environ, 'all')
         self.assertTrue(res.status_code == 200)
-        self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
+        self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
         self.assertTrue(res.body['check_group'] == 'all')
-        self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_foursight_checks(self):
         res = app_utils.get_foursight_checks(self.environ, 'all')
@@ -186,8 +185,6 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(env_res.body.get('status') == 'success')
         self.assertTrue(env_res.body.get('environment') == self.environ)
         self.assertTrue(env_res.body.get('description') == 'Succesfully made: ' + self.environ)
-        checks_run = env_res.body.get('initial_checks')
-        self.assertTrue(isinstance(checks_run, list) and len(checks_run) > 0)
         # failure case
         bad_res = app_utils.run_put_environment(self.environ, {'key1': 'res1'})
         self.assertTrue(bad_res.status_code == 400)

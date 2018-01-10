@@ -170,8 +170,9 @@ def view_rerun(environ, check):
     if check in CHECK_GROUPS or check == 'all':
         queue_check_group(environ, check)
     else:
+        connection, _ = init_connection(environ)
         check_str = get_check_strings(check)
-        if check_str:
+        if connection and check_str:
             run_check(connection, check_str, {})
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
@@ -261,6 +262,9 @@ def run_foursight_checks(environ, check_group):
     The latest run of checks replaces the 'latest' label for each check
     directory in S3 and also creates a timestamped record.
     """
+    connection, response = init_response(environ)
+    if not connection:
+        return response
     queue_check_group(environ, check_group)
     response.body = {
         'status': 'success',
