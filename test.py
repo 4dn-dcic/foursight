@@ -412,13 +412,18 @@ class TestCheckUtils(unittest.TestCase):
         for key, val in check_groups.CHECK_GROUPS.items():
             self.assertTrue('_checks' in key)
             self.assertTrue(isinstance(val, list))
+            within_group_dep_ids = []
             for check_info in val:
                 self.assertTrue(len(check_info) == 4)
                 self.assertTrue(isinstance(check_info[0], app_utils.basestring))
                 self.assertTrue(isinstance(check_info[1], dict))
                 self.assertTrue(isinstance(check_info[2], list))
                 self.assertTrue(isinstance(check_info[3], app_utils.basestring))
-                dependency_ids.append(check_info[3])
+                within_group_dep_ids.append(check_info[3])
+            dependency_ids.extend(within_group_dep_ids)
+            # ensure all ids within a group are unique
+            within_group_unique = list(set(within_group_dep_ids))
+            self.assertTrue(len(within_group_unique) == len(within_group_dep_ids))
         # ensure all dependency ids are unique
         dependency_ids_unique = list(set(dependency_ids))
         self.assertTrue(len(dependency_ids_unique) == len(dependency_ids))

@@ -250,7 +250,12 @@ def view_foursight(environ, is_admin=False, domain=""):
     groups = list(CHECK_GROUPS.keys()) # only the keys needed
     # get these into groups of 4
     groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
-    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin, domain=domain)
+    # get queue information
+    queue_attr = get_sqs_attributes(get_sqs_queue().url)
+    running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
+    queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin,
+                            domain=domain, running_checks=running_checks, queued_checks=queued_checks)
     html_resp.status_code = 200
     return html_resp
 
@@ -501,6 +506,28 @@ def get_sqs_queue():
             }
         )
     return queue
+
+
+def get_sqs_attributes(sqs_url):
+    """
+    Returns a dict of the desired attributes form the queue with given url
+    """
+    backup = {
+        'ApproximateNumberOfMessages': 'ERROR',
+        'ApproximateNumberOfMessagesNotVisible': 'ERROR'
+    }
+    client = boto3.client('sqs')
+    try:
+        result = client.get_queue_attributes(
+            QueueUrl=sqs_url,
+            AttributeNames=[
+                'ApproximateNumberOfMessages',
+                'ApproximateNumberOfMessagesNotVisible'
+            ]
+        )
+    except:
+        return backup
+    return result.get('Attributes', backup)
 
 
 def invoke_check_runner(runner_input):
