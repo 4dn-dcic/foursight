@@ -4,7 +4,6 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 import os
 import jwt
-import time
 import boto3
 import datetime
 from dateutil import tz
@@ -486,7 +485,6 @@ def queue_check_group(environ, check_group):
     runner_input = {'sqs_url': queue.url}
     for n in range(4): # number of parallel runners to kick off
         invoke_check_runner(runner_input)
-        time.sleep(1) # probably not needed
     return runner_input # for testing purposes
 
 
