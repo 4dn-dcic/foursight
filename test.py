@@ -4,7 +4,9 @@ import unittest
 import datetime
 import json
 import os
-from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, checkresult, fs_connection
+import time
+import app
+from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, check_result, fs_connection
 from dateutil import tz
 
 
@@ -30,8 +32,10 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
-    def test_checkresult_basics(self):
-        test_check = utils.init_check_res(self.connection, 'test_check', description='Unittest check', ff_link='not_a_real_http_link')
+    def test_check_result_basics(self):
+        test_check = utils.init_check_res(self.connection, 'test_check')
+        test_check.description = 'Unittest check'
+        test_check.ff_link = 'not_a_real_http_link'
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
@@ -54,7 +58,10 @@ class TestAppRoutes(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
 
-    def home_route(self):
+    def test_stage(self):
+        self.assertTrue(app_utils.STAGE == 'dev')
+
+    def test_home_route(self):
         res = app.index()
         self.assertTrue(json.loads(res) == {'foursight': 'insight into fourfront'})
 
@@ -141,11 +148,10 @@ class TestAppRoutes(unittest.TestCase):
     def test_run_foursight_checks(self):
         res = app_utils.run_foursight_checks(self.environ, 'all')
         self.assertTrue(res.status_code == 200)
-        self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
+        self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
         self.assertTrue(res.body['check_group'] == 'all')
-        self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_foursight_checks(self):
         res = app_utils.get_foursight_checks(self.environ, 'all')
@@ -186,8 +192,6 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(env_res.body.get('status') == 'success')
         self.assertTrue(env_res.body.get('environment') == self.environ)
         self.assertTrue(env_res.body.get('description') == 'Succesfully made: ' + self.environ)
-        checks_run = env_res.body.get('initial_checks')
-        self.assertTrue(isinstance(checks_run, list) and len(checks_run) > 0)
         # failure case
         bad_res = app_utils.run_put_environment(self.environ, {'key1': 'res1'})
         self.assertTrue(bad_res.status_code == 400)
@@ -262,6 +266,90 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(res.body['description'] == 'PUT request is malformed: NOT_A_DICT')
 
 
+class TestCheckRunner(unittest.TestCase):
+    environ = 'mastertest'
+    connection, _ = app_utils.init_connection(environ)
+
+    def test_run_check_runner(self):
+        """
+        Hard to test all the internal fxns here...
+        Run with wrangler_test_checks check_group that gives a unique output
+        """
+        # the check we will test with
+        check = check_result.CheckResult(self.connection.s3_connection, 'items_created_in_the_past_day')
+        prior_res = check.get_latest_check()
+        # first, bad input
+        bad_res = app_utils.run_check_runner({'sqs_url': None})
+        self.assertTrue(bad_res is None)
+        # need to manually add things to the queue
+        queue = app_utils.get_sqs_queue()
+        check_vals = check_utils.fetch_check_group('wrangler_test_checks')
+        app_utils.send_sqs_messages(queue, self.environ, check_vals)
+        app_utils.run_check_runner({'sqs_url': queue.url})
+        # this **should** work
+        sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        # wait for queue to empty
+        while vis_messages > 0 or invis_messages > 0:
+            sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            time.sleep(2)
+        # look at output
+        post_res = check.get_latest_check()
+        prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
+        post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
+        self.assertTrue(post_uuid > prior_uuid)
+
+    def test_queue_check_group(self):
+        # first, assure we have the right queue and runner names
+        self.assertTrue(app_utils.QUEUE_NAME == 'foursight-dev-check_queue')
+        self.assertTrue(app_utils.RUNNER_NAME == 'foursight-dev-check_runner')
+        # get a reference point for check results
+        prior_res = check_utils.get_check_group_latest(self.connection, 'all')
+        run_input = app_utils.queue_check_group(self.environ, 'all')
+        self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
+        # this **should** work
+        sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        # wait for queue to empty
+        while vis_messages > 0 or invis_messages > 0:
+            sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            time.sleep(2)
+        # queue should be empty. check results
+        post_res = check_utils.get_check_group_latest(self.connection, 'all')
+        # compare the runtimes to ensure checks have run
+        res_compare = {}
+        for check_res in post_res:
+            res_compare[check_res['name']] = {'post': check_res['uuid']}
+        for check_res in prior_res:
+            res_compare[check_res['name']]['prior'] = check_res['uuid']
+        for check_name in res_compare:
+            self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
+            prior_uuid = datetime.datetime.strptime(res_compare[check_name]['prior'], "%Y-%m-%dT%H:%M:%S.%f")
+            post_uuid = datetime.datetime.strptime(res_compare[check_name]['post'], "%Y-%m-%dT%H:%M:%S.%f")
+            self.assertTrue(post_uuid > prior_uuid)
+
+    def test_get_sqs_attributes(self):
+        # bad sqs url
+        bad_sqs_attrs = app_utils.get_sqs_attributes('not_a_queue')
+        self.assertTrue(bad_sqs_attrs.get('ApproximateNumberOfMessages') == bad_sqs_attrs.get('ApproximateNumberOfMessagesNotVisible') == 'ERROR')
+
+    def test_record_and_collect_run_info(self):
+        test_run_uuid = 'test_run_uuid'
+        test_dep_id = 'xxxxx'
+        resp = app_utils.record_run_info(test_run_uuid, test_dep_id, 'PASS')
+        self.assertTrue(resp is not None)
+        found_ids = app_utils.collect_run_info(test_run_uuid)
+        self.assertTrue(set([''.join([test_run_uuid, '/', test_dep_id])]) == found_ids)
+
+
 class TestCheckResult(unittest.TestCase):
     # use a fake check name and store on mastertest
     check_name = 'test_only_check'
@@ -269,7 +357,7 @@ class TestCheckResult(unittest.TestCase):
     connection, _ = app_utils.init_connection(environ)
 
     def test_check_result_methods(self):
-        check = checkresult.CheckResult(self.connection.s3_connection, self.check_name)
+        check = check_result.CheckResult(self.connection.s3_connection, self.check_name)
         # default status
         self.assertTrue(check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
@@ -287,7 +375,7 @@ class TestCheckResult(unittest.TestCase):
         self.assertTrue(all_res[-1].get('description') == res.get('description'))
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
-        check_copy = checkresult.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        check_copy = check_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
         self.assertTrue(res == check_copy.store_result())
 
 
@@ -334,6 +422,9 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue(bad_checks is None)
 
     def test_run_check_group(self):
+        """
+        This test will need to be removed/changed as more checks are made
+        """
         all_checks_res = check_utils.run_check_group(self.conn, 'all')
         self.assertTrue(isinstance(all_checks_res, list) and len(all_checks_res) > 0)
         for check_res in all_checks_res:
@@ -388,11 +479,11 @@ class TestCheckUtils(unittest.TestCase):
 
     def test_run_check_errors(self):
         bad_check_group = [
-            ['indexing_progress', {}, []],
-            ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', []],
-            ['syscks/indexing_progress', {}, []],
-            ['wrangler_checks/iteasdts_by_type', {}, []],
-            ['test_checks/test_function_unused', {}, []]
+            ['indexing_progress', {}, [], 'xx1'],
+            ['wrangler_checks/item_counts_by_type', 'should_be_a_dict', [], 'xx1'],
+            ['syscks/indexing_progress', {}, [], 'xx1'],
+            ['wrangler_checks/iteasdts_by_type', {}, [], 'xx1'],
+            ['test_checks/test_function_unused', {}, [], 'xx1']
         ]
         for bad_check_info in bad_check_group:
             check_res = check_utils.run_check(self.conn, bad_check_info[0], bad_check_info[1])
@@ -411,13 +502,25 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue(isinstance(check_groups.CHECK_GROUPS, dict))
         self.assertTrue(isinstance(check_groups.TEST_CHECK_GROUPS, dict))
         # ensure check groups look good
+        dependency_ids = []
         for key, val in check_groups.CHECK_GROUPS.items():
             self.assertTrue('_checks' in key)
             self.assertTrue(isinstance(val, list))
+            within_group_dep_ids = []
             for check_info in val:
-                self.assertTrue(len(check_info) == 3)
+                self.assertTrue(len(check_info) == 4)
+                self.assertTrue(isinstance(check_info[0], app_utils.basestring))
                 self.assertTrue(isinstance(check_info[1], dict))
                 self.assertTrue(isinstance(check_info[2], list))
+                self.assertTrue(isinstance(check_info[3], app_utils.basestring))
+                within_group_dep_ids.append(check_info[3])
+            dependency_ids.extend(within_group_dep_ids)
+            # ensure all ids within a group are unique
+            within_group_unique = list(set(within_group_dep_ids))
+            self.assertTrue(len(within_group_unique) == len(within_group_dep_ids))
+        # ensure all dependency ids are unique
+        dependency_ids_unique = list(set(dependency_ids))
+        self.assertTrue(len(dependency_ids_unique) == len(dependency_ids))
         # this is a bit janky
         for key, val in check_groups.TEST_CHECK_GROUPS.items():
             self.assertTrue('_test_checks' in key)
@@ -426,11 +529,11 @@ class TestCheckUtils(unittest.TestCase):
                 if 'malformed' in key:
                     self.assertTrue(len(check_info) != 3)
                 else:
-                    self.assertTrue(len(check_info) == 3)
+                    self.assertTrue(len(check_info) == 4)
+                    self.assertTrue(isinstance(check_info[0], app_utils.basestring))
                     self.assertTrue(isinstance(check_info[1], dict))
                     self.assertTrue(isinstance(check_info[2], list))
-
-
+                    self.assertTrue(isinstance(check_info[3], app_utils.basestring))
 
 
 class TestUtils(unittest.TestCase):

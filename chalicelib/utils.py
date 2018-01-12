@@ -4,12 +4,12 @@ import types
 import datetime
 from importlib import import_module
 from functools import wraps
-from .checkresult import CheckResult
+from .check_result import CheckResult
 
 CHECK_DECO = 'check_function'
 
 
-def init_check_res(connection, name, title=None, description=None, uuid=None, ff_link=None, runnable=False, extension=".json"):
+def init_check_res(connection, name, uuid=None, runnable=False):
     """
     Initialize a CheckResult object, which holds all information for a
     check and methods necessary to store and retrieve latest/historical
@@ -18,8 +18,10 @@ def init_check_res(connection, name, title=None, description=None, uuid=None, ff
 
     uuid is a timestamp-style unique identifier that can be used to control
     where the output of the check is written.
+
+    runnable is a boolean that determines if the check can be executed from UI.
     """
-    return CheckResult(connection.s3_connection, name, title, description, uuid, ff_link, runnable, extension)
+    return CheckResult(connection.s3_connection, name, uuid=uuid, runnable=runnable, extension=".json")
 
 
 def build_dummy_result(check_name):

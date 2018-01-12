@@ -7,30 +7,31 @@ CHECK_MODULES = [
 
 # define check groups for schedules here
 # each group is an array with entries corresponding to one check's run
-# info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies]
+# info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies, dependency id]
+# dependecy id can be any unique string
 
 # check group names should end in "_checks"
 # define check_groups within this dict
 
 CHECK_GROUPS = {
     'daily_checks': [
-        ['wrangler_checks/items_created_in_the_past_day', {}, []],
-        ['wrangler_checks/files_associated_with_replicates', {}, []],
-        ['wrangler_checks/replicate_file_reporting', {}, []]
+        ['wrangler_checks/items_created_in_the_past_day', {}, [], 'd1'],
+        ['wrangler_checks/files_associated_with_replicates', {}, [],'d2'],
+        ['wrangler_checks/replicate_file_reporting', {}, [], 'd3']
     ],
     'six_hour_checks': [
-        ['system_checks/elastic_beanstalk_health', {}, []],
-        ['system_checks/status_of_elasticsearch_indices', {}, []],
-        ['system_checks/indexing_records', {}, []],
-        ['system_checks/staging_deployment', {}, []],
-        ['wrangler_checks/item_counts_by_type', {}, []],
-        ['wrangler_checks/change_in_item_counts', {}, []],
-        ['system_checks/indexing_progress', {}, []]
+        ['system_checks/elastic_beanstalk_health', {}, [], 's1'],
+        ['system_checks/status_of_elasticsearch_indices', {}, [], 's2'],
+        ['system_checks/indexing_records', {}, [], 's3'],
+        ['wrangler_checks/item_counts_by_type', {}, [], 's4'],
+        ['wrangler_checks/change_in_item_counts', {}, [], 's5'],
+        ['system_checks/indexing_progress', {}, [], 's6']
     ],
     'two_hour_checks': [
-        ['wrangler_checks/identify_files_without_filesize', {}, []],
-        ['wrangler_checks/item_counts_by_type', {}, []],
-        ['system_checks/indexing_progress', {}, []]
+        ['wrangler_checks/identify_files_without_filesize', {}, [], 't1'],
+        ['wrangler_checks/item_counts_by_type', {}, [], 't2'],
+        ['system_checks/indexing_progress', {}, [], 't3'],
+        ['system_checks/staging_deployment', {}, [], 't4']
     ]
 }
 
@@ -44,8 +45,8 @@ TEST_CHECK_GROUPS = {
         ['system_checks/indexing_progress', {}], # bad
     ],
     'wrangler_test_checks': [
-        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, []],
-        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, []],
-        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'FileFastq'}, []]
+        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'wt1'],
+        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, ['wt1'], 'wt2'],
+        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'FileFastq'}, ['wt2'], 'wt3']
     ]
 }

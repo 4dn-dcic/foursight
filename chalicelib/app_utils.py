@@ -4,12 +4,13 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 import json
 import os
 import jwt
+import boto3
 import datetime
 from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
-from .check_utils import run_check_group, get_check_group_latest, run_check, get_check_strings
-from .checkresult import CheckResult
+from .check_utils import get_check_group_latest, run_check, get_check_strings, fetch_check_group
+from .check_result import CheckResult
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS
 
@@ -21,6 +22,8 @@ jin_env = Environment(
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 ADMIN = "4dndcic@gmail.com"
+QUEUE_NAME = '-'.join(['foursight', STAGE, 'check_queue'])
+RUNNER_NAME = '-'.join(['foursight', STAGE, 'check_runner'])
 
 # compare strings in both python 2 and python 3
 # in other files, compare with utils.basestring
@@ -158,19 +161,18 @@ def forbidden_response():
 def view_rerun(environ, check):
     """
     Called from the view endpoint (or manually, I guess), this re-runs the given
-    checks for the given environment (CANNOT be 'all'; too slow) and returns the
+    checks for the given environment and returns the
     view_foursight templated result with the new check result.
 
     This also be used to run a check group. This is checked before individual check names
     """
-    connection, error_res = init_connection(environ)
-    if connection:
-        if check in CHECK_GROUPS:
-            run_check_group(connection, check)
-        else:
-            check_str = get_check_strings(check)
-            if check_str:
-                run_check(connection, check_str, {})
+    if check in CHECK_GROUPS or check == 'all':
+        queue_check_group(environ, check)
+    else:
+        connection, _ = init_connection(environ)
+        check_str = get_check_strings(check)
+        if connection and check_str:
+            run_check(connection, check_str, {})
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
     return Response(
@@ -247,7 +249,12 @@ def view_foursight(environ, is_admin=False, domain=""):
     groups = list(CHECK_GROUPS.keys()) # only the keys needed
     # get these into groups of 4
     groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
-    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin, domain=domain)
+    # get queue information
+    queue_attr = get_sqs_attributes(get_sqs_queue().url)
+    running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
+    queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin,
+                            domain=domain, running_checks=running_checks, queued_checks=queued_checks)
     html_resp.status_code = 200
     return html_resp
 
@@ -262,12 +269,11 @@ def run_foursight_checks(environ, check_group):
     connection, response = init_response(environ)
     if not connection:
         return response
-    did_run = run_check_group(connection, check_group)
+    queue_check_group(environ, check_group)
     response.body = {
         'status': 'success',
         'environment': environ,
-        'check_group': check_group,
-        'checks': did_run
+        'check_group': check_group
     }
     response.status_code = 200
     return response
@@ -386,7 +392,6 @@ def run_put_environment(environ, env_data):
         ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'
         es_address = env_data['es'] if env_data['es'].endswith('/') else env_data['es'] + '/'
         ff_env = env_data['ff_env'] if 'ff_env' in env_data else ''.join(['fourfront-', proc_environ])
-
         env_entry = {
             'fourfront': ff_address,
             'es': es_address,
@@ -406,13 +411,11 @@ def run_put_environment(environ, env_data):
                 status_code = 500
             )
         # run some checks on the new env
-        connection, error_res = init_connection(proc_environ)
-        did_run = run_check_group(connection, 'all') if connection else []
+        queue_check_group(environ, 'all')
         return Response(
             body = {
                 'status': 'success',
                 'description': ' '.join(['Succesfully made:', proc_environ]),
-                'initial_checks': did_run,
                 'environment': proc_environ
             },
             status_code = 200
@@ -453,3 +456,221 @@ def get_environment(environ):
             },
             status_code = 400
         )
+
+##### CHECK RUNNER FUNCTIONS #####
+
+def queue_check_group(environ, check_group):
+    """
+    Given a str environment and check group name, add the check info to the
+    existing queue (or creates a new one if there is none). Then initiates 4
+    check runners that are linked to the queue that are self-propgating.
+
+    Run with check_group = None to skip adding the check group to the queue
+    and just initiate the check runners.
+    """
+    if check_group is not None:
+        check_vals = fetch_check_group(check_group)
+        if not check_vals:
+            print('-RUN-> %s is not a valid check group. Cannot queue it.' % (check_group))
+            return
+    else:
+        check_vals = []
+    queue = get_sqs_queue()
+    send_sqs_messages(queue, environ, check_vals)
+    runner_input = {'sqs_url': queue.url}
+    for n in range(4): # number of parallel runners to kick off
+        invoke_check_runner(runner_input)
+    return runner_input # for testing purposes
+
+
+def get_sqs_queue():
+    """
+    Returns boto3 sqs resource with QueueName=QUEUE_NAME
+    """
+    sqs = boto3.resource('sqs')
+    try:
+        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
+    except:
+        queue = sqs.create_queue(
+            QueueName=QUEUE_NAME,
+            Attributes={
+                'VisibilityTimeout': '300',
+                'MessageRetentionPeriod': '3600'
+            }
+        )
+    return queue
+
+
+def send_sqs_messages(queue, environ, check_vals):
+    """
+    Send the messafges to the queue. Check_vals are entries within a check_group
+    """
+    # uuid used as the MessageGroupId
+    uuid = datetime.datetime.utcnow().isoformat()
+    # append environ and uuid as first elements to all check_vals
+    proc_vals = [[environ, uuid] + val for val in check_vals]
+    for val in proc_vals:
+        response = queue.send_message(MessageBody=json.dumps(val))
+
+
+def get_sqs_attributes(sqs_url):
+    """
+    Returns a dict of the desired attributes form the queue with given url
+    """
+    backup = {
+        'ApproximateNumberOfMessages': 'ERROR',
+        'ApproximateNumberOfMessagesNotVisible': 'ERROR'
+    }
+    client = boto3.client('sqs')
+    try:
+        result = client.get_queue_attributes(
+            QueueUrl=sqs_url,
+            AttributeNames=[
+                'ApproximateNumberOfMessages',
+                'ApproximateNumberOfMessagesNotVisible'
+            ]
+        )
+    except:
+        return backup
+    return result.get('Attributes', backup)
+
+
+def invoke_check_runner(runner_input):
+    """
+    Simple function to invoke the next check_runner lambda with runner_input
+    (dict containing {'sqs_url': <str>})
+    """
+    client = boto3.client('lambda')
+    # InvocationType=Event makes asynchronous
+    response = client.invoke(
+        FunctionName=RUNNER_NAME,
+        InvocationType='Event',
+        Payload=json.dumps(runner_input)
+    )
+    return response
+
+
+def delete_message_and_propogate(runner_input, receipt):
+    """
+    Delete the message with given receipt from sqs queue and invoke the next
+    lambda runner.
+    """
+    sqs_url = runner_input.get('sqs_url')
+    if not sqs_url or not receipt:
+        return
+    client = boto3.client('sqs')
+    client.delete_message(
+        QueueUrl=sqs_url,
+        ReceiptHandle=receipt
+    )
+    invoke_check_runner(runner_input)
+
+
+def recover_message_and_propogate(runner_input, receipt):
+    """
+    Recover the message with given receipt to sqs queue and invoke the next
+    lambda runner.
+
+    Changing message VisibilityTimeout to 15 seconds means the message will be
+    available to the queue in that much time. This is a slight lag to allow
+    dependencies to process.
+    NOTE: VisibilityTimeout should be less than WaitTimeSeconds in run_check_runner
+    """
+    sqs_url = runner_input.get('sqs_url')
+    if not sqs_url or not receipt:
+        return
+    client = boto3.client('sqs')
+    client.change_message_visibility(
+        QueueUrl=sqs_url,
+        ReceiptHandle=receipt,
+        VisibilityTimeout=15
+    )
+    invoke_check_runner(runner_input)
+
+
+def record_run_info(run_uuid, dep_id, check_status):
+    """
+    Add a record of the completed check to the foursight-runs bucket with name
+    equal to the dependency id. The object itself is only the status of the run.
+    Returns True on success, False otherwise
+    """
+    s3_connection = S3Connection('foursight-runs')
+    record_key = '/'.join([run_uuid, dep_id])
+    resp = s3_connection.put_object(record_key, json.dumps(check_status))
+    return resp is not None
+
+
+def collect_run_info(run_uuid):
+    """
+    Returns a set of run checks under this run uuid
+    """
+    s3_connection = S3Connection('foursight-runs')
+    run_prefix = ''.join([run_uuid, '/'])
+    complete = s3_connection.list_keys_w_prefix(run_prefix)
+    # eliminate duplicates
+    return set(complete)
+
+
+def run_check_runner(runner_input):
+    """
+    Run logic for a check runner. runner_input should be a dict containing one
+    key: sqs_url that corresponds to the aws url for the queue.
+    This function attempts to recieve one message from the standard SQS queue
+    using long polling, checks the run dependencies for that check, and then
+    will run the check. If dependencies are not met, the check is not run and
+    the run info is put back in the queue. Otherwise, the message is deleted
+    from the queue.
+
+    If there are no messages left (should always be true when nothing is
+    recieved from sqs with long polling), then exit and do not propogate another
+    check runner. Otherwise, initiate another check_runner to continue the process.
+    """
+    sqs_url = runner_input.get('sqs_url')
+    if not sqs_url:
+        return
+    client = boto3.client('sqs')
+    response = client.receive_message(
+        QueueUrl=sqs_url,
+        AttributeNames=['MessageGroupId'],
+        MaxNumberOfMessages=1,
+        VisibilityTimeout=300,
+        WaitTimeSeconds=20
+    )
+    message = response.get('Messages', [{}])[0]
+    body = message.get('Body')
+    receipt = message.get('ReceiptHandle')
+    if not body or not receipt:
+        # if no messages recieved in 20 seconds of long polling, terminate
+        return
+    check_list = json.loads(body)
+    if not isinstance(check_list, list) or len(check_list) != 6:
+        # if not a valid check str, remove the item from the SQS
+        delete_message_and_propogate(runner_input, receipt)
+        return
+    [run_env, run_uuid, check_name, check_kwargs, check_deps, dep_id] = check_list
+    # find information from s3 about completed checks in this run
+    if check_deps and isinstance(check_deps, list):
+        already_run = collect_run_info(run_uuid)
+        deps_w_uuid = ['/'.join([run_uuid, dep]) for dep in check_deps]
+        finished_dependencies = set(deps_w_uuid).issubset(already_run)
+        if not finished_dependencies:
+            print('-RUN-> Not ready for: %s' % (check_name))
+    else:
+        finished_dependencies = True
+    connection, error_res = init_connection(run_env)
+    if connection and finished_dependencies:
+        # add the run uuid as the uuid to kwargs so that checks will coordinate
+        if 'uuid' not in check_kwargs:
+            check_kwargs['uuid'] = run_uuid
+        # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
+        run_result = run_check(connection, check_name, check_kwargs)
+        print('-RUN-> RESULT:  %s' % str(run_result))
+        recorded = record_run_info(run_uuid, dep_id, run_result.get('status'))
+    else:
+        recorded = False
+    if recorded:
+        print('-RUN-> Finished: %s' % (check_name))
+        delete_message_and_propogate(runner_input, receipt)
+    else:
+        print('-RUN-> Recovered: %s' % (check_name))
+        recover_message_and_propogate(runner_input, receipt)

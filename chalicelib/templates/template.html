@@ -84,7 +84,6 @@
         </h3>
         {% if is_admin %}
             <h5 class="center-element">
-
                 <span>{{'Currently logged in as admin.'}}</span>
             </h5>
         {% else %}
@@ -92,6 +91,16 @@
                 <span>{{'Not logged in as admin.'}}</span>
                 <button class="color-hover in-line" onclick="lock.show();">Log in</button>
             </h5>
+        {% endif %}
+        {% if running_checks != '0' or queued_checks != '0' %}
+            <div class='center-element'>
+                <span style='margin-right:10px; color:#777'>
+                    {{'Running checks: ' + running_checks}}
+                </span>
+                <span style='color:#777'>
+                    {{'Queued checks: ' + queued_checks}}
+                </span>
+            </div>
         {% endif %}
         <ul>
             {% for env in envs %}
@@ -159,7 +168,7 @@
                     {% endfor %}
                 </ul>
                 {% if is_admin %}
-                    <h5>{{'Run group:'}}</h5>
+                    <h5>{{'Queue group:'}}</h5>
                     <div class='container-fluid'>
                         <div class='row'>
                             {% for groups in groups_4 %}

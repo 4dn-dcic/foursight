@@ -10,7 +10,7 @@ import json
 # holds a reference to the overall s3 connection as well
 
 class CheckResult(object):
-    def __init__(self, s3_connection, name, title=None, description=None, uuid=None, ff_link=None, runnable=False, extension=".json"):
+    def __init__(self, s3_connection, name, uuid=None, runnable=False, extension=".json"):
         self.s3_connection = s3_connection
         # uuid arg used if you want to overwrite an existing check
         # uuid is in the stringified datetime format
@@ -32,11 +32,8 @@ class CheckResult(object):
         else:
             self.uuid = None
         self.name = name
-        if title is None:
-            self.title = ' '.join(self.name.split('_')).title()
-        else:
-            self.title = title
-        self.description = description
+        self.title = ' '.join(self.name.split('_')).title()
+        self.description = None
         # should I make an enum for status?
         # valid values are: 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
         # start with IGNORE as the default check status
@@ -46,9 +43,7 @@ class CheckResult(object):
         self.full_output = None
         # admin output is only seen by admins on the UI
         self.admin_output = None
-        # ff_link is a string location that will be displayed to create
-        # an easily-accessible link from the check
-        self.ff_link = ff_link
+        self.ff_link = None
         # runnable controls whether a check can be individually run on the UI
         self.runnable = runnable
 
@@ -145,7 +140,7 @@ class CheckResult(object):
         return formatted
 
 
-### Utility functions for checkresult
+### Utility functions for check_result
 def get_closest(items, pivot):
     """
     Return the item in the list of items closest to the given pivot.

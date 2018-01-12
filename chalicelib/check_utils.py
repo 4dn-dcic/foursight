@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 from .utils import get_methods_by_deco, check_method_deco, CHECK_DECO
-from .checkresult import CheckResult
+from .check_result import CheckResult
 from .check_groups import *
 import sys
 import traceback
@@ -43,7 +43,8 @@ def get_check_strings(specific_check=None):
 
 def run_check_group(connection, name):
     """
-    For now return a simple list of check results
+    This is a test function, deprecated in favor of app_utils.queue_check_group.
+    The issue is that run_check_group will run checks synchronously in one lambda.
     """
     check_results = []
     check_group = fetch_check_group(name)
@@ -51,13 +52,13 @@ def run_check_group(connection, name):
         return check_results
     group_timestamp = datetime.datetime.utcnow().isoformat()
     for check_info in check_group:
-        if len(check_info) != 3:
+        if len(check_info) != 4:
             check_results.append(' '.join(['ERROR with', str(check_info), 'in group:', name]))
         else:
             # add uuid to each kwargs dict if not already specified
             # this will have the effect of giving all checks the same id
             # and combining results from repeats in the same check_group
-            [check_str, check_kwargs, check_deps] = check_info
+            [check_str, check_kwargs, check_deps, dep_id] = check_info
             if 'uuid' not in check_kwargs:
                 check_kwargs['uuid'] = group_timestamp
             # nothing done with dependencies yet
@@ -77,7 +78,7 @@ def get_check_group_latest(connection, name):
     if not check_group:
         return latest_results
     for check_info in check_group:
-        if len(check_info) != 3:
+        if len(check_info) != 4:
             continue
         check_name = check_info[0].strip().split('/')[1]
         TempCheck = CheckResult(connection.s3_connection, check_name)
@@ -97,7 +98,8 @@ def fetch_check_group(name):
     """
     if name == 'all':
         all_checks_strs = get_check_strings()
-        all_checks_group = [[check_str, {}, []] for check_str in all_checks_strs]
+        # dependecy id's are not used (since there are no dependencies) so arbitrarily set to '_'
+        all_checks_group = [[check_str, {}, [], '_'] for check_str in all_checks_strs]
         return all_checks_group
     group = CHECK_GROUPS.get(name, None)
     # maybe it's a test groups

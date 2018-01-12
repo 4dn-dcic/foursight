@@ -4,7 +4,9 @@
     {
       "Action": [
         "s3:*",
-        "elasticbeanstalk:*"
+        "elasticbeanstalk:*",
+        "lambda:*",
+        "sqs:*"
       ],
       "Resource": [
         "*"
