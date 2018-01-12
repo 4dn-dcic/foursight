@@ -4,6 +4,7 @@ import unittest
 import datetime
 import json
 import os
+import app
 from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, check_result, fs_connection
 from dateutil import tz
 
@@ -300,7 +301,6 @@ class TestCheckRunner(unittest.TestCase):
         post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
         self.assertTrue(post_uuid > prior_uuid)
 
-
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
         self.assertTrue(app_utils.QUEUE_NAME == 'foursight-dev-check_queue')
@@ -344,7 +344,7 @@ class TestCheckRunner(unittest.TestCase):
         resp = app_utils.record_run_info(test_run_uuid, test_dep_id, 'PASS')
         self.assertTrue(resp is not None)
         found_ids = app_utils.collect_run_info(test_run_uuid)
-        self.assertTrue(set(test_dep_id) == found_ids)
+        self.assertTrue(set([''.join([test_run_uuid, '/', test_dep_id])]) == found_ids)
 
 
 class TestCheckResult(unittest.TestCase):
