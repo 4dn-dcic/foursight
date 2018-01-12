@@ -473,15 +473,10 @@ def queue_check_group(environ, check_group):
         if not check_vals:
             print('-RUN-> %s is not a valid check group. Cannot queue it.' % (check_group))
             return
-        # uuid used as the MessageGroupId
-        uuid = datetime.datetime.utcnow().isoformat()
-        # append environ and uuid as first elements to all check_vals
-        proc_vals = [[environ, uuid] + val for val in check_vals]
     else:
-        proc_vals = []
+        check_vals = []
     queue = get_sqs_queue()
-    for val in proc_vals:
-        response = queue.send_message(MessageBody=json.dumps(val))
+    send_sqs_messages(queue, environ, check_vals)
     runner_input = {'sqs_url': queue.url}
     for n in range(4): # number of parallel runners to kick off
         invoke_check_runner(runner_input)
@@ -504,6 +499,18 @@ def get_sqs_queue():
             }
         )
     return queue
+
+
+def send_sqs_messages(queue, environ, check_vals):
+    """
+    Send the messafges to the queue. Check_vals are entries within a check_group
+    """
+    # uuid used as the MessageGroupId
+    uuid = datetime.datetime.utcnow().isoformat()
+    # append environ and uuid as first elements to all check_vals
+    proc_vals = [[environ, uuid] + val for val in check_vals]
+    for val in proc_vals:
+        response = queue.send_message(MessageBody=json.dumps(val))
 
 
 def get_sqs_attributes(sqs_url):

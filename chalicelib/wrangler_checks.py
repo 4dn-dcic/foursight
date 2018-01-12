@@ -96,8 +96,7 @@ def change_in_item_counts(connection, **kwargs):
 @check_function(item_type='Item')
 def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
-    ts_uuid = kwargs.get('uuid')
-    check = init_check_res(connection, 'items_created_in_the_past_day', uuid=ts_uuid, runnable=True)
+    check = init_check_res(connection, 'items_created_in_the_past_day', uuid=kwargs.get('uuid'), runnable=True)
     fdn_conn = get_FDN_Connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
@@ -268,7 +267,7 @@ def identify_files_without_filesize(connection, **kwargs):
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
-        check.description = "One or more files that are released/released to project don't have file_size."
+        check.description = "One or more files that are released/released to project/uploaded don't have file_size."
     else:
         check.status = 'PASS'
     return check.store_result()

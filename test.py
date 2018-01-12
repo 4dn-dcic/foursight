@@ -31,7 +31,9 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
     def test_check_result_basics(self):
-        test_check = utils.init_check_res(self.connection, 'test_check', description='Unittest check', ff_link='not_a_real_http_link')
+        test_check = utils.init_check_res(self.connection, 'test_check')
+        test_check.description = 'Unittest check'
+        test_check.ff_link = 'not_a_real_http_link'
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_check() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
@@ -54,7 +56,10 @@ class TestAppRoutes(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
 
-    def home_route(self):
+    def test_stage(self):
+        self.assertTrue(app_utils.STAGE == 'dev')
+
+    def test_home_route(self):
         res = app.index()
         self.assertTrue(json.loads(res) == {'foursight': 'insight into fourfront'})
 
@@ -259,6 +264,86 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(res.body['description'] == 'PUT request is malformed: NOT_A_DICT')
 
 
+class TestCheckRunner(unittest.TestCase):
+    environ = 'mastertest'
+    connection, _ = app_utils.init_connection(environ)
+
+    def test_run_check_runner(self):
+        """
+        Hard to test all the internal fxns here...
+        Run with wrangler_test_checks check_group that gives a unique output
+        """
+        # the check we will test with
+        check = check_result.CheckResult(self.connection.s3_connection, 'items_created_in_the_past_day')
+        prior_res = check.get_latest_check()
+        # first, bad input
+        bad_res = app_utils.run_check_runner({'sqs_url': None})
+        self.assertTrue(bad_res is None)
+        # need to manually add things to the queue
+        queue = app_utils.get_sqs_queue()
+        check_vals = check_utils.fetch_check_group('wrangler_test_checks')
+        app_utils.send_sqs_messages(queue, self.environ, check_vals)
+        app_utils.run_check_runner({'sqs_url': queue.url})
+        # this **should** work
+        sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        # wait for queue to empty
+        while vis_messages > 0 or invis_messages > 0:
+            sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        # look at output
+        post_res = check.get_latest_check()
+        prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
+        post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
+        self.assertTrue(post_uuid > prior_uuid)
+
+
+    def test_queue_check_group(self):
+        # first, assure we have the right queue and runner names
+        self.assertTrue(app_utils.QUEUE_NAME == 'foursight-dev-check_queue')
+        self.assertTrue(app_utils.RUNNER_NAME == 'foursight-dev-check_runner')
+        # get a reference point for check results
+        prior_res = check_utils.get_check_group_latest(self.connection, 'all')
+        run_input = app_utils.queue_check_group(self.environ, 'all')
+        self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
+        # this **should** work
+        sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        # wait for queue to empty
+        while vis_messages > 0 or invis_messages > 0:
+            sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        # queue should be empty. check results
+        post_res = check_utils.get_check_group_latest(self.connection, 'all')
+        # compare the runtimes to ensure checks have run
+        res_compare = {}
+        for check_res in post_res:
+            res_compare[check_res['name']] = {'post': check_res['uuid']}
+        for check_res in prior_res:
+            res_compare[check_res['name']]['prior'] = check_res['uuid']
+        for check_name in res_compare:
+            self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
+            prior_uuid = datetime.datetime.strptime(res_compare[check_name]['prior'], "%Y-%m-%dT%H:%M:%S.%f")
+            post_uuid = datetime.datetime.strptime(res_compare[check_name]['post'], "%Y-%m-%dT%H:%M:%S.%f")
+            self.assertTrue(post_uuid > prior_uuid)
+
+    def test_get_sqs_attributes(self):
+        # bad sqs url
+        bad_sqs_attrs = app_utils.get_sqs_attributes('not_a_queue')
+        self.assertTrue(bad_sqs_attrs.get('ApproximateNumberOfMessages') == bad_sqs_attrs.get('ApproximateNumberOfMessagesNotVisible') == 'ERROR')
+
+    def test_record_and_collect_run_info(self):
+        
+
+
+
+
 class TestCheckResult(unittest.TestCase):
     # use a fake check name and store on mastertest
     check_name = 'test_only_check'
@@ -331,6 +416,9 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue(bad_checks is None)
 
     def test_run_check_group(self):
+        """
+        This test will need to be removed/changed as more checks are made
+        """
         all_checks_res = check_utils.run_check_group(self.conn, 'all')
         self.assertTrue(isinstance(all_checks_res, list) and len(all_checks_res) > 0)
         for check_res in all_checks_res:
