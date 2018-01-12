@@ -4,6 +4,7 @@ import unittest
 import datetime
 import json
 import os
+import time
 import app
 from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, check_result, fs_connection
 from dateutil import tz
@@ -295,6 +296,7 @@ class TestCheckRunner(unittest.TestCase):
             sqs_attrs = app_utils.get_sqs_attributes(queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            time.sleep(2)
         # look at output
         post_res = check.get_latest_check()
         prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
@@ -319,6 +321,7 @@ class TestCheckRunner(unittest.TestCase):
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            time.sleep(2)
         # queue should be empty. check results
         post_res = check_utils.get_check_group_latest(self.connection, 'all')
         # compare the runtimes to ensure checks have run
