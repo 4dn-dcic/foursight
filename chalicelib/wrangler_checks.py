@@ -259,7 +259,7 @@ def identify_files_without_filesize(connection, **kwargs):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return check.store_result()
-    search_res = ff_utils.get_metadata('/search/?type=File&limit=all&status=released&status=released+to+project', connection=fdn_conn, frame='object')
+    search_res = ff_utils.get_metadata('/search/?type=File&limit=all&status=released%20to%20project&status=released&status=uploaded', connection=fdn_conn, frame='object')
     problem_files = []
     hits = search_res.get('@graph', [])
     for hit in hits:
