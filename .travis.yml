@@ -1,7 +1,6 @@
 language: python
 sudo: false
 python:
-- '2.7'
 - '3.6'
 install:
 - pip install -r requirements.txt
@@ -16,7 +15,7 @@ after_success:
 - echo $TRAVIS_BRANCH
 - echo $TRAVIS_PYTHON_VERSION
 - |
-  if [[ $TRAVIS_PULL_REQUEST == 'false' && $TRAVIS_PYTHON_VERSION == '2.7' ]]; then
+  if [[ $TRAVIS_PULL_REQUEST == 'false' && $TRAVIS_PYTHON_VERSION == '3.6' ]]; then
     if [[ $TRAVIS_BRANCH == 'master' ]]; then
       echo 'Tests succeeded! Deploying to dev stage.';
       python -m deploy dev;
