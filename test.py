@@ -339,9 +339,12 @@ class TestCheckRunner(unittest.TestCase):
         self.assertTrue(bad_sqs_attrs.get('ApproximateNumberOfMessages') == bad_sqs_attrs.get('ApproximateNumberOfMessagesNotVisible') == 'ERROR')
 
     def test_record_and_collect_run_info(self):
-        
-
-
+        test_run_uuid = 'test_run_uuid'
+        test_dep_id = 'xxxxx'
+        resp = app_utils.record_run_info(test_run_uuid, test_dep_id, 'PASS')
+        self.assertTrue(resp is not None)
+        found_ids = app_utils.collect_run_info(test_run_uuid)
+        self.assertTrue(set(test_dep_id) == found_ids)
 
 
 class TestCheckResult(unittest.TestCase):
