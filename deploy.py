@@ -41,6 +41,7 @@ def build_config_and_deploy(stage):
     client_id = os.environ.get("CLIENT_ID")
     client_secret = os.environ.get("CLIENT_SECRET")
     dev_secret = os.environ.get("DEV_SECRET")
+    admin = os.environ.get("FS_ADMIN")
     if not (akey_secret and client_id and client_secret and dev_secret):
         print('ERROR. You are missing one more more environment variables needed to deploy Foursight. Need: SECRET, CLIENT_ID, CLIENT_SECRET, DEV_SECRET.')
         sys.exit()
@@ -49,6 +50,7 @@ def build_config_and_deploy(stage):
         CONFIG_BASE['stages'][curr_stage]['environment_variables']['CLIENT_ID'] = client_id
         CONFIG_BASE['stages'][curr_stage]['environment_variables']['CLIENT_SECRET'] = client_secret
         CONFIG_BASE['stages'][curr_stage]['environment_variables']['DEV_SECRET'] = dev_secret
+        CONFIG_BASE['stages'][curr_stage]['environment_variables']['ADMIN'] = admin
 
     file_dir, _ = os.path.split(os.path.abspath(__file__))
     filename = os.path.join(file_dir, '.chalice/config.json')

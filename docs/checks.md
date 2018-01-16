@@ -2,7 +2,7 @@
 
 Checks are the fundamental unit of work done in Foursight. They contain the entirety of code needed to make some observation or do some work and then take care of setting the result fields and storing the result. As mentioned in the [getting started](./getting_started.md) documentation, checks are written in files called check modules and are grouped together to run as check groups. This document contains information on writing checks, as well as best practices for running them.
 
-It is assumed that you've already read the getting started documentation. If not, head over and check that out before continuing.
+It is assumed that you've already read the getting started documentation. If not, head over and check that out before continuing. If you are interested in tips on the check development process, [go here](./development_tips.md).
 
 ## Quick reference for important check requirements
 * Checks must always start with the `@check_function()` decorator.

@@ -5,10 +5,10 @@ Environments are the Foursight method of organizing different environments/Fourf
 ## Anatomy of an environment
 As an initial disclaimer, Foursight environments are specifically made to work with Fourfront. Their functionality may be extended in the future, but for now, there is a pretty strict limitation to using Foursight for Fourfront. That said, here are the attributes of an environment:
 
-`fourfront`: the Fourfront server address for this environment.
-`es`: the ElasticSearch server address for this environment.
-`ff_env`: the Fourfront environment name, which is generated automatically if not provided.
-`bucket`: the S3 bucket location for check results for this environment, generated automatically.
+* `fourfront`: the Fourfront server address for this environment.
+* `es`: the ElasticSearch server address for this environment.
+* `ff_env`: the Fourfront environment name, which is generated automatically if not provided.
+* `bucket`: the S3 bucket location for check results for this environment, generated automatically.
 
 You can perform a GET request to see the information for any environment (```staging``` in the example below). Please note that you must be logged in as admin to see this information or provide the correct `Authorization` header with your request.
 
