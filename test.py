@@ -499,30 +499,42 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue('by zero' in ''.join(check_res['full_output']))
         self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
 
+class TestCheckGroup(unittest.TestCase):
     def test_check_groups(self):
         # make sure check groups are dicts
         self.assertTrue(isinstance(check_groups.CHECK_GROUPS, dict))
         self.assertTrue(isinstance(check_groups.TEST_CHECK_GROUPS, dict))
         # ensure check groups look good
         dependency_ids = []
+        used_check_mods = []
         for key, val in check_groups.CHECK_GROUPS.items():
             self.assertTrue('_checks' in key)
             self.assertTrue(isinstance(val, list))
             within_group_dep_ids = []
+            used_dep_ids = []
             for check_info in val:
                 self.assertTrue(len(check_info) == 4)
                 self.assertTrue(isinstance(check_info[0], app_utils.basestring))
+                self.assertTrue(len(check_info[0].split('/')) == 2)
+                used_check_mods.append(check_info[0].split('/')[0].strip())
                 self.assertTrue(isinstance(check_info[1], dict))
                 self.assertTrue(isinstance(check_info[2], list))
+                used_dep_ids.extend(check_info[2])
                 self.assertTrue(isinstance(check_info[3], app_utils.basestring))
                 within_group_dep_ids.append(check_info[3])
             dependency_ids.extend(within_group_dep_ids)
             # ensure all ids within a group are unique
             within_group_unique = list(set(within_group_dep_ids))
             self.assertTrue(len(within_group_unique) == len(within_group_dep_ids))
+            # ensure all dep ids used in this group belong to the group
+            self.assertTrue(set(used_dep_ids).issubset(set(within_group_dep_ids)))
         # ensure all dependency ids are unique
         dependency_ids_unique = list(set(dependency_ids))
         self.assertTrue(len(dependency_ids_unique) == len(dependency_ids))
+        # ensure all the used check modules are added to CHECK_MODULES
+        for mod in used_check_mods:
+            self.assertTrue(mod in check_groups.CHECK_MODULES)
+
         # this is a bit janky
         for key, val in check_groups.TEST_CHECK_GROUPS.items():
             self.assertTrue('_test_checks' in key)

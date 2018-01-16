@@ -9,4 +9,4 @@ A serverless chalice application to monitor and run tasks on [Fourfront](https:/
 
 Please visit the [getting started](./docs/getting_started.md) page to get up and running with Foursight. More in-depth documentation is also available in the [docs folder](./docs/).
 
-Foursight is under active development and features will likely change. Currently, work is being done to integrate a flexible Lambda runner system so that the running of checks is infinitely scalable (given that an individual check can complete in under 300 seconds).
+Foursight is under active development and features will likely change.
