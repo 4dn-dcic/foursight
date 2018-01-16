@@ -160,6 +160,8 @@ def files_associated_with_replicates(connection, **kwargs):
         if not total_replicates:
             total_replicates = search_res.get('total')
         results = search_res.get('@graph', [])
+        if not results:
+            break # can get no results, don't want to freeze
         for res in results:
             set_acc = res.get('accession')
             files = {}
