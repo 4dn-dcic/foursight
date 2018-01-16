@@ -334,8 +334,6 @@ class TestCheckRunner(unittest.TestCase):
             self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
             prior_uuid = datetime.datetime.strptime(res_compare[check_name]['prior'], "%Y-%m-%dT%H:%M:%S.%f")
             post_uuid = datetime.datetime.strptime(res_compare[check_name]['post'], "%Y-%m-%dT%H:%M:%S.%f")
-            print('PRIOR: name %s, uuid %s' % (check_name, prior_uuid))
-            print('POST: name %s, uuid %s' % (check_name, post_uuid))
             self.assertTrue(post_uuid > prior_uuid)
 
     def test_get_sqs_attributes(self):
@@ -610,4 +608,4 @@ class TestWranglerUtils(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(warnings='ignore')
