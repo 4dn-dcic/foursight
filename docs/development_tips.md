@@ -1,4 +1,4 @@
-# Development Tips*
+# Development Tips #
 
 This documentation is meant to help you get up and running writing checks for Foursight. It includes some useful tips and functions outside of the scope of the strictly necessary stuff contained in the [getting started](./getting_started.md) and [checks](./checks.md) documentation. First, we will go over the timeline of writing a new check module containing new checks and adding a new check group.
 
@@ -25,7 +25,10 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 # it could be useful to add a break point within your check function to see what's happening
 >>> app.run_check(connection, 'items_created_in_the_past_day', {})
 # some possible output:
-{'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day', 'description': 'No items have been created in the past day.', 'status': 'PASS', 'uuid': '2018-01-16T19:14:34.025445', 'extension': '.json', 'brief_output': None, 'full_output': {}, 'admin_output': None, 'ff_link': None, 'runnable': True}
+{'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day',
+'description': 'No items have been created in the past day.', 'status': 'PASS',
+'uuid': '2018-01-16T19:14:34.025445', 'extension': '.json', 'brief_output': None,
+'full_output': {}, 'admin_output': None, 'ff_link': None, 'runnable': True}
 
 # you can also run with kwargs...
 >>> app.run_check(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
@@ -62,7 +65,7 @@ def one_hour_checks(event):
         queue_check_group(environ, 'my_test_checks')
 ```
 
-Or scheduling with a CRON expression (for more info, [see here]((http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html))).
+Or scheduling with a CRON expression... for more info, [see here](http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html).
 ```
 # run at 10 am UTC every day
 @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
