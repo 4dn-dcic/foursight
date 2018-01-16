@@ -76,7 +76,7 @@ Let's say we've created two check in the system_checks.py check module, named ``
 
 It is also important to note that you need to add any check modules (e.g. system_checks or wrangler_checks) to the list of ```CHECK_MODULES``` at the top of check_groups.py. As a side note, ```all``` is a reserved check group name that includes all checks within the application using the ```@check_function``` decorator without any explicit arguments or dependencies.
 
-Now that your check group is defined, it can be run or retrieved using the Foursight API. This is the last topic covered in this file.
+Now that your check group is defined, it can be run or retrieved using the Foursight API. This is the last topic covered in this file. For more in-depth information on how to create check groups, [go here](./checks.md#check-groups).
 
 ## Scheduling your check group
 To get your check group running on a CRON or rate schedule, the current method is add it at the bottom of app.py. This will change in the near future, but here is an example using our demo check group.

@@ -163,7 +163,7 @@ Then, we just need to add the logic to use the `full_output` from previous resul
 full_output = check.full_output if check.full_output else {}
 ```
 
-Now our `full_output` results will be keyed correctly! The final step is to create a check group that coordinates the runs of these two checks. It is the defau;t behavior that all checks in the same check group are given the same uuid. What this means is if you put multiple instances of a check in any one check group, you can always use this uuid trick to append results. In fact, if you use the same check multiple times and DON'T use the uuid argument in `init_check_res`, then the results will overwrite each other and the last instance of the check run will be the saved one.
+Now our `full_output` results will be keyed correctly! The final step is to create a check group that coordinates the runs of these two checks. It is the default behavior that all checks in the same check group are given the same uuid. What this means is if you put multiple instances of a check in any one check group, you can always use this uuid trick to append results. In fact, if you use the same check multiple times and DON'T use the uuid argument in `init_check_res`, then the results will overwrite each other and the last instance of the check run will be the saved one.
 
 Here is a check group that would work with our example:
 ```
@@ -233,8 +233,8 @@ First, check groups containing the same check multiple times will overwrite the 
 ```
 'wrangler_test_checks': [
     ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'dependency_id_1'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, [], 'dependency_id_2'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'FileFastq'}, [], 'dependency_id_3']
+    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependency_id_2'],
+    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'}, [], 'dependency_id_3']
 ]
 ```
 
