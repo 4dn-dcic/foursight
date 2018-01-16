@@ -9,7 +9,7 @@ This documentation is meant to help you get up and running writing checks for Fo
 4. Add a new check group to CHECK_GROUPS within chalicelib/check_groups.py.
 5. Do some testing of your new check group.
 6. Schedule your new check group in app.py.
-7. Deploy to Foursight `dev` and test it live.
+7. Deploy to Foursight `dev` and test it live. [See here](./deployment.md).
 
 ## Testing tips
 
@@ -50,3 +50,25 @@ Let's say you want to run a whole check group and not an individual check. There
 
 ### Some other testing notes
 * By default, you will use the `dev` stage of Foursight from the Python interpreter and test.py. To change to `prod` (USE WITH CARE), use `app.STAGE = 'PROD'`.
+* You can get the latest check group results using `app.get_check_group_latest(connection, name)` given a Foursight connection and a valid check group name.
+
+### Scheduling your check group
+Okay, so you've got a check group that you're confident in. To schedule it using a CRON or rate expression, go to the top of app.py and create a new scheduled function (leading with the `@app.schedule()` decorator). Two examples are below:
+
+```
+@app.schedule(Rate(1, unit=Rate.HOURS))
+def one_hour_checks(event):
+    for environ in list_environments():
+        queue_check_group(environ, 'my_test_checks')
+```
+
+Or scheduling with a CRON expression (for more info, [see here]((http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html))).
+```
+# run at 10 am UTC every day
+@app.schedule(Cron(0, 10, '*', '*', '?', '*'))
+def daily_checks(event):
+    for environ in list_environments():
+        queue_check_group(environ, 'my_test_checks')
+```
+
+It is easy to constrict the environments that a given check is run on in the `for` loop of the schedule function.

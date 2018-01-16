@@ -79,19 +79,16 @@ It is also important to note that you need to add any check modules (e.g. system
 Now that your check group is defined, it can be run or retrieved using the Foursight API. This is the last topic covered in this file. For more in-depth information on how to create check groups, [go here](./checks.md#check-groups).
 
 ## Scheduling your check group
-To get your check group running on a CRON or rate schedule, the current method is add it at the bottom of app.py. This will change in the near future, but here is an example using our demo check group.
+To get your check group running on a CRON or rate schedule, the current method is add it at the top of app.py. `queue_check_group` will cause your checks to be added to an AWS SQS queue that will kick of asynchronous lambdas that will run them. The numbers of currently running and pending checks are displayed at the top of the Foursight UI.
 
 ```
 @app.schedule(Rate(1, unit=Rate.HOURS))
 def one_hour_checks(event):
-    environments = list_environments()
-    for environ in environments:
-        connection, error_res = init_connection(environ)
-        if connection:
-            run_check_group(connection, 'my_test_checks')
+    for environ in list_environments():
+        queue_check_group(environ, 'my_test_checks')
 ```
 
-This schedule will run ```my_test_checks``` on all Foursight environments every one hour. For more information on using a CRON scheduler, check out [this AWS page](http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html). The code above will run on all environments, but could be easily constricted to specific ones.
+This schedule will run ```my_test_checks``` on all Foursight environments every one hour. The code above will run on all environments, but could be easily constricted to specific ones. For more information on scheduling, [see this documentation](./development_tips.md#scheduling-your-check-group).
 
 ## Using the UI
 The easiest way to interact with Foursight is to use the UI, which allows viewing and running of checks. Here is [production Foursight](https://foursight.4dnucleome.org/api/view/all) and here is [development Foursight](https://m1kj6dypu3.execute-api.us-east-1.amazonaws.com/api/view/all). Information on individual checks can be obtained by clicking on the check title. If you have administrator priviliges, you can log into your account and run checks directly from the page. Please note that running any checks requires either administrator priviliges or a special authorization code.
