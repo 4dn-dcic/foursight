@@ -119,19 +119,19 @@ def items_created_in_the_past_day(connection, **kwargs):
 These kwargs defined in the check function can be overwritten by those defined in the check group. So, if we wanted to run the `items_created_in_the_past_day` check in a check group with `item_type = Experiment` we could add the following check info to a check group:
 
 ```
-['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependecy_id']
+['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependency_id']
 ```
 
 This will cause the `item_type` to be overwritten in the check code. If you wanted to use the default `item_type` kwarg, you would just leave an empty dictionary for the check in the check group:
 
 ```
-['wrangler_checks/items_created_in_the_past_day', {}, [], 'dependecy_id']
+['wrangler_checks/items_created_in_the_past_day', {}, [], 'dependency_id']
 ```
 
 Lastly, arguments that are not defined in the default kwargs through the `check_function` decorator can also be added to the dictionary:
 
 ```
-['wrangler_checks/items_created_in_the_past_day', {'another_arg': 'another_val'}, [], 'dependecy_id']
+['wrangler_checks/items_created_in_the_past_day', {'another_arg': 'another_val'}, [], 'dependency_id']
 ```
 
 This would execute the `items_created_in_the_past_day` check with the default kwarg `item_type=Item` and the provided `another_arg=another_val` kwarg. This system allows checks to be with different parameters in check groups.
@@ -168,8 +168,8 @@ Now our `full_output` results will be keyed correctly! The final step is to crea
 Here is a check group that would work with our example:
 ```
 'wrangler_test_checks': [
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'dependecy_id_1'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependecy_id_2']
+    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'dependency_id_1'],
+    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependency_id_2']
 ]
 ```
 
