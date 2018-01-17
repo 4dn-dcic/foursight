@@ -1,5 +1,11 @@
 from __future__ import print_function, unicode_literals
-from .utils import get_methods_by_deco, check_method_deco, init_check_res, init_action_res, CHECK_DECO, ACTION_DECO
+from .utils import (
+    get_methods_by_deco,
+    check_method_deco,
+    init_check_res, init_action_res,
+    CHECK_DECO,
+    ACTION_DECO
+)
 from .check_groups import *
 import sys
 import traceback
@@ -157,14 +163,12 @@ def run_check_or_action(connection, check_str, check_kwargs):
     if not check_method:
         return ' '.join(['ERROR. Check name is not valid.', error_str])
     if check_method_deco(check_method, CHECK_DECO):
-        return run_check(connection, check_name, check_method, check_kwargs)
+        return run_check(connection, check_name_str, check_method, check_kwargs)
     elif check_method_deco(check_method, ACTION_DECO):
-        return run_action(connection, check_name, check_method, check_kwargs)
+        return run_action(connection, check_name_str, check_method, check_kwargs)
     else:
         return ' '.join(['ERROR. Ensure the correct function decorator is present.', error_str]), None, None
     return 'PASS', check_name, check_method
-
-
 
 
 def run_check(connection, check_name, check_method, check_kwargs):

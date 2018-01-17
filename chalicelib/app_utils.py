@@ -9,7 +9,14 @@ import datetime
 from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
-from .check_utils import get_check_group_latest, run_check, get_check_strings, fetch_check_group, init_check_res
+from .check_utils import (
+    get_check_group_latest,
+    run_check_or_action,
+    get_check_strings,
+    fetch_check_group,
+    fetch_action_group,
+    init_check_res
+)
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS, ACTION_GROUPS
 
@@ -184,8 +191,8 @@ def view_run_action(environ, action_group):
     Called from the view endpoint (or manually, I guess), this runs the given
     action group for the given environment and refreshes the foursight view.
     """
-    if check in ACTION_GROUPS:
-        queue_check_group(environ, check, use_action_group=True)
+    if action_group in ACTION_GROUPS:
+        queue_check_group(environ, action_group, use_action_group=True)
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
     return Response(

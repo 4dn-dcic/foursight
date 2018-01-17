@@ -161,11 +161,17 @@
                                         <pre><code>{{check.admin_output}}</code></pre>
                                     </div>
                                 {% endif %}
-                                {% if check.get('action') and is_admin %}
-                                    <form class="commonstyle" action={{"/api/view/" + env['environment'] + '/' + check['action'] + '/action'}} method="get">
-                                        <button class="btn btn-default btn-sm" type="submit">
-                                            {{check['action'].replace(/_/g, ' ').toUpperCase()}}
-                                        </button>
+                                {% if check.get('action_group') and is_admin %}
+                                    <form class="commonstyle" action={{"/api/view/" + env['environment'] + '/' + check['action_group'] + '/action'}} method="get">
+                                        {% if running_checks != '0' or queued_checks != '0' %}
+                                            <button class="btn btn-default btn-sm" type="submit" disabled>
+                                                {{check.get('action_name', 'Run action')}}
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-default btn-sm" type="submit">
+                                                {{check.get('action_name', 'Run action')}}
+                                            </button>
+                                        {% endif %}
                                     </form>
                                 {% endif %}
                             </div>

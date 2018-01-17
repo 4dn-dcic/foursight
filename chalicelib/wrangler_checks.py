@@ -270,7 +270,8 @@ def identify_files_without_filesize(connection, **kwargs):
     if problem_files:
         check.status = 'WARN'
         check.description = "One or more files that are released/released to project/uploaded don't have file_size."
-        check.action = "file_size_actions" # see ACTION_GROUPS in check_groups.py
+        check.action_group = "file_size_actions" # see ACTION_GROUPS in check_groups.py
+        check.action_name = "Patch file size" # just the display name for the action
     else:
         check.status = 'PASS'
     return check.store_result()
@@ -279,3 +280,4 @@ def identify_files_without_filesize(connection, **kwargs):
 @action_function()
 def patch_file_size(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_size')
+    return action.store_result()
