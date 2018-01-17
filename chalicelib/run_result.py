@@ -126,17 +126,17 @@ class CheckResult(RunResult):
         # admin output is only seen by admins on the UI
         self.admin_output = None
         self.ff_link = None
-        # self.action_group, when set, should be an group in ACTION_GROUPS
-        self.action_group = None
-        # self.action_name is the displayed name of the action.
-        # will default to "Run action" if not set
-        self.action_name = None
+        # self.action_name is the function name of the action AND
+        # should be an group in ACTION_GROUPS
+        # you must set both create both of these to make an action work
+        self.action = None
+        self.allow_action = False # by default do not allow the action to be run
         # runnable controls whether a check can be individually run on the UI
         self.runnable = runnable
         super().__init__(s3_connection, name)
 
 
-    def format_result(self, uuid, action_name):
+    def format_result(self, uuid):
         return {
             'name': self.name,
             'title': self.title,
@@ -147,8 +147,8 @@ class CheckResult(RunResult):
             'full_output': self.full_output,
             'admin_output': self.admin_output,
             'ff_link': self.ff_link,
-            'action_group': self.action_group,
-            'action_name': action_name,
+            'action': self.action,
+            'allow_action': self.allow_action,
             'runnable': self.runnable
         }
 
@@ -160,8 +160,7 @@ class CheckResult(RunResult):
             self.description = 'Malformed status; look at Foursight check definition.'
         # if there's a set uuid field, use that instead of curr utc time
         uuid = self.uuid if self.uuid else datetime.datetime.utcnow().isoformat()
-        action_name = self.action_name if self.action_name else "Run action"
-        formatted = self.format_result(uuid, action_name)
+        formatted = self.format_result(uuid)
         return self.store_formatted_result(uuid, formatted)
 
 
@@ -184,7 +183,8 @@ class ActionResult(RunResult):
             'name': self.name,
             'description': self.description,
             'status': self.status.upper(),
-            'output': self.output,
+            'uuid': uuid,
+            'output': self.output
         }
 
 

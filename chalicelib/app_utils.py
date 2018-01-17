@@ -15,7 +15,8 @@ from .check_utils import (
     get_check_strings,
     fetch_check_group,
     fetch_action_group,
-    init_check_res
+    init_check_res,
+    init_action_res
 )
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS, ACTION_GROUPS
@@ -256,6 +257,16 @@ def view_foursight(environ, is_admin=False, domain=""):
                     res['admin_output'] = json.dumps(res['admin_output'], indent=4)
                 else:
                     res['admin_output'] = None
+                # get the latest result for the checks action, if present
+                # also ENSURE that the action is in ACTION_GROUPS
+                if res.get('action'):
+                    if res.get('action') in ACTION_GROUPS and is_admin:
+                        action = init_action_res(connection, res.get('action'))
+                        latest_action = action.get_latest_result()
+                        if latest_action:
+                            res['latest_action'] = json.dumps(latest_action, indent=4)
+                    else:
+                        del res['action']
                 processed_results.append(res)
             total_envs.append({
                 'status': 'success',

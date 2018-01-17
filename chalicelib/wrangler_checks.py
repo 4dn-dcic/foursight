@@ -255,6 +255,8 @@ def replicate_file_reporting(connection, **kwargs):
 @check_function()
 def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize', runnable=True)
+    # must set this to be the function name of the action. also see ACTION_GROUPS in check_groups.py
+    check.action = "patch_file_size"
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
@@ -270,8 +272,7 @@ def identify_files_without_filesize(connection, **kwargs):
     if problem_files:
         check.status = 'WARN'
         check.description = "One or more files that are released/released to project/uploaded don't have file_size."
-        check.action_group = "file_size_actions" # see ACTION_GROUPS in check_groups.py
-        check.action_name = "Patch file size" # just the display name for the action
+        check.allow_action = True # allows the action to be run
     else:
         check.status = 'PASS'
     return check.store_result()

@@ -36,9 +36,11 @@ CHECK_GROUPS = {
 }
 
 # action groups work the same as check groups, but can contain intermixed checks and actions
+# minimally, an action group should have the action itself and also the check that triggered it
+# (so that the check can be updated)
 
 ACTION_GROUPS = {
-    'file_size_actions': [
+    'patch_file_size': [
         ['wrangler_checks/patch_file_size', {}, [], 'p1'],
         ['wrangler_checks/identify_files_without_filesize', {}, ['p1'], 'p2'],
     ]
