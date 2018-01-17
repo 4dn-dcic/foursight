@@ -80,7 +80,7 @@ def get_check_group_latest(connection, name):
         if len(check_info) != 4:
             continue
         check_name = check_info[0].strip().split('/')[1]
-        tempCheck = init_check_res(connection.s3_connection, check_name)
+        tempCheck = init_check_res(connection, check_name)
         found = tempCheck.get_latest_result()
         # checks with no records will return None. Skip IGNORE checks
         if found and found.get('status') != 'IGNORE':
@@ -177,7 +177,7 @@ def run_check(connection, check_name, check_method, check_kwargs):
     try:
         check_result = check_method(connection, **check_kwargs)
     except Exception as e:
-        err_check = init_check_res(connection.s3_connection, check_name)
+        err_check = init_check_res(connection, check_name)
         err_check.status = 'ERROR'
         err_check.description = 'Check failed to run. See full output.'
         err_check.full_output = traceback.format_exc().split('\n')
@@ -193,7 +193,7 @@ def run_action(connection, act_name, act_method, act_kwargs):
     try:
         act_result = act_method(connection, **act_kwargs)
     except Exception as e:
-        err_action = init_check_res(connection.s3_connection, act_name)
+        err_action = init_check_res(connection, act_name)
         err_action.status = 'FAIL'
         err_action.description = 'Action failed to run. See full output.'
         err_action.output = traceback.format_exc().split('\n')

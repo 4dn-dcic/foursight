@@ -320,7 +320,7 @@ def get_check(environ, check):
     connection, response = init_response(environ)
     if not connection:
         return response
-    tempCheck = init_check_res(connection.s3_connection, check)
+    tempCheck = init_check_res(connection, check)
     latest_res = tempCheck.get_latest_result()
     if latest_res:
         response.body = {
@@ -360,7 +360,7 @@ def run_put_check(environ, check, put_data):
         response.status_code = 400
         return response
     put_uuid = put_data.get('uuid')
-    putCheck = init_check_res(connection.s3_connection, check, uuid=put_uuid)
+    putCheck = init_check_res(connection, check, uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'description', 'brief_output', 'full_output', 'admin_output']:
