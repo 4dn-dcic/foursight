@@ -1,6 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import get_methods_by_deco, check_method_deco, CHECK_DECO
-from .check_result import CheckResult
+from .utils import get_methods_by_deco, check_method_deco, init_check_res, init_action_res, CHECK_DECO, ACTION_DECO
 from .check_groups import *
 import sys
 import traceback
@@ -62,7 +61,7 @@ def run_check_group(connection, name):
             if 'uuid' not in check_kwargs:
                 check_kwargs['uuid'] = group_timestamp
             # nothing done with dependencies yet
-            result = run_check(connection, check_str, check_kwargs)
+            result = run_check_or_action(connection, check_str, check_kwargs)
             if result:
                 check_results.append(result)
     return check_results
@@ -81,8 +80,8 @@ def get_check_group_latest(connection, name):
         if len(check_info) != 4:
             continue
         check_name = check_info[0].strip().split('/')[1]
-        TempCheck = CheckResult(connection.s3_connection, check_name)
-        found = TempCheck.get_latest_check()
+        tempCheck = init_check_res(connection.s3_connection, check_name)
+        found = tempCheck.get_latest_result()
         # checks with no records will return None. Skip IGNORE checks
         if found and found.get('status') != 'IGNORE':
             latest_results.append(found)
@@ -112,15 +111,34 @@ def fetch_check_group(name):
     return copy.deepcopy(group)
 
 
-def run_check(connection, check_str, check_kwargs):
+def fetch_action_group(name):
     """
+    Used only for ACTION_GROUPS, which mix actions and checks. Does NOT use 'all'
+    """
+    group = ACTION_GROUPS.get(name, None)
+    # maybe it's a test groups
+    if not group:
+        group = TEST_ACTION_GROUPS.get(name, None)
+    # ensure it is non-empty list
+    if not isinstance(group, list) or len(group) == 0:
+        return None
+    # copy it and return
+    return copy.deepcopy(group)
+
+
+def run_check_or_action(connection, check_str, check_kwargs):
+    """
+    Does validation of check_str and check_kwargs that would be passed to either run_check or run_action.
+    Determines by decorator whether the method is a check or action, then passes it to the appropriate
+    function (run_check or run_action)
+
     Takes a FS_connection object, a check string formatted as: <str check module/name>
     and a dictionary of check arguments.
     For example:
     check_str: 'system_checks/my_check'
     check_kwargs: '{"foo":123}'
     Fetches the check function and runs it (returning whatever it returns)
-    Return a string for failed results, CheckResult object otherwise.
+    Return a string for failed results, CheckResult/ActionResult object otherwise.
     If the check code itself fails, then an Errored CheckResult is stored for
     easier debugging.
     """
@@ -138,14 +156,46 @@ def run_check(connection, check_str, check_kwargs):
     check_method = check_mod.__dict__.get(check_name_str)
     if not check_method:
         return ' '.join(['ERROR. Check name is not valid.', error_str])
-    if not check_method_deco(check_method, CHECK_DECO):
-        return ' '.join(['ERROR. Ensure the check_function decorator is present.', error_str])
+    if check_method_deco(check_method, CHECK_DECO):
+        return run_check(connection, check_name, check_method, check_kwargs)
+    elif check_method_deco(check_method, ACTION_DECO):
+        return run_action(connection, check_name, check_method, check_kwargs)
+    else:
+        return ' '.join(['ERROR. Ensure the correct function decorator is present.', error_str]), None, None
+    return 'PASS', check_name, check_method
+
+
+
+
+def run_check(connection, check_name, check_method, check_kwargs):
+    """
+    Meant to be run from run_check_or_action.
+    Takes a connection, str check_name, check method (fxn), and dict check_kwargs.
+    Runs the check and returns a dict of results. On an error, stores a stack trace of the error in
+    full_output and stores the check with an ERROR.
+    """
     try:
         check_result = check_method(connection, **check_kwargs)
     except Exception as e:
-        err_check = CheckResult(connection.s3_connection, check_name_str)
+        err_check = init_check_res(connection.s3_connection, check_name)
         err_check.status = 'ERROR'
         err_check.description = 'Check failed to run. See full output.'
         err_check.full_output = traceback.format_exc().split('\n')
         check_result = err_check.store_result()
     return check_result
+
+
+def run_action(connection, act_name, act_method, act_kwargs):
+    """
+    Same as run_check, but meant for action. Arguments should be formatted the same way.
+    On error, stack trace is present in output and status will be set to FAIL.
+    """
+    try:
+        act_result = act_method(connection, **act_kwargs)
+    except Exception as e:
+        err_action = init_check_res(connection.s3_connection, act_name)
+        err_action.status = 'FAIL'
+        err_action.description = 'Action failed to run. See full output.'
+        err_action.output = traceback.format_exc().split('\n')
+        act_result = err_action.store_result()
+    return act_result

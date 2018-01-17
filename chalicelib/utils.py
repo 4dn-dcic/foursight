@@ -4,9 +4,10 @@ import types
 import datetime
 from importlib import import_module
 from functools import wraps
-from .check_result import CheckResult
+from .run_result import CheckResult, ActionResult
 
 CHECK_DECO = 'check_function'
+ACTION_DECO = 'action_function'
 
 
 def init_check_res(connection, name, uuid=None, runnable=False):
@@ -21,8 +22,14 @@ def init_check_res(connection, name, uuid=None, runnable=False):
 
     runnable is a boolean that determines if the check can be executed from UI.
     """
-    return CheckResult(connection.s3_connection, name, uuid=uuid, runnable=runnable, extension=".json")
+    return CheckResult(connection.s3_connection, name, uuid=uuid, runnable=runnable)
 
+
+def init_action_res(connection, name):
+    """
+    Similar to init_check_res, but meant to be used for ActionResult items
+    """
+    return ActionResult(connection.s3_connection, name)
 
 def build_dummy_result(check_name):
     """
@@ -75,3 +82,23 @@ def check_function(*default_args, **default_kwargs):
         wrapper.check_decorator = CHECK_DECO
         return wrapper
     return check_deco
+
+
+def action_function(*default_args, **default_kwargs):
+    """
+    Import decorator, used to decorate all actions.
+    Required for action functions.
+    Any kwargs provided to the decorator will be passed to the function
+    if no kwargs are explicitly passed.
+    """
+    def action_deco(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # add all default args that are not defined in kwargs
+            for key in default_kwargs:
+                if key not in kwargs:
+                    kwargs[key] = default_kwargs[key]
+            return func(*args, **kwargs)
+        wrapper.check_decorator = ACTION_DECO
+        return wrapper
+    return action_deco

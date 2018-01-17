@@ -122,7 +122,7 @@
                                     {{check.uuid}}
                                 </span>
                                 {% if check.get('runnable') and is_admin %}
-                                    <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
+                                    <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name'] + '/check'}} method="get">
                                         <button class="btn btn-link" type="submit">
                                             <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
                                         </button>
@@ -160,6 +160,13 @@
                                     <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-admin'}}>
                                         <pre><code>{{check.admin_output}}</code></pre>
                                     </div>
+                                {% endif %}
+                                {% if check.get('action') and is_admin %}
+                                    <form class="commonstyle" action={{"/api/view/" + env['environment'] + '/' + check['action'] + '/action'}} method="get">
+                                        <button class="btn btn-default btn-sm" type="submit">
+                                            {{check['action'].replace(/_/g, ' ').toUpperCase()}}
+                                        </button>
+                                    </form>
                                 {% endif %}
                             </div>
                             {% endif %}

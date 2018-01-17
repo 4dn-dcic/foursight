@@ -10,7 +10,7 @@ CHECK_MODULES = [
 # info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies, dependency id]
 # dependecy id can be any unique string
 
-# check group names should end in "_checks"
+# check group names should end in "_checks" or "_actions"
 # define check_groups within this dict
 
 CHECK_GROUPS = {
@@ -35,6 +35,15 @@ CHECK_GROUPS = {
     ]
 }
 
+# action groups work the same as check groups, but can contain intermixed checks and actions
+
+ACTION_GROUPS = {
+    'file_size_actions': [
+        ['wrangler_checks/patch_file_size', {}, [], 'p1'],
+        ['wrangler_checks/identify_files_without_filesize', {}, ['p1'], 'p2'],
+    ]
+}
+
 
 ######## don't use the check groups below! just for testing ########
 
@@ -50,3 +59,5 @@ TEST_CHECK_GROUPS = {
         ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'}, ['wt2'], 'wt3']
     ]
 }
+
+TEST_ACTION_GROUPS = {}

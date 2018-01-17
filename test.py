@@ -6,7 +6,7 @@ import json
 import os
 import time
 import app
-from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, check_result, fs_connection
+from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, run_result, fs_connection
 from dateutil import tz
 
 
@@ -27,8 +27,8 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(self.connection.ff_env == 'test3')
 
     def test_run_check_with_bad_connection(self):
-        check_res = check_utils.run_check(self.connection, 'wrangler_checks/item_counts_by_type', {})
-        # run_check returns a dict with results
+        check_res = check_utils.run_check_or_action(self.connection, 'wrangler_checks/item_counts_by_type', {})
+        # run_check_or_action returns a dict with results
         self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
@@ -37,7 +37,7 @@ class TestFSConnection(unittest.TestCase):
         test_check.description = 'Unittest check'
         test_check.ff_link = 'not_a_real_http_link'
         self.assertTrue(test_check.s3_connection.status_code == 404)
-        self.assertTrue(test_check.get_latest_check() is None)
+        self.assertTrue(test_check.get_latest_result() is None)
         self.assertTrue(test_check.get_closest_check(1) is None)
         self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
@@ -276,8 +276,8 @@ class TestCheckRunner(unittest.TestCase):
         Run with wrangler_test_checks check_group that gives a unique output
         """
         # the check we will test with
-        check = check_result.CheckResult(self.connection.s3_connection, 'items_created_in_the_past_day')
-        prior_res = check.get_latest_check()
+        check = run_result.CheckResult(self.connection.s3_connection, 'items_created_in_the_past_day')
+        prior_res = check.get_latest_result()
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
         self.assertTrue(bad_res is None)
@@ -298,7 +298,7 @@ class TestCheckRunner(unittest.TestCase):
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
             time.sleep(2)
         # look at output
-        post_res = check.get_latest_check()
+        post_res = check.get_latest_result()
         prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
         post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
         self.assertTrue(post_uuid > prior_uuid)
@@ -357,7 +357,7 @@ class TestCheckResult(unittest.TestCase):
     connection, _ = app_utils.init_connection(environ)
 
     def test_check_result_methods(self):
-        check = check_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
         # default status
         self.assertTrue(check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
@@ -365,7 +365,7 @@ class TestCheckResult(unittest.TestCase):
         check.full_output = ['first_item']
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
-        late_res = check.get_latest_check()
+        late_res = check.get_latest_result()
         self.assertTrue(late_res == res)
         close_res = check.get_closest_check(0, 0)
         self.assertTrue(close_res == res)
@@ -375,7 +375,7 @@ class TestCheckResult(unittest.TestCase):
         self.assertTrue(all_res[-1].get('description') == res.get('description'))
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
-        check_copy = check_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
         self.assertTrue(res == check_copy.store_result())
 
 
@@ -470,9 +470,9 @@ class TestCheckUtils(unittest.TestCase):
         test_res = check_utils.get_check_group_latest(self.conn, 'malformed_test_checks')
         assert(len(test_res) == 0)
 
-    def test_run_check(self):
+    def test_run_check_or_action(self):
         test_info = ['system_checks/indexing_records', {}, []]
-        check_res = check_utils.run_check(self.conn, test_info[0], test_info[1])
+        check_res = check_utils.run_check_or_action(self.conn, test_info[0], test_info[1])
         self.assertTrue(isinstance(check_res, dict))
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
@@ -486,12 +486,12 @@ class TestCheckUtils(unittest.TestCase):
             ['test_checks/test_function_unused', {}, [], 'xx1']
         ]
         for bad_check_info in bad_check_group:
-            check_res = check_utils.run_check(self.conn, bad_check_info[0], bad_check_info[1])
+            check_res = check_utils.run_check_or_action(self.conn, bad_check_info[0], bad_check_info[1])
             self.assertFalse(isinstance(check_res, dict))
             self.assertTrue('ERROR' in check_res)
 
     def test_run_check_exception(self):
-        check_res = check_utils.run_check(self.conn, 'test_checks/test_check_error', {})
+        check_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_check_error', {})
         self.assertTrue(check_res['status'] == 'ERROR')
         # this output is a list
         self.assertTrue('by zero' in ''.join(check_res['full_output']))

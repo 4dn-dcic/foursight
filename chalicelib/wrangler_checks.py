@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res
+from .utils import check_function, init_check_res, action_function, init_action_res
 from .wrangler_utils import *
 from dcicutils import ff_utils
 import requests
@@ -60,9 +60,9 @@ def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts', runnable=True)
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_check()
+    latest = counts_check.get_latest_result()
     # get_item_counts run closest to 24 hours ago
-    prior = counts_check.get_closest_check(24)
+    prior = counts_check.get_closest_result(24)
     if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no counts_check results to run this check with.'
@@ -225,8 +225,8 @@ def replicate_file_reporting(connection, **kwargs):
     delta_hours = kwargs.get('delta_hours')
     check = init_check_res(connection, 'replicate_file_reporting')
     files_check = init_check_res(connection, 'files_associated_with_replicates')
-    latest_results = files_check.get_latest_check().get('full_output')
-    prior_results = files_check.get_closest_check(delta_hours).get('full_output')
+    latest_results = files_check.get_latest_result().get('full_output')
+    prior_results = files_check.get_closest_result(delta_hours).get('full_output')
     if not isinstance(latest_results, dict) or not isinstance(prior_results, dict):
         check.status = 'ERROR'
         check.description = 'Could not generate report due to missing output of files_associated_with_replicates check.'
@@ -270,6 +270,12 @@ def identify_files_without_filesize(connection, **kwargs):
     if problem_files:
         check.status = 'WARN'
         check.description = "One or more files that are released/released to project/uploaded don't have file_size."
+        check.action = "file_size_actions" # see ACTION_GROUPS in check_groups.py
     else:
         check.status = 'PASS'
     return check.store_result()
+
+
+@action_function()
+def patch_file_size(connection, **kwargs):
+    action = init_action_res(connection, 'patch_file_size')

@@ -20,10 +20,10 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 >>> import app
 # create a Foursight connection to the 'mastertest' environment
 >>> connection, _ = app.init_connection('mastertest')
-# run your check using the run_check utility
+# run your check using the run_check_or_action utility
 # args are: FS connection object, string check name, dict of kwargs to run with
 # it could be useful to add a break point within your check function to see what's happening
->>> app.run_check(connection, 'items_created_in_the_past_day', {})
+>>> app.run_check_or_action(connection, 'items_created_in_the_past_day', {})
 # some possible output:
 {'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day',
 'description': 'No items have been created in the past day.', 'status': 'PASS',
@@ -31,7 +31,7 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 'full_output': {}, 'admin_output': None, 'ff_link': None, 'runnable': True}
 
 # you can also run with kwargs...
->>> app.run_check(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
+>>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
 ```
 
 It's important to note that if your check ends with the `check.store_result()` function, then the result will always get written to S3. If this is not desirable during your testing, either insert a break point before that function or omit it until testing is finished.
