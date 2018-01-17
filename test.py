@@ -598,12 +598,12 @@ class TestWranglerUtils(unittest.TestCase):
             dt_bad = wrangler_utils.parse_datetime_with_tz_to_utc(bad_tstr)
             self.assertTrue(dt_bad is None)
 
-    def test_get_FDN_Connection(self):
+    def test_get_FDN_connection(self):
         # run this for all environments to ensure access keys are in place
         environments = app_utils.init_environments()
         for env in environments:
             conn, _ = app_utils.init_connection(env)
-            fdn_conn = wrangler_utils.get_FDN_Connection(conn)
+            fdn_conn = wrangler_utils.get_FDN_connection(conn)
             self.assertTrue(fdn_conn is not None)
 
 

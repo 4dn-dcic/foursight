@@ -97,7 +97,7 @@ def change_in_item_counts(connection, **kwargs):
 def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
     check = init_check_res(connection, 'items_created_in_the_past_day', uuid=kwargs.get('uuid'), runnable=True)
-    fdn_conn = get_FDN_Connection(connection)
+    fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
@@ -144,7 +144,7 @@ def files_associated_with_replicates(connection, **kwargs):
 
     check = init_check_res(connection, 'files_associated_with_replicates')
     check.status = 'IGNORE'
-    fdn_conn = get_FDN_Connection(connection)
+    fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
@@ -255,7 +255,7 @@ def replicate_file_reporting(connection, **kwargs):
 @check_function()
 def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize', runnable=True)
-    fdn_conn = get_FDN_Connection(connection)
+    fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])

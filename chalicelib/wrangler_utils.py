@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from dateutil import tz
 
 
-def get_FDN_Connection(connection):
+def get_FDN_connection(connection):
     """
     Use connection.ff_env to connect and dcicutils.s3_utils to get the access
     key needed to build a FDN_Connection object. Returns None if the process

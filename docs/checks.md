@@ -54,7 +54,7 @@ At the moment, this check won't do anything but write a result to the `items_cre
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    fdn_conn = wrangler_utils.get_FDN_Connection(connection)
+    fdn_conn = wrangler_utils.get_FDN_connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
@@ -70,7 +70,7 @@ Okay, now we have a check that will attempt to make a Fourfront connection and f
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    fdn_conn = wrangler_utils.get_FDN_Connection(connection)
+    fdn_conn = wrangler_utils.get_FDN_connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
