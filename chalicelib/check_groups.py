@@ -46,7 +46,7 @@ TEST_CHECK_GROUPS = {
     ],
     'wrangler_test_checks': [
         ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'wt1'],
-        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'ExperimentSetReplicate'}, ['wt1'], 'wt2'],
-        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'FileFastq'}, ['wt2'], 'wt3']
+        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, ['wt1'], 'wt2'],
+        ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'}, ['wt2'], 'wt3']
     ]
 }

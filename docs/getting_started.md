@@ -61,37 +61,37 @@ def my_first_check(connection, **kwargs):
 
 Calling `check.store_result()` at the end of the check causes the result of the check to be written to S3 with a unique key created by the check name and time the check was initiated. In addition, each run of a check will overwrite the last "latest" check result, which is the one displayed from the Foursight front end. This is an important behavior of Foursight--the latest result is the one displayed.
 
-There are many possibilities to what a check can do. Please visit the ```writing_checks.md``` document for more information.
+There are many possibilities to what a check can do. Please visit the [writing checks documentation](./checks.md) for more information.
 
 ## Adding a check group
-Let's say we've created two check in the system_checks.py check module, named ```my_first_check``` and ```my_second_check```. We also have a third check named ```my_third_check``` in wrangler_checks.py. To get these checks to run as a cohesive unit, we need to create a check group for them. This is done within the chalicelib.check_groups.py file. Each item in a check group is a list with three elements. The first element is a string (called a check string) in the form ```<check_module>/<check_name>```, the second element is a dictionary of kwargs for the check, and the third element is a list of check strings dependencies within the check group. The dependencies would be used in the case that we want to wait for one check to finish before running another. Let's say we want some kwargs passed into ```my_first_check``` and we want ```my_third_check``` to run after ```my_second_check```. A check group would look like this, and are written as items in the CHECK_GROUPS dictionary in the check_groups.py file.
+Let's say we've created two check in the system_checks.py check module, named ```my_first_check``` and ```my_second_check```. We also have a third check named ```my_third_check``` in wrangler_checks.py. To get these checks to run as a cohesive unit, we need to create a check group for them. This is done within the chalicelib.check_groups.py file. Each item in a check group is a list with three elements. The first element is a string (called a check string) in the form ```<check_module>/<check_name>```, the second element is a dictionary of kwargs for the check, the third element is a list of dependencies ID strings that must be finished before the check runs, and the final element is the dependency ID for this check. The dependencies would be used in the case that we want to wait for one check to finish before running another. Let's say we want some kwargs passed into ```my_first_check``` and we want ```my_third_check``` to run after ```my_second_check```. A check group would look like this, and are written as items in the CHECK_GROUPS dictionary in the check_groups.py file.
 
 ```
 'my_test_checks': [
-    ['system_checks/my_first_check', {'arg_key': 'arg_value'}, []],
-    ['system_checks/my_second_check', {}, []],
-    ['wrangler_checks/my_third_check', {}, ['system_checks/my_second_check']]
+    ['system_checks/my_first_check', {'arg_key': 'arg_value'}, [], 'dep1'],
+    ['system_checks/my_second_check', {}, [], 'dep2'],
+    ['wrangler_checks/my_third_check', {}, ['system_checks/my_second_check'], 'dep3']
 ]
 ```
 
 It is also important to note that you need to add any check modules (e.g. system_checks or wrangler_checks) to the list of ```CHECK_MODULES``` at the top of check_groups.py. As a side note, ```all``` is a reserved check group name that includes all checks within the application using the ```@check_function``` decorator without any explicit arguments or dependencies.
 
-Now that your check group is defined, it can be run or retrieved using the Foursight API. This is the last topic covered in this file.
+Now that your check group is defined, it can be run or retrieved using the Foursight API. This is the last topic covered in this file. For more in-depth information on how to create check groups, [go here](./checks.md#check-groups).
 
 ## Scheduling your check group
-To get your check group running on a CRON or rate schedule, the current method is add it at the bottom of app.py. This will change in the near future, but here is an example using our demo check group.
+To get your check group running on a CRON or rate schedule, the current method is add it at the top of app.py. `queue_check_group` will cause your checks to be added to an AWS SQS queue that will kick of asynchronous lambdas that will run them. The numbers of currently running and pending checks are displayed at the top of the Foursight UI.
 
 ```
 @app.schedule(Rate(1, unit=Rate.HOURS))
 def one_hour_checks(event):
-    environments = list_environments()
-    for environ in environments:
-        connection, error_res = init_connection(environ)
-        if connection:
-            run_check_group(connection, 'my_test_checks')
+    for environ in list_environments():
+        queue_check_group(environ, 'my_test_checks')
 ```
 
-This schedule will run ```my_test_checks``` on all Foursight environments every one hour. For more information on using a CRON scheduler, check out [this AWS page](http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html). The code above will run on all environments, but could be easily constricted to specific ones.
+This schedule will run ```my_test_checks``` on all Foursight environments every one hour. The code above will run on all environments, but could be easily constricted to specific ones. For more information on scheduling, [see this documentation](./development_tips.md#scheduling-your-check-group).
+
+## Using the UI
+The easiest way to interact with Foursight is to use the UI, which allows viewing and running of checks. Here is [production Foursight](https://foursight.4dnucleome.org/api/view/all) and here is [development Foursight](https://m1kj6dypu3.execute-api.us-east-1.amazonaws.com/api/view/all). Information on individual checks can be obtained by clicking on the check title. If you have administrator priviliges, you can log into your account and run checks directly from the page. Please note that running any checks requires either administrator priviliges or a special authorization code.
 
 ## Foursight API basics
 The most import endpoints are described below. The can be invoked from the command line, programatically accessed, or visited through your browser. The Foursight address used below is the default address for the prod stage. The URLs are in form: ```<Foursight address>/api/<endpoint>/<environment>/<check_group>```.

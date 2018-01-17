@@ -14,24 +14,21 @@ app.debug = True
 # run at 10 am UTC every day
 @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
 def daily_checks(event):
-    environments = list_environments()
-    for environ in environments:
+    for environ in list_environments():
         queue_check_group(environ, 'daily_checks')
 
 
 # run every 6 hrs
 @app.schedule(Rate(6, unit=Rate.HOURS))
 def six_hour_checks(event):
-    environments = list_environments()
-    for environ in environments:
+    for environ in list_environments():
         queue_check_group(environ, 'six_hour_checks')
 
 
 # run every 2 hrs
 @app.schedule(Rate(2, unit=Rate.HOURS))
 def two_hour_checks(event):
-    environments = list_environments()
-    for environ in environments:
+    for environ in list_environments():
         queue_check_group(environ, 'two_hour_checks')
 
 ######### END SCHEDULED FXNS #########

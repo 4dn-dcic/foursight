@@ -21,7 +21,6 @@ jin_env = Environment(
 
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
-ADMIN = "4dndcic@gmail.com"
 QUEUE_NAME = '-'.join(['foursight', STAGE, 'check_queue'])
 RUNNER_NAME = '-'.join(['foursight', STAGE, 'check_runner'])
 
@@ -124,7 +123,7 @@ def check_authorization(request_dict):
         try:
             # leeway accounts for clock drift between us and auth0
             payload = jwt.decode(token, b64decode(auth0_secret, '-_'), audience=auth0_client, leeway=30)
-            if payload.get('email') == ADMIN and payload.get('email_verified') is True:
+            if payload.get('email') == os.environ.get('ADMIN', '') and payload.get('email_verified') is True:
                 # fully authorized
                 return True
         except:
