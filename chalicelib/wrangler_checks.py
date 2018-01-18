@@ -293,9 +293,8 @@ def patch_file_size(connection, **kwargs):
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
-    # ensure we have the most up-to-date check results (use datastore=database to avoid indexing hang ups)
-    fresh_file_size_check = identify_files_without_filesize(connection, search_add_on='&datastore=database')
-    for hit in fresh_file_size_check.get('full_output', []):
+    check_latest = filesize_check.get_latest_result() # what we want is in full_output
+    for hit in check_latest.get('full_output', []):
         bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
         head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
         if not head_info:
