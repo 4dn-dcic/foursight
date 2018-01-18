@@ -278,7 +278,7 @@ class TestAppUtils(unittest.TestCase):
             status_code = 200,
             body = "A reasonable body."
         )
-        self.assertTrue(response = app_utils.process_response(response))
+        self.assertTrue(response == app_utils.process_response(response))
         # test for a response that's too long
         response.body = 'A' * 6000000
         too_long_resp = app_utils.process_response(response)
