@@ -153,6 +153,16 @@ def forbidden_response():
         body='Forbidden. Login on the /api/view/<environ> page.'
         )
 
+def process_response(response):
+    """
+    Does any final processing of a Foursight response before returning it. Right now, this includes:
+    * Changing the response body if it is greater than 5.5 MB (Lambda body max is 6 MB)
+    """
+    if len(json.dumps(response.body)) > 5500000:
+        response.body = 'Body size exceeded 6 MB maximum. Try visiting /api/view/data.'
+        response.status_code = 413
+    return response
+
 
 def trim_output(output, max_size=100000):
     """
@@ -272,7 +282,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin,
                             domain=domain, running_checks=running_checks, queued_checks=queued_checks)
     html_resp.status_code = 200
-    return html_resp
+    return process_response(html_resp)
 
 
 def run_foursight_checks(environ, check_group):
@@ -292,7 +302,7 @@ def run_foursight_checks(environ, check_group):
         'check_group': check_group
     }
     response.status_code = 200
-    return response
+    return process_response(response)
 
 
 def get_foursight_checks(environ, check_group):
@@ -313,7 +323,7 @@ def get_foursight_checks(environ, check_group):
         'checks': results
     }
     response.status_code = 200
-    return response
+    return process_response(response)
 
 
 def get_check(environ, check):
@@ -341,7 +351,7 @@ def get_check(environ, check):
             'environment': environ
         }
         response.status_code = 400
-    return response
+    return process_response(response)
 
 
 def run_put_check(environ, check, put_data):
@@ -395,7 +405,7 @@ def run_put_check(environ, check, put_data):
         'environment': environ
     }
     response.status_code = 200
-    return response
+    return process_response(response)
 
 
 def run_put_environment(environ, env_data):
@@ -404,6 +414,7 @@ def run_put_environment(environ, env_data):
     to allow for testing.
     """
     proc_environ = environ.split('-')[-1] if environ.startswith('fourfront-') else environ
+    response = None
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):
         ff_address = env_data['fourfront'] if env_data['fourfront'].endswith('/') else env_data['fourfront'] + '/'
         es_address = env_data['es'] if env_data['es'].endswith('/') else env_data['es'] + '/'
@@ -418,7 +429,7 @@ def run_put_environment(environ, env_data):
         s3_bucket = ''.join(['foursight-', STAGE, '-', proc_environ])
         bucket_res = s3_connection.create_bucket(s3_bucket)
         if not bucket_res:
-            return Response(
+            response = Response(
                 body = {
                     'status': 'error',
                     'description': ' '.join(['Could not create bucket:', s3_bucket]),
@@ -426,18 +437,19 @@ def run_put_environment(environ, env_data):
                 },
                 status_code = 500
             )
-        # run some checks on the new env
-        queue_check_group(environ, 'all')
-        return Response(
-            body = {
-                'status': 'success',
-                'description': ' '.join(['Succesfully made:', proc_environ]),
-                'environment': proc_environ
-            },
-            status_code = 200
-        )
+        else:
+            # run some checks on the new env
+            queue_check_group(environ, 'all')
+            response = Response(
+                body = {
+                    'status': 'success',
+                    'description': ' '.join(['Succesfully made:', proc_environ]),
+                    'environment': proc_environ
+                },
+                status_code = 200
+            )
     else:
-        return Response(
+        response = Response(
             body = {
                 'status': 'error',
                 'description': 'Environment creation failed',
@@ -446,6 +458,7 @@ def run_put_environment(environ, env_data):
             },
             status_code = 400
         )
+    return process_response(response)
 
 
 def get_environment(environ):
@@ -455,7 +468,7 @@ def get_environment(environ):
     """
     environments = init_environments()
     if environ in environments:
-        return Response(
+        response = Response(
             body = {
                 'status': 'success',
                 'details': environments[environ],
@@ -464,7 +477,7 @@ def get_environment(environ):
             status_code = 200
         )
     else:
-        return Response(
+        response = Response(
             body = {
                 'status': 'error',
                 'description': 'Invalid environment provided. Should be one of: %s' % (str(list(environments.keys()))),
@@ -472,6 +485,7 @@ def get_environment(environ):
             },
             status_code = 400
         )
+    return process_response(response)
 
 ##### CHECK RUNNER FUNCTIONS #####
 

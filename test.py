@@ -273,6 +273,18 @@ class TestAppUtils(unittest.TestCase):
         self.assertTrue(res.status_code == 403)
         self.assertTrue(res.body == 'Forbidden. Login on the /api/view/<environ> page.')
 
+    def test_process_response(self):
+        response = chalice.Response(
+            status_code = 200,
+            body = "A reasonable body."
+        )
+        self.assertTrue(response = app_utils.process_response(response))
+        # test for a response that's too long
+        response.body = 'A' * 6000000
+        too_long_resp = app_utils.process_response(response)
+        self.assertTrue(too_long_resp.status_code == 413)
+        self.assertTrue(too_long_resp.body = 'Body size exceeded 6 MB maximum. Try visiting /api/view/data.')
+
     def test_trim_output(self):
         short_output = {'some_field': 'some_value'}
         trimmed_short = app_utils.trim_output(short_output)
