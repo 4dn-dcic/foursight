@@ -42,7 +42,7 @@ CHECK_GROUPS = {
 ACTION_GROUPS = {
     'patch_file_size': [
         ['wrangler_checks/patch_file_size', {}, [], 'p1'],
-        ['wrangler_checks/identify_files_without_filesize', {}, ['p1'], 'p2'],
+        ['wrangler_checks/identify_files_without_filesize', {'search_add_on': '&datastore=database'}, ['p1'], 'p2'],
     ]
 }
 

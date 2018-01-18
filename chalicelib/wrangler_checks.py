@@ -252,7 +252,7 @@ def replicate_file_reporting(connection, **kwargs):
     return check.store_result()
 
 
-@check_function()
+@check_function(search_add_on='&limit=all')
 def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize', runnable=True)
     # must set this to be the function name of the action. also see ACTION_GROUPS in check_groups.py
@@ -262,7 +262,8 @@ def identify_files_without_filesize(connection, **kwargs):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return check.store_result()
-    search_res = ff_utils.get_metadata('/search/?type=File&limit=all&status=released%20to%20project&status=released&status=uploaded', connection=fdn_conn, frame='object')
+    search_url = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded' + kwargs.get('search_add_on', '')
+    search_res = ff_utils.get_metadata(search_url, connection=fdn_conn, frame='object')
     problem_files = []
     hits = search_res.get('@graph', [])
     for hit in hits:
@@ -289,7 +290,7 @@ def patch_file_size(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_size')
     s3_obj = get_s3_utils_obj(connection)
     fdn_conn = get_FDN_connection(connection)
-    action_logs = {'file_not_found': [], 'patch_failure': [], 'patch_success': []}
+    action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
     check_latest = filesize_check.get_latest_result() # what we want is in full_output
@@ -297,7 +298,7 @@ def patch_file_size(connection, **kwargs):
         bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
         head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
         if not head_info:
-            action_logs['file_not_found'].append(hit['accession'])
+            action_logs['s3_file_not_found'].append(hit['accession'])
         else:
             patch_data = {'file_size': head_info['ContentLength']}
             try:
