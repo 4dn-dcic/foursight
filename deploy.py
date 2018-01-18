@@ -37,6 +37,7 @@ CONFIG_BASE = {
 
 
 def build_config_and_deploy(stage):
+    # key to de-encrypt access key
     akey_secret = os.environ.get("SECRET")
     client_id = os.environ.get("CLIENT_ID")
     client_secret = os.environ.get("CLIENT_SECRET")

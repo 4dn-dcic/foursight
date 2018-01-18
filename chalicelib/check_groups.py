@@ -43,7 +43,7 @@ ACTION_GROUPS = {
     'patch_file_size': [
         ['wrangler_checks/identify_files_without_filesize', {'search_add_on': '&datastore=database'}, [], 'pfs1'],
         ['wrangler_checks/patch_file_size', {}, ['pfs1'], 'pfs2'],
-        ['wrangler_checks/identify_files_without_filesize', {'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3'],
+        ['wrangler_checks/identify_files_without_filesize', {'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3']
     ]
 }
 
@@ -63,4 +63,9 @@ TEST_CHECK_GROUPS = {
     ]
 }
 
-TEST_ACTION_GROUPS = {}
+TEST_ACTION_GROUPS = {
+    'add_random_test_nums': [
+        ['test_checks/test_random_nums', {}, [], 'tag1'],
+        ['test_checks/add_random_test_nums', {}, ['tag1'], 'tag2'],
+    ]
+}

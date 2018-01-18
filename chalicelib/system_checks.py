@@ -1,6 +1,11 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, build_dummy_result
-from collections import OrderedDict
+from .utils import (
+    check_function,
+    init_check_res,
+    action_function,
+    init_action_res,
+    build_dummy_result
+)
 import requests
 import sys
 import json

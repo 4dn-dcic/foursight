@@ -1,11 +1,17 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, build_dummy_result
-from collections import OrderedDict
+from .utils import (
+    check_function,
+    init_check_res,
+    action_function,
+    init_action_res,
+    build_dummy_result
+)
 import requests
 import sys
 import json
 import datetime
 import boto3
+import random
 
 def test_function_unused():
     return
@@ -16,3 +22,31 @@ def test_function_unused():
 def test_check_error(connection, **kwargs):
     bad_op = 10 * 1/0
     return bad_op
+
+
+# silly check that stores random numbers in a list
+@check_function()
+def test_random_nums(connection, **kwargs):
+    check = init_check_res(connection, 'test_random_nums')
+    check.status = 'IGNORE'
+    check.action = 'add_random_test_nums'
+    check.allow_action = True
+    output = []
+    for i in range(random.randint(1,20)):
+        output.append(random.randint(1,100))
+    check.full_output = output
+    check.description = 'A test check'
+    return check.store_result()
+
+
+@check_function(offset=0)
+def add_random_test_nums(connection, **kwargs):
+    action = init_action_res(connection, 'add_random_test_nums')
+    check = init_check_res(connection, 'test_random_nums')
+    check_latest = check.get_latest_result()
+    nums = check_latest.get('full_output', [])
+    total = sum(nums) + kwargs.get(offset, 0)
+    action.output = total
+    action.status = 'DONE'
+    action.description = 'A test action'
+    return action.store_result()

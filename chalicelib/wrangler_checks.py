@@ -1,5 +1,10 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, action_function, init_action_res
+from .utils import (
+    check_function,
+    init_check_res,
+    action_function,
+    init_action_res
+)
 from .wrangler_utils import get_s3_utils_obj, get_FDN_connection
 from dcicutils import ff_utils, s3_utils
 import requests
