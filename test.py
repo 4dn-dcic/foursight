@@ -65,67 +65,6 @@ class TestAppRoutes(unittest.TestCase):
         res = app.index()
         self.assertTrue(json.loads(res) == {'foursight': 'insight into fourfront'})
 
-    def test_init_connection(self):
-        self.assertFalse(self.conn is None)
-        # test the ff connection
-        self.assertTrue(self.conn.fs_environment == 'mastertest')
-        self.assertTrue(self.conn.ff)
-        self.assertTrue(self.conn.es)
-        self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
-
-    def test_init_environments(self):
-        environments = app_utils.init_environments() # default to 'all' environments
-        self.assertTrue(self.environ in environments)
-        for env, env_data in environments.items():
-            self.assertTrue('fourfront' in env_data)
-            self.assertTrue('es' in env_data)
-            self.assertTrue('bucket' in env_data)
-            self.assertTrue('ff_env' in env_data)
-        environments = app_utils.init_environments('mastertest')
-        self.assertTrue('mastertest' in environments)
-        # bad environment
-        bad_envs = app_utils.init_environments('not_an_environment')
-        self.assertTrue(bad_envs == {})
-
-    def test_list_environments(self):
-        env_list = app_utils.list_environments()
-        # assume we have at least one environments
-        self.assertTrue(isinstance(env_list, list))
-        self.assertTrue(self.environ in env_list)
-
-    def test_init_response(self):
-        # a good reponse
-        connection, response = app_utils.init_response(self.environ)
-        self.assertTrue(connection is not None)
-        self.assertTrue(response.body == 'Foursight response')
-        # a bad Response
-        connection, response = app_utils.init_response('not_an_environment')
-        self.assertTrue(connection is None)
-        self.assertTrue(response.body != 'Foursight response')
-        self.assertTrue(response.status_code == 400)
-
-    def test_check_authorization(self):
-        # first test with dev auth secret
-        # should be admin authorization (return True)
-        req_dict = {'headers': {'authorization': os.environ.get('DEV_SECRET')}}
-        auth = app_utils.check_authorization(req_dict)
-        self.assertTrue(auth)
-        # try with a non-valid jwt
-        # this should fully test app_utils.get_jwt
-        req_dict = {'headers': {'cookie': 'jwtToken=not_a_jwt;other=blah;'}}
-        auth = app_utils.check_authorization(req_dict)
-        self.assertFalse(auth)
-        jwtToken = app_utils.get_jwt(req_dict)
-        self.assertTrue(jwtToken == 'not_a_jwt')
-        # try with an empty dict
-        auth = app_utils.check_authorization({})
-        self.assertFalse(auth)
-
-    def test_forbidden_response(self):
-        res = app_utils.forbidden_response()
-        self.assertTrue(res.status_code == 403)
-        self.assertTrue(res.body == 'Forbidden. Login on the /api/view/<environ> page.')
-
     def test_view_foursight(self):
         res = app_utils.view_foursight(self.environ) # not is_admin
         self.assertTrue(res.headers == {u'Content-Type': u'text/html'})
@@ -264,6 +203,96 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(res.status_code == 400)
         self.assertTrue(res.body['status'] == 'error')
         self.assertTrue(res.body['description'] == 'PUT request is malformed: NOT_A_DICT')
+
+
+class TestAppUtils(unittest.TestCase):
+    """
+    Meant for non-route utilities in chalicelib/app_utils.py
+    """
+    environ = 'mastertest' # hopefully this is up
+    conn, _ = app_utils.init_connection(environ)
+
+    def test_init_connection(self):
+        self.assertFalse(self.conn is None)
+        # test the ff connection
+        self.assertTrue(self.conn.fs_environment == 'mastertest')
+        self.assertTrue(self.conn.ff)
+        self.assertTrue(self.conn.es)
+        self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
+
+    def test_init_environments(self):
+        environments = app_utils.init_environments() # default to 'all' environments
+        self.assertTrue(self.environ in environments)
+        for env, env_data in environments.items():
+            self.assertTrue('fourfront' in env_data)
+            self.assertTrue('es' in env_data)
+            self.assertTrue('bucket' in env_data)
+            self.assertTrue('ff_env' in env_data)
+        environments = app_utils.init_environments('mastertest')
+        self.assertTrue('mastertest' in environments)
+        # bad environment
+        bad_envs = app_utils.init_environments('not_an_environment')
+        self.assertTrue(bad_envs == {})
+
+    def test_list_environments(self):
+        env_list = app_utils.list_environments()
+        # assume we have at least one environments
+        self.assertTrue(isinstance(env_list, list))
+        self.assertTrue(self.environ in env_list)
+
+    def test_init_response(self):
+        # a good reponse
+        connection, response = app_utils.init_response(self.environ)
+        self.assertTrue(connection is not None)
+        self.assertTrue(response.body == 'Foursight response')
+        # a bad Response
+        connection, response = app_utils.init_response('not_an_environment')
+        self.assertTrue(connection is None)
+        self.assertTrue(response.body != 'Foursight response')
+        self.assertTrue(response.status_code == 400)
+
+    def test_check_authorization(self):
+        # first test with dev auth secret
+        # should be admin authorization (return True)
+        req_dict = {'headers': {'authorization': os.environ.get('DEV_SECRET')}}
+        auth = app_utils.check_authorization(req_dict)
+        self.assertTrue(auth)
+        # try with a non-valid jwt
+        # this should fully test app_utils.get_jwt
+        req_dict = {'headers': {'cookie': 'jwtToken=not_a_jwt;other=blah;'}}
+        auth = app_utils.check_authorization(req_dict)
+        self.assertFalse(auth)
+        jwtToken = app_utils.get_jwt(req_dict)
+        self.assertTrue(jwtToken == 'not_a_jwt')
+        # try with an empty dict
+        auth = app_utils.check_authorization({})
+        self.assertFalse(auth)
+
+    def test_forbidden_response(self):
+        res = app_utils.forbidden_response()
+        self.assertTrue(res.status_code == 403)
+        self.assertTrue(res.body == 'Forbidden. Login on the /api/view/<environ> page.')
+
+    def test_process_response(self):
+        response = chalice.Response(
+            status_code = 200,
+            body = "A reasonable body."
+        )
+        self.assertTrue(response == app_utils.process_response(response))
+        # test for a response that's too long
+        response.body = 'A' * 6000000
+        too_long_resp = app_utils.process_response(response)
+        self.assertTrue(too_long_resp.status_code == 413)
+        self.assertTrue(too_long_resp.body == 'Body size exceeded 6 MB maximum. Try visiting /api/view/data.')
+
+    def test_trim_output(self):
+        short_output = {'some_field': 'some_value'}
+        trimmed_short = app_utils.trim_output(short_output)
+        self.assertTrue(trimmed_short == json.dumps(short_output, indent=4))
+        long_output = {'some_field': 'some_value ' * 100000}
+        trimmed_long = app_utils.trim_output(long_output)
+        self.assertTrue(trimmed_long != json.dumps(long_output, indent=4))
+        self.assertTrue(trimmed_long.endswith('\n\n... Output truncated ...'))
 
 
 class TestCheckRunner(unittest.TestCase):
