@@ -627,6 +627,15 @@ class TestWranglerUtils(unittest.TestCase):
             dt_bad = wrangler_utils.parse_datetime_with_tz_to_utc(bad_tstr)
             self.assertTrue(dt_bad is None)
 
+    def test_get_s3Utils(self):
+        environments = app_utils.init_environments()
+        for env in environments:
+            conn, _ = app_utils.init_connection(env)
+            s3Obj = wrangler_utils.get_S3Utils(conn)
+            self.assertTrue(s3Obj.sys_bucket is not None)
+            self.assertTrue(s3Obj.outfile_bucket is not None)
+            self.assertTrue(s3Obj.raw_file_bucket is not None)
+
     def test_get_FDN_connection(self):
         # run this for all environments to ensure access keys are in place
         environments = app_utils.init_environments()

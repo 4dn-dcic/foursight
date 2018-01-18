@@ -271,10 +271,8 @@ def view_foursight(environ, is_admin=False, domain=""):
                 ts_local = ts_utc.astimezone(to_zone)
                 proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
                 res['uuid'] = proc_ts
-                if not res.get('description') and not res.get('brief_output') and not res.get('full_output') and not res.get('ff_link'):
-                    res['content'] = False
-                else:
-                    res['content'] = True
+                check_attrs = ('description', 'brief_output', 'full_output', 'ff_link', 'action')
+                res['content'] = False if all (res.get(attr) is None for attr in check_attrs) else True
                 if res.get('brief_output'):
                     res['brief_output'] = trim_output(res['brief_output'])
                 if res.get('full_output'):

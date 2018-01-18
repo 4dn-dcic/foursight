@@ -1,7 +1,7 @@
 from __future__ import print_function, unicode_literals
 from .utils import check_function, init_check_res, action_function, init_action_res
 from .wrangler_utils import *
-from dcicutils import ff_utils
+from dcicutils import ff_utils, s3_utils
 import requests
 import sys
 import json
@@ -267,7 +267,12 @@ def identify_files_without_filesize(connection, **kwargs):
     hits = search_res.get('@graph', [])
     for hit in hits:
         if hit.get('file_size') is None:
-            problem_files.append(hit.get('accession'))
+            hit_dict = {
+                'accession': hit.get('accession'),
+                'uuid': hit.get('uuid'),
+                '@type': hit.get('@type')
+            }
+            problem_files.append(hit_dict)
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
