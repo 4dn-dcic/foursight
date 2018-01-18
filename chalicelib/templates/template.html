@@ -195,7 +195,7 @@
                             {% for groups in groups_4 %}
                                 {% for group in groups %}
                                     <div class="col-sm-3">
-                                        <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
+                                        <form action={{"/api/view/" + env['environment'] + '/' + group + '/check'}} method="get">
                                             <button class="btn center-block color-hover" type="submit">
                                                 <span>{{group}}</span>
                                             </button>
