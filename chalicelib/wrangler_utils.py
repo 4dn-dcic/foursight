@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from dateutil import tz
 
 
-def get_S3Utils(connection):
+def get_s3_utils_obj(connection):
     """
     Returns a dcicutils.s3_utils.s3Utils object
     """
@@ -24,7 +24,7 @@ def get_FDN_connection(connection):
     key needed to build a FDN_Connection object. Returns None if the process
     fails or the FDN_Connection if successful.
     """
-    s3Obj = get_S3Utils(connection)
+    s3Obj = get_s3_utils_obj(connection)
     # workaround to check if key is in the bucket
     contents = s3_utils.s3.list_objects_v2(Bucket=s3Obj.sys_bucket)
     key_names = [obj['Key'] for obj in contents.get('Contents', [])]

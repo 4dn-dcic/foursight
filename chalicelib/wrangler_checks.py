@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 from .utils import check_function, init_check_res, action_function, init_action_res
-from .wrangler_utils import *
+from .wrangler_utils import get_s3_utils_obj, get_FDN_connection
 from dcicutils import ff_utils, s3_utils
 import requests
 import sys
@@ -270,7 +270,8 @@ def identify_files_without_filesize(connection, **kwargs):
             hit_dict = {
                 'accession': hit.get('accession'),
                 'uuid': hit.get('uuid'),
-                '@type': hit.get('@type')
+                '@type': hit.get('@type'),
+                'upload_key': hit.get('upload_key')
             }
             problem_files.append(hit_dict)
     check.full_output = problem_files
@@ -286,4 +287,26 @@ def identify_files_without_filesize(connection, **kwargs):
 @action_function()
 def patch_file_size(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_size')
+    s3_obj = get_s3_utils_obj(connection)
+    fdn_conn = get_FDN_connection(connection)
+    action_logs = {'file_not_found': [], 'patch_failure': [], 'patch_success': []}
+    # get latest results from identify_files_without_filesize
+    filesize_check = init_check_res(connection, 'identify_files_without_filesize')
+    check_latest = filesize_check.get_latest_result() # what we want is in full_output
+    for hit in check_latest.get('full_output', []):
+        bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
+        head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
+        if not head_info:
+            action_logs['file_not_found'].append(hit['accession'])
+        else:
+            patch_data = {'file_size': head_info['ContentLength']}
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], connection=fdn_conn)
+            except Exception as e:
+                acc_and_error = '\n'.join([hit['accession'], str(e)])
+                action_logs['patch_failure'].append(acc_and_error)
+            else:
+                action_logs['patch_success'].append(hit['accession'])
+    action.status = 'DONE'
+    action.output = action_logs
     return action.store_result()
