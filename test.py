@@ -283,7 +283,7 @@ class TestAppUtils(unittest.TestCase):
         response.body = 'A' * 6000000
         too_long_resp = app_utils.process_response(response)
         self.assertTrue(too_long_resp.status_code == 413)
-        self.assertTrue(too_long_resp.body = 'Body size exceeded 6 MB maximum. Try visiting /api/view/data.')
+        self.assertTrue(too_long_resp.body == 'Body size exceeded 6 MB maximum. Try visiting /api/view/data.')
 
     def test_trim_output(self):
         short_output = {'some_field': 'some_value'}
