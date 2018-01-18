@@ -27,32 +27,32 @@ class RunResult(object):
         return json_result
 
 
-        def get_closest_result(self, diff_hours, diff_mins=0):
-            # check_tuples is a list of items of form (s3key, datetime uuid)
-            check_tuples = []
-            s3_prefix = ''.join([self.name, '/'])
-            relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
-            if not relevant_checks:
-                return None
-            # now use only s3 objects with a valid uuid
-            for check in relevant_checks:
-                if check.startswith(s3_prefix) and check.endswith(self.extension):
-                    time_str = check[len(s3_prefix):-len(self.extension)]
-                    try:
-                        check_time = datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
-                    except ValueError:
-                        continue
-                    check_tuples.append((check, check_time))
-            desired_time = (datetime.datetime.utcnow() -
-                datetime.timedelta(hours=diff_hours, minutes=diff_mins))
-            best_match = get_closest(check_tuples, desired_time)
-            result = self.s3_connection.get_object(best_match[0])
-            # see if data is in json format
-            try:
-                json_result = json.loads(result)
-            except ValueError:
-                return result
-            return json_result
+    def get_closest_result(self, diff_hours, diff_mins=0):
+        # check_tuples is a list of items of form (s3key, datetime uuid)
+        check_tuples = []
+        s3_prefix = ''.join([self.name, '/'])
+        relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
+        if not relevant_checks:
+            return None
+        # now use only s3 objects with a valid uuid
+        for check in relevant_checks:
+            if check.startswith(s3_prefix) and check.endswith(self.extension):
+                time_str = check[len(s3_prefix):-len(self.extension)]
+                try:
+                    check_time = datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
+                except ValueError:
+                    continue
+                check_tuples.append((check, check_time))
+        desired_time = (datetime.datetime.utcnow() -
+            datetime.timedelta(hours=diff_hours, minutes=diff_mins))
+        best_match = get_closest(check_tuples, desired_time)
+        result = self.s3_connection.get_object(best_match[0])
+        # see if data is in json format
+        try:
+            json_result = json.loads(result)
+        except ValueError:
+            return result
+        return json_result
 
 
     def get_all_results(self):
@@ -99,7 +99,8 @@ class CheckResult(RunResult):
         # uuid arg used if you want to overwrite an existing check
         # uuid is in the stringified datetime format
         if uuid:
-            ts_key = ''.join([name, '/', uuid, extension])
+            # maybe make this '.json' dynamic with parent's self.extension?
+            ts_key = ''.join([name, '/', uuid, '.json'])
             stamp_res = s3_connection.get_object(ts_key)
             if stamp_res:
                 # see if json
