@@ -154,6 +154,23 @@ def forbidden_response():
         )
 
 
+def trim_output(output, max_size=100000):
+    """
+    AWS lambda has a maximum body response size of 6MB. Since results are currently delivered entirely
+    in the body of the response, let's limit the size of the 'full_output', 'brief_output', and
+    'admin_output' fields to 100 KB (see if this is a reasonable amount).
+    Slice the dictionaries, lists, or string to achieve this.
+    max_size input integer is in bites
+
+    Takes in the non-json formatted version of the fields. For now, just use this for /view/.
+    """
+    formatted = json.dumps(output, indent=4)
+    if len(formatted) > max_size:
+        return ''.join([formatted[:max_size], '\n\n... Output truncated ...'])
+    else:
+        return formatted
+
+
 ##### ROUTE RUNNING FUNCTIONS #####
 
 
@@ -227,12 +244,12 @@ def view_foursight(environ, is_admin=False, domain=""):
                 else:
                     res['content'] = True
                 if res.get('brief_output'):
-                    res['brief_output'] = json.dumps(res['brief_output'], indent=4)
+                    res['brief_output'] = trim_output(res['brief_output'])
                 if res.get('full_output'):
-                    res['full_output'] = json.dumps(res['full_output'], indent=4)
+                    res['full_output'] = trim_output(res['full_output'])
                 # only return admin_output if an admin is logged in
                 if res.get('admin_output') and is_admin:
-                    res['admin_output'] = json.dumps(res['admin_output'], indent=4)
+                    res['admin_output'] = trim_output(res['admin_output'])
                 else:
                     res['admin_output'] = None
                 processed_results.append(res)
