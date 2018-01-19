@@ -331,6 +331,28 @@ class TestCheckRunner(unittest.TestCase):
         post_res = check.get_latest_result()
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
+    def test_run_check_runner_actions(self):
+        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        prior_res = action.get_latest_result()
+        # need to manually add things to the queue
+        queue = app_utils.get_sqs_queue()
+        check_vals = check_utils.fetch_action_group('add_random_test_nums_solo')
+        app_utils.send_sqs_messages(queue, self.environ, check_vals)
+        app_utils.run_check_runner({'sqs_url': queue.url})
+        time.sleep(3)
+        # this **should** work
+        sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        # wait for queue to empty
+        while vis_messages > 0 or invis_messages > 0:
+            sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            time.sleep(3)
+        post_res = action.get_latest_result()
+        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
+
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
         self.assertTrue(app_utils.QUEUE_NAME == 'foursight-dev-check_queue')
@@ -370,7 +392,7 @@ class TestCheckRunner(unittest.TestCase):
         prior_res = action.get_latest_result()
         run_input = app_utils.queue_check_group(self.environ, 'add_random_test_nums', use_action_group=True)
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
-        time.sleep(3)
+        time.sleep(1)
         # this **should** work
         sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
         vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
@@ -384,26 +406,10 @@ class TestCheckRunner(unittest.TestCase):
             time.sleep(3)
         # queue should be empty. check results
         post_res = action.get_latest_result()
+        print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid']}
+        print('Runner action results:\n', str(print_dict))
         # compare the uuids to ensure actions have run
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
-        # next, run a single action in an aciton group to improve coverage
-        run_input = app_utils.queue_check_group(self.environ, 'add_random_test_nums_solo', use_action_group=True)
-        # this **should** work
-        sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
-        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-        self.assertTrue(vis_messages > 0 or invis_messages > 0)
-        # wait for queue to empty
-        while vis_messages > 0 or invis_messages > 0:
-            sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
-            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            time.sleep(3)
-        post_2_res = action.get_latest_result()
-        print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid'], 'post2': post_2_res['uuid']}
-        print('Runner action results:\n', str(print_dict))
-        self.assertTrue(post_2_res['uuid'] != post_res['uuid'])
-
 
     def test_get_sqs_attributes(self):
         # bad sqs url
