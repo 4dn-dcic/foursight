@@ -315,14 +315,15 @@ class TestCheckRunner(unittest.TestCase):
         check_vals = check_utils.fetch_check_group('wrangler_test_checks')
         app_utils.send_sqs_messages(queue, self.environ, check_vals)
         app_utils.run_check_runner({'sqs_url': queue.url})
-        vis_messages = 999
-        invis_messages = 999
+        finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
-        while vis_messages > 0 or invis_messages > 0:
+        while finished_count < 3:
             time.sleep(6)
             sqs_attrs = app_utils.get_sqs_attributes(queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            if vis_messages == 0 and invis_messages == 0:
+                finished_count += 1
         time.sleep(3)
         # look at output
         post_res = check.get_latest_result()
@@ -336,14 +337,15 @@ class TestCheckRunner(unittest.TestCase):
         check_vals = check_utils.fetch_action_group('add_random_test_nums_solo')
         app_utils.send_sqs_messages(queue, self.environ, check_vals)
         app_utils.run_check_runner({'sqs_url': queue.url})
-        vis_messages = 999
-        invis_messages = 999
+        finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
-        while vis_messages > 0 or invis_messages > 0:
+        while finished_count < 3:
             time.sleep(6)
             sqs_attrs = app_utils.get_sqs_attributes(queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            if vis_messages == 0 and invis_messages == 0:
+                finished_count += 1
         time.sleep(3)
         post_res = action.get_latest_result()
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
@@ -356,14 +358,15 @@ class TestCheckRunner(unittest.TestCase):
         prior_res = check_utils.get_check_group_latest(self.connection, 'all')
         run_input = app_utils.queue_check_group(self.environ, 'all')
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
-        vis_messages = 999
-        invis_messages = 999
+        finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
-        while vis_messages > 0 or invis_messages > 0:
+        while finished_count < 3:
             time.sleep(6)
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            if vis_messages == 0 and invis_messages == 0:
+                finished_count += 1
         # queue should be empty. check results
         time.sleep(3)
         post_res = check_utils.get_check_group_latest(self.connection, 'all')
