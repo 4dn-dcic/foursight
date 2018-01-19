@@ -72,17 +72,21 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(set(res.to_dict().keys()) == set(['body', 'headers', 'statusCode']))
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
-        self.assertTrue('admin_output' not in res.body)
-        # this is pretty weak
-        res2 = app_utils.view_rerun(self.environ, 'indexing_progress')
-        self.assertTrue(res.status_code == 200)
-        self.assertTrue('<!DOCTYPE html>' in res.body)
-        self.assertTrue('Foursight' in res.body)
+        self.assertTrue('Not logged in as admin.' in res.body)
+        # run with a check
+        res2 = app_utils.view_run_check(self.environ, 'indexing_progress')
+        self.assertTrue(res2.status_code == 302)
+        self.assertTrue('/api/view/' + self.environ in res2.body)
         self.assertTrue(res.body != res2.body)
+        # run with an action
+        res3 = app_utils.view_run_action(self.environ, 'add_random_test_nums')
+        self.assertTrue(res3.status_code == 302)
+        self.assertTrue('/api/view/' + self.environ in res3.body)
+        self.assertTrue(res2.body == res3.body)
         # lastly, check with is_admin
         res = app_utils.view_foursight(self.environ, True) # is_admin
         self.assertTrue(res.status_code == 200)
-        self.assertTrue('admin_output' not in res.body)
+        self.assertTrue('Currently logged in as admin.' in res.body)
 
     def test_run_foursight_checks(self):
         res = app_utils.run_foursight_checks(self.environ, 'all')

@@ -102,7 +102,7 @@ def introspect():
 
 
 @app.route('/view/{environ}/{check}/{method}', methods=['GET'])
-def view_rerun_route(environ, check, method):
+def view_run_route(environ, check, method):
     """
     Protected route
     """
@@ -110,7 +110,7 @@ def view_rerun_route(environ, check, method):
         if method == 'action':
             return view_run_action(environ, check)
         else:
-            return view_rerun(environ, check)
+            return view_run_check(environ, check)
     else:
         return forbidden_response()
 

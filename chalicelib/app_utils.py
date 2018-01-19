@@ -191,7 +191,7 @@ def trim_output(output, max_size=100000):
 ##### ROUTE RUNNING FUNCTIONS #####
 
 
-def view_rerun(environ, check):
+def view_run_check(environ, check):
     """
     Called from the view endpoint (or manually, I guess), this re-runs the given
     checks for the given environment and returns the
