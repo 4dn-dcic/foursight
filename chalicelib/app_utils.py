@@ -285,11 +285,13 @@ def view_foursight(environ, is_admin=False, domain=""):
                 # get the latest result for the checks action, if present
                 # also ENSURE that the action is in ACTION_GROUPS
                 if res.get('action'):
-                    if res.get('action') in ACTION_GROUPS and is_admin:
+                    if res.get('action') in ACTION_GROUPS:
                         action = init_action_res(connection, res.get('action'))
                         latest_action = action.get_latest_result()
                         if latest_action:
                             res['latest_action'] = json.dumps(latest_action, indent=4)
+                        else:
+                            res['latest_action'] = 'Not yet run.'
                     else:
                         del res['action']
                 processed_results.append(res)

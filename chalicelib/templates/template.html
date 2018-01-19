@@ -161,7 +161,7 @@
                                         <pre><code>{{check.admin_output}}</code></pre>
                                     </div>
                                 {% endif %}
-                                {% if check.get('latest_action') and is_admin %}
+                                {% if check.get('latest_action') %}
                                     <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-latest-action'}}>
                                         Toggle latest action
                                     </button>
