@@ -67,6 +67,9 @@ TEST_ACTION_GROUPS = {
     'add_random_test_nums': [
         ['test_checks/test_random_nums', {}, [], 'tag1'],
         ['test_checks/add_random_test_nums', {}, ['tag1'], 'tag2'],
-        ['test_checks/test_random_nums', {}, ['tag1']], # purposefully malformed
+        ['test_checks/test_random_nums', {}, ['tag1']] # purposefully malformed
+    ],
+    'add_random_test_nums_solo': [
+        ['test_checks/add_random_test_nums', {}, [], 'tzg1']
     ]
 }
