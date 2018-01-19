@@ -1,6 +1,11 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res, build_dummy_result
-from collections import OrderedDict
+from .utils import (
+    check_function,
+    init_check_res,
+    action_function,
+    init_action_res,
+    build_dummy_result
+)
 import requests
 import sys
 import json
@@ -117,8 +122,8 @@ def indexing_progress(connection, **kwargs):
     check = init_check_res(connection, 'indexing_progress')
     # get latest and db/es counts closest to 2 hrs ago
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_check()
-    prior = counts_check.get_closest_check(2)
+    latest = counts_check.get_latest_result()
+    prior = counts_check.get_closest_result(2)
     if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no item_counts_by_type results to run this check with.'

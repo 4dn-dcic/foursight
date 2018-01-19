@@ -9,10 +9,17 @@ import datetime
 from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
-from .check_utils import get_check_group_latest, run_check, get_check_strings, fetch_check_group
-from .check_result import CheckResult
+from .check_utils import (
+    get_check_group_latest,
+    run_check_or_action,
+    get_check_strings,
+    fetch_check_group,
+    fetch_action_group,
+    init_check_res,
+    init_action_res
+)
 from .s3_connection import S3Connection
-from .check_groups import CHECK_GROUPS
+from .check_groups import CHECK_GROUPS, ACTION_GROUPS
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -184,7 +191,7 @@ def trim_output(output, max_size=100000):
 ##### ROUTE RUNNING FUNCTIONS #####
 
 
-def view_rerun(environ, check):
+def view_run_check(environ, check):
     """
     Called from the view endpoint (or manually, I guess), this re-runs the given
     checks for the given environment and returns the
@@ -198,7 +205,22 @@ def view_rerun(environ, check):
         connection, _ = init_connection(environ)
         check_str = get_check_strings(check)
         if connection and check_str:
-            run_check(connection, check_str, {})
+            run_check_or_action(connection, check_str, {})
+    resp_headers = {'Location': '/api/view/' + environ}
+    # redirect to view_foursight page with a 302 so it isn't cached
+    return Response(
+        status_code=302,
+        body=json.dumps(resp_headers),
+        headers=resp_headers)
+
+
+def view_run_action(environ, action_group):
+    """
+    Called from the view endpoint (or manually, I guess), this runs the given
+    action group for the given environment and refreshes the foursight view.
+    """
+    if action_group in ACTION_GROUPS:
+        queue_check_group(environ, action_group, use_action_group=True)
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
     return Response(
@@ -249,10 +271,6 @@ def view_foursight(environ, is_admin=False, domain=""):
                 ts_local = ts_utc.astimezone(to_zone)
                 proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
                 res['uuid'] = proc_ts
-                if not res.get('description') and not res.get('brief_output') and not res.get('full_output') and not res.get('ff_link'):
-                    res['content'] = False
-                else:
-                    res['content'] = True
                 if res.get('brief_output'):
                     res['brief_output'] = trim_output(res['brief_output'])
                 if res.get('full_output'):
@@ -262,6 +280,21 @@ def view_foursight(environ, is_admin=False, domain=""):
                     res['admin_output'] = trim_output(res['admin_output'])
                 else:
                     res['admin_output'] = None
+                # get the latest result for the checks action, if present
+                # also ENSURE that the action is in ACTION_GROUPS
+                if res.get('action'):
+                    if res.get('action') in ACTION_GROUPS:
+                        action = init_action_res(connection, res.get('action'))
+                        latest_action = action.get_latest_result()
+                        if latest_action:
+                            res['latest_action'] = json.dumps(latest_action, indent=4)
+                        else:
+                            res['latest_action'] = 'Not yet run.'
+                    else:
+                        del res['action']
+                # decide whether or not to allow the check entry to be expanded
+                check_attrs = ('description', 'brief_output', 'full_output', 'admin_output', 'ff_link', 'latest_action')
+                res['content'] = False if all (res.get(attr) is None for attr in check_attrs) else True
                 processed_results.append(res)
             total_envs.append({
                 'status': 'success',
@@ -333,8 +366,8 @@ def get_check(environ, check):
     connection, response = init_response(environ)
     if not connection:
         return response
-    TempCheck = CheckResult(connection.s3_connection, check)
-    latest_res = TempCheck.get_latest_check()
+    tempCheck = init_check_res(connection, check)
+    latest_res = tempCheck.get_latest_result()
     if latest_res:
         response.body = {
             'status': 'success',
@@ -373,7 +406,7 @@ def run_put_check(environ, check, put_data):
         response.status_code = 400
         return response
     put_uuid = put_data.get('uuid')
-    putCheck = CheckResult(connection.s3_connection, check, uuid=put_uuid)
+    putCheck = init_check_res(connection, check, uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'description', 'brief_output', 'full_output', 'admin_output']:
@@ -489,7 +522,7 @@ def get_environment(environ):
 
 ##### CHECK RUNNER FUNCTIONS #####
 
-def queue_check_group(environ, check_group):
+def queue_check_group(environ, check_group, use_action_group=False):
     """
     Given a str environment and check group name, add the check info to the
     existing queue (or creates a new one if there is none). Then initiates 4
@@ -497,9 +530,15 @@ def queue_check_group(environ, check_group):
 
     Run with check_group = None to skip adding the check group to the queue
     and just initiate the check runners.
+
+    If use_action_group == True (default False), then it will attempt to queue an action group
+    rather than a check group.
     """
     if check_group is not None:
-        check_vals = fetch_check_group(check_group)
+        if use_action_group:
+            check_vals = fetch_action_group(check_group)
+        else:
+            check_vals = fetch_check_group(check_group)
         if not check_vals:
             print('-RUN-> %s is not a valid check group. Cannot queue it.' % (check_group))
             return
@@ -693,8 +732,8 @@ def run_check_runner(runner_input):
         if 'uuid' not in check_kwargs:
             check_kwargs['uuid'] = run_uuid
         # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
-        run_result = run_check(connection, check_name, check_kwargs)
-        print('-RUN-> RESULT:  %s' % str(run_result))
+        run_result = run_check_or_action(connection, check_name, check_kwargs)
+        print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
         recorded = record_run_info(run_uuid, dep_id, run_result.get('status'))
     else:
         recorded = False

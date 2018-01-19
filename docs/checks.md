@@ -30,13 +30,14 @@ Here is a list of attributes that you will routinely use, with brief description
 * **full_output**: same as brief_output, but is intended to hold the entirety of the check data.
 * **admin_output**: same as brief_output, but is only visible to admins to view on the UI. Use for sensitive data.
 * **ff_link**: a link to (presumably) Fourfront that will be displayed in the UI if provided. Should be relevant to the check.
+* **action**: name of a Foursight action function that is linked to this check. See the [action docs](./actions.md) for more information.
+* **allow_action**: boolean value of whether or not the linked action can be run. Defaults to False. See the [action docs](./actions.md) for more information.
 
 Lastly, there are a number of attributes that are used internally. These do not usually need to be manually set, but can be.
 * **s3_connection**: is set automatically when you use `init_check_res`.
 * **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
 * **title**: generated automatically from the name attribute unless it is set manually.
 * **uuid**: this is explained further later in this document. The only reason to use this is if you want a check to be automatically populated by a previous result. Usually handled by passing in the `uuid` parameter to `init_check_res`.
-* **extension**: the extension and format of the s3 object storing the check result. Is automatically set to `.json` and should not be changed.
 
 ## Our example check
 Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
@@ -54,7 +55,7 @@ At the moment, this check won't do anything but write a result to the `items_cre
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    fdn_conn = wrangler_utils.get_FDN_Connection(connection)
+    fdn_conn = wrangler_utils.get_FDN_connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
@@ -70,7 +71,7 @@ Okay, now we have a check that will attempt to make a Fourfront connection and f
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    fdn_conn = wrangler_utils.get_FDN_Connection(connection)
+    fdn_conn = wrangler_utils.get_FDN_connection(connection)
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
@@ -180,16 +181,16 @@ Another possibility for a check is to operate on the previous results of the sam
 check = init_check_res(connection, 'change_in_item_counts')
 ```
 
-Using the CheckResult `check` object, you have access to all CheckResult methods, which include the `get_latest_check` and `get_closest_check` methods, which both return dictionary representations of those historic check results. Getting the latest check will always return the result with the "latest" tag, which is also the one displayed on the Foursight front end. The `get_closest_check` method can be used to get the check result that is closest the given time difference from the current time. See the example below:
+Using the CheckResult `check` object, you have access to all CheckResult methods, which include the `get_latest_result` and `get_closest_result` methods, which both return dictionary representations of those historic check results. Getting the latest check will always return the result with the "latest" tag, which is also the one displayed on the Foursight front end. The `get_closest_result` method can be used to get the check result that is closest the given time difference from the current time. See the example below:
 
 ```
 check = init_check_res(connection, 'change_in_item_counts')
 # get the latest dictionary result for this check
-latest = check.get_latest_check()
+latest = check.get_latest_result()
 
 # get the dictionary results for this result run closest to 10 hours, 30 mins ago
 # args are in form (hours, minutes)
-older = check.get_closest_check(10, 30)
+older = check.get_closest_result(10, 30)
 ```
 
 The functions can be used to easily make a check that is aware of its own previous results. You can also make checks that use the results of other checks; to do this, define another check result object with the name of a different check. Consider the following example:
@@ -200,9 +201,9 @@ def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts')
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_check()
+    latest = counts_check.get_latest_result()
     # get_item_counts run closest to 24 hours ago
-    prior = counts_check.get_closest_check(24)
+    prior = counts_check.get_closest_result(24)
 
     # now do something with the latest and prior dictionaries
     # and set the fields of check accordingly

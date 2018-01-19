@@ -10,7 +10,7 @@ CHECK_MODULES = [
 # info, which is ['<mod>/<check>', '<kwargs>', list of check dependencies, dependency id]
 # dependecy id can be any unique string
 
-# check group names should end in "_checks"
+# check group names should end in "_checks" or "_actions"
 # define check_groups within this dict
 
 CHECK_GROUPS = {
@@ -35,6 +35,18 @@ CHECK_GROUPS = {
     ]
 }
 
+# action groups work the same as check groups, but can contain intermixed checks and actions
+# minimally, an action group should have the action itself and also the check that triggered it
+# (so that the check can be updated)
+
+ACTION_GROUPS = {
+    'patch_file_size': [
+        ['wrangler_checks/identify_files_without_filesize', {'search_add_on': '&datastore=database'}, [], 'pfs1'],
+        ['wrangler_checks/patch_file_size', {}, ['pfs1'], 'pfs2'],
+        ['wrangler_checks/identify_files_without_filesize', {'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3']
+    ]
+}
+
 
 ######## don't use the check groups below! just for testing ########
 
@@ -48,5 +60,16 @@ TEST_CHECK_GROUPS = {
         ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'wt1'],
         ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, ['wt1'], 'wt2'],
         ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'}, ['wt2'], 'wt3']
+    ]
+}
+
+TEST_ACTION_GROUPS = {
+    'add_random_test_nums': [
+        ['test_checks/add_random_test_nums', {}, ['tag1'], 'tag2'],
+        ['test_checks/test_random_nums', {}, [], 'tag1'],
+        ['test_checks/test_random_nums', {}, ['tag1']] # purposefully malformed
+    ],
+    'add_random_test_nums_solo': [
+        ['test_checks/add_random_test_nums', {}, [], 'tzg1']
     ]
 }

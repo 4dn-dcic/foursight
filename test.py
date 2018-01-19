@@ -6,7 +6,7 @@ import json
 import os
 import time
 import app
-from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, check_result, fs_connection
+from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_utils, run_result, fs_connection
 from dateutil import tz
 
 
@@ -27,8 +27,8 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(self.connection.ff_env == 'test3')
 
     def test_run_check_with_bad_connection(self):
-        check_res = check_utils.run_check(self.connection, 'wrangler_checks/item_counts_by_type', {})
-        # run_check returns a dict with results
+        check_res = check_utils.run_check_or_action(self.connection, 'wrangler_checks/item_counts_by_type', {})
+        # run_check_or_action returns a dict with results
         self.assertTrue(check_res.get('status') == 'ERROR')
         self.assertTrue(check_res.get('name') == 'item_counts_by_type')
 
@@ -37,8 +37,8 @@ class TestFSConnection(unittest.TestCase):
         test_check.description = 'Unittest check'
         test_check.ff_link = 'not_a_real_http_link'
         self.assertTrue(test_check.s3_connection.status_code == 404)
-        self.assertTrue(test_check.get_latest_check() is None)
-        self.assertTrue(test_check.get_closest_check(1) is None)
+        self.assertTrue(test_check.get_latest_result() is None)
+        self.assertTrue(test_check.get_closest_result(1) is None)
         self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
         self.assertTrue(formatted_res.get('status') == 'IGNORE')
@@ -72,17 +72,21 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(set(res.to_dict().keys()) == set(['body', 'headers', 'statusCode']))
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
-        self.assertTrue('admin_output' not in res.body)
-        # this is pretty weak
-        res2 = app_utils.view_rerun(self.environ, 'indexing_progress')
-        self.assertTrue(res.status_code == 200)
-        self.assertTrue('<!DOCTYPE html>' in res.body)
-        self.assertTrue('Foursight' in res.body)
+        self.assertTrue('Not logged in as admin.' in res.body)
+        # run with a check
+        res2 = app_utils.view_run_check(self.environ, 'indexing_progress')
+        self.assertTrue(res2.status_code == 302)
+        self.assertTrue('/api/view/' + self.environ in res2.body)
         self.assertTrue(res.body != res2.body)
+        # run with an action
+        res3 = app_utils.view_run_action(self.environ, 'add_random_test_nums')
+        self.assertTrue(res3.status_code == 302)
+        self.assertTrue('/api/view/' + self.environ in res3.body)
+        self.assertTrue(res2.body == res3.body)
         # lastly, check with is_admin
         res = app_utils.view_foursight(self.environ, True) # is_admin
         self.assertTrue(res.status_code == 200)
-        self.assertTrue('admin_output' not in res.body)
+        self.assertTrue('Currently logged in as admin.' in res.body)
 
     def test_run_foursight_checks(self):
         res = app_utils.run_foursight_checks(self.environ, 'all')
@@ -305,8 +309,8 @@ class TestCheckRunner(unittest.TestCase):
         Run with wrangler_test_checks check_group that gives a unique output
         """
         # the check we will test with
-        check = check_result.CheckResult(self.connection.s3_connection, 'items_created_in_the_past_day')
-        prior_res = check.get_latest_check()
+        check = run_result.CheckResult(self.connection.s3_connection, 'items_created_in_the_past_day')
+        prior_res = check.get_latest_result()
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
         self.assertTrue(bad_res is None)
@@ -315,22 +319,40 @@ class TestCheckRunner(unittest.TestCase):
         check_vals = check_utils.fetch_check_group('wrangler_test_checks')
         app_utils.send_sqs_messages(queue, self.environ, check_vals)
         app_utils.run_check_runner({'sqs_url': queue.url})
-        # this **should** work
-        sqs_attrs = app_utils.get_sqs_attributes(queue.url)
-        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
-        while vis_messages > 0 or invis_messages > 0:
+        while finished_count < 3:
+            time.sleep(6)
             sqs_attrs = app_utils.get_sqs_attributes(queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            time.sleep(2)
+            if vis_messages == 0 and invis_messages == 0:
+                finished_count += 1
+        time.sleep(3)
         # look at output
-        post_res = check.get_latest_check()
-        prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
-        post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
-        self.assertTrue(post_uuid > prior_uuid)
+        post_res = check.get_latest_result()
+        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
+
+    def test_run_check_runner_actions(self):
+        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        prior_res = action.get_latest_result()
+        # need to manually add things to the queue
+        queue = app_utils.get_sqs_queue()
+        check_vals = check_utils.fetch_action_group('add_random_test_nums_solo')
+        app_utils.send_sqs_messages(queue, self.environ, check_vals)
+        app_utils.run_check_runner({'sqs_url': queue.url})
+        finished_count = 0 # since queue attrs are approximate
+        # wait for queue to empty
+        while finished_count < 3:
+            time.sleep(6)
+            sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            if vis_messages == 0 and invis_messages == 0:
+                finished_count += 1
+        time.sleep(3)
+        post_res = action.get_latest_result()
+        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
@@ -340,18 +362,17 @@ class TestCheckRunner(unittest.TestCase):
         prior_res = check_utils.get_check_group_latest(self.connection, 'all')
         run_input = app_utils.queue_check_group(self.environ, 'all')
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
-        # this **should** work
-        sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
-        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
-        while vis_messages > 0 or invis_messages > 0:
+        while finished_count < 3:
+            time.sleep(6)
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            time.sleep(2)
+            if vis_messages == 0 and invis_messages == 0:
+                finished_count += 1
         # queue should be empty. check results
+        time.sleep(3)
         post_res = check_utils.get_check_group_latest(self.connection, 'all')
         # compare the runtimes to ensure checks have run
         res_compare = {}
@@ -359,11 +380,36 @@ class TestCheckRunner(unittest.TestCase):
             res_compare[check_res['name']] = {'post': check_res['uuid']}
         for check_res in prior_res:
             res_compare[check_res['name']]['prior'] = check_res['uuid']
+        print('Runner check results:\n', str(res_compare))
         for check_name in res_compare:
             self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
-            prior_uuid = datetime.datetime.strptime(res_compare[check_name]['prior'], "%Y-%m-%dT%H:%M:%S.%f")
-            post_uuid = datetime.datetime.strptime(res_compare[check_name]['post'], "%Y-%m-%dT%H:%M:%S.%f")
-            self.assertTrue(post_uuid > prior_uuid)
+            self.assertTrue(res_compare[check_name]['prior'] != res_compare[check_name]['post'])
+
+    def test_queue_action_group(self):
+        # get a reference point for action results
+        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        prior_res = action.get_latest_result()
+        run_input = app_utils.queue_check_group(self.environ, 'add_random_test_nums', use_action_group=True)
+        self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
+        time.sleep(3)
+        sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        # there are dependencies, so this should be slow enough to work
+        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        # wait for queue to empty
+        while vis_messages > 0 or invis_messages > 0:
+            time.sleep(6)
+            sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        # queue should be empty. check results
+        time.sleep(3)
+        post_res = action.get_latest_result()
+        print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid']}
+        print('Runner action results:\n', str(print_dict))
+        # compare the uuids to ensure actions have run
+        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
     def test_get_sqs_attributes(self):
         # bad sqs url
@@ -386,7 +432,7 @@ class TestCheckResult(unittest.TestCase):
     connection, _ = app_utils.init_connection(environ)
 
     def test_check_result_methods(self):
-        check = check_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
         # default status
         self.assertTrue(check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
@@ -394,17 +440,17 @@ class TestCheckResult(unittest.TestCase):
         check.full_output = ['first_item']
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
-        late_res = check.get_latest_check()
+        late_res = check.get_latest_result()
         self.assertTrue(late_res == res)
-        close_res = check.get_closest_check(0, 0)
+        close_res = check.get_closest_result(0, 0)
         self.assertTrue(close_res == res)
-        all_res = check.get_all_checks()
+        all_res = check.get_all_results()
         self.assertTrue(len(all_res) > 0)
         # this should be true since all results will be identical
         self.assertTrue(all_res[-1].get('description') == res.get('description'))
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
-        check_copy = check_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
         self.assertTrue(res == check_copy.store_result())
 
 
@@ -449,6 +495,15 @@ class TestCheckUtils(unittest.TestCase):
         # non-existant check group
         bad_checks = check_utils.fetch_check_group('not_a_check_group')
         self.assertTrue(bad_checks is None)
+
+    def test_fetch_action_group(self):
+        patch_actions = check_utils.fetch_action_group('patch_file_size')
+        self.assertTrue(isinstance(patch_actions, list) and len(patch_actions) > 0)
+        test_actions = check_utils.fetch_action_group('add_random_test_nums')
+        self.assertTrue(isinstance(test_actions, list) and len(test_actions) > 0)
+        # non-existant action group
+        bad_actions = check_utils.fetch_action_group('not_an_action_group')
+        self.assertTrue(bad_actions is None)
 
     def test_run_check_group(self):
         """
@@ -499,12 +554,20 @@ class TestCheckUtils(unittest.TestCase):
         test_res = check_utils.get_check_group_latest(self.conn, 'malformed_test_checks')
         assert(len(test_res) == 0)
 
-    def test_run_check(self):
-        test_info = ['system_checks/indexing_records', {}, []]
-        check_res = check_utils.run_check(self.conn, test_info[0], test_info[1])
+    def test_run_check_or_action(self):
+        # with a check
+        test_info = ['test_checks/test_random_nums', {}, [], 'xxx']
+        check_res = check_utils.run_check_or_action(self.conn, test_info[0], test_info[1])
         self.assertTrue(isinstance(check_res, dict))
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
+        # with an action
+        test_info_2 = ['test_checks/add_random_test_nums', {}, [] ,'xxx']
+        action_res = check_utils.run_check_or_action(self.conn, test_info_2[0], test_info_2[1])
+        self.assertTrue(isinstance(action_res, dict))
+        self.assertTrue('name' in action_res)
+        self.assertTrue('status' in action_res)
+        self.assertTrue('output' in action_res)
 
     def test_run_check_errors(self):
         bad_check_group = [
@@ -515,16 +578,23 @@ class TestCheckUtils(unittest.TestCase):
             ['test_checks/test_function_unused', {}, [], 'xx1']
         ]
         for bad_check_info in bad_check_group:
-            check_res = check_utils.run_check(self.conn, bad_check_info[0], bad_check_info[1])
+            check_res = check_utils.run_check_or_action(self.conn, bad_check_info[0], bad_check_info[1])
             self.assertFalse(isinstance(check_res, dict))
             self.assertTrue('ERROR' in check_res)
 
     def test_run_check_exception(self):
-        check_res = check_utils.run_check(self.conn, 'test_checks/test_check_error', {})
+        check_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_check_error', {})
         self.assertTrue(check_res['status'] == 'ERROR')
         # this output is a list
         self.assertTrue('by zero' in ''.join(check_res['full_output']))
         self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
+
+    def test_run_action_exception(self):
+        action_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_action_error', {})
+        self.assertTrue(action_res['status'] == 'FAIL')
+        # this output is a list
+        self.assertTrue('by zero' in ''.join(action_res['output']))
+        self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
 
 class TestCheckGroup(unittest.TestCase):
     def test_check_groups(self):
@@ -543,7 +613,14 @@ class TestCheckGroup(unittest.TestCase):
                 self.assertTrue(len(check_info) == 4)
                 self.assertTrue(isinstance(check_info[0], app_utils.basestring))
                 self.assertTrue(len(check_info[0].split('/')) == 2)
-                used_check_mods.append(check_info[0].split('/')[0].strip())
+                # make sure each entry is a real check with decorator
+                [mod, name] = [st.strip() for st in check_info[0].split('/')]
+                check_mod = check_utils.__dict__.get(mod)
+                self.assertTrue(check_mod is not None)
+                method = check_mod.__dict__.get(name)
+                self.assertTrue(method is not None)
+                self.assertTrue(utils.check_method_deco(method, utils.CHECK_DECO))
+                used_check_mods.append(mod)
                 self.assertTrue(isinstance(check_info[1], dict))
                 self.assertTrue(isinstance(check_info[2], list))
                 used_dep_ids.extend(check_info[2])
@@ -577,7 +654,38 @@ class TestCheckGroup(unittest.TestCase):
                     self.assertTrue(isinstance(check_info[3], app_utils.basestring))
 
 
+class TestActionGroups(unittest.TestCase):
+    def test_action_groups_content(self):
+        # verify all names of action groups are functions with the
+        # @action_function deco AND all checks/actions in the group are valid.
+        for action_group in check_groups.ACTION_GROUPS:
+            actions = []
+            self.assertTrue(isinstance(check_groups.ACTION_GROUPS[action_group], list))
+            for entry in check_groups.ACTION_GROUPS[action_group]:
+                entry_string = entry[0]
+                self.assertTrue(isinstance(entry_string, app_utils.basestring))
+                self.assertTrue(len(entry_string.split('/')) == 2)
+                [mod, name] = [st.strip() for st in entry_string.split('/')]
+                is_check = False
+                is_action = False
+                check_mod = check_utils.__dict__.get(mod)
+                self.assertTrue(check_mod is not None)
+                method = check_mod.__dict__.get(name)
+                self.assertTrue(method is not None)
+                if utils.check_method_deco(method, utils.CHECK_DECO):
+                    is_check = True
+                elif utils.check_method_deco(method, utils.ACTION_DECO):
+                    is_action = True
+                    actions.append(name)
+                self.assertTrue(is_check or is_action)
+            # ensure action_group name matches an action in the group
+            self.assertTrue(action_group in actions)
+
+
 class TestUtils(unittest.TestCase):
+    environ = 'mastertest' # hopefully this is up
+    conn, _ = app_utils.init_connection(environ)
+
     @utils.check_function(abc=123)
     def test_function_dummy(*args, **kwargs):
         return kwargs
@@ -598,6 +706,17 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(dummy_res['status'] == 'IGNORE')
         self.assertTrue(dummy_res['name']) == dummy_check
         self.assertTrue('uuid' in dummy_res)
+
+    def test_init_check_res(self):
+        check = utils.init_check_res(self.conn, 'test_check', runnable=True)
+        self.assertTrue(check.name == 'test_check')
+        self.assertTrue(check.s3_connection is not None)
+        self.assertTrue(check.runnable == True)
+
+    def test_init_action_res(self):
+        action = utils.init_action_res(self.conn, 'test_action')
+        self.assertTrue(action.name == 'test_action')
+        self.assertTrue(action.s3_connection is not None)
 
 
 class TestWranglerUtils(unittest.TestCase):
@@ -627,12 +746,21 @@ class TestWranglerUtils(unittest.TestCase):
             dt_bad = wrangler_utils.parse_datetime_with_tz_to_utc(bad_tstr)
             self.assertTrue(dt_bad is None)
 
-    def test_get_FDN_Connection(self):
+    def test_get_s3_utils_obj(self):
+        environments = app_utils.init_environments()
+        for env in environments:
+            conn, _ = app_utils.init_connection(env)
+            s3_obj = wrangler_utils.get_s3_utils_obj(conn)
+            self.assertTrue(s3_obj.sys_bucket is not None)
+            self.assertTrue(s3_obj.outfile_bucket is not None)
+            self.assertTrue(s3_obj.raw_file_bucket is not None)
+
+    def test_get_FDN_connection(self):
         # run this for all environments to ensure access keys are in place
         environments = app_utils.init_environments()
         for env in environments:
             conn, _ = app_utils.init_connection(env)
-            fdn_conn = wrangler_utils.get_FDN_Connection(conn)
+            fdn_conn = wrangler_utils.get_FDN_connection(conn)
             self.assertTrue(fdn_conn is not None)
 
 

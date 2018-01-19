@@ -36,7 +36,7 @@
         background-color: #d9d9d9;
     }
     .commonstyle {
-        margin: 0px 5px 5px 5px;
+        margin: 0px 0px 5px 5px;
     }
     .own-line {
         display: block;
@@ -122,7 +122,7 @@
                                     {{check.uuid}}
                                 </span>
                                 {% if check.get('runnable') and is_admin %}
-                                    <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name']}} method="get">
+                                    <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name'] + '/check'}} method="get">
                                         <button class="btn btn-link" type="submit">
                                             <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
                                         </button>
@@ -161,6 +161,27 @@
                                         <pre><code>{{check.admin_output}}</code></pre>
                                     </div>
                                 {% endif %}
+                                {% if check.get('latest_action') %}
+                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-latest-action'}}>
+                                        Toggle latest action
+                                    </button>
+                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-latest-action'}}>
+                                        <pre><code>{{check.latest_action}}</code></pre>
+                                    </div>
+                                {% endif %}
+                                {% if check.get('action') and is_admin %}
+                                    <form class="commonstyle" action={{"/api/view/" + env['environment'] + '/' + check['action'] + '/action'}} method="get">
+                                        {% if not check.get('allow_action') or running_checks != '0' or queued_checks != '0' %}
+                                            <button class="btn btn-danger btn-sm" type="submit" disabled>
+                                                {{' '.join(check['action'].split('_')).title()}}
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-danger btn-sm" type="submit">
+                                                {{' '.join(check['action'].split('_')).title()}}
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                {% endif %}
                             </div>
                             {% endif %}
                         </div>
@@ -174,7 +195,7 @@
                             {% for groups in groups_4 %}
                                 {% for group in groups %}
                                     <div class="col-sm-3">
-                                        <form action={{"/api/view/" + env['environment'] + '/' + group}} method="get">
+                                        <form action={{"/api/view/" + env['environment'] + '/' + group + '/check'}} method="get">
                                             <button class="btn center-block color-hover" type="submit">
                                                 <span>{{group}}</span>
                                             </button>

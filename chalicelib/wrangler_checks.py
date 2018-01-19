@@ -1,7 +1,12 @@
 from __future__ import print_function, unicode_literals
-from .utils import check_function, init_check_res
-from .wrangler_utils import *
-from dcicutils import ff_utils
+from .utils import (
+    check_function,
+    init_check_res,
+    action_function,
+    init_action_res
+)
+from .wrangler_utils import get_s3_utils_obj, get_FDN_connection
+from dcicutils import ff_utils, s3_utils
 import requests
 import sys
 import json
@@ -60,9 +65,9 @@ def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts', runnable=True)
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_check()
+    latest = counts_check.get_latest_result()
     # get_item_counts run closest to 24 hours ago
-    prior = counts_check.get_closest_check(24)
+    prior = counts_check.get_closest_result(24)
     if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no counts_check results to run this check with.'
@@ -97,7 +102,7 @@ def change_in_item_counts(connection, **kwargs):
 def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
     check = init_check_res(connection, 'items_created_in_the_past_day', uuid=kwargs.get('uuid'), runnable=True)
-    fdn_conn = get_FDN_Connection(connection)
+    fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
@@ -144,7 +149,7 @@ def files_associated_with_replicates(connection, **kwargs):
 
     check = init_check_res(connection, 'files_associated_with_replicates')
     check.status = 'IGNORE'
-    fdn_conn = get_FDN_Connection(connection)
+    fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
@@ -225,8 +230,8 @@ def replicate_file_reporting(connection, **kwargs):
     delta_hours = kwargs.get('delta_hours')
     check = init_check_res(connection, 'replicate_file_reporting')
     files_check = init_check_res(connection, 'files_associated_with_replicates')
-    latest_results = files_check.get_latest_check().get('full_output')
-    prior_results = files_check.get_closest_check(delta_hours).get('full_output')
+    latest_results = files_check.get_latest_result().get('full_output')
+    prior_results = files_check.get_closest_result(delta_hours).get('full_output')
     if not isinstance(latest_results, dict) or not isinstance(prior_results, dict):
         check.status = 'ERROR'
         check.description = 'Could not generate report due to missing output of files_associated_with_replicates check.'
@@ -252,24 +257,62 @@ def replicate_file_reporting(connection, **kwargs):
     return check.store_result()
 
 
-@check_function()
+@check_function(search_add_on='&limit=all')
 def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize', runnable=True)
-    fdn_conn = get_FDN_Connection(connection)
+    # must set this to be the function name of the action. also see ACTION_GROUPS in check_groups.py
+    check.action = "patch_file_size"
+    fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return check.store_result()
-    search_res = ff_utils.get_metadata('/search/?type=File&limit=all&status=released%20to%20project&status=released&status=uploaded', connection=fdn_conn, frame='object')
+    search_url = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded' + kwargs.get('search_add_on', '')
+    search_res = ff_utils.get_metadata(search_url, connection=fdn_conn, frame='object')
     problem_files = []
     hits = search_res.get('@graph', [])
     for hit in hits:
         if hit.get('file_size') is None:
-            problem_files.append(hit.get('accession'))
+            hit_dict = {
+                'accession': hit.get('accession'),
+                'uuid': hit.get('uuid'),
+                '@type': hit.get('@type'),
+                'upload_key': hit.get('upload_key')
+            }
+            problem_files.append(hit_dict)
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
         check.description = "One or more files that are released/released to project/uploaded don't have file_size."
+        check.allow_action = True # allows the action to be run
     else:
         check.status = 'PASS'
     return check.store_result()
+
+
+@action_function()
+def patch_file_size(connection, **kwargs):
+    action = init_action_res(connection, 'patch_file_size')
+    s3_obj = get_s3_utils_obj(connection)
+    fdn_conn = get_FDN_connection(connection)
+    action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
+    # get latest results from identify_files_without_filesize
+    filesize_check = init_check_res(connection, 'identify_files_without_filesize')
+    check_latest = filesize_check.get_latest_result() # what we want is in full_output
+    for hit in check_latest.get('full_output', []):
+        bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
+        head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
+        if not head_info:
+            action_logs['s3_file_not_found'].append(hit['accession'])
+        else:
+            patch_data = {'file_size': head_info['ContentLength']}
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], connection=fdn_conn)
+            except Exception as e:
+                acc_and_error = '\n'.join([hit['accession'], str(e)])
+                action_logs['patch_failure'].append(acc_and_error)
+            else:
+                action_logs['patch_success'].append(hit['accession'])
+    action.status = 'DONE'
+    action.output = action_logs
+    return action.store_result()
