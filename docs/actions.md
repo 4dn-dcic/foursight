@@ -93,7 +93,7 @@ It's critical that the value of `check.action` is *exactly* the same as the name
 The last thing we need to do to get this action working is to make an action group entry in the `ACTION_GROUPS` dictionary within check_groups.py. This is required because what actually happens when an action is run is all of the entries from the relevant action group are added to the check runner queue. The name of the action group entry **MUST** be exactly the same as the name of the action function (which is also what we set `check.action` equal to). Below is a possible entry to action group to go with our example. Note how the name of the action group--**add_random_nums**--is the same as the name of the action function and value of the `check.action` in the most recent version of our check function.
 
 ```
-'add_random_test_nums': [
+'add_random_nums': [
     ['test_checks/make_random_test_nums', {}, [], 'tag1'],
     ['test_checks/add_random_nums', {}, [], 'tag2']
 ],
@@ -104,7 +104,7 @@ Action groups allow you to bundle other checks (and possibly actions) together t
 Let's say we want to make the action use a key word argument (`offset = 5`) and also run after the `make_random_test_nums` check is run. In addition, we want to run `make_random_test_nums` again after the action is finished. We would then set up our action group like this:
 
 ```
-'add_random_test_nums': [
+'add_random_nums': [
     ['test_checks/make_random_test_nums', {}, [], 'tag1'],
     ['test_checks/add_random_nums', {'offset': 5}, ['tag1'], 'tag2'],
     ['test_checks/make_random_test_nums', {}, ['tag2'], 'tag3']
