@@ -315,6 +315,7 @@ class TestCheckRunner(unittest.TestCase):
         check_vals = check_utils.fetch_check_group('wrangler_test_checks')
         app_utils.send_sqs_messages(queue, self.environ, check_vals)
         app_utils.run_check_runner({'sqs_url': queue.url})
+        time.sleep(3)
         # this **should** work
         sqs_attrs = app_utils.get_sqs_attributes(queue.url)
         vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
@@ -325,12 +326,10 @@ class TestCheckRunner(unittest.TestCase):
             sqs_attrs = app_utils.get_sqs_attributes(queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            time.sleep(2)
+            time.sleep(3)
         # look at output
         post_res = check.get_latest_result()
-        prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
-        post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
-        self.assertTrue(post_uuid > prior_uuid)
+        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
@@ -341,6 +340,7 @@ class TestCheckRunner(unittest.TestCase):
         run_input = app_utils.queue_check_group(self.environ, 'all')
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
         # this **should** work
+        time.sleep(3)
         sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
         vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
         invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
@@ -350,7 +350,7 @@ class TestCheckRunner(unittest.TestCase):
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            time.sleep(2)
+            time.sleep(3)
         # queue should be empty. check results
         post_res = check_utils.get_check_group_latest(self.connection, 'all')
         # compare the runtimes to ensure checks have run
@@ -361,9 +361,7 @@ class TestCheckRunner(unittest.TestCase):
             res_compare[check_res['name']]['prior'] = check_res['uuid']
         for check_name in res_compare:
             self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
-            prior_uuid = datetime.datetime.strptime(res_compare[check_name]['prior'], "%Y-%m-%dT%H:%M:%S.%f")
-            post_uuid = datetime.datetime.strptime(res_compare[check_name]['post'], "%Y-%m-%dT%H:%M:%S.%f")
-            self.assertTrue(post_uuid > prior_uuid)
+            self.assertTrue(res_compare[check_name]['prior'] != res_compare[check_name]['post'])
 
     def test_queue_action_group(self):
         # get a reference point for action results
@@ -371,6 +369,7 @@ class TestCheckRunner(unittest.TestCase):
         prior_res = action.get_latest_result()
         run_input = app_utils.queue_check_group(self.environ, 'add_random_test_nums', use_action_group=True)
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
+        time.sleep(3)
         # this **should** work
         sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
         vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
@@ -381,13 +380,11 @@ class TestCheckRunner(unittest.TestCase):
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            time.sleep(2)
+            time.sleep(3)
         # queue should be empty. check results
         post_res = action.get_latest_result()
-        # compare the runtimes to ensure actions have run
-        prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
-        post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
-        self.assertTrue(post_uuid > prior_uuid)
+        # compare the uuids to ensure actions have run
+        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
     def test_get_sqs_attributes(self):
         # bad sqs url
