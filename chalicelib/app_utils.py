@@ -733,7 +733,7 @@ def run_check_runner(runner_input):
             check_kwargs['uuid'] = run_uuid
         # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
         run_result = run_check_or_action(connection, check_name, check_kwargs)
-        print('-RUN-> RESULT:  %s' % str(run_result))
+        print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
         recorded = record_run_info(run_uuid, dep_id, run_result.get('status'))
     else:
         recorded = False
