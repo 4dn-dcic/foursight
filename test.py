@@ -365,6 +365,30 @@ class TestCheckRunner(unittest.TestCase):
             post_uuid = datetime.datetime.strptime(res_compare[check_name]['post'], "%Y-%m-%dT%H:%M:%S.%f")
             self.assertTrue(post_uuid > prior_uuid)
 
+    def test_queue_action_group(self):
+        # get a reference point for action results
+        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        prior_res = action.get_latest_result()
+        run_input = app_utils.queue_check_group(self.environ, 'add_random_test_nums', use_action_group=True)
+        self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
+        # this **should** work
+        sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+        self.assertTrue(vis_messages > 0 or invis_messages > 0)
+        # wait for queue to empty
+        while vis_messages > 0 or invis_messages > 0:
+            sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            time.sleep(2)
+        # queue should be empty. check results
+        post_res = action.get_latest_result()
+        # compare the runtimes to ensure actions have run
+        prior_uuid = datetime.datetime.strptime(prior_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
+        post_uuid = datetime.datetime.strptime(post_res['uuid'], "%Y-%m-%dT%H:%M:%S.%f")
+        self.assertTrue(post_uuid > prior_uuid)
+
     def test_get_sqs_attributes(self):
         # bad sqs url
         bad_sqs_attrs = app_utils.get_sqs_attributes('not_a_queue')
