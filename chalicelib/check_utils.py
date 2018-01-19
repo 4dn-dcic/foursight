@@ -48,8 +48,10 @@ def get_check_strings(specific_check=None):
 
 def run_check_group(connection, name):
     """
-    This is a test function, deprecated in favor of app_utils.queue_check_group.
+    This is a test function, DEPRECATED in favor of app_utils.queue_check_group.
     The issue is that run_check_group will run checks synchronously in one lambda.
+
+    WILL NOT RUN ACTION GROUPS.
     """
     check_results = []
     check_group = fetch_check_group(name)
@@ -167,7 +169,7 @@ def run_check_or_action(connection, check_str, check_kwargs):
     elif check_method_deco(check_method, ACTION_DECO):
         return run_action(connection, check_name_str, check_method, check_kwargs)
     else:
-        return ' '.join(['ERROR. Ensure the correct function decorator is present.', error_str]), None, None
+        return ' '.join(['ERROR. Ensure the correct function decorator is present.', error_str])
     return 'PASS', check_name, check_method
 
 

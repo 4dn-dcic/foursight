@@ -38,7 +38,7 @@ class TestFSConnection(unittest.TestCase):
         test_check.ff_link = 'not_a_real_http_link'
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_result() is None)
-        self.assertTrue(test_check.get_closest_check(1) is None)
+        self.assertTrue(test_check.get_closest_result(1) is None)
         self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
         self.assertTrue(formatted_res.get('status') == 'IGNORE')
@@ -396,9 +396,9 @@ class TestCheckResult(unittest.TestCase):
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
         self.assertTrue(late_res == res)
-        close_res = check.get_closest_check(0, 0)
+        close_res = check.get_closest_result(0, 0)
         self.assertTrue(close_res == res)
-        all_res = check.get_all_checks()
+        all_res = check.get_all_results()
         self.assertTrue(len(all_res) > 0)
         # this should be true since all results will be identical
         self.assertTrue(all_res[-1].get('description') == res.get('description'))
@@ -449,6 +449,15 @@ class TestCheckUtils(unittest.TestCase):
         # non-existant check group
         bad_checks = check_utils.fetch_check_group('not_a_check_group')
         self.assertTrue(bad_checks is None)
+
+    def test_fetch_action_group(self):
+        patch_actions = check_utils.fetch_action_group('patch_file_size')
+        self.assertTrue(isinstance(patch_actions, list) and len(patch_actions) > 0)
+        test_actions = check_utils.fetch_action_group('add_random_test_nums')
+        self.assertTrue(isinstance(test_actions, list) and len(test_actions) > 0)
+        # non-existant action group
+        bad_actions = check_utils.fetch_action_group('not_an_action_group')
+        self.assertTrue(bad_actions is None)
 
     def test_run_check_group(self):
         """
@@ -575,6 +584,34 @@ class TestCheckGroup(unittest.TestCase):
                     self.assertTrue(isinstance(check_info[1], dict))
                     self.assertTrue(isinstance(check_info[2], list))
                     self.assertTrue(isinstance(check_info[3], app_utils.basestring))
+
+
+class TestActionGroups(unittest.TestCase):
+    def test_action_groups_content(self):
+        # verify all names of action groups are functions with the
+        # @action_function deco AND all checks/actions in the group are valid.
+        for action_group in check_groups.ACTION_GROUPS:
+            actions = []
+            self.assertTrue(isinstance(check_groups.ACTION_GROUPS[action_group], list))
+            for entry in check_groups.ACTION_GROUPS[action_group]:
+                entry_string = entry[0]
+                self.assertTrue(isinstance(entry_string, app_utils.basestring))
+                self.assertTrue(len(entry_string.split('/')) == 2)
+                [mod, name] = entry_string.split('/')
+                is_check = False
+                is_action = False
+                check_mod = check_utils.__dict__.get(mod)
+                self.assertTrue(check_mod is not None)
+                method = check_mod.__dict__.get(name)
+                self.assertTrue(method is not None)
+                if utils.check_method_deco(method, utils.CHECK_DECO):
+                    is_check = True
+                elif utils.check_method_deco(method, utils.ACTION_DECO):
+                    is_action = True
+                    actions.append(name)
+                self.assertTrue(is_check or is_action)
+            # ensure action_group name matches an action in the group
+            self.assertTrue(action_group in actions)
 
 
 class TestUtils(unittest.TestCase):
