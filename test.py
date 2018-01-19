@@ -606,7 +606,14 @@ class TestCheckGroup(unittest.TestCase):
                 self.assertTrue(len(check_info) == 4)
                 self.assertTrue(isinstance(check_info[0], app_utils.basestring))
                 self.assertTrue(len(check_info[0].split('/')) == 2)
-                used_check_mods.append(check_info[0].split('/')[0].strip())
+                # make sure each entry is a real check with decorator
+                [mod, name] = [st.strip() for st in check_info[0].split('/')]
+                check_mod = check_utils.__dict__.get(mod)
+                self.assertTrue(check_mod is not None)
+                method = check_mod.__dict__.get(name)
+                self.assertTrue(method is not None)
+                self.assertTrue(utils.check_method_deco(method, utils.CHECK_DECO))
+                used_check_mods.append(mod)
                 self.assertTrue(isinstance(check_info[1], dict))
                 self.assertTrue(isinstance(check_info[2], list))
                 used_dep_ids.extend(check_info[2])
@@ -651,7 +658,7 @@ class TestActionGroups(unittest.TestCase):
                 entry_string = entry[0]
                 self.assertTrue(isinstance(entry_string, app_utils.basestring))
                 self.assertTrue(len(entry_string.split('/')) == 2)
-                [mod, name] = entry_string.split('/')
+                [mod, name] = [st.strip() for st in entry_string.split('/')]
                 is_check = False
                 is_action = False
                 check_mod = check_utils.__dict__.get(mod)

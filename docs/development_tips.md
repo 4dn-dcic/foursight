@@ -23,12 +23,12 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 # run your check using the run_check_or_action utility
 # args are: FS connection object, string check name, dict of kwargs to run with
 # it could be useful to add a break point within your check function to see what's happening
->>> app.run_check_or_action(connection, 'items_created_in_the_past_day', {})
+>>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {})
 # some possible output:
 {'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day',
 'description': 'No items have been created in the past day.', 'status': 'PASS',
-'uuid': '2018-01-16T19:14:34.025445', 'extension': '.json', 'brief_output': None,
-'full_output': {}, 'admin_output': None, 'ff_link': None, 'runnable': True}
+'uuid': '2018-01-16T19:14:34.025445','brief_output': None,'full_output': {},
+'admin_output': None, 'ff_link': None, 'runnable': True}
 
 # you can also run with kwargs...
 >>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
@@ -36,18 +36,48 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 
 It's important to note that if your check ends with the `check.store_result()` function, then the result will always get written to S3. If this is not desirable during your testing, either insert a break point before that function or omit it until testing is finished.
 
-### Manual testing of your check group
-Let's say you want to run a whole check group and not an individual check. There are two ways to test this: `app.run_check_group`, which will run your checks synchronously. Alternatively, you can use `app.queue_check_group`, which causes your checks to run synchronously. The first function is useful for testing but is limited by its speed and may actually timeout if the checks take too long to run. The second function is actually who scheduled check groups are run, but it is difficult to track output. Below are examples of both from the Python interpreter with the example check group named `my_test_checks`.
+
+### Manual testing of your action
+Actions function very similarly to checks when run individually. In fact, testing them is completely the same; the only difference is the different output. Below is some code that would test an action called `patch_file_size` in the `wrangler_checks` module.
+
+**WARNING:** when manually running an action, be aware that it actually be executed on the given Foursight connection. For that reason, when in testing stages it is best to remove any impactful code within an action or insert a break point to have manual control.
 
 ```
 >>> import app
 # create a Foursight connection to the 'mastertest' environment
 >>> connection, _ = app.init_connection('mastertest')
-# the code below will return the results from the checks
->>> app.run_check_group(connection, 'my_test_checks')
+>>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {})
+# some possible output:
+{'name': 'patch_file_size','description': None, 'status': 'DONE',
+'uuid': '2018-01-16T19:14:34.025445', 'output': []}
 
+# you can also run with kwargs...
+>>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'some_arg': 'some_value'})
+```
+
+### Manual testing of your check group
+Let's say you want to run a whole check group and not an individual check. There are two ways to test this: `app.run_check_group`, which will run your checks synchronously. Alternatively, you can use `app.queue_check_group`, which causes your checks to run synchronously. The first function is useful for testing but is limited by its speed and may actually timeout if the checks take too long to run. The second function is actually who scheduled check groups are run, but it is difficult to track output. Below are examples of both from the Python interpreter with the example check group named `my_test_checks`.
+
+**NOTE:** `run_check_group` is deprecated and can still be used because it is useful testing check groups. However, it cannot be used to test action groups.
+
+```
+>>> import app
 # queue_check_group takes the environment name directly (not connection)
 >>> app.queue_check_group('mastertest', 'my_test_checks')
+# once checks have run, you can check the foursight UI or endpoints for the results
+
+# create a Foursight connection to the 'mastertest' environment
+>>> connection, _ = app.init_connection('mastertest')
+# the code below will return the results from the checks
+>>> app.run_check_group(connection, 'my_test_checks')
+```
+
+### Manual testing of your action group
+Just like testing individual action functions is very similar to testing individual checks, testing action groups is almost the same as testing check groups. The only difference is you need to pass `use_action_group=True` into the `queue_check_group` function. Below is an example using the `patch_file_size` action group. **You cannot use run_check_group with action groups.**
+
+```
+>>> import app
+>>> app.queue_check_group('mastertest', 'patch_file_size', use_action_group=True)
 # once checks have run, you can check the foursight UI or endpoints for the results
 ```
 

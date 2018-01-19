@@ -30,13 +30,14 @@ Here is a list of attributes that you will routinely use, with brief description
 * **full_output**: same as brief_output, but is intended to hold the entirety of the check data.
 * **admin_output**: same as brief_output, but is only visible to admins to view on the UI. Use for sensitive data.
 * **ff_link**: a link to (presumably) Fourfront that will be displayed in the UI if provided. Should be relevant to the check.
+* **action**: name of a Foursight action function that is linked to this check. See the [action docs](./actions.md) for more information.
+* **allow_action**: boolean value of whether or not the linked action can be run. Defaults to False. See the [action docs](./actions.md) for more information.
 
 Lastly, there are a number of attributes that are used internally. These do not usually need to be manually set, but can be.
 * **s3_connection**: is set automatically when you use `init_check_res`.
 * **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
 * **title**: generated automatically from the name attribute unless it is set manually.
 * **uuid**: this is explained further later in this document. The only reason to use this is if you want a check to be automatically populated by a previous result. Usually handled by passing in the `uuid` parameter to `init_check_res`.
-* **extension**: the extension and format of the s3 object storing the check result. Is automatically set to `.json` and should not be changed.
 
 ## Our example check
 Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
