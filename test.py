@@ -359,7 +359,7 @@ class TestCheckRunner(unittest.TestCase):
             res_compare[check_res['name']] = {'post': check_res['uuid']}
         for check_res in prior_res:
             res_compare[check_res['name']]['prior'] = check_res['uuid']
-        print('Runner results:\n', str(res_compare))
+        print('Runner check results:\n', str(res_compare))
         for check_name in res_compare:
             self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
             self.assertTrue(res_compare[check_name]['prior'] != res_compare[check_name]['post'])
@@ -384,6 +384,8 @@ class TestCheckRunner(unittest.TestCase):
             time.sleep(3)
         # queue should be empty. check results
         post_res = action.get_latest_result()
+        print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid']}
+        print('Runner action results:\n', str(res_compare))
         # compare the uuids to ensure actions have run
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
