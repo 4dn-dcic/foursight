@@ -385,7 +385,7 @@ class TestCheckRunner(unittest.TestCase):
         # queue should be empty. check results
         post_res = action.get_latest_result()
         print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid']}
-        print('Runner action results:\n', str(res_compare))
+        print('Runner action results:\n', str(print_dict))
         # compare the uuids to ensure actions have run
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
