@@ -509,11 +509,19 @@ class TestCheckUtils(unittest.TestCase):
         assert(len(test_res) == 0)
 
     def test_run_check_or_action(self):
-        test_info = ['system_checks/indexing_records', {}, []]
+        # with a check
+        test_info = ['test_checks/test_random_nums', {}, [], 'xxx']
         check_res = check_utils.run_check_or_action(self.conn, test_info[0], test_info[1])
         self.assertTrue(isinstance(check_res, dict))
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
+        # with an action
+        test_info_2 = ['test_checks/add_random_test_nums', {}, [] ,'xxx']
+        action_res = check_utils.run_check_or_action(self.conn, test_info_2[0], test_info_2[1])
+        self.assertTrue(isinstance(action_res, dict))
+        self.assertTrue('name' in action_res)
+        self.assertTrue('status' in action_res)
+        self.assertTrue('output' in action_res)
 
     def test_run_check_errors(self):
         bad_check_group = [
@@ -534,6 +542,13 @@ class TestCheckUtils(unittest.TestCase):
         # this output is a list
         self.assertTrue('by zero' in ''.join(check_res['full_output']))
         self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
+
+    def test_run_action_exception(self):
+        action_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_action_error', {})
+        self.assertTrue(action_res['status'] == 'FAIL')
+        # this output is a list
+        self.assertTrue('by zero' in ''.join(action_res['output']))
+        self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
 
 class TestCheckGroup(unittest.TestCase):
     def test_check_groups(self):
@@ -615,6 +630,9 @@ class TestActionGroups(unittest.TestCase):
 
 
 class TestUtils(unittest.TestCase):
+    environ = 'mastertest' # hopefully this is up
+    conn, _ = app_utils.init_connection(environ)
+
     @utils.check_function(abc=123)
     def test_function_dummy(*args, **kwargs):
         return kwargs
@@ -635,6 +653,17 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(dummy_res['status'] == 'IGNORE')
         self.assertTrue(dummy_res['name']) == dummy_check
         self.assertTrue('uuid' in dummy_res)
+
+    def test_init_check_res(self):
+        check = utils.init_check_res(self.conn, 'test_check', runnable=True)
+        self.assertTrue(check.name == 'test_check')
+        self.assertTrue(check.s3_connection is not None)
+        self.assertTrue(check.runnable == True)
+
+    def test_init_action_res(self):
+        action = utils.init_action_res(self.conn, 'test_action')
+        self.assertTrue(action.name == 'test_action')
+        self.assertTrue(action.s3_connection is not None)
 
 
 class TestWranglerUtils(unittest.TestCase):

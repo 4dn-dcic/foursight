@@ -24,6 +24,12 @@ def test_check_error(connection, **kwargs):
     return bad_op
 
 
+@action_function()
+def test_action_error(connection, **kwargs):
+    bad_op = 10 * 1/0
+    return bad_op
+
+
 # silly check that stores random numbers in a list
 @check_function()
 def test_random_nums(connection, **kwargs):
@@ -39,13 +45,13 @@ def test_random_nums(connection, **kwargs):
     return check.store_result()
 
 
-@check_function(offset=0)
+@action_function(offset=0)
 def add_random_test_nums(connection, **kwargs):
     action = init_action_res(connection, 'add_random_test_nums')
     check = init_check_res(connection, 'test_random_nums')
     check_latest = check.get_latest_result()
     nums = check_latest.get('full_output', [])
-    total = sum(nums) + kwargs.get(offset, 0)
+    total = sum(nums) + kwargs.get('offset', 0)
     action.output = total
     action.status = 'DONE'
     action.description = 'A test action'

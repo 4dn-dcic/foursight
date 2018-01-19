@@ -201,7 +201,7 @@ def run_action(connection, act_name, act_method, act_kwargs):
     except Exception as e:
         err_action = init_action_res(connection, act_name)
         err_action.status = 'FAIL'
-        err_action.description = 'Action failed to run. See full output.'
+        err_action.description = 'Action failed to run. See output.'
         err_action.output = traceback.format_exc().split('\n')
         act_result = err_action.store_result()
     return act_result
