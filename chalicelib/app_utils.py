@@ -271,8 +271,6 @@ def view_foursight(environ, is_admin=False, domain=""):
                 ts_local = ts_utc.astimezone(to_zone)
                 proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
                 res['uuid'] = proc_ts
-                check_attrs = ('description', 'brief_output', 'full_output', 'ff_link', 'action')
-                res['content'] = False if all (res.get(attr) is None for attr in check_attrs) else True
                 if res.get('brief_output'):
                     res['brief_output'] = trim_output(res['brief_output'])
                 if res.get('full_output'):
@@ -294,6 +292,9 @@ def view_foursight(environ, is_admin=False, domain=""):
                             res['latest_action'] = 'Not yet run.'
                     else:
                         del res['action']
+                # decide whether or not to allow the check entry to be expanded
+                check_attrs = ('description', 'brief_output', 'full_output', 'admin_output', 'ff_link', 'latest_action')
+                res['content'] = False if all (res.get(attr) is None for attr in check_attrs) else True
                 processed_results.append(res)
             total_envs.append({
                 'status': 'success',
