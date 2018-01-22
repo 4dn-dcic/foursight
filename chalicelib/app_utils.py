@@ -429,6 +429,8 @@ def run_put_check(environ, check, put_data):
                 setattr(putCheck, field, prev_content)
             else:
                 setattr(putCheck, field, put_content)
+    # set 'primary' kwarg so that the result is stored as 'latest'
+    putCheck.kwargs = {'primary': True}
     stored = putCheck.store_result()
     response.body = {
         'status': 'success',

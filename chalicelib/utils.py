@@ -31,17 +31,6 @@ def init_action_res(connection, name):
     """
     return ActionResult(connection.s3_connection, name)
 
-def build_dummy_result(check_name):
-    """
-    Simple function to return a dict consistent with a CheckResult dictionary
-    content but is not actually stored.
-    """
-    return {
-        'status': 'IGNORE',
-        'name': check_name,
-        'uuid': datetime.datetime.utcnow().isoformat()
-    }
-
 
 def get_methods_by_deco(cls, decorator):
     """

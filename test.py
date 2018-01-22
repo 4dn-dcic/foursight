@@ -438,6 +438,7 @@ class TestCheckResult(unittest.TestCase):
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
         check.full_output = ['first_item']
+        check.kwargs = {'primary': True}
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
@@ -699,13 +700,6 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234})
         kwargs_override = self.test_function_dummy(abc=234)
         self.assertTrue(kwargs_override == {'abc': 234})
-
-    def test_build_dummy_result(self):
-        dummy_check = 'dumb_test'
-        dummy_res = utils.build_dummy_result(dummy_check)
-        self.assertTrue(dummy_res['status'] == 'IGNORE')
-        self.assertTrue(dummy_res['name']) == dummy_check
-        self.assertTrue('uuid' in dummy_res)
 
     def test_init_check_res(self):
         check = utils.init_check_res(self.conn, 'test_check', runnable=True)

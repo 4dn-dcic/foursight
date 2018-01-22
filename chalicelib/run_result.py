@@ -200,6 +200,9 @@ class ActionResult(RunResult):
 
 
     def store_result(self):
+        # bail if do_not_store is True within kwargs
+        if self.kwargs.get('do_not_store', False) == True:
+            return {}
         # normalize status, probably not the optimal place to do this
         if self.status.upper() not in ['DONE', 'FAIL', 'PEND']:
             self.status = 'FAIL'

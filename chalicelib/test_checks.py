@@ -3,8 +3,7 @@ from .utils import (
     check_function,
     init_check_res,
     action_function,
-    init_action_res,
-    build_dummy_result
+    init_action_res
 )
 import requests
 import sys
@@ -42,7 +41,7 @@ def test_random_nums(connection, **kwargs):
         output.append(random.randint(1,100))
     check.full_output = output
     check.description = 'A test check'
-    return check.store_result()
+    return check
 
 
 @action_function(offset=0)
@@ -55,4 +54,4 @@ def add_random_test_nums(connection, **kwargs):
     action.output = total
     action.status = 'DONE'
     action.description = 'A test action'
-    return action.store_result()
+    return action
