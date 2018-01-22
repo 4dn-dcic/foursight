@@ -15,23 +15,23 @@ CHECK_MODULES = [
 
 CHECK_GROUPS = {
     'daily_checks': [
-        ['wrangler_checks/items_created_in_the_past_day', {}, [], 'd1'],
-        ['wrangler_checks/files_associated_with_replicates', {}, [],'d2'],
-        ['wrangler_checks/replicate_file_reporting', {}, [], 'd3']
+        ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'd1'],
+        ['wrangler_checks/files_associated_with_replicates', {'primary': True}, [],'d2'],
+        ['wrangler_checks/replicate_file_reporting', {'primary': True}, [], 'd3']
     ],
     'six_hour_checks': [
-        ['system_checks/elastic_beanstalk_health', {}, [], 's1'],
-        ['system_checks/status_of_elasticsearch_indices', {}, [], 's2'],
-        ['system_checks/indexing_records', {}, [], 's3'],
-        ['wrangler_checks/item_counts_by_type', {}, [], 's4'],
-        ['wrangler_checks/change_in_item_counts', {}, [], 's5'],
-        ['system_checks/indexing_progress', {}, [], 's6']
+        ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 's1'],
+        ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 's2'],
+        ['system_checks/indexing_records', {'primary': True}, [], 's3'],
+        ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 's4'],
+        ['wrangler_checks/change_in_item_counts', {'primary': True}, [], 's5'],
+        ['system_checks/indexing_progress', {'primary': True}, [], 's6']
     ],
     'two_hour_checks': [
-        ['wrangler_checks/identify_files_without_filesize', {}, [], 't1'],
-        ['wrangler_checks/item_counts_by_type', {}, [], 't2'],
-        ['system_checks/indexing_progress', {}, [], 't3'],
-        ['system_checks/staging_deployment', {}, [], 't4']
+        ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 't1'],
+        ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 't2'],
+        ['system_checks/indexing_progress', {'primary': True}, [], 't3'],
+        ['system_checks/staging_deployment', {'primary': True}, [], 't4']
     ]
 }
 
@@ -65,11 +65,11 @@ TEST_CHECK_GROUPS = {
 
 TEST_ACTION_GROUPS = {
     'add_random_test_nums': [
-        ['test_checks/add_random_test_nums', {}, ['tag1'], 'tag2'],
-        ['test_checks/test_random_nums', {}, [], 'tag1'],
-        ['test_checks/test_random_nums', {}, ['tag1']] # purposefully malformed
+        ['test_checks/add_random_test_nums', {'primary': True}, ['tag1'], 'tag2'],
+        ['test_checks/test_random_nums', {'primary': True}, [], 'tag1'],
+        ['test_checks/test_random_nums', {'primary': True}, ['tag1']] # purposefully malformed
     ],
     'add_random_test_nums_solo': [
-        ['test_checks/add_random_test_nums', {}, [], 'tzg1']
+        ['test_checks/add_random_test_nums', {'primary': True}, [], 'tzg1']
     ]
 }

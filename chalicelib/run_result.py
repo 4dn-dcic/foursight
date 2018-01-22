@@ -12,6 +12,7 @@ class RunResult(object):
         self.s3_connection = s3_connection
         self.name = name
         self.extension = ".json"
+        self.kwargs = {}
 
 
     def get_latest_result(self):
@@ -71,13 +72,20 @@ class RunResult(object):
         return all_results
 
 
-    def store_formatted_result(self, uuid, formatted):
+    def store_formatted_result(self, uuid, formatted, is_primary=False):
+        """
+        Store the result in s3. Always makes an entry with key equal to the
+        uuid timestamp. If is_primary, will also save result the the 'latest'
+        key.
+        """
         time_key = ''.join([self.name, '/', uuid, self.extension])
         latest_key = ''.join([self.name, '/latest', self.extension])
         s3_formatted = json.dumps(formatted)
+        # store the timestamped result
         self.s3_connection.put_object(time_key, s3_formatted)
-        # put result as 'latest'
-        self.s3_connection.put_object(latest_key, s3_formatted)
+        # put result as 'latest' key is this is primary
+        if is_primary:
+            self.s3_connection.put_object(latest_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
 
@@ -150,7 +158,8 @@ class CheckResult(RunResult):
             'ff_link': self.ff_link,
             'action': self.action,
             'allow_action': self.allow_action,
-            'runnable': self.runnable
+            'runnable': self.runnable,
+            'kwargs': self.kwargs
         }
 
 
@@ -161,8 +170,8 @@ class CheckResult(RunResult):
             self.description = 'Malformed status; look at Foursight check definition.'
         # if there's a set uuid field, use that instead of curr utc time
         uuid = self.uuid if self.uuid else datetime.datetime.utcnow().isoformat()
-        formatted = self.format_result(uuid)
-        return self.store_formatted_result(uuid, formatted)
+        is_primary = self.kwargs.get('primary', False) == True
+        return self.store_formatted_result(uuid, formatted, primary=is_primary)
 
 
 
@@ -185,7 +194,8 @@ class ActionResult(RunResult):
             'description': self.description,
             'status': self.status.upper(),
             'uuid': uuid,
-            'output': self.output
+            'output': self.output,
+            'kwargs': self.kwargs
         }
 
 
@@ -196,7 +206,8 @@ class ActionResult(RunResult):
             self.description = 'Malformed status; look at Foursight action definition.'
         uuid = datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(uuid)
-        return self.store_formatted_result(uuid, formatted)
+        is_primary = self.kwargs.get('primary', False) == True
+        return self.store_formatted_result(uuid, formatted, primary=is_primary)
 
 
 
