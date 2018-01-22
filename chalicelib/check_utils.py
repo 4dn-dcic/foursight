@@ -46,35 +46,6 @@ def get_check_strings(specific_check=None):
         return list(set(all_checks))
 
 
-def run_check_group(connection, name):
-    """
-    This is a test function, DEPRECATED in favor of app_utils.queue_check_group.
-    The issue is that run_check_group will run checks synchronously in one lambda.
-
-    WILL NOT RUN ACTION GROUPS.
-    """
-    check_results = []
-    check_group = fetch_check_group(name)
-    if not check_group:
-        return check_results
-    group_timestamp = datetime.datetime.utcnow().isoformat()
-    for check_info in check_group:
-        if len(check_info) != 4:
-            check_results.append(' '.join(['ERROR with', str(check_info), 'in group:', name]))
-        else:
-            # add uuid to each kwargs dict if not already specified
-            # this will have the effect of giving all checks the same id
-            # and combining results from repeats in the same check_group
-            [check_str, check_kwargs, check_deps, dep_id] = check_info
-            if 'uuid' not in check_kwargs:
-                check_kwargs['uuid'] = group_timestamp
-            # nothing done with dependencies yet
-            result = run_check_or_action(connection, check_str, check_kwargs)
-            if result:
-                check_results.append(result)
-    return check_results
-
-
 def get_check_group_latest(connection, name):
     """
     Initialize check results for each check in a group and get latest results,

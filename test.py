@@ -89,20 +89,20 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue('Currently logged in as admin.' in res.body)
 
     def test_run_foursight_checks(self):
-        res = app_utils.run_foursight_checks(self.environ, 'all_checks')
+        res = app_utils.run_foursight_checks(self.environ, 'daily_checks')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'all_checks')
+        self.assertTrue(res.body['check_group'] == 'daily_checks')
 
     def test_get_foursight_checks(self):
-        res = app_utils.get_foursight_checks(self.environ, 'all_checks')
+        res = app_utils.get_foursight_checks(self.environ, 'daily_checks')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'all_checks')
+        self.assertTrue(res.body['check_group'] == 'daily_checks')
         self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_environment(self):
@@ -505,42 +505,6 @@ class TestCheckUtils(unittest.TestCase):
         bad_actions = check_utils.fetch_action_group('not_an_action_group')
         self.assertTrue(bad_actions is None)
 
-    def test_run_check_group(self):
-        """
-        This test will need to be removed/changed as more checks are made
-        """
-        all_checks_res = check_utils.run_check_group(self.conn, 'valid_test_checks')
-        self.assertTrue(isinstance(all_checks_res, list) and len(all_checks_res) > 0)
-        for check_res in all_checks_res:
-            self.assertTrue(isinstance(check_res, dict))
-            self.assertTrue('name' in check_res)
-            self.assertTrue('status' in check_res)
-            self.assertTrue('uuid' in check_res)
-            # assert the check actually ran
-            self.assertTrue(check_res.get('description') != 'Check failed to run. See full output.')
-        # non-existant check group
-        bad_checks_res = check_utils.run_check_group(self.conn, 'not_a_check_group')
-        assert(bad_checks_res == [])
-        # use a bad check groups
-        test_checks_res = check_utils.run_check_group(self.conn, 'malformed_test_checks')
-        assert("ERROR with [{}, []] in group: malformed_test_checks" in test_checks_res)
-        assert("ERROR with ['system_checks/indexing_progress', []] in group: malformed_test_checks" in test_checks_res)
-        assert("ERROR with ['system_checks/indexing_progress', {}] in group: malformed_test_checks" in test_checks_res)
-
-    def run_check_group_repeats(self):
-        repeat_res = check_utils.run_check_group(self.conn, 'wrangler_test_checks')
-        unified_uuid = None
-        for check_res in repeat_res:
-            self.assertTrue(isinstance(check_res, dict))
-            self.assertTrue('name' in check_res)
-            self.assertTrue('status' in check_res)
-            self.assertTrue('uuid' in check_res)
-            if unified_uuid:
-                self.assertTrue(check_res['uuid'] == unified_uuid)
-            else:
-                # gotta set it on the first iteration
-                unified_uuid = check_res['uuid']
-
     def test_get_check_group_latest(self):
         all_res = check_utils.get_check_group_latest(self.conn, 'all_checks')
         for check_res in all_res:
@@ -658,9 +622,9 @@ class TestCheckGroup(unittest.TestCase):
         for mod in used_check_mods:
             self.assertTrue(mod in check_groups.CHECK_MODULES)
 
-        # this is a bit janky
+        # for TEST_CHECK_GROUPS
         for key, val in check_groups.TEST_CHECK_GROUPS.items():
-            self.assertTrue('_test_checks' in key)
+            self.assertTrue('_checks' in key)
             self.assertTrue(isinstance(val, list))
             for check_info in val:
                 if 'malformed' in key:
@@ -699,6 +663,16 @@ class TestActionGroups(unittest.TestCase):
                 self.assertTrue(is_check or is_action)
             # ensure action_group name matches an action in the group
             self.assertTrue(action_group in actions)
+
+        # for TEST_ACTION_GROUPS
+        for key, val in check_groups.TEST_ACTION_GROUPS.items():
+            self.assertTrue(isinstance(val, list))
+            for check_info in val:
+                self.assertTrue(len(check_info) == 4)
+                self.assertTrue(isinstance(check_info[0], app_utils.basestring))
+                self.assertTrue(isinstance(check_info[1], dict))
+                self.assertTrue(isinstance(check_info[2], list))
+                self.assertTrue(isinstance(check_info[3], app_utils.basestring))
 
 
 class TestUtils(unittest.TestCase):

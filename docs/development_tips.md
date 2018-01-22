@@ -63,26 +63,19 @@ Actions function very similarly to checks when run individually. In fact, testin
 ```
 
 ### Manual testing of your check group
-Let's say you want to run a whole check group and not an individual check. There are two ways to test this: `app.run_check_group`, which will run your checks synchronously. Alternatively, you can use `app.queue_check_group`, which causes your checks to run synchronously. The first function is useful for testing but is limited by its speed and may actually timeout if the checks take too long to run. The second function is actually who scheduled check groups are run, but it is difficult to track output. Below are examples of both from the Python interpreter with the example check group named `my_test_checks`.
+Let's say you want to run a whole check group and not an individual check. To test this, you can use `app.queue_check_group`, which causes your checks to run synchronously. This function is the one that is internally used to schedule check groups for, but it is difficult to track output. For that reason, it may be easier to test with `run_check_or_action` as described above. Below are examples from the Python interpreter with the example check group named `my_test_checks`.
 
 **NOTE:** if a check group has kwargs including `primary = True`, then the result will be written live to the Foursight UI. Omitting this argument when testing your check group may be desirable.
-
-**NOTE:** `run_check_group` is deprecated and can still be used because it is useful testing check groups. However, it cannot be used to test action groups.
 
 ```
 >>> import app
 # queue_check_group takes the environment name directly (not connection)
+# runs async; to see the results, see the Foursight UI, S3, or use Foursight API
 >>> app.queue_check_group('mastertest', 'my_test_checks')
-# once checks have run, you can check the foursight UI or endpoints for the results
-
-# create a Foursight connection to the 'mastertest' environment
->>> connection, _ = app.init_connection('mastertest')
-# the code below will return the results from the checks
->>> app.run_check_group(connection, 'my_test_checks')
 ```
 
 ### Manual testing of your action group
-Just like testing individual action functions is very similar to testing individual checks, testing action groups is almost the same as testing check groups. The only difference is you need to pass `use_action_group=True` into the `queue_check_group` function. Below is an example using the `patch_file_size` action group. **You cannot use run_check_group with action groups.**
+Just like testing individual action functions is very similar to testing individual checks, testing action groups is almost the same as testing check groups. The only difference is you need to pass `use_action_group=True` into the `queue_check_group` function. Below is an example using the `patch_file_size` action group.
 
 ```
 >>> import app
