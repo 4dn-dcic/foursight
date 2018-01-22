@@ -454,6 +454,29 @@ class TestCheckResult(unittest.TestCase):
         self.assertTrue(res == check_copy.store_result())
 
 
+class TestActionResult(unittest.TestCase):
+    act_name = 'test_only_check'
+    environ = 'mastertest' # hopefully this is up
+    connection, _ = app_utils.init_connection(environ)
+
+    def test_action_result_methods(self):
+        action = run_result.ActionResult(self.connection.s3_connection, self.act_name)
+        res = action.store_result()
+        self.assertTrue(res.get('status') == 'PEND')
+        self.assertTrue(res.get('output') is None)
+        self.assertTrue(res.get('kwargs') == {})
+        action.kwargs = {'do_not_store': True}
+        res = action.store_result()
+        self.assertTrue(res == {})
+        # bad status
+        action.kwargs = {'abc': 123}
+        action.status = 'NOT_VALID'
+        res = action.store_result()
+        self.assertTrue(res.get('status') == 'FAIL')
+        self.assertTrue(res.get('description') == 'Malformed status; look at Foursight action definition.')
+        self.assertTrue(res.get('kwargs') == {'abc': 123})
+
+
 class TestCheckUtils(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
@@ -701,6 +724,28 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(str(test_exc) == 'Check or action function seems to be malformed.')
         test_exc = utils.BadCheckOrAction('Abcd')
         self.assertTrue(str(test_exc) == 'Abcd')
+
+    def test_store_result_wrapper(self):
+        check = utils.init_check_res(self.conn, 'test_check')
+        action = utils.init_action_res(self.conn, 'test_action')
+        kwargs = {'abc': 123}
+        # working calls
+        check_res = utils.store_result_wrapper(check, kwargs, is_check=True)
+        self.assertTrue(check_res.get('kwargs') == {'abc': 123})
+        self.assertTrue(check.kwargs == {'abc': 123})
+        action_res = utils.store_result_wrapper(action, kwargs, is_action=True)
+        self.assertTrue(action_res.get('kwargs') == {'abc': 123})
+        # bad calls
+        with self.assertRaises(utils.BadCheckOrAction) as exc:
+            utils.store_result_wrapper(action, kwargs, is_check=True)
+        self.assertTrue(str(exc.exception) == 'Check function must return a CheckResult object. Initialize one with init_check_res.')
+        with self.assertRaises(utils.BadCheckOrAction) as exc:
+            utils.store_result_wrapper(check, kwargs, is_action=True)
+        self.assertTrue(str(exc.exception) == 'Action functions must return a ActionResult object. Initialize one with init_action_res.')
+        check.store_result = 'Not a fxn'
+        with self.assertRaises(utils.BadCheckOrAction) as exc:
+            utils.store_result_wrapper(check, kwargs, is_check=True)
+        self.assertTrue(str(exc.exception) == 'Do not overwrite the store_result method of the check or action result.')
 
 
 class TestWranglerUtils(unittest.TestCase):
