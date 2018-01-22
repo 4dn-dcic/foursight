@@ -664,16 +664,6 @@ class TestActionGroups(unittest.TestCase):
             # ensure action_group name matches an action in the group
             self.assertTrue(action_group in actions)
 
-        # for TEST_ACTION_GROUPS
-        for key, val in check_groups.TEST_ACTION_GROUPS.items():
-            self.assertTrue(isinstance(val, list))
-            for check_info in val:
-                self.assertTrue(len(check_info) == 4)
-                self.assertTrue(isinstance(check_info[0], app_utils.basestring))
-                self.assertTrue(isinstance(check_info[1], dict))
-                self.assertTrue(isinstance(check_info[2], list))
-                self.assertTrue(isinstance(check_info[3], app_utils.basestring))
-
 
 class TestUtils(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
