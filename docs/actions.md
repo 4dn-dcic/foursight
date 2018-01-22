@@ -6,7 +6,8 @@ Actions are executable functions that can be linked to checks. These are useful 
 
 There are a few key requirements to keep in mind when writing an action:
 * Action functions must always start with the `@action_function()` decorator.
-* Action results should be initiated with `init_action_res`, which works just like `init_check_res`.
+* Action results should be initialized with `init_action_res`, which works just like `init_check_res`.
+* Action functions should return the action results (initialized with `init_action_res`).
 * The name of the action function must exactly match the name passed to `init_action_res`.
 * The name of the action function must exactly match the value of `check.action` to link a check to an action. Only one action can be linked to a check.
 * To allow an action to be executed, use `check.allow_action = True`.
@@ -19,6 +20,7 @@ Action results work much like check results, but have a smaller number of attrib
 * **output**: Any value containing results relevant to the execution of the action.
 
 Like check results, there are also a number of fields that are used internally:
+* **kwargs**: the key word arguments used to set the check. Should be set automatically.
 * **s3_connection**: is set automatically when you use `init_action_res`.
 * **name**: the string name of the action that should be exactly equal to the name of the function you want to execute.
 * **uuid**: timestamp of the action.
@@ -40,11 +42,11 @@ def make_random_test_nums(connection, **kwargs):
         output.append(random.randint(1,100))
     check.full_output = output
     check.description = 'A test check'
-    return check.store_result()
+    return check
 ```
 
 ### Writing the action
-Let's write an action that adds up all the numbers in the list within `full_output` for the most recent result of the check we just wrote. It will be decorated with the `@action_function()` decorator and will be within one of our defined check module files. Note that actions can take key word arguments (kwargs) just like checks; our example below will demonstrate this with the `offset` value. Actions also use the `store_result` method, just like checks.
+Let's write an action that adds up all the numbers in the list within `full_output` for the most recent result of the check we just wrote. It will be decorated with the `@action_function()` decorator and will be within one of our defined check module files. Note that actions can take key word arguments (kwargs) just like checks; our example below will demonstrate this with the `offset` value. Actions should return the action result object, just like checks return the check result.
 
 ```
 @action_function(offset=0)
@@ -59,11 +61,11 @@ def add_random_nums(connection, **kwargs):
     # add up the numbers from the check and add the kwarg 'offset' value
     total = sum(nums) + kwargs.get('offset', 0)
 
-    # set fields on the action result and save it with store_result()
+    # set fields on the action result and return it
     action.output = total
     action.status = 'DONE'
     action.description = 'A test action'
-    return action.store_result()
+    return action
 ```
 
 ### Linking the action to the check
@@ -84,7 +86,7 @@ def make_random_test_nums(connection, **kwargs):
 
     check.full_output = output
     check.description = 'A test check'
-    return check.store_result()
+    return check
 ```
 
 It's critical that the value of `check.action` is *exactly* the same as the name of the action function. Setting `check.allow_action` to True allows the action to be run from the Foursight UI; if it's value is not set to True (default False), the action will be viewable from the UI but will not be able to be executed. This allows fine control of situations that the action can actually be run. For example, one possible scenario is that we only want to allow the action to be run if the status of its linked check is `FAIL` or `WARN`.
@@ -112,6 +114,8 @@ Let's say we want to make the action use a key word argument (`offset = 5`) and 
 ```
 
 Using techniques like the one above, you can make arbitrarily complicated combinations of actions and checks. One important use case is having a check run again after an action completes if the action would change the output of the check. This is especially important if a user might trigger the action another time based on the output of the check itself. A concrete example is a check that identifies all items in your system missing a certain field and an action that uses those check results to patch that field for all items. You would want to re-run the check after executing the action so that the UI displays the most up-to-date results for the check and so that nobody would accidentally run the action again after it had already been run.
+
+**Note:** You don't need to set `primary = True` as a key word argument for actions. The most recent action run will always be the one displayed on the UI (see the next section).
 
 ### Viewing action results
 The results of run actions can be seen using the `Toggle latest action` button in the linked check on the Foursight UI. This box will always show the most recent run of the linked action in JSON form.

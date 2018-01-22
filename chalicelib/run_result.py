@@ -120,7 +120,8 @@ class CheckResult(RunResult):
                 except ValueError:
                     parsed_res = stamp_res
                 for key, val in parsed_res.items():
-                    setattr(self, key, val)
+                    if key not in ['kwargs']: # dont copy kwargs
+                        setattr(self, key, val)
                 super().__init__(s3_connection, name)
                 return
             else:
@@ -213,8 +214,9 @@ class ActionResult(RunResult):
             self.description = 'Malformed status; look at Foursight action definition.'
         uuid = datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(uuid)
-        is_primary = self.kwargs.get('primary', False) == True
-        return self.store_formatted_result(uuid, formatted, primary=is_primary)
+        # action results are always stored as 'primary' and can be fetched
+        # with the get_latest_result method.
+        return self.store_formatted_result(uuid, formatted, primary=True)
 
 
 

@@ -732,7 +732,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(action.name == 'test_action')
         self.assertTrue(action.s3_connection is not None)
 
-    def BadCheckOrAction(self):
+    def test_BadCheckOrAction(self):
         test_exc = utils.BadCheckOrAction()
         self.assertTrue(str(test_exc) == 'Check or action function seems to be malformed.')
         test_exc = utils.BadCheckOrAction('Abcd')
