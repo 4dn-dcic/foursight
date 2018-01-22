@@ -110,14 +110,14 @@ def store_result_wrapper(result, kwargs, is_check=False, is_action=False):
     if not callable(store_method):
         error_message = 'Do not overwrite the store_result method of the check or action result.'
     if error_message:
-        raise BadCheckOrAcion(error_message)
+        raise BadCheckOrAction(error_message)
     else:
         # set the kwargs parameter
         result.kwargs = kwargs
         return result.store_result()
 
 
-class BadCheckOrAcion(Exception):
+class BadCheckOrAction(Exception):
     """
     Generic exception for a badly written check or library.
     __init__ takes some string error message

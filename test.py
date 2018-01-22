@@ -89,20 +89,20 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue('Currently logged in as admin.' in res.body)
 
     def test_run_foursight_checks(self):
-        res = app_utils.run_foursight_checks(self.environ, 'all')
+        res = app_utils.run_foursight_checks(self.environ, 'all_checks')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'all')
+        self.assertTrue(res.body['check_group'] == 'all_checks')
 
     def test_get_foursight_checks(self):
-        res = app_utils.get_foursight_checks(self.environ, 'all')
+        res = app_utils.get_foursight_checks(self.environ, 'all_checks')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'all')
+        self.assertTrue(res.body['check_group'] == 'all_checks')
         self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_environment(self):
@@ -306,17 +306,17 @@ class TestCheckRunner(unittest.TestCase):
     def test_run_check_runner(self):
         """
         Hard to test all the internal fxns here...
-        Run with wrangler_test_checks check_group that gives a unique output
+        Run with a check_group with dependencies
         """
         # the check we will test with
-        check = run_result.CheckResult(self.connection.s3_connection, 'items_created_in_the_past_day')
+        check = run_result.CheckResult(self.connection.s3_connection, 'add_random_test_nums')
         prior_res = check.get_latest_result()
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
         self.assertTrue(bad_res is None)
         # need to manually add things to the queue
         queue = app_utils.get_sqs_queue()
-        check_vals = check_utils.fetch_check_group('wrangler_test_checks')
+        check_vals = check_utils.fetch_check_group('valid_test_checks')
         app_utils.send_sqs_messages(queue, self.environ, check_vals)
         app_utils.run_check_runner({'sqs_url': queue.url})
         finished_count = 0 # since queue attrs are approximate
@@ -359,8 +359,8 @@ class TestCheckRunner(unittest.TestCase):
         self.assertTrue(app_utils.QUEUE_NAME == 'foursight-dev-check_queue')
         self.assertTrue(app_utils.RUNNER_NAME == 'foursight-dev-check_runner')
         # get a reference point for check results
-        prior_res = check_utils.get_check_group_latest(self.connection, 'all')
-        run_input = app_utils.queue_check_group(self.environ, 'all')
+        prior_res = check_utils.get_check_group_latest(self.connection, 'all_checks')
+        run_input = app_utils.queue_check_group(self.environ, 'all_checks')
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
@@ -373,14 +373,13 @@ class TestCheckRunner(unittest.TestCase):
                 finished_count += 1
         # queue should be empty. check results
         time.sleep(3)
-        post_res = check_utils.get_check_group_latest(self.connection, 'all')
+        post_res = check_utils.get_check_group_latest(self.connection, 'all_checks')
         # compare the runtimes to ensure checks have run
         res_compare = {}
         for check_res in post_res:
             res_compare[check_res['name']] = {'post': check_res['uuid']}
         for check_res in prior_res:
             res_compare[check_res['name']]['prior'] = check_res['uuid']
-        print('Runner check results:\n', str(res_compare))
         for check_name in res_compare:
             self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
             self.assertTrue(res_compare[check_name]['prior'] != res_compare[check_name]['post'])
@@ -407,7 +406,6 @@ class TestCheckRunner(unittest.TestCase):
         time.sleep(3)
         post_res = action.get_latest_result()
         print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid']}
-        print('Runner action results:\n', str(print_dict))
         # compare the uuids to ensure actions have run
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
@@ -452,6 +450,7 @@ class TestCheckResult(unittest.TestCase):
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
         check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        check_copy.kwargs = {'primary': True}
         self.assertTrue(res == check_copy.store_result())
 
 
@@ -484,7 +483,7 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue(bad_check_str is None)
 
     def test_fetch_check_group(self):
-        all_checks = check_utils.fetch_check_group('all')
+        all_checks = check_utils.fetch_check_group('all_checks')
         self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
         daily_checks = check_utils.fetch_check_group('daily_checks')
         # get list of check strings from lists of check info
@@ -510,7 +509,7 @@ class TestCheckUtils(unittest.TestCase):
         """
         This test will need to be removed/changed as more checks are made
         """
-        all_checks_res = check_utils.run_check_group(self.conn, 'all')
+        all_checks_res = check_utils.run_check_group(self.conn, 'valid_test_checks')
         self.assertTrue(isinstance(all_checks_res, list) and len(all_checks_res) > 0)
         for check_res in all_checks_res:
             self.assertTrue(isinstance(check_res, dict))
@@ -543,7 +542,7 @@ class TestCheckUtils(unittest.TestCase):
                 unified_uuid = check_res['uuid']
 
     def test_get_check_group_latest(self):
-        all_res = check_utils.get_check_group_latest(self.conn, 'all')
+        all_res = check_utils.get_check_group_latest(self.conn, 'all_checks')
         for check_res in all_res:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
@@ -556,19 +555,38 @@ class TestCheckUtils(unittest.TestCase):
         assert(len(test_res) == 0)
 
     def test_run_check_or_action(self):
-        # with a check
-        test_info = ['test_checks/test_random_nums', {}, [], 'xxx']
+        check = utils.init_check_res(self.conn, 'test_random_nums')
+        # with a check (primary is True)
+        test_info = ['test_checks/test_random_nums', {'primary': True}, [], 'xxx']
         check_res = check_utils.run_check_or_action(self.conn, test_info[0], test_info[1])
         self.assertTrue(isinstance(check_res, dict))
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
+        self.assertTrue(check_res.get('kwargs') == {'primary': True})
+        latest_uuid = check_res.get('uuid')
+        time.sleep(3)
+        latest_res = check.get_latest_result()
+        self.assertTrue(latest_res.get('uuid') == latest_uuid)
+        # with a check and no primary=True flag
+        check_res = check_utils.run_check_or_action(self.conn, test_info[0], {})
+        latest_uuid = check_res.get('uuid')
+        self.assertTrue(check_res.get('kwargs') == {})
+        time.sleep(3)
+        latest_res = check.get_latest_result()
+        self.assertTrue(latest_res.get('uuid') < latest_uuid)
         # with an action
-        test_info_2 = ['test_checks/add_random_test_nums', {}, [] ,'xxx']
+        action = utils.init_action_res(self.conn, 'add_random_test_nums')
+        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True}, [] ,'xxx']
         action_res = check_utils.run_check_or_action(self.conn, test_info_2[0], test_info_2[1])
         self.assertTrue(isinstance(action_res, dict))
         self.assertTrue('name' in action_res)
         self.assertTrue('status' in action_res)
         self.assertTrue('output' in action_res)
+        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0})
+        latest_uuid = action_res.get('uuid')
+        time.sleep(3)
+        latest_res = action.get_latest_result()
+        self.assertTrue(latest_res.get('uuid') == latest_uuid)
 
     def test_run_check_errors(self):
         bad_check_group = [
@@ -687,19 +705,21 @@ class TestUtils(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
 
-    @utils.check_function(abc=123)
+    @utils.check_function(abc=123, do_not_store=True)
     def test_function_dummy(*args, **kwargs):
-        return kwargs
+        connection, _ = app_utils.init_connection('mastertest')
+        check = utils.init_check_res(connection, 'not_a_check')
+        return check
 
     def test_check_function_deco_default_kwargs(self):
         # test to see if the check_function decorator correctly overrides
         # kwargs of decorated function if none are provided
-        kwargs_default = self.test_function_dummy()
-        self.assertTrue(kwargs_default == {'abc': 123})
-        kwargs_add = self.test_function_dummy(bcd=234)
-        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234})
-        kwargs_override = self.test_function_dummy(abc=234)
-        self.assertTrue(kwargs_override == {'abc': 234})
+        kwargs_default = self.test_function_dummy().get('kwargs')
+        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True})
+        kwargs_add = self.test_function_dummy(bcd=234).get('kwargs')
+        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True})
+        kwargs_override = self.test_function_dummy(abc=234).get('kwargs')
+        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True})
 
     def test_init_check_res(self):
         check = utils.init_check_res(self.conn, 'test_check', runnable=True)
@@ -711,6 +731,12 @@ class TestUtils(unittest.TestCase):
         action = utils.init_action_res(self.conn, 'test_action')
         self.assertTrue(action.name == 'test_action')
         self.assertTrue(action.s3_connection is not None)
+
+    def BadCheckOrAction(self):
+        test_exc = utils.BadCheckOrAction()
+        self.assertTrue(str(test_exc) == 'Check or action function seems to be malformed.')
+        test_exc = utils.BadCheckOrAction('Abcd')
+        self.assertTrue(str(test_exc) == 'Abcd')
 
 
 class TestWranglerUtils(unittest.TestCase):

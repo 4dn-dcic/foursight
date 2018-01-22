@@ -23,11 +23,11 @@ for check_mod in CHECK_MODULES:
 
 def get_check_strings(specific_check=None):
     """
-    Return check formatted check strings (<module>/<check_name>) for checks.
+    Return a list of all formatted check strings (<module>/<check_name>) in system.
     By default runs on all checks (specific_check == None), but can be used
     to get the check string of a certain check name as well.
 
-    IMPORTANT: any checks in test_checks module are excluded from 'all'
+    IMPORTANT: any checks in test_checks module are excluded.
     """
     all_checks = []
     for check_mod in CHECK_MODULES:
@@ -37,7 +37,7 @@ def get_check_strings(specific_check=None):
                 check_str = '/'.join([check_mod, method.__name__])
                 if specific_check and specific_check == method.__name__:
                     return check_str
-                elif check_mod != 'test_checks': # exclude test checks from 'all'
+                elif check_mod != 'test_checks':
                     all_checks.append(check_str)
     if specific_check:
         # if we've gotten here, it means the specific check was not checks_found
@@ -103,11 +103,6 @@ def fetch_check_group(name):
     Will be none if the group is not defined.
     Special case for all_checks, which gets all checks and uses default kwargs
     """
-    if name == 'all':
-        all_checks_strs = get_check_strings()
-        # dependecy id's are not used (since there are no dependencies) so arbitrarily set to '_'
-        all_checks_group = [[check_str, {}, [], '_'] for check_str in all_checks_strs]
-        return all_checks_group
     group = CHECK_GROUPS.get(name, None)
     # maybe it's a test groups
     if not group:
@@ -121,7 +116,7 @@ def fetch_check_group(name):
 
 def fetch_action_group(name):
     """
-    Used only for ACTION_GROUPS, which mix actions and checks. Does NOT use 'all'
+    Used only for ACTION_GROUPS, which mix actions and checks
     """
     group = ACTION_GROUPS.get(name, None)
     # maybe it's a test groups

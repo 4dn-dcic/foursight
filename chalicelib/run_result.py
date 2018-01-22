@@ -16,6 +16,9 @@ class RunResult(object):
 
 
     def get_latest_result(self):
+        """
+        Returns the latest (primary) result
+        """
         latest_key = ''.join([self.name, '/latest', self.extension])
         result = self.s3_connection.get_object(latest_key)
         if result is None:
@@ -72,7 +75,7 @@ class RunResult(object):
         return all_results
 
 
-    def store_formatted_result(self, uuid, formatted, is_primary=False):
+    def store_formatted_result(self, uuid, formatted, primary=False):
         """
         Store the result in s3. Always makes an entry with key equal to the
         uuid timestamp. If is_primary, will also save result the the 'latest'
@@ -84,7 +87,7 @@ class RunResult(object):
         # store the timestamped result
         self.s3_connection.put_object(time_key, s3_formatted)
         # put result as 'latest' key is this is primary
-        if is_primary:
+        if primary:
             self.s3_connection.put_object(latest_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
@@ -170,6 +173,7 @@ class CheckResult(RunResult):
             self.description = 'Malformed status; look at Foursight check definition.'
         # if there's a set uuid field, use that instead of curr utc time
         uuid = self.uuid if self.uuid else datetime.datetime.utcnow().isoformat()
+        formatted = self.format_result(uuid)
         is_primary = self.kwargs.get('primary', False) == True
         return self.store_formatted_result(uuid, formatted, primary=is_primary)
 
