@@ -331,7 +331,22 @@ def get_foursight_history(environ, check, start=0, limit=50):
     connection, response = init_response(environ)
     if not connection:
         return response
-    pass
+    # determine whether it is a check or action
+    check_str = get_check_strings(check)
+    act_str = None
+    if not check_str:
+        act_str = get_action_strings(check)
+    if not act_str and not check_str: # not a check or an action. abort
+        response.status_code = 400
+        response.body = {
+            'status': 'error',
+            'environment': environ,
+            'results': [],
+            'description': ''.join(['Input check or action (', check, ') is not valid.'])
+        }
+    elif check_str:
+        # case for checks
+        if
 
 
 def run_foursight_checks(environ, check_group):
