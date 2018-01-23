@@ -30,16 +30,12 @@
     "api_handler_name": "foursight-dev",
     "api_handler_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev",
     "lambda_functions": {
-      "foursight-dev-daily_checks": {
-        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-daily_checks",
+      "foursight-dev-ten_min_checks": {
+        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-ten_min_checks",
         "type": "scheduled_event"
       },
-      "foursight-dev-six_hour_checks": {
-        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-six_hour_checks",
-        "type": "scheduled_event"
-      },
-      "foursight-dev-two_hour_checks": {
-        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-two_hour_checks",
+      "foursight-dev-thirty_min_checks": {
+        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-thirty_min_checks",
         "type": "scheduled_event"
       },
       "foursight-dev-check_runner": {
