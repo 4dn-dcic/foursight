@@ -34,10 +34,15 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 >>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
 ```
 
-It's important to note that if you return the `check` at the end of your function, then the result will always get written to S3. To overwrite the "latest" check result, you must set the `primary = True` key word argument for your check. If you want to, you can pass this dictionary into the `run_check_or_action` function:
+It's important to note that if you return the `check` at the end of your function, then the result will always get written to S3. In this case, it is probably best to not overwrite the primary check result when testing (which is the one shown on the Foursight UI). Since running a check will always overwrite the `latest` result, you can test safely by omitting the `primary=True` key word argument and fetching those results with `get_latest_result` method of your check result.
+
+To overwrite the primary check result, you must set the `primary=True` key word argument for your check. If you want to, you can pass this dictionary into the `run_check_or_action` function:
 
 ```
-# will overwrite the latest result for items_created_in_the_past_day and display it on the UI
+# will overwrite the latest result for items_created_in_the_past_day, which won't display on the UI
+app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {})
+
+# will overwrite the latest + primary results for items_created_in_the_past_day and display it on the UI
 app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'primary': True})
 ```
 
@@ -65,7 +70,7 @@ Actions function very similarly to checks when run individually. In fact, testin
 ### Manual testing of your check group
 Let's say you want to run a whole check group and not an individual check. To test this, you can use `app.queue_check_group`, which causes your checks to run synchronously. This function is the one that is internally used to schedule check groups for, but it is difficult to track output. For that reason, it may be easier to test with `run_check_or_action` as described above. Below are examples from the Python interpreter with the example check group named `my_test_checks`.
 
-**NOTE:** if a check group has kwargs including `primary = True`, then the result will be written live to the Foursight UI. Omitting this argument when testing your check group may be desirable.
+**NOTE:** if a check group has kwargs including `primary=True`, then the result will be written live to the Foursight UI. Omitting this argument when testing your check group may be desirable.
 
 ```
 >>> import app

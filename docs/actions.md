@@ -115,7 +115,7 @@ Let's say we want to make the action use a key word argument (`offset = 5`) and 
 
 Using techniques like the one above, you can make arbitrarily complicated combinations of actions and checks. One important use case is having a check run again after an action completes if the action would change the output of the check. This is especially important if a user might trigger the action another time based on the output of the check itself. A concrete example is a check that identifies all items in your system missing a certain field and an action that uses those check results to patch that field for all items. You would want to re-run the check after executing the action so that the UI displays the most up-to-date results for the check and so that nobody would accidentally run the action again after it had already been run.
 
-**Note:** You don't need to set `primary = True` as a key word argument for actions. The most recent action run will always be the one displayed on the UI (see the next section).
+**Note:** You don't need to set `primary=True` as a key word argument for actions. The latest action run will be stored with both the `latest` and `primary` tag in s3. Thus, the most recent action run will always be the one displayed on the UI (see the next section).
 
 ### Viewing action results
 The results of run actions can be seen using the `Toggle latest action` button in the linked check on the Foursight UI. This box will always show the most recent run of the linked action in JSON form.
