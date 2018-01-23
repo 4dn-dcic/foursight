@@ -14,24 +14,20 @@ CHECK_MODULES = [
 # define check_groups within this dict
 
 CHECK_GROUPS = {
-    'daily_checks': [
-        ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'd1'],
-        ['wrangler_checks/files_associated_with_replicates', {'primary': True}, [],'d2'],
-        ['wrangler_checks/replicate_file_reporting', {'primary': True}, [], 'd3']
+    'ten_min_checks': [
+        ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'm10_1'],
+        ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'm10_2'],
+        ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_3'],
+        ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
+        ['wrangler_checks/replicate_file_reporting', {'primary': True}, [], 'm10_5'],
+        ['system_checks/indexing_progress', {'primary': True}, [], 'm10_6'],
+        ['system_checks/staging_deployment', {'primary': True}, [], 'm10_7']
     ],
-    'six_hour_checks': [
-        ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 's1'],
-        ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 's2'],
-        ['system_checks/indexing_records', {'primary': True}, [], 's3'],
-        ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 's4'],
-        ['wrangler_checks/change_in_item_counts', {'primary': True}, ['s4'], 's5'],
-        ['system_checks/indexing_progress', {'primary': True}, [], 's6']
-    ],
-    'two_hour_checks': [
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 't1'],
-        ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 't2'],
-        ['system_checks/indexing_progress', {'primary': True}, [], 't3'],
-        ['system_checks/staging_deployment', {'primary': True}, [], 't4']
+    'thirty_min_checks': [
+        ['wrangler_checks/files_associated_with_replicates', {'primary': True}, [],'m30_1'],
+        ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_2'],
+        ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_3'],
+        ['system_checks/indexing_records', {'primary': True}, [], 'm30_4']
     ]
 }
 

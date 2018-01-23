@@ -31,7 +31,7 @@ class RunResult(object):
         return self.get_s3_object(primary_key)
 
 
-    def get_closest_result(self, diff_hours, diff_mins=0):
+    def get_closest_result(self, diff_hours=0, diff_mins=0):
         """
         Returns check result that is closest to the current time minus
         diff_hours and diff_mins (both integers).

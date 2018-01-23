@@ -119,10 +119,10 @@ def status_of_elasticsearch_indices(connection, **kwargs):
 @check_function()
 def indexing_progress(connection, **kwargs):
     check = init_check_res(connection, 'indexing_progress')
-    # get latest and db/es counts closest to 2 hrs ago
+    # get latest and db/es counts closest to 10 mins ago
     counts_check = init_check_res(connection, 'item_counts_by_type')
     latest = counts_check.get_primary_result()
-    prior = counts_check.get_closest_result(2)
+    prior = counts_check.get_closest_result(diff_mins=10)
     if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no item_counts_by_type results to run this check with.'
@@ -133,17 +133,17 @@ def indexing_progress(connection, **kwargs):
     if diff_unindexed == 0 and latest_unindexed != 0:
         check.status = 'FAIL'
         check.description = ' '.join(['Total number of unindexed items is',
-            str(latest_unindexed), 'and has not changed in the past two hours.',
+            str(latest_unindexed), 'and has not changed in the past ten minutes.',
             'The indexer may be malfunctioning.'])
     elif diff_unindexed > 0:
         check.status = 'WARN'
         check.description = ' '.join(['Total number of unindexed items has increased by',
-            str(diff_unindexed), 'in the past two hours. Remaining items to index:',
+            str(diff_unindexed), 'in the past ten minutes. Remaining items to index:',
             str(latest_unindexed)])
     else:
         check.status = 'PASS'
         check.description = ' '.join(['Indexing seems healthy. There are', str(latest_unindexed),
-        'remaining items to index, a change of', str(diff_unindexed), 'from two hours ago.'])
+        'remaining items to index, a change of', str(diff_unindexed), 'from ten minutes ago.'])
     return check
 
 
