@@ -360,7 +360,7 @@ class TestCheckRunner(unittest.TestCase):
         self.assertTrue(app_utils.QUEUE_NAME == 'foursight-dev-check_queue')
         self.assertTrue(app_utils.RUNNER_NAME == 'foursight-dev-check_runner')
         # get a reference point for check results
-        prior_res = check_utils.get_check_group_latest(self.connection, 'all_checks')
+        prior_res = check_utils.get_check_group_results(self.connection, 'all_checks', use_latest=True)
         run_input = app_utils.queue_check_group(self.environ, 'all_checks')
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
         finished_count = 0 # since queue attrs are approximate
@@ -374,7 +374,7 @@ class TestCheckRunner(unittest.TestCase):
                 finished_count += 1
         # queue should be empty. check results
         time.sleep(3)
-        post_res = check_utils.get_check_group_latest(self.connection, 'all_checks')
+        post_res = check_utils.get_check_group_results(self.connection, 'all_checks', use_latest=True)
         # compare the runtimes to ensure checks have run
         res_compare = {}
         for check_res in post_res:
@@ -437,10 +437,13 @@ class TestCheckResult(unittest.TestCase):
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
         check.full_output = ['first_item']
+        check.kwargs = {'primary': True}
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
         self.assertTrue(late_res == res)
+        primary_res = check.get_primary_result()
+        self.assertTrue(primary_res == res)
         close_res = check.get_closest_result(0, 0)
         self.assertTrue(close_res == res)
         all_res = check.get_all_results()
@@ -450,11 +453,12 @@ class TestCheckResult(unittest.TestCase):
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
         check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
+        check_copy.kwargs = {'primary': True}
         self.assertTrue(res == check_copy.store_result())
 
 
 class TestActionResult(unittest.TestCase):
-    act_name = 'test_only_check'
+    act_name = 'test_only_action'
     environ = 'mastertest' # hopefully this is up
     connection, _ = app_utils.init_connection(environ)
 
@@ -527,17 +531,28 @@ class TestCheckUtils(unittest.TestCase):
         bad_actions = check_utils.fetch_action_group('not_an_action_group')
         self.assertTrue(bad_actions is None)
 
-    def test_get_check_group_latest(self):
-        all_res = check_utils.get_check_group_latest(self.conn, 'all_checks')
-        for check_res in all_res:
+    def test_get_check_group_results(self):
+        # will get primary results by default
+        all_res_primary = check_utils.get_check_group_results(self.conn, 'all_checks')
+        for check_res in all_res_primary:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
+        # compare to latest results (which should be the same or newer)
+        all_res_latest = check_utils.get_check_group_results(self.conn, 'all_checks', use_latest=True)
+        for check_res in all_res_latest:
+            self.assertTrue(isinstance(check_res, dict))
+            self.assertTrue('name' in check_res)
+            self.assertTrue('status' in check_res)
+            if check_res in all_res_primary:
+                primary_uuid = all_res_primary[check_res]['uuid']
+                latest_uuid = all_res_latest[check_res]['uuid']
+                self.assertTrue(latest_uuid >= primary_uuid)
         # non-existant check group
-        bad_res = check_utils.get_check_group_latest(self.conn, 'not_a_check_group')
+        bad_res = check_utils.get_check_group_results(self.conn, 'not_a_check_group')
         assert(bad_res == [])
         # bad check group. will skip all malformed checks
-        test_res = check_utils.get_check_group_latest(self.conn, 'malformed_test_checks')
+        test_res = check_utils.get_check_group_results(self.conn, 'malformed_test_checks')
         assert(len(test_res) == 0)
 
     def test_run_check_or_action(self):
