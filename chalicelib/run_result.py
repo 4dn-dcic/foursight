@@ -60,7 +60,7 @@ class RunResult(object):
         return self.get_s3_object(best_match[0])
 
 
-    def get_s3_object(key):
+    def get_s3_object(self, key):
         """
         Returns None if not present, otherwise returns a JSON parsed res.
         """
