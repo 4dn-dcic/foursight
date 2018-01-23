@@ -33,10 +33,10 @@ def item_counts_by_type(connection, **kwargs):
         counts_res = requests.get(''.join([server,'counts?format=json']))
     except:
         check.status = 'ERROR'
-        return check.store_result()
+        return check
     if counts_res.status_code != 200:
         check.status = 'ERROR'
-        return check.store_result()
+        return check
     counts_json = json.loads(counts_res.text)
     for index in counts_json['db_es_compare']:
         counts = process_counts(counts_json['db_es_compare'][index])
@@ -57,7 +57,7 @@ def item_counts_by_type(connection, **kwargs):
     else:
         check.status = 'PASS'
     check.full_output = item_counts
-    return check.store_result()
+    return check
 
 
 @check_function()
@@ -65,13 +65,13 @@ def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts', runnable=True)
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_result()
-    # get_item_counts run closest to 24 hours ago
-    prior = counts_check.get_closest_result(24)
+    latest = counts_check.get_primary_result()
+    # get_item_counts run closest to 10 mins
+    prior = counts_check.get_closest_result(diff_hours=24)
     if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no counts_check results to run this check with.'
-        return check.store_result()
+        return check
     diff_counts = {}
     # drill into full_output
     latest = latest['full_output']
@@ -95,7 +95,7 @@ def change_in_item_counts(connection, **kwargs):
         check.description = 'DB counts have changed in past day; positive numbers represent an increase in current counts.'
     else:
         check.status = 'PASS'
-    return check.store_result()
+    return check
 
 
 @check_function(item_type='Item')
@@ -106,7 +106,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check.store_result()
+        return check
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join(['/search/?type=', item_type, '&limit=all&q=date_created:>=', date_str])
@@ -133,7 +133,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.description = 'No items have been created in the past day.'
-    return check.store_result()
+    return check
 
 
 @check_function()
@@ -153,7 +153,7 @@ def files_associated_with_replicates(connection, **kwargs):
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check.store_result()
+        return check
     total_replicates = None
     curr_from = 0
     limit = 100
@@ -184,7 +184,7 @@ def files_associated_with_replicates(connection, **kwargs):
             set_files[set_acc] = files
         curr_from += limit
     check.full_output = set_files
-    return check.store_result()
+    return check
 
 
 @check_function(delta_hours=24)
@@ -230,12 +230,12 @@ def replicate_file_reporting(connection, **kwargs):
     delta_hours = kwargs.get('delta_hours')
     check = init_check_res(connection, 'replicate_file_reporting')
     files_check = init_check_res(connection, 'files_associated_with_replicates')
-    latest_results = files_check.get_latest_result().get('full_output')
+    latest_results = files_check.get_primary_result().get('full_output')
     prior_results = files_check.get_closest_result(delta_hours).get('full_output')
     if not isinstance(latest_results, dict) or not isinstance(prior_results, dict):
         check.status = 'ERROR'
         check.description = 'Could not generate report due to missing output of files_associated_with_replicates check.'
-        return check.store_result()
+        return check
     report = {}
     all_sets = list(set(latest_results.keys()).union(set(prior_results.keys())))
     for exp_set in all_sets:
@@ -254,7 +254,7 @@ def replicate_file_reporting(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.description = ''.join(['No significant file changes to one or more experiment sets have occured in the last ', str(delta_hours), ' hours.'])
-    return check.store_result()
+    return check
 
 
 @check_function(search_add_on='&limit=all')
@@ -266,7 +266,7 @@ def identify_files_without_filesize(connection, **kwargs):
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check.store_result()
+        return check
     search_url = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded' + kwargs.get('search_add_on', '')
     search_res = ff_utils.get_metadata(search_url, connection=fdn_conn, frame='object')
     problem_files = []
@@ -287,7 +287,7 @@ def identify_files_without_filesize(connection, **kwargs):
         check.allow_action = True # allows the action to be run
     else:
         check.status = 'PASS'
-    return check.store_result()
+    return check
 
 
 @action_function()
@@ -298,7 +298,7 @@ def patch_file_size(connection, **kwargs):
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
-    check_latest = filesize_check.get_latest_result() # what we want is in full_output
+    check_latest = filesize_check.get_primary_result() # what we want is in full_output
     for hit in check_latest.get('full_output', []):
         bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
         head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
@@ -315,4 +315,4 @@ def patch_file_size(connection, **kwargs):
                 action_logs['patch_success'].append(hit['accession'])
     action.status = 'DONE'
     action.output = action_logs
-    return action.store_result()
+    return action

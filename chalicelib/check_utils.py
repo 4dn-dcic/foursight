@@ -23,11 +23,11 @@ for check_mod in CHECK_MODULES:
 
 def get_check_strings(specific_check=None):
     """
-    Return check formatted check strings (<module>/<check_name>) for checks.
+    Return a list of all formatted check strings (<module>/<check_name>) in system.
     By default runs on all checks (specific_check == None), but can be used
     to get the check string of a certain check name as well.
 
-    IMPORTANT: any checks in test_checks module are excluded from 'all'
+    IMPORTANT: any checks in test_checks module are excluded.
     """
     all_checks = []
     for check_mod in CHECK_MODULES:
@@ -37,7 +37,7 @@ def get_check_strings(specific_check=None):
                 check_str = '/'.join([check_mod, method.__name__])
                 if specific_check and specific_check == method.__name__:
                     return check_str
-                elif check_mod != 'test_checks': # exclude test checks from 'all'
+                elif check_mod != 'test_checks':
                     all_checks.append(check_str)
     if specific_check:
         # if we've gotten here, it means the specific check was not checks_found
@@ -46,39 +46,12 @@ def get_check_strings(specific_check=None):
         return list(set(all_checks))
 
 
-def run_check_group(connection, name):
-    """
-    This is a test function, DEPRECATED in favor of app_utils.queue_check_group.
-    The issue is that run_check_group will run checks synchronously in one lambda.
-
-    WILL NOT RUN ACTION GROUPS.
-    """
-    check_results = []
-    check_group = fetch_check_group(name)
-    if not check_group:
-        return check_results
-    group_timestamp = datetime.datetime.utcnow().isoformat()
-    for check_info in check_group:
-        if len(check_info) != 4:
-            check_results.append(' '.join(['ERROR with', str(check_info), 'in group:', name]))
-        else:
-            # add uuid to each kwargs dict if not already specified
-            # this will have the effect of giving all checks the same id
-            # and combining results from repeats in the same check_group
-            [check_str, check_kwargs, check_deps, dep_id] = check_info
-            if 'uuid' not in check_kwargs:
-                check_kwargs['uuid'] = group_timestamp
-            # nothing done with dependencies yet
-            result = run_check_or_action(connection, check_str, check_kwargs)
-            if result:
-                check_results.append(result)
-    return check_results
-
-
-def get_check_group_latest(connection, name):
+def get_check_group_results(connection, name, use_latest=False):
     """
     Initialize check results for each check in a group and get latest results,
     sorted alphabetically
+    By default, gets the 'primary' results. If use_latest is True, get the
+    'latest' results instead.
     """
     latest_results = []
     check_group = fetch_check_group(name)
@@ -89,7 +62,10 @@ def get_check_group_latest(connection, name):
             continue
         check_name = check_info[0].strip().split('/')[1]
         tempCheck = init_check_res(connection, check_name)
-        found = tempCheck.get_latest_result()
+        if use_latest:
+            found = tempCheck.get_latest_result()
+        else:
+            found = tempCheck.get_primary_result()
         # checks with no records will return None. Skip IGNORE checks
         if found and found.get('status') != 'IGNORE':
             latest_results.append(found)
@@ -103,11 +79,6 @@ def fetch_check_group(name):
     Will be none if the group is not defined.
     Special case for all_checks, which gets all checks and uses default kwargs
     """
-    if name == 'all':
-        all_checks_strs = get_check_strings()
-        # dependecy id's are not used (since there are no dependencies) so arbitrarily set to '_'
-        all_checks_group = [[check_str, {}, [], '_'] for check_str in all_checks_strs]
-        return all_checks_group
     group = CHECK_GROUPS.get(name, None)
     # maybe it's a test groups
     if not group:
@@ -121,7 +92,7 @@ def fetch_check_group(name):
 
 def fetch_action_group(name):
     """
-    Used only for ACTION_GROUPS, which mix actions and checks. Does NOT use 'all'
+    Used only for ACTION_GROUPS, which mix actions and checks
     """
     group = ACTION_GROUPS.get(name, None)
     # maybe it's a test groups

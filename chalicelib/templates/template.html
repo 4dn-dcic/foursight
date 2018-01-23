@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="html-scroll">
 <head>
     <meta charset="utf-8">
     <title>Foursight</title>
@@ -12,6 +12,9 @@
     <!-- Get variables needed within js from jinja -->
     <meta id="fs_domain" data-domain="{{domain}}">
     <style type="text/css">
+    .html-scroll {
+        overflow-y: scroll;
+    }
     .container {
         max-width: 1400px;
         padding-top: 10px;
@@ -37,6 +40,10 @@
     }
     .commonstyle {
         margin: 0px 0px 5px 5px;
+    }
+    .collapse-div{
+        overflow: hidden;
+        clear: both;
     }
     .own-line {
         display: block;
@@ -66,6 +73,10 @@
     .center-element {
         text-align: center;
     }
+    .title-hover:hover, .title-hover:active, .title-hover:visited, .title-hover:focus{
+        text-decoration: none;
+        color: #000;
+    }
     li {
         list-style-type: none;
         padding: 0;
@@ -73,6 +84,13 @@
     }
     a {
         color: inherit;
+    }
+    dl {
+        margin-bottom: 0px;
+    }
+    dd {
+        margin-left: 20px;
+        margin-bottom: 5px;
     }
     </style>
 </head>
@@ -114,7 +132,7 @@
                         <div class="{{'check-' + check['status'].lower() + ' boxstyle'}}">
                             <h5 style='margin:10px 5px 10px 5px;'}}>
                                 {% if check.content %}
-                                    <a data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>{{check.title}}</a>
+                                    <a class="title-hover" data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>{{check.title}}</a>
                                 {% else %}
                                     <span>{{check.title}}</span>
                                 {% endif %}
@@ -130,58 +148,75 @@
                                 {% endif %}
                             </h5>
                             {% if check.content %}
-                            <div class="collapse commonstyle" id={{env['environment'] + '-' + check['name']}}>
-                                {% if check.get('description') %}
-                                    <div class="commonstyle own-line">{{check.description}}</div>
-                                {% endif %}
-                                {% if check.get('ff_link') %}
-                                    <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check.ff_link}}</a>
-                                {% endif %}
-                                {% if check.get('brief_output')%}
-                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-brief'}}>
-                                        Toggle brief output
-                                    </button>
-                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-brief'}}>
-                                        <pre><code>{{check.brief_output}}</code></pre>
-                                    </div>
-                                {% endif %}
-                                {% if check.get('full_output')%}
-                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-full'}}>
-                                        Toggle full output
-                                    </button>
-                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-full'}}>
-                                        <pre><code>{{check.full_output}}</code></pre>
-                                    </div>
-                                {% endif %}
-                                {% if check.get('admin_output') and is_admin %}
-                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-admin'}}>
-                                        Toggle admin output
-                                    </button>
-                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-admin'}}>
-                                        <pre><code>{{check.admin_output}}</code></pre>
-                                    </div>
-                                {% endif %}
-                                {% if check.get('latest_action') %}
-                                    <button class='commonstyle btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-latest-action'}}>
-                                        Toggle latest action
-                                    </button>
-                                    <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-latest-action'}}>
-                                        <pre><code>{{check.latest_action}}</code></pre>
-                                    </div>
-                                {% endif %}
-                                {% if check.get('action') and is_admin %}
-                                    <form class="commonstyle" action={{"/api/view/" + env['environment'] + '/' + check['action'] + '/action'}} method="get">
-                                        {% if not check.get('allow_action') or running_checks != '0' or queued_checks != '0' %}
-                                            <button class="btn btn-danger btn-sm" type="submit" disabled>
-                                                {{' '.join(check['action'].split('_')).title()}}
-                                            </button>
-                                        {% else %}
-                                            <button class="btn btn-danger btn-sm" type="submit">
-                                                {{' '.join(check['action'].split('_')).title()}}
-                                            </button>
+                            <div class="collapse collapse-div commonstyle container-fluid" id={{env['environment'] + '-' + check['name']}}>
+                                <hr style="margin:0px 0px 8px 0px; border-top:1px solid #ccc;">
+                                <div class='row'>
+                                    <div class="col-sm-9">
+                                        {% if check.get('description') %}
+                                            <div class="commonstyle own-line">{{check.description}}</div>
                                         {% endif %}
-                                    </form>
-                                {% endif %}
+                                        {% if check.get('ff_link') %}
+                                            <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check.ff_link}}</a>
+                                        {% endif %}
+                                        {% if check.get('brief_output')%}
+                                            <button class='commonstyle own-line btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-brief'}}>
+                                                Toggle brief output
+                                            </button>
+                                            <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-brief'}}>
+                                                <pre><code>{{check.brief_output}}</code></pre>
+                                            </div>
+                                        {% endif %}
+                                        {% if check.get('full_output')%}
+                                            <button class='commonstyle own-line btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-full'}}>
+                                                Toggle full output
+                                            </button>
+                                            <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-full'}}>
+                                                <pre><code>{{check.full_output}}</code></pre>
+                                            </div>
+                                        {% endif %}
+                                        {% if check.get('admin_output') and is_admin %}
+                                            <button class='commonstyle own-line btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-admin'}}>
+                                                Toggle admin output
+                                            </button>
+                                            <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-admin'}}>
+                                                <pre><code>{{check.admin_output}}</code></pre>
+                                            </div>
+                                        {% endif %}
+                                        {% if check.get('latest_action') %}
+                                            <button class='commonstyle own-line btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-latest-action'}}>
+                                                Toggle latest action
+                                            </button>
+                                            <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-latest-action'}}>
+                                                <pre><code>{{check.latest_action}}</code></pre>
+                                            </div>
+                                        {% endif %}
+                                        {% if check.get('action') and is_admin %}
+                                            <form class="commonstyle own-line" action={{"/api/view/" + env['environment'] + '/' + check['action'] + '/action'}} method="get">
+                                                {% if not check.get('allow_action') or running_checks != '0' or queued_checks != '0' %}
+                                                    <button class="btn btn-danger btn-sm" type="submit" disabled>
+                                                        {{' '.join(check['action'].split('_')).title()}}
+                                                    </button>
+                                                {% else %}
+                                                    <button class="btn btn-danger btn-sm" type="submit">
+                                                        {{' '.join(check['action'].split('_')).title()}}
+                                                    </button>
+                                                {% endif %}
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-sm-3 pull-right">
+                                        {% if check.get('kwargs') %}
+                                        <dl>
+                                            {% for kwarg in check['kwargs'] %}
+                                                {% if kwarg != 'uuid' %}
+                                                    <dt>{{kwarg}}</dt>
+                                                    <dd>{{check['kwargs'][kwarg]}}</dd>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </dl>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
                             {% endif %}
                         </div>

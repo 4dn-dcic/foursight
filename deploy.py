@@ -44,7 +44,10 @@ def build_config_and_deploy(stage):
     dev_secret = os.environ.get("DEV_SECRET")
     admin = os.environ.get("FS_ADMIN")
     if not (akey_secret and client_id and client_secret and dev_secret):
-        print('ERROR. You are missing one more more environment variables needed to deploy Foursight. Need: SECRET, CLIENT_ID, CLIENT_SECRET, DEV_SECRET.')
+        print(''.join(['ERROR. You are missing one more more environment ',
+        'variables needed to deploy Foursight.\n',
+        'Need: SECRET, CLIENT_ID, CLIENT_SECRET, DEV_SECRET, FS_ADMIN.'])
+        )
         sys.exit()
     for curr_stage in ['dev', 'prod']:
         CONFIG_BASE['stages'][curr_stage]['environment_variables']['SECRET'] = akey_secret

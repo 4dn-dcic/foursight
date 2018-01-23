@@ -3,8 +3,7 @@ from .utils import (
     check_function,
     init_check_res,
     action_function,
-    init_action_res,
-    build_dummy_result
+    init_action_res
 )
 import requests
 import sys
@@ -42,17 +41,21 @@ def test_random_nums(connection, **kwargs):
         output.append(random.randint(1,100))
     check.full_output = output
     check.description = 'A test check'
-    return check.store_result()
+    return check
 
 
 @action_function(offset=0)
 def add_random_test_nums(connection, **kwargs):
     action = init_action_res(connection, 'add_random_test_nums')
     check = init_check_res(connection, 'test_random_nums')
+    # output includes primary and latest results, to compare
     check_latest = check.get_latest_result()
-    nums = check_latest.get('full_output', [])
-    total = sum(nums) + kwargs.get('offset', 0)
-    action.output = total
+    nums_latest = check_latest.get('full_output', [])
+    total_latest = sum(nums_latest) + kwargs.get('offset', 0)
+    check_primary = check.get_primary_result()
+    nums_primary = check_primary.get('full_output', [])
+    total_primary = sum(nums_primary) + kwargs.get('offset', 0)
+    action.output = {'latest': total_latest, 'primary': total_primary}
     action.status = 'DONE'
     action.description = 'A test action'
-    return action.store_result()
+    return action

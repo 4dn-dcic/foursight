@@ -31,17 +31,6 @@ def init_action_res(connection, name):
     """
     return ActionResult(connection.s3_connection, name)
 
-def build_dummy_result(check_name):
-    """
-    Simple function to return a dict consistent with a CheckResult dictionary
-    content but is not actually stored.
-    """
-    return {
-        'status': 'IGNORE',
-        'name': check_name,
-        'uuid': datetime.datetime.utcnow().isoformat()
-    }
-
 
 def get_methods_by_deco(cls, decorator):
     """
@@ -78,7 +67,8 @@ def check_function(*default_args, **default_kwargs):
             for key in default_kwargs:
                 if key not in kwargs:
                     kwargs[key] = default_kwargs[key]
-            return func(*args, **kwargs)
+            check = func(*args, **kwargs)
+            return store_result_wrapper(check, kwargs, is_check=True)
         wrapper.check_decorator = CHECK_DECO
         return wrapper
     return check_deco
@@ -98,7 +88,42 @@ def action_function(*default_args, **default_kwargs):
             for key in default_kwargs:
                 if key not in kwargs:
                     kwargs[key] = default_kwargs[key]
-            return func(*args, **kwargs)
+            action = func(*args, **kwargs)
+            return store_result_wrapper(action, kwargs, is_action=True)
         wrapper.check_decorator = ACTION_DECO
         return wrapper
     return action_deco
+
+
+def store_result_wrapper(result, kwargs, is_check=False, is_action=False):
+    """
+    Result should be an ActionResult or CheckResult. Raises an exception if not.
+    Sets the kwargs attr of the result and calls store_result method.
+    """
+    error_message = None
+    class_name = type(result).__name__
+    if is_check and class_name != 'CheckResult':
+        error_message = 'Check function must return a CheckResult object. Initialize one with init_check_res.'
+    elif is_action and class_name != 'ActionResult':
+        error_message = 'Action functions must return a ActionResult object. Initialize one with init_action_res.'
+    store_method = getattr(result, 'store_result', None)
+    if not callable(store_method):
+        error_message = 'Do not overwrite the store_result method of the check or action result.'
+    if error_message:
+        raise BadCheckOrAction(error_message)
+    else:
+        # set the kwargs parameter
+        result.kwargs = kwargs
+        return result.store_result()
+
+
+class BadCheckOrAction(Exception):
+    """
+    Generic exception for a badly written check or library.
+    __init__ takes some string error message
+    """
+    def __init__(self, message=None):
+        # default error message if none provided
+        if message is None:
+            message = "Check or action function seems to be malformed."
+        super().__init__(message)

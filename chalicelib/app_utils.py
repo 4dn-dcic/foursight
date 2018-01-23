@@ -10,7 +10,7 @@ from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
 from .check_utils import (
-    get_check_group_latest,
+    get_check_group_results,
     run_check_or_action,
     get_check_strings,
     fetch_check_group,
@@ -199,7 +199,7 @@ def view_run_check(environ, check):
 
     This also be used to run a check group. This is checked before individual check names
     """
-    if check in CHECK_GROUPS or check == 'all':
+    if check in CHECK_GROUPS:
         queue_check_group(environ, check)
     else:
         connection, _ = init_connection(environ)
@@ -246,7 +246,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     for this_environ in view_envs:
         connection, error_res = init_connection(this_environ)
         if connection:
-            results = get_check_group_latest(connection, 'all')
+            results = get_check_group_results(connection, 'all_checks')
             processed_results = []
             for res in results:
                 # first check to see if res is just a string, meaning
@@ -341,14 +341,13 @@ def run_foursight_checks(environ, check_group):
 def get_foursight_checks(environ, check_group):
     """
     Return JSON of each check tagged with the "latest" tag for checks
-    within given check_group for the given environment. If check_group == 'all', every
-    registered check will be returned. Otherwise, must be a valid check_group
-    name.
+    within given check_group for the given environment.
+    Must be a valid check_group name.
     """
     connection, response = init_response(environ)
     if not connection:
         return response
-    results = get_check_group_latest(connection, check_group)
+    results = get_check_group_results(connection, check_group)
     response.body = {
         'status': 'success',
         'environment': environ,
@@ -367,7 +366,7 @@ def get_check(environ, check):
     if not connection:
         return response
     tempCheck = init_check_res(connection, check)
-    latest_res = tempCheck.get_latest_result()
+    latest_res = tempCheck.get_primary_result()
     if latest_res:
         response.body = {
             'status': 'success',
@@ -429,6 +428,8 @@ def run_put_check(environ, check, put_data):
                 setattr(putCheck, field, prev_content)
             else:
                 setattr(putCheck, field, put_content)
+    # set 'primary' kwarg so that the result is stored as 'latest'
+    putCheck.kwargs = {'primary': True}
     stored = putCheck.store_result()
     response.body = {
         'status': 'success',
@@ -472,7 +473,7 @@ def run_put_environment(environ, env_data):
             )
         else:
             # run some checks on the new env
-            queue_check_group(environ, 'all')
+            queue_check_group(environ, 'all_checks')
             response = Response(
                 body = {
                     'status': 'success',

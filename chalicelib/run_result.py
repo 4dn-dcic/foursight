@@ -12,22 +12,33 @@ class RunResult(object):
         self.s3_connection = s3_connection
         self.name = name
         self.extension = ".json"
+        self.kwargs = {}
 
 
     def get_latest_result(self):
+        """
+        Returns the latest result (the last check run)
+        """
         latest_key = ''.join([self.name, '/latest', self.extension])
-        result = self.s3_connection.get_object(latest_key)
-        if result is None:
-            return None
-        # see if data is in json format
-        try:
-            json_result = json.loads(result)
-        except ValueError:
-            return result
-        return json_result
+        return self.get_s3_object(latest_key)
 
 
-    def get_closest_result(self, diff_hours, diff_mins=0):
+    def get_primary_result(self):
+        """
+        Returns the most recent primary result run (with 'primary'=True in kwargs)
+        """
+        primary_key = ''.join([self.name, '/primary', self.extension])
+        return self.get_s3_object(primary_key)
+
+
+    def get_closest_result(self, diff_hours=0, diff_mins=0):
+        """
+        Returns check result that is closest to the current time minus
+        diff_hours and diff_mins (both integers).
+
+        TODO: Add some way to control which results are returned by kwargs?
+        For example, you might only want primary results.
+        """
         # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
@@ -46,7 +57,16 @@ class RunResult(object):
         desired_time = (datetime.datetime.utcnow() -
             datetime.timedelta(hours=diff_hours, minutes=diff_mins))
         best_match = get_closest(check_tuples, desired_time)
-        result = self.s3_connection.get_object(best_match[0])
+        return self.get_s3_object(best_match[0])
+
+
+    def get_s3_object(self, key):
+        """
+        Returns None if not present, otherwise returns a JSON parsed res.
+        """
+        result = self.s3_connection.get_object(key)
+        if result is None:
+            return None
         # see if data is in json format
         try:
             json_result = json.loads(result)
@@ -71,13 +91,23 @@ class RunResult(object):
         return all_results
 
 
-    def store_formatted_result(self, uuid, formatted):
+    def store_formatted_result(self, uuid, formatted, primary=False):
+        """
+        Store the result in s3. Always makes an entry with key equal to the
+        uuid timestamp. Will also store under (i.e. overwrite)the 'latest' key.
+        If is_primary, will also overwrite the 'primary' key.
+        """
         time_key = ''.join([self.name, '/', uuid, self.extension])
         latest_key = ''.join([self.name, '/latest', self.extension])
+        primary_key = ''.join([self.name, '/primary', self.extension])
         s3_formatted = json.dumps(formatted)
+        # store the timestamped result
         self.s3_connection.put_object(time_key, s3_formatted)
-        # put result as 'latest'
+        # put result as 'latest' key
         self.s3_connection.put_object(latest_key, s3_formatted)
+        # if primary, store as the primary result
+        if primary:
+            self.s3_connection.put_object(primary_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
 
@@ -109,7 +139,8 @@ class CheckResult(RunResult):
                 except ValueError:
                     parsed_res = stamp_res
                 for key, val in parsed_res.items():
-                    setattr(self, key, val)
+                    if key not in ['kwargs']: # dont copy kwargs
+                        setattr(self, key, val)
                 super().__init__(s3_connection, name)
                 return
             else:
@@ -150,7 +181,8 @@ class CheckResult(RunResult):
             'ff_link': self.ff_link,
             'action': self.action,
             'allow_action': self.allow_action,
-            'runnable': self.runnable
+            'runnable': self.runnable,
+            'kwargs': self.kwargs
         }
 
 
@@ -162,7 +194,8 @@ class CheckResult(RunResult):
         # if there's a set uuid field, use that instead of curr utc time
         uuid = self.uuid if self.uuid else datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(uuid)
-        return self.store_formatted_result(uuid, formatted)
+        is_primary = self.kwargs.get('primary', False) == True
+        return self.store_formatted_result(uuid, formatted, primary=is_primary)
 
 
 
@@ -185,18 +218,24 @@ class ActionResult(RunResult):
             'description': self.description,
             'status': self.status.upper(),
             'uuid': uuid,
-            'output': self.output
+            'output': self.output,
+            'kwargs': self.kwargs
         }
 
 
     def store_result(self):
+        # bail if do_not_store is True within kwargs
+        if self.kwargs.get('do_not_store', False) == True:
+            return {}
         # normalize status, probably not the optimal place to do this
         if self.status.upper() not in ['DONE', 'FAIL', 'PEND']:
             self.status = 'FAIL'
             self.description = 'Malformed status; look at Foursight action definition.'
         uuid = datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(uuid)
-        return self.store_formatted_result(uuid, formatted)
+        # action results are always stored as 'primary' and 'latest' and can be
+        # fetched with the get_latest_result method.
+        return self.store_formatted_result(uuid, formatted, primary=True)
 
 
 

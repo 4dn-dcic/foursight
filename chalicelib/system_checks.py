@@ -3,8 +3,7 @@ from .utils import (
     check_function,
     init_check_res,
     action_function,
-    init_action_res,
-    build_dummy_result
+    init_action_res
 )
 import requests
 import sys
@@ -29,12 +28,12 @@ def elastic_beanstalk_health(connection, **kwargs):
     except:
         check.status = 'ERROR'
         check.description = 'Could get EB environment information from AWS.'
-        return check.store_result()
+        return check
     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
     if resp_status != 200:
         check.status = 'ERROR'
         check.description = 'Could not establish a connection to AWS.'
-        return check.store_result()
+        return check
     full_output['status'] = resp.get('Status')
     full_output['environment_name'] = resp.get('EnvironmentName')
     full_output['color'] = resp.get('Color')
@@ -49,12 +48,12 @@ def elastic_beanstalk_health(connection, **kwargs):
     except:
         check.status = 'ERROR'
         check.description = 'Could get EB instance health information from AWS.'
-        return check.store_result()
+        return check
     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
     if resp_status != 200:
         check.status = 'ERROR'
         check.description = 'Could not establish a connection to AWS.'
-        return check.store_result()
+        return check
     instances_health = resp.get('InstanceHealthList', [])
     for instance in instances_health:
         inst_info = {}
@@ -79,7 +78,7 @@ def elastic_beanstalk_health(connection, **kwargs):
     else:
         check.status = 'PASS'
     check.full_output = full_output
-    return check.store_result()
+    return check
 
 
 @check_function()
@@ -91,7 +90,7 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     if getattr(resp, 'status_code', None) != 200:
         check.status = 'ERROR'
         check.description = "Error connecting to ES at endpoint: _cat/indices"
-        return check.store_result()
+        return check
     indices = resp.text.split('\n')
     split_indices = [ind.split() for ind in indices]
     headers = split_indices.pop(0)
@@ -114,38 +113,38 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     else:
         check.status = 'PASS'
     check.full_output = index_info
-    return check.store_result()
+    return check
 
 
 @check_function()
 def indexing_progress(connection, **kwargs):
     check = init_check_res(connection, 'indexing_progress')
-    # get latest and db/es counts closest to 2 hrs ago
+    # get latest and db/es counts closest to 10 mins ago
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_result()
-    prior = counts_check.get_closest_result(2)
+    latest = counts_check.get_primary_result()
+    prior = counts_check.get_closest_result(diff_mins=10)
     if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no item_counts_by_type results to run this check with.'
-        return check.store_result()
+        return check
     latest_unindexed = latest['full_output']['ALL']['DB'] - latest['full_output']['ALL']['ES']
     prior_unindexed = prior['full_output']['ALL']['DB'] - prior['full_output']['ALL']['ES']
     diff_unindexed = latest_unindexed - prior_unindexed
     if diff_unindexed == 0 and latest_unindexed != 0:
         check.status = 'FAIL'
         check.description = ' '.join(['Total number of unindexed items is',
-            str(latest_unindexed), 'and has not changed in the past two hours.',
+            str(latest_unindexed), 'and has not changed in the past ten minutes.',
             'The indexer may be malfunctioning.'])
     elif diff_unindexed > 0:
         check.status = 'WARN'
         check.description = ' '.join(['Total number of unindexed items has increased by',
-            str(diff_unindexed), 'in the past two hours. Remaining items to index:',
+            str(diff_unindexed), 'in the past ten minutes. Remaining items to index:',
             str(latest_unindexed)])
     else:
         check.status = 'PASS'
         check.description = ' '.join(['Indexing seems healthy. There are', str(latest_unindexed),
-        'remaining items to index, a change of', str(diff_unindexed), 'from two hours ago.'])
-    return check.store_result()
+        'remaining items to index, a change of', str(diff_unindexed), 'from ten minutes ago.'])
+    return check
 
 
 @check_function()
@@ -156,7 +155,7 @@ def indexing_records(connection, **kwargs):
     if getattr(es_resp, 'status_code', None) != 200:
         check.status = 'ERROR'
         check.description = "Error connecting to ES at endpoint: meta/meta/_search?q=_exists_:indexing_status"
-        return check.store_result()
+        return check
     # 3 day timedelta
     delta_days = datetime.timedelta(days=3)
     all_records = es_resp.json().get('hits', {}).get('hits', [])
@@ -211,10 +210,11 @@ def indexing_records(connection, **kwargs):
     else:
         check.description = 'Indexing runs from the past three days seem normal.'
         check.status = 'PASS'
-    return check.store_result()
+    return check
 
 
-@check_function()
+# do_not_store kwarg makes it so check.store_result will not write to s3
+@check_function(do_not_store=True)
 def staging_deployment(connection, **kwargs):
-    # dummy function since we don't want this to store results when run
-    return build_dummy_result('staging_deployment')
+    check = init_check_res(connection, 'staging_deployment')
+    return check

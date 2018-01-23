@@ -9,10 +9,10 @@ It is assumed that you've already read the getting started documentation. If not
 * Checks should always initialize their check results using the `init_check_res` function, with the first argument as the FS connection and the second argument as the **exact string name of the check**.
 * There should NOT be two checks with the same name. The tests will fail if this happens.
 * Attributes of the check result, such as status, are simply set like: `check.status = 'PASS'`.
-* Checks should end by returning the value of the stored check result: `return check.store_result()`.
+* Checks should always end by returning the value of the check result: `return check`.
 
 ## Attributes you can set on a check result
-The check result (i.e. the output of running `init_check_res`) has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the results should stored at the end of the check by using `check.store_result()`. Any of the following attributes can be set like this:
+The check result (i.e. the output of running `init_check_res`) has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the check function should return the check result (object initialized by `init_check_res`). Any of the following attributes can be set like this:
 
 ```
 check = init_check_res(connection, 'my_check_name')
@@ -20,7 +20,7 @@ check.status = 'PASS'
 check.description = 'Test descritpion'
 check.<other_attr> = <value>
 ...
-return check.store_result()
+return check
 ```
 
 Here is a list of attributes that you will routinely use, with brief descriptions:
@@ -34,6 +34,7 @@ Here is a list of attributes that you will routinely use, with brief description
 * **allow_action**: boolean value of whether or not the linked action can be run. Defaults to False. See the [action docs](./actions.md) for more information.
 
 Lastly, there are a number of attributes that are used internally. These do not usually need to be manually set, but can be.
+* **kwargs**: these are set to the value of the key word parameters used by the check, which is a combination of default arguments and any overriding arguments (defined in the check group or a manual call to run the check).
 * **s3_connection**: is set automatically when you use `init_check_res`.
 * **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
 * **title**: generated automatically from the name attribute unless it is set manually.
@@ -46,7 +47,7 @@ Let's say we want to write a check that will check Fourfront for all items that 
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    return check.store_result()
+    return check
 ```
 
 At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. Let's use some helper functions defined in chalicelib/wrangler_utils.py to establish a connection to Fourfront (a FDN_Connection, such as those used in Submit4DN). If making a new check module, remember to import these helper functions. If the connection fails, store that information in the check result and abort the check. Let's also set a description and status for the check if the connection is established.
@@ -59,10 +60,10 @@ def items_created_in_the_past_day(connection, **kwargs):
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check.store_result()
+        return check
     check.status = 'PASS'
     check.description = 'Working description.'
-    return check.store_result()
+    return check
 ```
 
 Okay, now we have a check that will attempt to make a Fourfront connection and fail and provide helpful information if it can't. Next we need to get a search result from Fourfront and use those results within our check. The big idea is that we will iterate through the search results and see which items have a `date_created` value of less than a day ago. I'm going to go ahead and add a lot to the check and describe it afterwards.
@@ -75,7 +76,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     if not fdn_conn:
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check.store_result()
+        return check
 
     ### let item_type = 'Item for now'
     item_type = 'Item'
@@ -101,7 +102,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.description = 'No items have been created in the past day.'
-    return check.store_result()
+    return check
 ```
 
 There are a couple funky things happening in the check above. First, the ff_utils package is an external package used by 4DN and uses the fdn_conn object we established earlier. The `get_metadata` function gets search results for all items of the type `item_type` with a date_created field greater than that of the current UTC time minus one day. We then iterate through those results and add them to the `full_output` dictionary, keyed by `item_type`. If any results were found, let's set the status to WARN and give a helpful description. If no items have been created in the past day, let's set the status to PASS to show that this check requires no attention.
@@ -138,6 +139,9 @@ Lastly, arguments that are not defined in the default kwargs through the `check_
 This would execute the `items_created_in_the_past_day` check with the default kwarg `item_type=Item` and the provided `another_arg=another_val` kwarg. This system allows checks to be with different parameters in check groups.
 
 Default kwargs are very important to set if they are required for a check, since there are instances in which your check can be run outside of a check group. In such a case, it may break if those arguments are not provided. Really, this is up to the user to design his or her checks in a robust way.
+
+### The 'primary' key word argument
+The Foursight UI will automatically display the latest run check that was run with the `primary` key word argument set to `True`. In most cases, this argument should be set when defining the key word arguments in the entry of a check group; in some cases, you may want to set it during test. Omitting this argument or setting its value to `False` will still cause the check to store its record in AWS S3 and overwrite the `latest` result for that check, but that result will not be shown on the UI.
 
 ## Appending check results
 Sometimes you may want the same check to run multiple times and report results from all of the runs. Some possible examples would be a long running check that is split up by item type. This can be acheived by initializing the check results (with `init_check_res`) and passing in a `uuid` parameter of a previously run check. This will initialize the new check with the stored attributes of the old check and then allow you to add to them in your check function.
@@ -181,16 +185,23 @@ Another possibility for a check is to operate on the previous results of the sam
 check = init_check_res(connection, 'change_in_item_counts')
 ```
 
-Using the CheckResult `check` object, you have access to all CheckResult methods, which include the `get_latest_result` and `get_closest_result` methods, which both return dictionary representations of those historic check results. Getting the latest check will always return the result with the "latest" tag, which is also the one displayed on the Foursight front end. The `get_closest_result` method can be used to get the check result that is closest the given time difference from the current time. See the example below:
+Using the CheckResult `check` object, you have access to all CheckResult methods, which include the `get_primary_result`, `get_latest_result` and `get_closest_result` methods, which both return dictionary representations of those historic check results. Here's quick summary of what they do:
+* `get_primary_result` will return the result for the check with the `primary=True` key word argument, which is the one displayed on the Foursight front end.
+* `get_latest_result` will return the last run result of the check, which does not necessarily mean it is `primary`.
+* `get_closest_result` can be used to get the check result that is closest the given time difference from the current time. See the example below:
 
 ```
 check = init_check_res(connection, 'change_in_item_counts')
-# get the latest dictionary result for this check
+
+# get the most recent primary result for this check (in dictionary form)
+primary = check.get_primary_result()
+
+# get the most recent result (of any kind!) for this check (in dictionary form)
 latest = check.get_latest_result()
 
 # get the dictionary results for this result run closest to 10 hours, 30 mins ago
 # args are in form (hours, minutes)
-older = check.get_closest_result(10, 30)
+older = check.get_closest_result(diff_hours=10, diff_mins=30)
 ```
 
 The functions can be used to easily make a check that is aware of its own previous results. You can also make checks that use the results of other checks; to do this, define another check result object with the name of a different check. Consider the following example:
@@ -201,15 +212,15 @@ def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts')
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_result()
+    primary = counts_check.get_primary_result()
     # get_item_counts run closest to 24 hours ago
-    prior = counts_check.get_closest_result(24)
+    prior = counts_check.get_closest_result(diff_hours=24)
 
-    # now do something with the latest and prior dictionaries
+    # now do something with the primary and prior dictionaries
     # and set the fields of check accordingly
 ```
 
-This check would compare the latest result and the result run closest to 24 hours ago from the current time for `counts_check`. After any comparison is done, the fields of `check` would be set and finally `check.store_result()` would be called to save them.
+This check would compare the latest result and the result run closest to 24 hours ago from the current time for `counts_check`. After any comparison is done, the fields of `check` would be set and finally we return `check`.
 
 ## Making checks runnable from the UI
 On the Foursight UI, users with administrator privileges can run individual checks directly, outside of the scope of a check group. When this is done, the check will run with the default kwargs that are within its `check_function()` decorator (hence the importance of those default arguments). Since not all checks are meant to be run individually, you must pass a `runnable=True` argument to `init_check_res` to achieve this functionality.
@@ -250,6 +261,13 @@ for idx, item_type in enumerate(item_types):
     wrangler_test_checks.append(
         ['wrangler_checks/items_created_in_the_past_day', {'item_type': item_type}, [], 'dependency_id_' + str(idx)]
     )
+```
+
+**Important:** if you want a check in a check group to be displayed as the latest result on the UI, you must add the `primary=True` key word argument to your check group. This should generally be set for scheduled checks, since you want their results to be displayed on the UI. For example:
+
+```
+'shown_on_the_ui_checks':
+    ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'wt1']
 ```
 
 ### Dependencies in check groups

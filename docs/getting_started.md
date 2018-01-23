@@ -35,7 +35,7 @@ def my_first_check(connection, **kwargs):
     # check status should be one of ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE']
     check.status = 'PASS'
     check.description = 'The first check I've ever made!'
-    check.store_result()
+    return check
 ```
 
 The first thing to note is each check *must* start with the `@check_function()` decorator. This allows Foursight to determine which functions are checks. In addition, any default key word arguments (kwargs) that you want to define for a check can be passed into the decorator as parameters (more on this later). Next, the check itself must take a `connection` parameter and `**kwargs`... the latter is not strictly necessary but should always be included as good form. Once adding the `@check_function()` decorator to a function, the function will be considered a check no matter what, and will be displayed on the Foursight front end.
@@ -56,15 +56,15 @@ def my_first_check(connection, **kwargs):
     else:
         check.status = 'PASS'
     check.description = 'The first check I've ever made!'
-    check.store_result()
+    return check
 ```
 
-Calling `check.store_result()` at the end of the check causes the result of the check to be written to S3 with a unique key created by the check name and time the check was initiated. In addition, each run of a check will overwrite the last "latest" check result, which is the one displayed from the Foursight front end. This is an important behavior of Foursight--the latest result is the one displayed.
+Returning `check` at the end of the check causes the result of the check to be written to S3 with a unique key created by the check name and time the check was initiated. In addition, if a key word argument of `primary=True` is provided to your check, running it will overwrite the last "latest" check result, which is the one displayed from the Foursight front end. This is an important behavior of Foursight--the latest `primary=True` result is the one displayed.
 
 There are many possibilities to what a check can do. Please visit the [writing checks documentation](./checks.md) for more information.
 
 ## Adding a check group
-Let's say we've created two check in the system_checks.py check module, named `my_first_check` and `my_second_check`. We also have a third check named `my_third_check` in wrangler_checks.py. To get these checks to run as a cohesive unit, we need to create a check group for them. This is done within the chalicelib.check_groups.py file. Each item in a check group is a list with three elements. The first element is a string (called a check string) in the form `<check_module>/<check_name>`, the second element is a dictionary of kwargs for the check, the third element is a list of dependencies ID strings that must be finished before the check runs, and the final element is the dependency ID for this check. The dependencies would be used in the case that we want to wait for one check to finish before running another. Let's say we want some kwargs passed into `my_first_check` and we want `my_third_check` to run after `my_second_check`. A check group would look like this, and are written as items in the CHECK_GROUPS dictionary in the check_groups.py file.
+Let's say we've created two check in the system_checks.py check module, named `my_first_check` and `my_second_check`. We also have a third check named `my_third_check` in wrangler_checks.py. To get these checks to run as a cohesive unit, we need to create a check group for them. This is done within the chalicelib.check_groups.py file. Each item in a check group is a list with three elements. The first element is a string (called a check string) in the form `<check_module>/<check_name>`, the second element is a dictionary of key word arguments (kwargs) for the check, the third element is a list of dependencies ID strings that must be finished before the check runs, and the final element is the dependency ID for this check. The dependencies would be used in the case that we want to wait for one check to finish before running another. Let's say we want some kwargs passed into `my_first_check` and we want `my_third_check` to run after `my_second_check`. A check group would look like this, and are written as items in the CHECK_GROUPS dictionary in the check_groups.py file.
 
 ```
 'my_test_checks': [
