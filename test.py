@@ -90,20 +90,20 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue('Currently logged in as admin.' in res.body)
 
     def test_run_foursight_checks(self):
-        res = app_utils.run_foursight_checks(self.environ, 'daily_checks')
+        res = app_utils.run_foursight_checks(self.environ, 'valid_test_checks')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'daily_checks')
+        self.assertTrue(res.body['check_group'] == 'valid_test_checks')
 
     def test_get_foursight_checks(self):
-        res = app_utils.get_foursight_checks(self.environ, 'daily_checks')
+        res = app_utils.get_foursight_checks(self.environ, 'valid_test_checks')
         self.assertTrue(res.status_code == 200)
         self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
         self.assertTrue(res.body['environment'] == self.environ)
         self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'daily_checks')
+        self.assertTrue(res.body['check_group'] == 'valid_test_checks')
         self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
 
     def test_get_environment(self):
@@ -511,11 +511,11 @@ class TestCheckUtils(unittest.TestCase):
     def test_fetch_check_group(self):
         all_checks = check_utils.fetch_check_group('all_checks')
         self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
-        daily_checks = check_utils.fetch_check_group('daily_checks')
+        tm_checks = check_utils.fetch_check_group('ten_min_checks')
         # get list of check strings from lists of check info
-        daily_check_strs = [chk_str[0] for chk_str in daily_checks]
+        tm_checks_strs = [chk_str[0] for chk_str in tm_checks]
         all_check_strs = [chk_str[0] for chk_str in all_checks]
-        self.assertTrue(set(daily_check_strs) <= set(all_check_strs))
+        self.assertTrue(set(tm_checks_strs) <= set(all_check_strs))
         # make sure there are not duplicate check check names
         self.assertTrue(len(all_check_strs) == len(set(all_check_strs)))
         # non-existant check group
