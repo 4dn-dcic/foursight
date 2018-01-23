@@ -20,15 +20,7 @@ class RunResult(object):
         Returns the latest result (the last check run)
         """
         latest_key = ''.join([self.name, '/latest', self.extension])
-        result = self.s3_connection.get_object(latest_key)
-        if result is None:
-            return None
-        # see if data is in json format
-        try:
-            json_result = json.loads(result)
-        except ValueError:
-            return result
-        return json_result
+        return self.get_s3_object(latest_key)
 
 
     def get_primary_result(self):
@@ -36,15 +28,7 @@ class RunResult(object):
         Returns the most recent primary result run (with 'primary'=True in kwargs)
         """
         primary_key = ''.join([self.name, '/primary', self.extension])
-        result = self.s3_connection.get_object(primary_key)
-        if result is None:
-            return None
-        # see if data is in json format
-        try:
-            json_result = json.loads(result)
-        except ValueError:
-            return result
-        return json_result
+        return self.get_s3_object(primary_key)
 
 
     def get_closest_result(self, diff_hours, diff_mins=0):
@@ -73,7 +57,16 @@ class RunResult(object):
         desired_time = (datetime.datetime.utcnow() -
             datetime.timedelta(hours=diff_hours, minutes=diff_mins))
         best_match = get_closest(check_tuples, desired_time)
-        result = self.s3_connection.get_object(best_match[0])
+        return self.get_s3_object(best_match[0])
+
+
+    def get_s3_object(key):
+        """
+        Returns None if not present, otherwise returns a JSON parsed res.
+        """
+        result = self.s3_connection.get_object(key)
+        if result is None:
+            return None
         # see if data is in json format
         try:
             json_result = json.loads(result)
