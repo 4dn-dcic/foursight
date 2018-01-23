@@ -17,7 +17,7 @@ class RunResult(object):
 
     def get_latest_result(self):
         """
-        Returns the latest (primary) result
+        Returns the latest result (the last check run)
         """
         latest_key = ''.join([self.name, '/latest', self.extension])
         result = self.s3_connection.get_object(latest_key)
@@ -31,7 +31,30 @@ class RunResult(object):
         return json_result
 
 
+    def get_primary_result(self):
+        """
+        Returns the most recent primary result run (with 'primary'=True in kwargs)
+        """
+        primary_key = ''.join([self.name, '/primary', self.extension])
+        result = self.s3_connection.get_object(primary_key)
+        if result is None:
+            return None
+        # see if data is in json format
+        try:
+            json_result = json.loads(result)
+        except ValueError:
+            return result
+        return json_result
+
+
     def get_closest_result(self, diff_hours, diff_mins=0):
+        """
+        Returns check result that is closest to the current time minus
+        diff_hours and diff_mins (both integers).
+
+        TODO: Add some way to control which results are returned by kwargs?
+        For example, you might only want primary results.
+        """
         # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
@@ -78,17 +101,20 @@ class RunResult(object):
     def store_formatted_result(self, uuid, formatted, primary=False):
         """
         Store the result in s3. Always makes an entry with key equal to the
-        uuid timestamp. If is_primary, will also save result the the 'latest'
-        key.
+        uuid timestamp. Will also store under (i.e. overwrite)the 'latest' key.
+        If is_primary, will also overwrite the 'primary' key.
         """
         time_key = ''.join([self.name, '/', uuid, self.extension])
         latest_key = ''.join([self.name, '/latest', self.extension])
+        primary_key = ''.join([self.name, '/primary', self.extension])
         s3_formatted = json.dumps(formatted)
         # store the timestamped result
         self.s3_connection.put_object(time_key, s3_formatted)
-        # put result as 'latest' key is this is primary
+        # put result as 'latest' key
+        self.s3_connection.put_object(latest_key, s3_formatted)
+        # if primary, store as the primary result
         if primary:
-            self.s3_connection.put_object(latest_key, s3_formatted)
+            self.s3_connection.put_object(primary_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
 
@@ -214,8 +240,8 @@ class ActionResult(RunResult):
             self.description = 'Malformed status; look at Foursight action definition.'
         uuid = datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(uuid)
-        # action results are always stored as 'primary' and can be fetched
-        # with the get_latest_result method.
+        # action results are always stored as 'primary' and 'latest' and can be
+        # fetched with the get_latest_result method.
         return self.store_formatted_result(uuid, formatted, primary=True)
 
 

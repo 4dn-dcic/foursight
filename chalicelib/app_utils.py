@@ -10,7 +10,7 @@ from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
 from .check_utils import (
-    get_check_group_latest,
+    get_check_group_results,
     run_check_or_action,
     get_check_strings,
     fetch_check_group,
@@ -246,7 +246,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     for this_environ in view_envs:
         connection, error_res = init_connection(this_environ)
         if connection:
-            results = get_check_group_latest(connection, 'all_checks')
+            results = get_check_group_results(connection, 'all_checks')
             processed_results = []
             for res in results:
                 # first check to see if res is just a string, meaning
@@ -347,7 +347,7 @@ def get_foursight_checks(environ, check_group):
     connection, response = init_response(environ)
     if not connection:
         return response
-    results = get_check_group_latest(connection, check_group)
+    results = get_check_group_results(connection, check_group)
     response.body = {
         'status': 'success',
         'environment': environ,
@@ -366,7 +366,7 @@ def get_check(environ, check):
     if not connection:
         return response
     tempCheck = init_check_res(connection, check)
-    latest_res = tempCheck.get_latest_result()
+    latest_res = tempCheck.get_primary_result()
     if latest_res:
         response.body = {
             'status': 'success',

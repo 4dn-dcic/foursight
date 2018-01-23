@@ -46,10 +46,12 @@ def get_check_strings(specific_check=None):
         return list(set(all_checks))
 
 
-def get_check_group_latest(connection, name):
+def get_check_group_results(connection, name, use_latest=False):
     """
     Initialize check results for each check in a group and get latest results,
     sorted alphabetically
+    By default, gets the 'primary' results. If use_latest is True, get the
+    'latest' results instead.
     """
     latest_results = []
     check_group = fetch_check_group(name)
@@ -60,7 +62,10 @@ def get_check_group_latest(connection, name):
             continue
         check_name = check_info[0].strip().split('/')[1]
         tempCheck = init_check_res(connection, check_name)
-        found = tempCheck.get_latest_result()
+        if use_latest:
+            found = tempCheck.get_latest_result()
+        else:
+            found = tempCheck.get_primary_result()
         # checks with no records will return None. Skip IGNORE checks
         if found and found.get('status') != 'IGNORE':
             latest_results.append(found)

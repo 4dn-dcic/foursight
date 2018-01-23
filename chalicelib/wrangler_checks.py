@@ -65,7 +65,7 @@ def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts', runnable=True)
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_result()
+    latest = counts_check.get_primary_result()
     # get_item_counts run closest to 24 hours ago
     prior = counts_check.get_closest_result(24)
     if not latest.get('full_output') or not prior.get('full_output'):
@@ -230,7 +230,7 @@ def replicate_file_reporting(connection, **kwargs):
     delta_hours = kwargs.get('delta_hours')
     check = init_check_res(connection, 'replicate_file_reporting')
     files_check = init_check_res(connection, 'files_associated_with_replicates')
-    latest_results = files_check.get_latest_result().get('full_output')
+    latest_results = files_check.get_primary_result().get('full_output')
     prior_results = files_check.get_closest_result(delta_hours).get('full_output')
     if not isinstance(latest_results, dict) or not isinstance(prior_results, dict):
         check.status = 'ERROR'
@@ -298,7 +298,7 @@ def patch_file_size(connection, **kwargs):
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
-    check_latest = filesize_check.get_latest_result() # what we want is in full_output
+    check_latest = filesize_check.get_primary_result() # what we want is in full_output
     for hit in check_latest.get('full_output', []):
         bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
         head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)

@@ -121,7 +121,7 @@ def indexing_progress(connection, **kwargs):
     check = init_check_res(connection, 'indexing_progress')
     # get latest and db/es counts closest to 2 hrs ago
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_latest_result()
+    latest = counts_check.get_primary_result()
     prior = counts_check.get_closest_result(2)
     if not latest.get('full_output') or not prior.get('full_output'):
         check.status = 'ERROR'

@@ -38,6 +38,7 @@ class TestFSConnection(unittest.TestCase):
         test_check.ff_link = 'not_a_real_http_link'
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_result() is None)
+        self.assertTrue(test_check.get_primary_result() is None)
         self.assertTrue(test_check.get_closest_result(1) is None)
         self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
@@ -436,7 +437,6 @@ class TestCheckResult(unittest.TestCase):
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
         check.full_output = ['first_item']
-        check.kwargs = {'primary': True}
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
@@ -450,7 +450,6 @@ class TestCheckResult(unittest.TestCase):
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
         check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
-        check_copy.kwargs = {'primary': True}
         self.assertTrue(res == check_copy.store_result())
 
 
@@ -550,17 +549,23 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
         self.assertTrue(check_res.get('kwargs') == {'primary': True})
-        latest_uuid = check_res.get('uuid')
+        primary_uuid = check_res.get('uuid')
         time.sleep(3)
+        primary_res = check.get_primary_result()
+        self.assertTrue(primary_res.get('uuid') == primary_uuid)
         latest_res = check.get_latest_result()
-        self.assertTrue(latest_res.get('uuid') == latest_uuid)
+        self.assertTrue(latest_res.get('uuid') == primary_uuid)
         # with a check and no primary=True flag
         check_res = check_utils.run_check_or_action(self.conn, test_info[0], {})
         latest_uuid = check_res.get('uuid')
         self.assertTrue(check_res.get('kwargs') == {})
         time.sleep(3)
+        # latest res will be more recent than primary res now
         latest_res = check.get_latest_result()
-        self.assertTrue(latest_res.get('uuid') < latest_uuid)
+        self.assertTrue(latest_res.get('uuid') == latest_uuid)
+        primary_res = check.get_primary_result()
+        self.assertTrue(primary_res.get('uuid') < latest_uuid)
+
         # with an action
         action = utils.init_action_res(self.conn, 'add_random_test_nums')
         test_info_2 = ['test_checks/add_random_test_nums', {'primary': True}, [] ,'xxx']
@@ -574,6 +579,9 @@ class TestCheckUtils(unittest.TestCase):
         time.sleep(3)
         latest_res = action.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == latest_uuid)
+        output = latest_res.get('output')
+        # output will differ for latest and primary res, since the checks differ
+        self.assertTrue(output['latest'] != output['primary'])
 
     def test_run_check_errors(self):
         bad_check_group = [

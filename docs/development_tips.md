@@ -85,7 +85,7 @@ Just like testing individual action functions is very similar to testing individ
 
 ### Some other testing notes
 * By default, you will use the `dev` stage of Foursight from the Python interpreter and test.py. To change to `prod` (USE WITH CARE), use `app.STAGE = 'PROD'`.
-* You can get the latest check group results using `app.get_check_group_latest(connection, name)` given a Foursight connection and a valid check group name.
+* You can get the latest check group results using `app.get_check_group_results(connection, name)` given a Foursight connection and a valid check group name.
 
 ### Scheduling your check group
 Okay, so you've got a check group that you're confident in. To schedule it using a CRON or rate expression, go to the top of app.py and create a new scheduled function (leading with the `@app.schedule()` decorator). Two examples are below:
