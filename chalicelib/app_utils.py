@@ -13,6 +13,7 @@ from .check_utils import (
     get_check_group_results,
     run_check_or_action,
     get_check_strings,
+    get_action_strings,
     fetch_check_group,
     fetch_action_group,
     init_check_res,
@@ -316,6 +317,21 @@ def view_foursight(environ, is_admin=False, domain=""):
                             domain=domain, running_checks=running_checks, queued_checks=queued_checks)
     html_resp.status_code = 200
     return process_response(html_resp)
+
+
+def get_foursight_history(environ, check, start=0, limit=50):
+    """
+    Get a brief form of the historical results for a check, including
+    UUID, status, kwargs. Limit the number of results recieved to 50, unless
+    otherwise specified ('limit' arg). 'start' arg determines where the start
+    of the results grabbed is, with idx = 0 being the most recent one.
+
+    'check' may be a check or an action (string name)
+    """
+    connection, response = init_response(environ)
+    if not connection:
+        return response
+    pass
 
 
 def run_foursight_checks(environ, check_group):

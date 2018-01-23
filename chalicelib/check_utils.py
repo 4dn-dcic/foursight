@@ -46,6 +46,27 @@ def get_check_strings(specific_check=None):
         return list(set(all_checks))
 
 
+def get_action_strings(specific_action=None):
+    """
+    Basically the same thing as get_check_strings, but for actions...
+    """
+    all_actions = []
+    for check_mod in CHECK_MODULES:
+        if globals().get(check_mod):
+            methods = get_methods_by_deco(globals()[check_mod], ACTION_DECO)
+            for method in methods:
+                act_str = '/'.join([check_mod, method.__name__])
+                if specific_action and specific_action == method.__name__:
+                    return act_str
+                elif check_mod != 'test_checks':
+                    all_actions.append(act_str)
+    if specific_action:
+        # if we've gotten here, it means the specific action was not found
+        return None
+    else:
+        return list(set(all_actions))
+
+
 def get_check_group_results(connection, name, use_latest=False):
     """
     Initialize check results for each check in a group and get latest results,

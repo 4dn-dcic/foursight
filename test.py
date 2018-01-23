@@ -508,6 +508,18 @@ class TestCheckUtils(unittest.TestCase):
         bad_check_str = check_utils.get_check_strings('not_a_real_check')
         self.assertTrue(bad_check_str is None)
 
+    def test_get_action_strings(self):
+        all_action_strings = check_utils.get_action_strings()
+        for act_str in all_action_strings:
+            self.assertTrue(len(act_str.split('/')) == 2)
+        # test a specific action
+        one_act_str = check_utils.get_action_strings('patch_file_size')
+        self.assertTrue(one_act_str == 'wrangler_checks/patch_file_size')
+        self.assertTrue(one_act_str in all_action_strings)
+        # test an action that doesn't exist
+        bad_act_str = check_utils.get_check_strings('not_a_real_action')
+        self.assertTrue(bad_act_str is None)
+
     def test_fetch_check_group(self):
         all_checks = check_utils.fetch_check_group('all_checks')
         self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
