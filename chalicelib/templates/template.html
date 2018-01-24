@@ -136,10 +136,10 @@
                                         {{check.get('title', 'No Title')}}
                                     </a>
                                 {% else %}
-                                    <span>{{check.get('title', 'No Title')]}}</span>
+                                    <span>{{check.get('title', 'No Title')}}</span>
                                 {% endif %}
                                 <span class="pull-right">
-                                    {{check.get('uuid', 'No uuid')]}}
+                                    {{check.get('uuid', 'No uuid')}}
                                 </span>
                                 {% if check.get('runnable') and is_admin %}
                                     <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name'] + '/check'}} method="get">
