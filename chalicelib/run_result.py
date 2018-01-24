@@ -91,6 +91,31 @@ class RunResult(object):
         return all_results
 
 
+    def get_result_history(self, start, limit):
+        """
+        Used to get the uuid, status, and kwargs for a specific check.
+        Results are ordered by uuid (timestamped) and sliced from start to limit.
+        Probably only called from app_utils.get_foursight_history.
+        Returns a list of lists (inner lists: [uuid, status, kwargs])
+        """
+        all_keys = self.s3_connection.list_keys_w_prefix(self.name, records_only=True)
+        # sort them from newest to oldest
+        all_keys.sort(key = lambda x: x[len(self.name + '/'):], reverse=True)
+        # enforce limit and start
+        all_keys = all_keys[start:start+limit]
+        results = []
+        for res_key in all_keys:
+            s3_res = self.get_s3_object(res_key)
+            # order: uuid <str>, status <str>, kwargs <dict>
+            res_val = [
+                s3_res.get('uuid', 'NONE'),
+                s3_res.get('status', 'NONE'),
+                s3_res.get('kwargs', {})
+            ]
+            results.append(res_val)
+        return results
+
+
     def store_formatted_result(self, uuid, formatted, primary=False):
         """
         Store the result in s3. Always makes an entry with key equal to the

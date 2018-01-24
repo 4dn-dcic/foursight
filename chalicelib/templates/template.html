@@ -124,20 +124,22 @@
             {% for env in envs %}
             <li>
                 <h4>
-                    <span>{{'Environment: ' + env.environment}}</span>
+                    <span>{{'Environment: ' + env['environment']}}</span>
                 </h4>
                 <ul>
                     {% for check in env['checks'] %}
                     <li>
                         <div class="{{'check-' + check['status'].lower() + ' boxstyle'}}">
                             <h5 style='margin:10px 5px 10px 5px;'}}>
-                                {% if check.content %}
-                                    <a class="title-hover" data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>{{check.title}}</a>
+                                {% if check.get('content') %}
+                                    <a class="title-hover" data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>
+                                        {{check.get('title', 'No Title')}}
+                                    </a>
                                 {% else %}
-                                    <span>{{check.title}}</span>
+                                    <span>{{check.get('title', 'No Title')]}}</span>
                                 {% endif %}
                                 <span class="pull-right">
-                                    {{check.uuid}}
+                                    {{check.get('uuid', 'No uuid')]}}
                                 </span>
                                 {% if check.get('runnable') and is_admin %}
                                     <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name'] + '/check'}} method="get">
@@ -147,23 +149,23 @@
                                     </form>
                                 {% endif %}
                             </h5>
-                            {% if check.content %}
+                            {% if check.get('content') %}
                             <div class="collapse collapse-div commonstyle container-fluid" id={{env['environment'] + '-' + check['name']}}>
                                 <hr style="margin:0px 0px 8px 0px; border-top:1px solid #ccc;">
                                 <div class='row'>
                                     <div class="col-sm-9">
                                         {% if check.get('description') %}
-                                            <div class="commonstyle own-line">{{check.description}}</div>
+                                            <div class="commonstyle own-line">{{check['description']}}</div>
                                         {% endif %}
                                         {% if check.get('ff_link') %}
-                                            <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check.ff_link}}</a>
+                                            <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check['ff_link'])}}</a>
                                         {% endif %}
                                         {% if check.get('brief_output')%}
                                             <button class='commonstyle own-line btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-brief'}}>
                                                 Toggle brief output
                                             </button>
                                             <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-brief'}}>
-                                                <pre><code>{{check.brief_output}}</code></pre>
+                                                <pre><code>{{check['brief_output']}}</code></pre>
                                             </div>
                                         {% endif %}
                                         {% if check.get('full_output')%}
@@ -171,7 +173,7 @@
                                                 Toggle full output
                                             </button>
                                             <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-full'}}>
-                                                <pre><code>{{check.full_output}}</code></pre>
+                                                <pre><code>{{check['full_output']}}</code></pre>
                                             </div>
                                         {% endif %}
                                         {% if check.get('admin_output') and is_admin %}
@@ -179,7 +181,7 @@
                                                 Toggle admin output
                                             </button>
                                             <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-admin'}}>
-                                                <pre><code>{{check.admin_output}}</code></pre>
+                                                <pre><code>{{check['admin_output']}}</code></pre>
                                             </div>
                                         {% endif %}
                                         {% if check.get('latest_action') %}
@@ -187,7 +189,7 @@
                                                 Toggle latest action
                                             </button>
                                             <div class="commonstyle collapse" id={{env['environment'] + '-' + check['name'] + '-latest-action'}}>
-                                                <pre><code>{{check.latest_action}}</code></pre>
+                                                <pre><code>{{check['latest_action']}}</code></pre>
                                             </div>
                                         {% endif %}
                                         {% if check.get('action') and is_admin %}

@@ -319,7 +319,22 @@ def view_foursight(environ, is_admin=False, domain=""):
     return process_response(html_resp)
 
 
-def get_foursight_history(environ, check, start=0, limit=50):
+def view_foursight_history(environ, check, start=0, limit=50):
+    """
+    View a tabular format of the history of a given check or action (str name
+    as the 'check' parameter) for the given environment. Results look like:
+    uuid, status, kwargs.
+    start controls where the first result is and limit controls how many
+    results are retrieved (see get_foursight_history()).
+    Returns html.
+    """
+    html_resp = Response('Foursight history view')
+    html_resp.headers = {'Content-Type': 'text/html'}
+    history = get_foursight_history(environ, check, start, limit)
+    return history
+
+
+def get_foursight_history(connection, check, start, limit):
     """
     Get a brief form of the historical results for a check, including
     UUID, status, kwargs. Limit the number of results recieved to 50, unless
@@ -328,25 +343,18 @@ def get_foursight_history(environ, check, start=0, limit=50):
 
     'check' may be a check or an action (string name)
     """
-    connection, response = init_response(environ)
-    if not connection:
-        return response
+    is_action = False
+    # limit 'limit' param to 500
+    limit = 500 if limit > 500 else limit
     # determine whether it is a check or action
     check_str = get_check_strings(check)
-    act_str = None
     if not check_str:
-        act_str = get_action_strings(check)
-    if not act_str and not check_str: # not a check or an action. abort
-        response.status_code = 400
-        response.body = {
-            'status': 'error',
-            'environment': environ,
-            'results': [],
-            'description': ''.join(['Input check or action (', check, ') is not valid.'])
-        }
-    elif check_str:
-        # case for checks
-        if
+        check_str = get_action_strings(check)
+        is_action = True
+    if not check_str: # not a check or an action. abort
+        return []
+    result_obj = init_action_res(connection, check) if is_action else init_check_res(connection, check)
+    return result_obj.get_result_history(start, limit)
 
 
 def run_foursight_checks(environ, check_group):
