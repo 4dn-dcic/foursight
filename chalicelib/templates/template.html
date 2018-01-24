@@ -158,7 +158,7 @@
                                             <div class="commonstyle own-line">{{check['description']}}</div>
                                         {% endif %}
                                         {% if check.get('ff_link') %}
-                                            <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check['ff_link'])}}</a>
+                                            <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check['ff_link']}}</a>
                                         {% endif %}
                                         {% if check.get('brief_output')%}
                                             <button class='commonstyle own-line btn btn-default btn-sm' data-toggle="collapse" data-target={{'#' + env['environment'] + '-' + check['name'] + '-brief'}}>
