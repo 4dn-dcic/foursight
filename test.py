@@ -330,6 +330,9 @@ class TestAppUtils(unittest.TestCase):
 class TestCheckRunner(unittest.TestCase):
     environ = 'mastertest'
     connection, _ = app_utils.init_connection(environ)
+    # set up a queue for test checks
+    app_utils.QUEUE_NAME = 'foursight-test-check_queue'
+    queue = app_utils.get_sqs_queue()
 
     def test_run_check_runner(self):
         """
@@ -343,15 +346,14 @@ class TestCheckRunner(unittest.TestCase):
         bad_res = app_utils.run_check_runner({'sqs_url': None})
         self.assertTrue(bad_res is None)
         # need to manually add things to the queue
-        queue = app_utils.get_sqs_queue()
         check_vals = check_utils.fetch_check_group('valid_test_checks')
-        app_utils.send_sqs_messages(queue, self.environ, check_vals)
-        app_utils.run_check_runner({'sqs_url': queue.url})
+        app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
+        app_utils.run_check_runner({'sqs_url': self.queue.url})
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
             time.sleep(6)
-            sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+            sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
             if vis_messages == 0 and invis_messages == 0:
@@ -365,15 +367,14 @@ class TestCheckRunner(unittest.TestCase):
         action = utils.init_action_res(self.connection, 'add_random_test_nums')
         prior_res = action.get_latest_result()
         # need to manually add things to the queue
-        queue = app_utils.get_sqs_queue()
         check_vals = check_utils.fetch_action_group('add_random_test_nums_solo')
-        app_utils.send_sqs_messages(queue, self.environ, check_vals)
-        app_utils.run_check_runner({'sqs_url': queue.url})
+        app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
+        app_utils.run_check_runner({'sqs_url': self.queue.url})
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
             time.sleep(6)
-            sqs_attrs = app_utils.get_sqs_attributes(queue.url)
+            sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
             if vis_messages == 0 and invis_messages == 0:
@@ -384,7 +385,7 @@ class TestCheckRunner(unittest.TestCase):
 
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
-        self.assertTrue(app_utils.QUEUE_NAME == 'foursight-dev-check_queue')
+        self.assertTrue(app_utils.QUEUE_NAME == 'foursight-test-check_queue')
         self.assertTrue(app_utils.RUNNER_NAME == 'foursight-dev-check_runner')
         # get a reference point for check results
         prior_res = check_utils.get_check_group_results(self.connection, 'all_checks', use_latest=True)
@@ -418,7 +419,6 @@ class TestCheckRunner(unittest.TestCase):
         prior_res = action.get_latest_result()
         run_input = app_utils.queue_check_group(self.environ, 'add_random_test_nums', use_action_group=True)
         self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
-        time.sleep(3)
         sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
         vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
         invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))

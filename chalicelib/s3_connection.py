@@ -74,6 +74,7 @@ class S3Connection(object):
                 contents = response.get('Contents', [])
             except:
                 contents = []
+                reached_end = True # bail
             all_keys.extend([obj['Key'] for obj in contents])
             if len(all_keys) > 0 and not token:
                 reached_end = True
