@@ -482,8 +482,8 @@ class TestCheckResult(unittest.TestCase):
         res_uuid = res['uuid']
         check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, init_uuid=res_uuid)
         # should not have 'uuid' or 'kwargs' attrs with init_uuid
-        self.assertTrue(hasattr(check_copy, 'uuid', None) is None)
-        self.assertTrue(hasattr(check_copy, 'kwargs', None) is None)
+        self.assertTrue(getattr(check_copy, 'uuid', None) is None)
+        self.assertTrue(getattr(check_copy, 'kwargs', None) is None)
         check_copy.kwargs = {'primary': True, 'uuid': self.uuid}
         self.assertTrue(res == check_copy.store_result())
 
@@ -500,8 +500,11 @@ class TestActionResult(unittest.TestCase):
         self.assertTrue(res.get('output') is None)
         self.assertTrue(res.get('kwargs') == {})
         action.kwargs = {'do_not_store': True}
-        res = action.store_result()
-        self.assertTrue(res == {})
+        unstored_res = action.store_result() # will not update latest result
+        self.assertTrue('uuid' in unstored_res['kwargs'])
+        self.assertTrue('do_not_store' in unstored_res['kwargs'])
+        res2 = action.get_latest_result()
+        self.assertTrue(res == res2)
         # bad status
         action.kwargs = {'abc': 123}
         action.status = 'NOT_VALID'
@@ -599,14 +602,15 @@ class TestCheckUtils(unittest.TestCase):
         assert(len(test_res) == 0)
 
     def test_run_check_or_action(self):
+        test_uuid = datetime.datetime.utcnow().isoformat()
         check = utils.init_check_res(self.conn, 'test_random_nums')
         # with a check (primary is True)
-        test_info = ['test_checks/test_random_nums', {'primary': True}, [], 'xxx']
+        test_info = ['test_checks/test_random_nums', {'primary': True, 'uuid': test_uuid}, [], 'xxx']
         check_res = check_utils.run_check_or_action(self.conn, test_info[0], test_info[1])
         self.assertTrue(isinstance(check_res, dict))
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
-        self.assertTrue(check_res.get('kwargs') == {'primary': True})
+        self.assertTrue(check_res.get('kwargs') == {'primary': True, 'uuid': test_uuid})
         primary_uuid = check_res.get('uuid')
         time.sleep(3)
         primary_res = check.get_primary_result()
@@ -616,7 +620,7 @@ class TestCheckUtils(unittest.TestCase):
         # with a check and no primary=True flag
         check_res = check_utils.run_check_or_action(self.conn, test_info[0], {})
         latest_uuid = check_res.get('uuid')
-        self.assertTrue(check_res.get('kwargs') == {})
+        self.assertTrue(check_res.get('kwargs') == {'uuid': latest_uuid})
         time.sleep(3)
         # latest res will be more recent than primary res now
         latest_res = check.get_latest_result()
@@ -626,13 +630,13 @@ class TestCheckUtils(unittest.TestCase):
 
         # with an action
         action = utils.init_action_res(self.conn, 'add_random_test_nums')
-        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True}, [] ,'xxx']
+        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True, 'uuid': test_uuid}, [] ,'xxx']
         action_res = check_utils.run_check_or_action(self.conn, test_info_2[0], test_info_2[1])
         self.assertTrue(isinstance(action_res, dict))
         self.assertTrue('name' in action_res)
         self.assertTrue('status' in action_res)
         self.assertTrue('output' in action_res)
-        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0})
+        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid})
         latest_uuid = action_res.get('uuid')
         time.sleep(3)
         latest_res = action.get_latest_result()
