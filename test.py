@@ -627,7 +627,7 @@ class TestCheckUtils(FSTest):
         # with a check and no primary=True flag
         check_res = check_utils.run_check_or_action(self.conn, test_info[0], {})
         latest_uuid = check_res.get('uuid')
-        self.assertTrue(check_res.get('kwargs') == {'uuid': latest_uuid})
+        self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid})
         time.sleep(3)
         # latest res will be more recent than primary res now
         latest_res = check.get_latest_result()

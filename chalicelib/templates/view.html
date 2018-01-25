@@ -33,9 +33,6 @@
                             <hr style="margin:0px 0px 8px 0px; border-top:1px solid #ccc;">
                             <div class='row'>
                                 <div class="col-sm-9">
-                                    <a class="commonstyle own-line" target="_blank" href={{'https://' + domain + '/api/history/' + env['environment'] + '/' + check['name']}}>
-                                        Result history
-                                    </a>
                                     {% if check.get('description') %}
                                         <div class="commonstyle own-line">{{check['description']}}</div>
                                     {% endif %}
@@ -84,6 +81,9 @@
                                         {% endfor %}
                                     </dl>
                                     {% endif %}
+                                    <a class="commonstyle own-line" target="_blank" href={{'https://' + domain + '/api/history/' + env['environment'] + '/' + check['name']}}>
+                                        Result history
+                                    </a>
                                 </div>
                             </div>
                         </div>
