@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
     <!-- Update with data soon -->
     <link rel="shortcut icon" type="image/x-icon" href="https://data.4dnucleome.org/static/img/favicon-fs.ico">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-jsonview/1.2.3/jquery.jsonview.min.css">
     <!-- Get variables needed within js from jinja -->
     <meta id="fs_domain" data-domain="{{domain}}">
     <style type="text/css">
@@ -30,6 +29,7 @@
         border: 1px solid #ccc;
         margin-bottom: 5px;
         border-radius: 8px;
+        padding: 0px 0px 0px 0px;
     }
     .color-hover {
         border: 1px solid #ccc;
@@ -130,7 +130,6 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script src="https://cdn.auth0.com/js/lock/10.24.1/lock.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-jsonview/1.2.3/jquery.jsonview.min.js"></script>
     <script type="text/javascript">
         var domain = $("#fs_domain").data("domain");
         var lock = new Auth0Lock('DPxEwsZRnKDpk0VfVAxrStRKukN14ILB', 'hms-dbmi.auth0.com', {
