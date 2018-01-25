@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+<!-- Macro for toggle button to display _output fields of checks -->
+{% macro toggle_output(output, target, title) %}
+    <button class="commonstyle own-line btn btn-default btn-sm" data-toggle="collapse" data-target={{'#' + target}}>
+        {{title}}
+    </button>
+    <div class="commonstyle collapse" id={{target}}>
+        <pre><code>{{output}}</code></pre>
+    </div>
+{% endmacro %}
+
+{% block content %}
+    <ul class="top-level-list">
+        {% for env in envs %}
+        <li>
+            <h4>
+                <span>{{'Environment: ' + env['environment']}}</span>
+            </h4>
+            <ul>
+                {% for check in env['checks'] %}
+                <li>
+                    <div class="{{'check-' + check['status'].lower() + ' boxstyle container'}}">
+                        <h5 style='margin:10px 5px 10px 5px;'}}>
+                            {% if check.get('content') %}
+                                <a class="title-hover" data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>
+                                    {{check.get('title', 'No Title')}}
+                                </a>
+                            {% else %}
+                                <span>{{check.get('title', 'No Title')}}</span>
+                            {% endif %}
+                            <span class="pull-right">
+                                {{check.get('uuid', 'No uuid')}}
+                            </span>
+                            {% if check.get('runnable') and is_admin %}
+                                <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name'] + '/check'}} method="get">
+                                    <button class="btn btn-link" type="submit">
+                                        <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </h5>
+                        {% if check.get('content') %}
+                        <div class="collapse collapse-div commonstyle container-fluid" id={{env['environment'] + '-' + check['name']}}>
+                            <hr style="margin:0px 0px 8px 0px; border-top:1px solid #ccc;">
+                            <div class='row'>
+                                <div class="col-sm-9">
+                                    {% if check.get('description') %}
+                                        <div class="commonstyle own-line">{{check['description']}}</div>
+                                    {% endif %}
+                                    {% if check.get('ff_link') %}
+                                        <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check['ff_link']}}</a>
+                                    {% endif %}
+                                    {% if check.get('brief_output')%}
+                                        {{toggle_output(check['brief_output'], env['environment'] + '-' + check['name'] + '-brief', 'Toggle brief output')}}
+                                    {% endif %}
+                                    {% if check.get('full_output')%}
+                                        {{toggle_output(check['full_output'], env['environment'] + '-' + check['name'] + '-full', 'Toggle full output')}}
+                                    {% endif %}
+                                    {% if check.get('admin_output') and is_admin %}
+                                        {{toggle_output(check['admin_output'], env['environment'] + '-' + check['name'] + '-admin', 'Toggle admin output')}}
+                                    {% endif %}
+                                    {% if check.get('latest_action') %}
+                                        {{toggle_output(check['latest_action'], env['environment'] + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
+                                    {% endif %}
+                                    {% if check.get('action') and is_admin %}
+                                        <form class="commonstyle own-line" action={{"/api/view/" + env['environment'] + '/' + check['action'] + '/action'}} method="get">
+                                            {% if not check.get('allow_action') or running_checks != '0' or queued_checks != '0' %}
+                                                <button class="btn btn-danger btn-sm" type="submit" disabled>
+                                                    {{' '.join(check['action'].split('_')).title()}}
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-danger btn-sm" type="submit">
+                                                    {{' '.join(check['action'].split('_')).title()}}
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                    {% endif %}
+                                </div>
+                                <div class="col-sm-3 pull-right">
+                                    {% if check.get('kwargs') %}
+                                    <dl>
+                                        {% for kwarg in check['kwargs'] %}
+                                            {% if kwarg != 'uuid' %}
+                                                <dt>{{kwarg}}</dt>
+                                                <dd>{{check['kwargs'][kwarg]}}</dd>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </dl>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if is_admin %}
+                <h5>{{'Queue group:'}}</h5>
+                <div class='container-fluid'>
+                    <div class='row'>
+                        {% for groups in groups_4 %}
+                            {% for group in groups %}
+                                <div class="col-sm-3">
+                                    <form action={{"/api/view/" + env['environment'] + '/' + group + '/check'}} method="get">
+                                        <button class="btn center-block color-hover" type="submit">
+                                            <span>{{group}}</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </li>
+        <hr>
+        {% endfor %}
+    </ul>
+{% endblock %}

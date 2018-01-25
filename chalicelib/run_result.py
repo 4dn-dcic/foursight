@@ -80,7 +80,8 @@ class RunResult(object):
         all_results = []
         s3_prefix = ''.join([self.name, '/'])
         relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
-        for check in relevant_checks:
+        for n in range(len(relevant_checks)):
+            check = relevant_checks[n]
             if check.startswith(s3_prefix) and check.endswith(self.extension):
                 result = self.s3_connection.get_object(check)
                 try:
@@ -96,7 +97,7 @@ class RunResult(object):
         Used to get the uuid, status, and kwargs for a specific check.
         Results are ordered by uuid (timestamped) and sliced from start to limit.
         Probably only called from app_utils.get_foursight_history.
-        Returns a list of lists (inner lists: [uuid, status, kwargs])
+        Returns a list of lists (inner lists: [status, kwargs])
         """
         all_keys = self.s3_connection.list_keys_w_prefix(self.name, records_only=True)
         # sort them from newest to oldest
@@ -104,12 +105,12 @@ class RunResult(object):
         # enforce limit and start
         all_keys = all_keys[start:start+limit]
         results = []
-        for res_key in all_keys:
-            s3_res = self.get_s3_object(res_key)
-            # order: uuid <str>, status <str>, kwargs <dict>
+        for n in range(len(all_keys)):
+            s3_res = self.get_s3_object(all_keys[n])
+            # order: status <str>, kwargs <dict>
+            # handle records that might be malformed
             res_val = [
-                s3_res.get('uuid', 'NONE'),
-                s3_res.get('status', 'NONE'),
+                s3_res.get('status', 'Not found'),
                 s3_res.get('kwargs', {})
             ]
             results.append(res_val)
@@ -150,12 +151,12 @@ class CheckResult(RunResult):
     check.descritpion = ...
     check.store_result()
     """
-    def __init__(self, s3_connection, name, uuid=None, runnable=False):
-        # uuid arg used if you want to overwrite an existing check
-        # uuid is in the stringified datetime format
-        if uuid:
+    def __init__(self, s3_connection, name, init_uuid=None, runnable=False):
+        # init_uuid arg used if you want to initialize using an existing check
+        # init_uuid is in the stringified datetime format
+        if init_uuid:
             # maybe make this '.json' dynamic with parent's self.extension?
-            ts_key = ''.join([name, '/', uuid, '.json'])
+            ts_key = ''.join([name, '/', init_uuid, '.json'])
             stamp_res = s3_connection.get_object(ts_key)
             if stamp_res:
                 # see if json
@@ -164,15 +165,10 @@ class CheckResult(RunResult):
                 except ValueError:
                     parsed_res = stamp_res
                 for key, val in parsed_res.items():
-                    if key not in ['kwargs']: # dont copy kwargs
+                    if key not in ['uuid', 'kwargs']: # dont copy these
                         setattr(self, key, val)
                 super().__init__(s3_connection, name)
                 return
-            else:
-                # no previous results exist for this uuid yet
-                self.uuid = uuid
-        else:
-            self.uuid = None
         self.title = ' '.join(name.split('_')).title()
         self.description = None
         # valid values are: 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
@@ -217,9 +213,13 @@ class CheckResult(RunResult):
             self.status = 'ERROR'
             self.description = 'Malformed status; look at Foursight check definition.'
         # if there's a set uuid field, use that instead of curr utc time
-        uuid = self.uuid if self.uuid else datetime.datetime.utcnow().isoformat()
+        # kwargs should **always** have uuid
+        uuid = self.kwargs.get('uuid', datetime.datetime.utcnow().isoformat())
         formatted = self.format_result(uuid)
         is_primary = self.kwargs.get('primary', False) == True
+        # bail if do_not_store is True within kwargs
+        if self.kwargs.get('do_not_store', False) == True:
+            return formatted
         return self.store_formatted_result(uuid, formatted, primary=is_primary)
 
 
@@ -249,17 +249,18 @@ class ActionResult(RunResult):
 
 
     def store_result(self):
-        # bail if do_not_store is True within kwargs
-        if self.kwargs.get('do_not_store', False) == True:
-            return {}
         # normalize status, probably not the optimal place to do this
         if self.status.upper() not in ['DONE', 'FAIL', 'PEND']:
             self.status = 'FAIL'
             self.description = 'Malformed status; look at Foursight action definition.'
-        uuid = datetime.datetime.utcnow().isoformat()
+        # kwargs should **always** have uuid
+        uuid = self.kwargs.get('uuid', datetime.datetime.utcnow().isoformat())
         formatted = self.format_result(uuid)
         # action results are always stored as 'primary' and 'latest' and can be
         # fetched with the get_latest_result method.
+        # bail if do_not_store is True within kwargs
+        if self.kwargs.get('do_not_store', False) == True:
+            return formatted
         return self.store_formatted_result(uuid, formatted, primary=True)
 
 

@@ -89,6 +89,33 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(res.status_code == 200)
         self.assertTrue('Currently logged in as admin.' in res.body)
 
+    def test_get_foursight_history(self):
+        test_check = 'test_random_nums'
+        history = app_utils.get_foursight_history(self.conn, test_check, 0, 3)
+        self.assertTrue(isinstance(history, list))
+        self.assertTrue(len(history[0]) == 2)
+        self.assertTrue(isinstance(history[0][0], app_utils.basestring))
+        self.assertTrue(isinstance(history[0][1], dict))
+        self.assertTrue(len(history) == 3)
+        # bad check
+        bad_history = app_utils.get_foursight_history(self.conn, 'not_a_real_check', 0, 3)
+        self.assertTrue(bad_history == [])
+
+    def test_load_foursight_result(self):
+        test_check = 'test_random_nums'
+        check = utils.init_check_res(self.conn, test_check)
+        check_res = check.get_latest_result()
+        test_uuid = check_res['uuid']
+        resp = app_utils.load_foursight_result(self.environ, test_check, test_uuid)
+        self.assertTrue(resp.status_code == 200)
+        self.assertTrue(resp.body.get('status') == 'success')
+        self.assertTrue(resp.body.get('data') == check_res)
+        # bad check
+        resp = app_utils.load_foursight_result(self.environ, 'not_a_valid_check', test_uuid)
+        self.assertTrue(resp.status_code == 400)
+        self.assertTrue(resp.body.get('status') == 'error')
+        self.assertTrue(resp.body.get('description') == 'Not a valid check or action.')
+
     def test_run_foursight_checks(self):
         res = app_utils.run_foursight_checks(self.environ, 'valid_test_checks')
         self.assertTrue(res.status_code == 200)
@@ -429,6 +456,7 @@ class TestCheckResult(unittest.TestCase):
     check_name = 'test_only_check'
     environ = 'mastertest' # hopefully this is up
     connection, _ = app_utils.init_connection(environ)
+    uuid = datetime.datetime.utcnow().isoformat()
 
     def test_check_result_methods(self):
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
@@ -437,7 +465,7 @@ class TestCheckResult(unittest.TestCase):
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
         check.full_output = ['first_item']
-        check.kwargs = {'primary': True}
+        check.kwargs = {'primary': True, 'uuid': self.uuid}
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
@@ -452,8 +480,11 @@ class TestCheckResult(unittest.TestCase):
         self.assertTrue(all_res[-1].get('description') == res.get('description'))
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
-        check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, uuid=res_uuid)
-        check_copy.kwargs = {'primary': True}
+        check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, init_uuid=res_uuid)
+        # should not have 'uuid' or 'kwargs' attrs with init_uuid
+        self.assertTrue(hasattr(check_copy, 'uuid', None) is None)
+        self.assertTrue(hasattr(check_copy, 'kwargs', None) is None)
+        check_copy.kwargs = {'primary': True, 'uuid': self.uuid}
         self.assertTrue(res == check_copy.store_result())
 
 
@@ -727,7 +758,7 @@ class TestUtils(unittest.TestCase):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
 
-    @utils.check_function(abc=123, do_not_store=True)
+    @utils.check_function(abc=123, do_not_store=True, uuid=datetime.datetime.utcnow().isoformat())
     def test_function_dummy(*args, **kwargs):
         connection, _ = app_utils.init_connection('mastertest')
         check = utils.init_check_res(connection, 'not_a_check')
@@ -737,11 +768,19 @@ class TestUtils(unittest.TestCase):
         # test to see if the check_function decorator correctly overrides
         # kwargs of decorated function if none are provided
         kwargs_default = self.test_function_dummy().get('kwargs')
-        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True})
+        uuid = kwargs_default.get('uuid')
+        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid})
         kwargs_add = self.test_function_dummy(bcd=234).get('kwargs')
-        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True})
+        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid})
         kwargs_override = self.test_function_dummy(abc=234).get('kwargs')
-        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True})
+        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid})
+
+    def test_handle_kwargs(self):
+        default_kwargs = {'abc': 123, 'bcd': 234}
+        kwargs = utils.handle_kwargs({'abc': 345}, default_kwargs)
+        self.assertTrue(kwargs.get('abc') == 345)
+        self.assertTrue(kwargs.get('bcd') == 234)
+        self.assertTrue(kwargs.get('uuid').startswith('20'))
 
     def test_init_check_res(self):
         check = utils.init_check_res(self.conn, 'test_check', runnable=True)
@@ -763,13 +802,18 @@ class TestUtils(unittest.TestCase):
     def test_store_result_wrapper(self):
         check = utils.init_check_res(self.conn, 'test_check')
         action = utils.init_action_res(self.conn, 'test_action')
-        kwargs = {'abc': 123}
+        kwargs =  utils.handle_kwargs({'abc': 123}, {})
         # working calls
         check_res = utils.store_result_wrapper(check, kwargs, is_check=True)
-        self.assertTrue(check_res.get('kwargs') == {'abc': 123})
-        self.assertTrue(check.kwargs == {'abc': 123})
+        self.assertTrue(check_res.get('kwargs').get('abc') == 123)
+        self.assertTrue('uuid' in check_res.get('kwargs'))
+        self.assertTrue(check.kwargs.get('abc') == 123)
+        self.assertTrue('uuid' in check.kwargs)
         action_res = utils.store_result_wrapper(action, kwargs, is_action=True)
-        self.assertTrue(action_res.get('kwargs') == {'abc': 123})
+        self.assertTrue(action_res.get('kwargs').get('abc') == 123)
+        self.assertTrue('uuid' in action_res.get('kwargs'))
+        self.assertTrue(action.kwargs.get('abc') == 123)
+        self.assertTrue('uuid' in action.kwargs)
         # bad calls
         with self.assertRaises(utils.BadCheckOrAction) as exc:
             utils.store_result_wrapper(action, kwargs, is_check=True)

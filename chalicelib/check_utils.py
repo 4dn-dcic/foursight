@@ -197,3 +197,20 @@ def run_action(connection, act_name, act_method, act_kwargs):
         err_action.output = traceback.format_exc().split('\n')
         act_result = err_action.store_result()
     return act_result
+
+
+def init_check_or_action_res(connection, check):
+    """
+    Use in cases where a string is provided that could be a check or an action
+    Returns None if neither are valid. Tries checks first then actions.
+    If successful, returns a CheckResult or ActionResult
+    """
+    is_action = False
+    # determine whether it is a check or action
+    check_str = get_check_strings(check)
+    if not check_str:
+        check_str = get_action_strings(check)
+        is_action = True
+    if not check_str: # not a check or an action. abort
+        return None
+    return init_action_res(connection, check) if is_action else init_check_res(connection, check)

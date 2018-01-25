@@ -1,0 +1,24 @@
+<!-- Code for ajax load of a check
+{% if 'uuid' in entry[2] %}
+    <tr class="row"><td colspan="{{3 + history_kwargs|length}}">
+        <div id={{'ajax-res-' + entry[2]['uuid']}}>{{output}}</div>
+    </td></tr>
+{% endif %}
+.. onclick="{{"return load_check('" + entry[2]['uuid'] + "');" | safe}}"
+<script type="text/javascript">
+    function load_check(uuid){
+        console.log('meh!');
+        var domain = $("#fs_domain").data("domain");
+        var get_url = "https://" + domain + "/api/load/{{env | safe}}/{{check | safe}}/" + uuid;
+        $.ajax({
+            type: "GET",
+            url: get_url,
+            success: function(data) {
+                var json_data = JSON.stringify(data.data, null, '\t')
+                console.log(json_data);
+                var containerElem = document.getElementById("ajax-res-" + data.uuid);
+                containerElem.innerHTML = '<pre><code>' + json_data + '</code></pre>';
+            },
+        });
+    }
+</script>-->

@@ -1,0 +1,151 @@
+<!-- Define base template, <style> and <script> here -->
+<!DOCTYPE html>
+<html class="html-scroll">
+<head>
+    <meta charset="utf-8">
+    <title>Foursight</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional Bootstrap theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <!-- Update with data soon -->
+    <link rel="shortcut icon" type="image/x-icon" href="https://data.4dnucleome.org/static/img/favicon-fs.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-jsonview/1.2.3/jquery.jsonview.min.css">
+    <!-- Get variables needed within js from jinja -->
+    <meta id="fs_domain" data-domain="{{domain}}">
+    <style type="text/css">
+    .html-scroll {
+        overflow-y: scroll;
+    }
+    .container {
+        max-width: 1400px;
+        padding-top: 10px;
+    }
+    .control-form {
+        display: inline;
+        margin-right: 20px;
+        margin-top: -8px;
+    }
+    .boxstyle {
+        border: 1px solid #ccc;
+        margin-bottom: 5px;
+        border-radius: 8px;
+    }
+    .color-hover {
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #f8f8f8;
+        font-weight: 350;
+    }
+    .color-hover:hover {
+        background-color: #d9d9d9;
+    }
+    .commonstyle {
+        margin: 0px 0px 5px 5px;
+    }
+    .collapse-div{
+        overflow: hidden;
+        clear: both;
+    }
+    .own-line {
+        display: block;
+    }
+    .in-line{
+        display: inline-block;
+    }
+    .check-pass, .check-done {
+        background-color: #dff0d8;
+        color: #3c763d;
+    }
+    .check-warn, .check-pend {
+        background-color: #fcf8e3;
+        color: #8a6d3b;
+    }
+    .check-fail {
+        background-color: #f2dede;
+        color: #a94442;
+    }
+    .check-error {
+        background-color: #fbdcbd;
+        color: #b75c00;
+    }
+    .check-ignore {
+        display: none;
+    }
+    .center-element {
+        text-align: center;
+    }
+    .title-hover {
+        color: inherit;
+    }
+    .title-hover:hover, .title-hover:active, .title-hover:visited, .title-hover:focus{
+        text-decoration: none;
+        color: #000;
+    }
+    .top-level-list {
+        padding: 0px;
+    }
+    li {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+    dl {
+        margin-bottom: 0px;
+    }
+    dd {
+        margin-left: 20px;
+        margin-bottom: 5px;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3 class="center-element">
+            <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src="http://fourfront-mastertest.9wzadzju3p.us-east-1.elasticbeanstalk.com/static/img/favicon-fs.ico"></img>
+            <span>{{'Foursight (' + stage + ')'}}</span>
+        </h3>
+        {% if is_admin %}
+            <h5 class="center-element">
+                <span>{{'Currently logged in as admin.'}}</span>
+            </h5>
+        {% else %}
+            <h5 class="center-element">
+                <span>{{'Not logged in as admin.'}}</span>
+                <button class="color-hover in-line" onclick="lock.show();">Log in</button>
+            </h5>
+        {% endif %}
+        {% if running_checks != '0' or queued_checks != '0' %}
+            <div class='center-element'>
+                <span style='margin-right:10px; color:#777'>
+                    {{'Running checks: ' + running_checks}}
+                </span>
+                <span style='color:#777'>
+                    {{'Queued checks: ' + queued_checks}}
+                </span>
+            </div>
+        {% endif %}
+        <div id="content">{% block content %}{% endblock %}</div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://cdn.auth0.com/js/lock/10.24.1/lock.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-jsonview/1.2.3/jquery.jsonview.min.js"></script>
+    <script type="text/javascript">
+        var domain = $("#fs_domain").data("domain");
+        var lock = new Auth0Lock('DPxEwsZRnKDpk0VfVAxrStRKukN14ILB', 'hms-dbmi.auth0.com', {
+            auth: {
+                redirectUrl: 'https://' + domain + '/api/callback/',
+                responseType: 'code',
+                sso: false,
+                params: {scope: 'openid email', prompt: 'select_account'}
+            },
+            socialButtonStyle: 'big',
+            languageDictionary: { title: "Log in" },
+            theme: { logo: 'http://fourfront-mastertest.9wzadzju3p.us-east-1.elasticbeanstalk.com/static/img/favicon-fs.ico' },
+            allowedConnections: ['github', 'google-oauth2']
+        });
+    </script>
+    {% block script %}{% endblock %}
+</body>
+</html>

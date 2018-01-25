@@ -10,19 +10,19 @@ CHECK_DECO = 'check_function'
 ACTION_DECO = 'action_function'
 
 
-def init_check_res(connection, name, uuid=None, runnable=False):
+def init_check_res(connection, name, init_uuid=None, runnable=False):
     """
     Initialize a CheckResult object, which holds all information for a
     check and methods necessary to store and retrieve latest/historical
     results. name is the only required parameter and MUST be equal to
     the method name of the check as defined in CheckSuite.
 
-    uuid is a timestamp-style unique identifier that can be used to control
-    where the output of the check is written.
+    init_uuid is a a result uuid that the check will look for upon initialization.
+    If found, the check fields will be pre-populated with its results.
 
     runnable is a boolean that determines if the check can be executed from UI.
     """
-    return CheckResult(connection.s3_connection, name, uuid=uuid, runnable=runnable)
+    return CheckResult(connection.s3_connection, name, init_uuid=init_uuid, runnable=runnable)
 
 
 def init_action_res(connection, name):
@@ -53,6 +53,17 @@ def check_method_deco(method, decorator):
     return hasattr(method, 'check_decorator') and method.check_decorator == decorator
 
 
+def handle_kwargs(kwargs, default_kwargs):
+    # add all default args that are not defined in kwargs
+    # also ensure uuid is in there
+    for key in default_kwargs:
+        if key not in kwargs:
+            kwargs[key] = default_kwargs[key]
+    if 'uuid' not in kwargs:
+        kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
+    return kwargs
+
+
 def check_function(*default_args, **default_kwargs):
     """
     Import decorator, used to decorate all checks.
@@ -63,10 +74,7 @@ def check_function(*default_args, **default_kwargs):
     def check_deco(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # add all default args that are not defined in kwargs
-            for key in default_kwargs:
-                if key not in kwargs:
-                    kwargs[key] = default_kwargs[key]
+            kwargs = handle_kwargs(kwargs, default_kwargs)
             check = func(*args, **kwargs)
             return store_result_wrapper(check, kwargs, is_check=True)
         wrapper.check_decorator = CHECK_DECO
@@ -84,10 +92,7 @@ def action_function(*default_args, **default_kwargs):
     def action_deco(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # add all default args that are not defined in kwargs
-            for key in default_kwargs:
-                if key not in kwargs:
-                    kwargs[key] = default_kwargs[key]
+            kwargs = handle_kwargs(kwargs, default_kwargs)
             action = func(*args, **kwargs)
             return store_result_wrapper(action, kwargs, is_action=True)
         wrapper.check_decorator = ACTION_DECO

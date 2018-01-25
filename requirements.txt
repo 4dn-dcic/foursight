@@ -1,8 +1,8 @@
 boto3==1.4.7
-botocore==1.7.18
+botocore==1.8.34
 requests==2.18.4
 PyJWT==1.5.3
 Jinja2==2.9.6
-chalice==1.0.4
+chalice==1.1.0
 MarkupSafe==1.0
 dcicutils>=0.1.61
