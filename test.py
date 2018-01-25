@@ -10,7 +10,15 @@ from chalicelib import app_utils, check_utils, utils, check_groups, wrangler_uti
 from dateutil import tz
 
 
-class TestFSConnection(unittest.TestCase):
+class FSTest(unittest.TestCase):
+    def setUp(self):
+        self.t_start = time.time()
+        print(''.join(['\n\nRunning: ', self._testMethodName]))
+
+    def tearDown(self):
+        print('Took %s seconds.' % str(time.time()-self.t_start))
+
+class TestFSConnection(FSTest):
     environ_info = {
         'fourfront': 'test1',
         'es': 'test2',
@@ -55,7 +63,7 @@ class TestFSConnection(unittest.TestCase):
         self.assertTrue(check_res.get('ff_link') == 'not_a_real_http_link')
 
 
-class TestAppRoutes(unittest.TestCase):
+class TestAppRoutes(FSTest):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
 
@@ -237,7 +245,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertTrue(res.body['description'] == 'PUT request is malformed: NOT_A_DICT')
 
 
-class TestAppUtils(unittest.TestCase):
+class TestAppUtils(FSTest):
     """
     Meant for non-route utilities in chalicelib/app_utils.py
     """
@@ -327,7 +335,7 @@ class TestAppUtils(unittest.TestCase):
         self.assertTrue(trimmed_long.endswith('\n\n... Output truncated ...'))
 
 
-class TestCheckRunner(unittest.TestCase):
+class TestCheckRunner(FSTest):
     environ = 'mastertest'
     connection, _ = app_utils.init_connection(environ)
     # set up a queue for test checks
@@ -352,7 +360,7 @@ class TestCheckRunner(unittest.TestCase):
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
-            time.sleep(6)
+            time.sleep(3)
             sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
@@ -373,7 +381,7 @@ class TestCheckRunner(unittest.TestCase):
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
-            time.sleep(6)
+            time.sleep(3)
             sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
@@ -394,7 +402,7 @@ class TestCheckRunner(unittest.TestCase):
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
-            time.sleep(6)
+            time.sleep(3)
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
@@ -426,6 +434,7 @@ class TestCheckRunner(unittest.TestCase):
         self.assertTrue(vis_messages > 0 or invis_messages > 0)
         # wait for queue to empty
         while vis_messages > 0 or invis_messages > 0:
+            print('RETRYING')
             time.sleep(6)
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
@@ -451,7 +460,7 @@ class TestCheckRunner(unittest.TestCase):
         self.assertTrue(set([''.join([test_run_uuid, '/', test_dep_id])]) == found_ids)
 
 
-class TestCheckResult(unittest.TestCase):
+class TestCheckResult(FSTest):
     # use a fake check name and store on mastertest
     check_name = 'test_only_check'
     environ = 'mastertest' # hopefully this is up
@@ -488,7 +497,7 @@ class TestCheckResult(unittest.TestCase):
         self.assertTrue(res == check_copy.store_result())
 
 
-class TestActionResult(unittest.TestCase):
+class TestActionResult(FSTest):
     act_name = 'test_only_action'
     environ = 'mastertest' # hopefully this is up
     connection, _ = app_utils.init_connection(environ)
@@ -501,7 +510,6 @@ class TestActionResult(unittest.TestCase):
         self.assertTrue(res.get('kwargs') == {})
         action.kwargs = {'do_not_store': True}
         unstored_res = action.store_result() # will not update latest result
-        self.assertTrue('uuid' in unstored_res['kwargs'])
         self.assertTrue('do_not_store' in unstored_res['kwargs'])
         res2 = action.get_latest_result()
         self.assertTrue(res == res2)
@@ -514,7 +522,7 @@ class TestActionResult(unittest.TestCase):
         self.assertTrue(res.get('kwargs') == {'abc': 123})
 
 
-class TestCheckUtils(unittest.TestCase):
+class TestCheckUtils(FSTest):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
 
@@ -672,7 +680,7 @@ class TestCheckUtils(unittest.TestCase):
         self.assertTrue('by zero' in ''.join(action_res['output']))
         self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
 
-class TestCheckGroup(unittest.TestCase):
+class TestCheckGroup(FSTest):
     def test_check_groups(self):
         # make sure check groups are dicts
         self.assertTrue(isinstance(check_groups.CHECK_GROUPS, dict))
@@ -730,7 +738,7 @@ class TestCheckGroup(unittest.TestCase):
                     self.assertTrue(isinstance(check_info[3], app_utils.basestring))
 
 
-class TestActionGroups(unittest.TestCase):
+class TestActionGroups(FSTest):
     def test_action_groups_content(self):
         # verify all names of action groups are functions with the
         # @action_function deco AND all checks/actions in the group are valid.
@@ -758,7 +766,7 @@ class TestActionGroups(unittest.TestCase):
             self.assertTrue(action_group in actions)
 
 
-class TestUtils(unittest.TestCase):
+class TestUtils(FSTest):
     environ = 'mastertest' # hopefully this is up
     conn, _ = app_utils.init_connection(environ)
 
@@ -831,7 +839,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(str(exc.exception) == 'Do not overwrite the store_result method of the check or action result.')
 
 
-class TestWranglerUtils(unittest.TestCase):
+class TestWranglerUtils(FSTest):
     timestr_1 = '2017-04-09T17:34:53.423589+00:00' # UTC
     timestr_2 = '2017-04-09T17:34:53.423589+05:00' # 5 hours ahead of UTC
     timestr_3 = '2017-04-09T17:34:53.423589-05:00' # 5 hours behind of UTC

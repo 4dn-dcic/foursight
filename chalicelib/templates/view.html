@@ -22,29 +22,20 @@
                 <li>
                     <div class="{{'check-' + check['status'].lower() + ' boxstyle container'}}">
                         <h5 style='margin:10px 5px 10px 5px;'}}>
-                            {% if check.get('content') %}
-                                <a class="title-hover" data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>
-                                    {{check.get('title', 'No Title')}}
-                                </a>
-                            {% else %}
-                                <span>{{check.get('title', 'No Title')}}</span>
-                            {% endif %}
+                            <a class="title-hover" data-toggle="collapse" href={{'#' + env['environment'] + '-' + check['name']}}>
+                                {{check.get('title', 'No Title')}}
+                            </a>
                             <span class="pull-right">
                                 {{check.get('uuid', 'No uuid')}}
                             </span>
-                            {% if check.get('runnable') and is_admin %}
-                                <form class="control-form pull-right" action={{"/api/view/" + env['environment'] + '/' + check['name'] + '/check'}} method="get">
-                                    <button class="btn btn-link" type="submit">
-                                        <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
-                                    </button>
-                                </form>
-                            {% endif %}
                         </h5>
-                        {% if check.get('content') %}
                         <div class="collapse collapse-div commonstyle container-fluid" id={{env['environment'] + '-' + check['name']}}>
                             <hr style="margin:0px 0px 8px 0px; border-top:1px solid #ccc;">
                             <div class='row'>
                                 <div class="col-sm-9">
+                                    <a class="commonstyle own-line" target="_blank" href={{'https://' + domain + '/api/history/' + env['environment'] + '/' + check['name']}}>
+                                        Result history
+                                    </a>
                                     {% if check.get('description') %}
                                         <div class="commonstyle own-line">{{check['description']}}</div>
                                     {% endif %}
@@ -77,7 +68,12 @@
                                         </form>
                                     {% endif %}
                                 </div>
-                                <div class="col-sm-3 pull-right">
+                                <div class="col-sm-3 pull-right" style="text-align: right;">
+                                    {% if check.get('runnable') and is_admin %}
+                                        <a class="commonstyle own-line" href={{'https://' + domain + '/api/view/' + env['environment'] + '/' + check['name'] + '/check'}}>
+                                            Run check
+                                        </a>
+                                    {% endif %}
                                     {% if check.get('kwargs') %}
                                     <dl>
                                         {% for kwarg in check['kwargs'] %}
@@ -91,7 +87,6 @@
                                 </div>
                             </div>
                         </div>
-                        {% endif %}
                     </div>
                 </li>
                 {% endfor %}
