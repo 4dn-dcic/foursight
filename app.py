@@ -138,11 +138,10 @@ def load_route(environ, check, uuid):
     """
     Protected route
     """
-    return load_foursight_result(environ, check, uuid)
-    # if check_authorization(app.current_request.to_dict()):
-    #     return load_foursight_result(environ, check, uuid)
-    # else:
-    #     return forbidden_response()
+    if check_authorization(app.current_request.to_dict()):
+        return load_foursight_result(environ, check, uuid)
+    else:
+        return forbidden_response()
 
 
 @app.route('/run/{environ}/{check_group}', methods=['PUT', 'GET'])

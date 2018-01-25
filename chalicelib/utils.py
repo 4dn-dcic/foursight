@@ -55,12 +55,14 @@ def check_method_deco(method, decorator):
 
 def handle_kwargs(kwargs, default_kwargs):
     # add all default args that are not defined in kwargs
-    # also ensure uuid is in there
+    # also ensure 'uuid' and 'primary' are in there
     for key in default_kwargs:
         if key not in kwargs:
             kwargs[key] = default_kwargs[key]
     if 'uuid' not in kwargs:
         kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
+    if 'primary' not in kwargs:
+        kwargs['primary'] = False
     return kwargs
 
 

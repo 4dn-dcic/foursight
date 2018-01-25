@@ -434,7 +434,6 @@ class TestCheckRunner(FSTest):
         self.assertTrue(vis_messages > 0 or invis_messages > 0)
         # wait for queue to empty
         while vis_messages > 0 or invis_messages > 0:
-            print('RETRYING')
             time.sleep(6)
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
@@ -492,7 +491,7 @@ class TestCheckResult(FSTest):
         check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, init_uuid=res_uuid)
         # should not have 'uuid' or 'kwargs' attrs with init_uuid
         self.assertTrue(getattr(check_copy, 'uuid', None) is None)
-        self.assertTrue(getattr(check_copy, 'kwargs', None) is None)
+        self.assertTrue(getattr(check_copy, 'kwargs', {}) == {})
         check_copy.kwargs = {'primary': True, 'uuid': self.uuid}
         self.assertTrue(res == check_copy.store_result())
 
@@ -781,11 +780,11 @@ class TestUtils(FSTest):
         # kwargs of decorated function if none are provided
         kwargs_default = self.test_function_dummy().get('kwargs')
         uuid = kwargs_default.get('uuid')
-        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid})
+        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid, 'primary': False})
         kwargs_add = self.test_function_dummy(bcd=234).get('kwargs')
-        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid})
-        kwargs_override = self.test_function_dummy(abc=234).get('kwargs')
-        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid})
+        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid, 'primary': False})
+        kwargs_override = self.test_function_dummy(abc=234, primary=True).get('kwargs')
+        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid, 'primary': True})
 
     def test_handle_kwargs(self):
         default_kwargs = {'abc': 123, 'bcd': 234}
@@ -793,6 +792,7 @@ class TestUtils(FSTest):
         self.assertTrue(kwargs.get('abc') == 345)
         self.assertTrue(kwargs.get('bcd') == 234)
         self.assertTrue(kwargs.get('uuid').startswith('20'))
+        self.assertTrue(kwargs.get('primary') == False)
 
     def test_init_check_res(self):
         check = utils.init_check_res(self.conn, 'test_check', runnable=True)
