@@ -12,9 +12,30 @@
 
 {% block content %}
     <div class="container-fluid">
-        <h4>
-            <span>{{page_title}}</span>
-        </h4>
+        <div class="row">
+            <h4 class="in-line"><span>{{page_title}}</span></h4>
+            <h5 class="in-line pull-right">
+                <span>
+                    {{'Viewing results ' + (res_start + 1)|string + ' to ' + (res_start + res_limit)|string + '.'}}
+                </span>
+                {% if res_start > res_limit %}
+                    <a href={{"/api/history/" + env + "/" + check + "?start=" + (res_start - res_limit)|string + "&limit=" + res_limit|string}}>
+                        {{'Previous ' + res_limit|string}}
+                    </a>
+                    <span>  |  </span>
+                {% elif res_start < res_limit and res_start > 0 %}
+                    <a href={{"/api/history/" + env + "/" + check + "?start=0&limit=" + res_limit|string}}>
+                        {{'First ' + res_limit|string + '.'}}
+                    </a>
+                    <span>  |  </span>
+                {% else %}
+                    <span></span>
+                {% endif %}
+                <a href={{"/api/history/" + env + "/" + check + "?start=" + (res_start + res_limit)|string + "&limit=" + res_limit|string}}>
+                    {{'Next ' + res_limit|string}}
+                </a>
+            </h5>
+        </div>
         <div class="table-responsive">
             <table class="table table-bordered no-border">
                 <thead>
@@ -47,7 +68,7 @@
                             {% endfor %}
                             {% if 'uuid' in entry[1] %}
                                 <td>
-                                    <a target="_blank" href={{"https://" + domain + "/api/load/" + env + "/" + check + "/" + entry[1]['uuid']}}>View</a>
+                                    <a target="_blank" href={{"/api/load/" + env + "/" + check + "/" + entry[1]['uuid']}}>View</a>
                                 </td>
                             {% else %}
                                 <td>Error</td>

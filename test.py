@@ -616,22 +616,25 @@ class TestCheckUtils(FSTest):
         self.assertTrue(bad_actions is None)
 
     def test_get_check_group_results(self):
+        # dict to compare uuids
+        uuid_compares = {}
         # will get primary results by default
         all_res_primary = check_utils.get_check_group_results(self.conn, 'all_checks')
         for check_res in all_res_primary:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
+            self.assertTrue('uuid' in check_res)
+            uuid_compares[check_res['name']] = check_res['uuid']
         # compare to latest results (which should be the same or newer)
         all_res_latest = check_utils.get_check_group_results(self.conn, 'all_checks', use_latest=True)
         for check_res in all_res_latest:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
             self.assertTrue('status' in check_res)
-            if check_res in all_res_primary:
-                primary_uuid = all_res_primary[check_res]['uuid']
-                latest_uuid = all_res_latest[check_res]['uuid']
-                self.assertTrue(latest_uuid >= primary_uuid)
+            self.assertTrue('uuid' in check_res)
+            if check_res['name'] in uuid_compares:
+                self.assertTrue(check_res['uuid'] >= uuid_compares[check_res['name']])
         # non-existant check group
         bad_res = check_utils.get_check_group_results(self.conn, 'not_a_check_group')
         assert(bad_res == [])
