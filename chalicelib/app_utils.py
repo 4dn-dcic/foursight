@@ -640,7 +640,7 @@ def queue_check_group(environ, check_group, use_action_group=False):
     queue = get_sqs_queue()
     send_sqs_messages(queue, environ, check_vals)
     runner_input = {'sqs_url': queue.url}
-    for n in range(5): # number of parallel runners to kick off
+    for n in range(4): # number of parallel runners to kick off
         invoke_check_runner(runner_input)
     return runner_input # for testing purposes
 
