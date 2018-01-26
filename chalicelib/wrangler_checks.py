@@ -101,7 +101,8 @@ def change_in_item_counts(connection, **kwargs):
 @check_function(item_type='Item')
 def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
-    check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=True, runnable=True)
+    init_uuid = kwargs.get('uuid')
+    check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=init_uuid, runnable=True)
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
