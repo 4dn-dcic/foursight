@@ -22,12 +22,12 @@
                     <a href={{"/api/history/" + env + "/" + check + "?start=" + (res_start - res_limit)|string + "&limit=" + res_limit|string}}>
                         {{'Previous ' + res_limit|string}}
                     </a>
-                    <span>  |  </span>
-                {% elif res_start < res_limit and res_start > 0 %}
+                    <span>{{"  |  "}}</span>
+                {% elif res_start <= res_limit and res_start > 0 %}
                     <a href={{"/api/history/" + env + "/" + check + "?start=0&limit=" + res_limit|string}}>
                         {{'First ' + res_limit|string + '.'}}
                     </a>
-                    <span>  |  </span>
+                    <span>{{"  |  "}}</span>
                 {% else %}
                     <span></span>
                 {% endif %}

@@ -117,6 +117,11 @@ class TestAppRoutes(FSTest):
         res = app_utils.view_foursight_history(self.environ, test_check, is_admin=True) # not admin
         self.assertTrue(res.status_code == 200)
         self.assertTrue('Currently logged in as admin.' in res.body)
+        # run with some limits/starts
+        res = app_utils.view_foursight_history(self.environ, test_check, start=4, limit=2)
+        self.assertTrue(res.status_code == 200)
+        self.assertTrue('Previous 2' in res.body)
+        self.assertTrue('Next 2' in res.body)
 
     def test_get_foursight_history(self):
         test_check = 'test_random_nums'
