@@ -355,6 +355,7 @@ def view_foursight_history(environ, check, start=0, limit=50, is_admin=False, do
         history_kwargs=history_kwargs,
         res_start=start,
         res_limit=limit,
+        res_actual=len(history),
         page_title=page_title,
         stage=STAGE,
         is_admin=is_admin,
