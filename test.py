@@ -97,6 +97,27 @@ class TestAppRoutes(FSTest):
         self.assertTrue(res.status_code == 200)
         self.assertTrue('Currently logged in as admin.' in res.body)
 
+    def test_view_foursight_history(self):
+        test_check = 'test_random_nums'
+        res = app_utils.view_foursight_history(self.environ, test_check) # not admin
+        self.assertTrue(res.headers == {u'Content-Type': u'text/html'})
+        self.assertTrue(res.status_code == 200)
+        self.assertTrue('<!DOCTYPE html>' in res.body)
+        self.assertTrue('Foursight' in res.body)
+        self.assertTrue('Not logged in as admin.' in res.body)
+        self.assertTrue('History for Test Random Nums (mastertest)' in res.body)
+        self.assertTrue('<td>' in res.body)
+        # run with bad environ
+        res = app_utils.view_foursight_history('not_an_environment', test_check)
+        self.assertTrue('<td>' not in res.body)
+        # run with bad check
+        res = app_utils.view_foursight_history(self.environ, 'not_a_check')
+        self.assertTrue('<td>' not in res.body)
+        # run with is_admin
+        res = app_utils.view_foursight_history(self.environ, test_check, is_admin=True) # not admin
+        self.assertTrue(res.status_code == 200)
+        self.assertTrue('Currently logged in as admin.' in res.body)
+
     def test_get_foursight_history(self):
         test_check = 'test_random_nums'
         history = app_utils.get_foursight_history(self.conn, test_check, 0, 3)
