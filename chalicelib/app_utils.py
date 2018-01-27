@@ -6,6 +6,7 @@ import os
 import jwt
 import boto3
 import datetime
+from itertools import chain
 from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
@@ -13,10 +14,12 @@ from .check_utils import (
     get_check_group_results,
     run_check_or_action,
     get_check_strings,
+    get_action_strings,
     fetch_check_group,
     fetch_action_group,
     init_check_res,
-    init_action_res
+    init_action_res,
+    init_check_or_action_res
 )
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS, ACTION_GROUPS
@@ -292,9 +295,6 @@ def view_foursight(environ, is_admin=False, domain=""):
                             res['latest_action'] = 'Not yet run.'
                     else:
                         del res['action']
-                # decide whether or not to allow the check entry to be expanded
-                check_attrs = ('description', 'brief_output', 'full_output', 'admin_output', 'ff_link', 'latest_action')
-                res['content'] = False if all (res.get(attr) is None for attr in check_attrs) else True
                 processed_results.append(res)
             total_envs.append({
                 'status': 'success',
@@ -304,7 +304,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     # prioritize these environments
     env_order = ['data', 'staging', 'webdev', 'hotseat']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
-    template = jin_env.get_template('template.html')
+    template = jin_env.get_template('view.html')
     groups = list(CHECK_GROUPS.keys()) # only the keys needed
     # get these into groups of 4
     groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
@@ -312,10 +312,102 @@ def view_foursight(environ, is_admin=False, domain=""):
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
-    html_resp.body = template.render(envs=total_envs, groups_4=groups_4, stage=STAGE, is_admin=is_admin,
-                            domain=domain, running_checks=running_checks, queued_checks=queued_checks)
+    html_resp.body = template.render(
+        envs=total_envs,
+        groups_4=groups_4,
+        stage=STAGE,
+        is_admin=is_admin,
+        domain=domain,
+        running_checks=running_checks,
+        queued_checks=queued_checks
+    )
     html_resp.status_code = 200
     return process_response(html_resp)
+
+
+def view_foursight_history(environ, check, start=0, limit=50, is_admin=False, domain=""):
+    """
+    View a tabular format of the history of a given check or action (str name
+    as the 'check' parameter) for the given environment. Results look like:
+    status, kwargs.
+    start controls where the first result is and limit controls how many
+    results are retrieved (see get_foursight_history()).
+    Returns html.
+    """
+    html_resp = Response('Foursight history view')
+    html_resp.headers = {'Content-Type': 'text/html'}
+    connection, error_res = init_connection(environ)
+    if connection:
+        history = get_foursight_history(connection, check, start, limit)
+        history_kwargs = list(set(chain.from_iterable([l[1] for l in history])))
+    else:
+        history, history_kwargs = [], []
+    template = jin_env.get_template('history.html')
+    check_title = ' '.join(check.split('_')).title()
+    page_title = ''.join(['History for ', check_title, ' (', environ, ')'])
+    queue_attr = get_sqs_attributes(get_sqs_queue().url)
+    running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
+    queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    html_resp.body = template.render(
+        env=environ,
+        check=check,
+        history=history,
+        history_kwargs=history_kwargs,
+        res_start=start,
+        res_limit=limit,
+        res_actual=len(history),
+        page_title=page_title,
+        stage=STAGE,
+        is_admin=is_admin,
+        domain=domain,
+        running_checks=running_checks,
+        queued_checks=queued_checks
+    )
+    html_resp.status_code = 200
+    return process_response(html_resp)
+
+
+def get_foursight_history(connection, check, start, limit):
+    """
+    Get a brief form of the historical results for a check, including
+    UUID, status, kwargs. Limit the number of results recieved to 50, unless
+    otherwise specified ('limit' arg). 'start' arg determines where the start
+    of the results grabbed is, with idx = 0 being the most recent one.
+
+    'check' may be a check or an action (string name)
+    """
+    # limit 'limit' param to 500
+    limit = 500 if limit > 500 else limit
+    result_obj = init_check_or_action_res(connection, check)
+    if not result_obj:
+        return []
+    return result_obj.get_result_history(start, limit)
+
+
+def load_foursight_result(environ, check, uuid):
+    """
+    Loads a specific check or action result given an environment, check or
+    action name, and uuid (all strings)
+    """
+    connection, response = init_response(environ)
+    if not connection:
+        return response
+    res_obj = init_check_or_action_res(connection, check)
+    if not res_obj:
+        response.body = {
+            'status': 'error',
+            'description': 'Not a valid check or action.'
+        }
+        response.status_code = 400
+    else:
+        uuid_key = ''.join([check, '/', uuid, res_obj.extension])
+        data = res_obj.get_s3_object(uuid_key)
+        response.body = {
+            'status': 'success',
+            'data': data
+        }
+        response.status_code = 200
+    return process_response(response)
 
 
 def run_foursight_checks(environ, check_group):
@@ -405,7 +497,7 @@ def run_put_check(environ, check, put_data):
         response.status_code = 400
         return response
     put_uuid = put_data.get('uuid')
-    putCheck = init_check_res(connection, check, uuid=put_uuid)
+    putCheck = init_check_res(connection, check, init_uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'description', 'brief_output', 'full_output', 'admin_output']:
@@ -429,7 +521,7 @@ def run_put_check(environ, check, put_data):
             else:
                 setattr(putCheck, field, put_content)
     # set 'primary' kwarg so that the result is stored as 'latest'
-    putCheck.kwargs = {'primary': True}
+    putCheck.kwargs = {'primary': True, 'uuid': put_uuid}
     stored = putCheck.store_result()
     response.body = {
         'status': 'success',
@@ -611,12 +703,19 @@ def invoke_check_runner(runner_input):
     (dict containing {'sqs_url': <str>})
     """
     client = boto3.client('lambda')
-    # InvocationType=Event makes asynchronous
-    response = client.invoke(
-        FunctionName=RUNNER_NAME,
-        InvocationType='Event',
-        Payload=json.dumps(runner_input)
-    )
+    # InvocationType='Event' makes asynchronous
+    # try/except while async invokes are problematics
+    try:
+        response = client.invoke(
+            FunctionName=RUNNER_NAME,
+            InvocationType='Event',
+            Payload=json.dumps(runner_input)
+        )
+    except:
+        response = client.invoke(
+            FunctionName=RUNNER_NAME,
+            Payload=json.dumps(runner_input)
+        )
     return response
 
 

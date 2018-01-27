@@ -17,7 +17,7 @@
       }
     },
     "backend": "api",
-    "chalice_version": "1.0.4",
+    "chalice_version": "1.1.0",
     "rest_api_id": "we0v248yi4",
     "api_gateway_stage": "api",
     "region": "us-east-1"
@@ -40,7 +40,7 @@
       }
     },
     "backend": "api",
-    "chalice_version": "1.0.4",
+    "chalice_version": "1.1.0",
     "rest_api_id": "kpqxwgx646",
     "api_gateway_stage": "api",
     "region": "us-east-1"

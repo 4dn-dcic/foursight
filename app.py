@@ -119,6 +119,31 @@ def view_route(environ):
     return view_foursight(environ, check_authorization(req_dict), domain)
 
 
+@app.route('/history/{environ}/{check}', methods=['GET'])
+def history_route(environ, check):
+    """
+    Non-protected route
+    """
+    # get some query params
+    req_dict = app.current_request.to_dict()
+    query_params = req_dict.get('query_params')
+    start = int(query_params.get('start', '0')) if query_params else 0
+    limit = int(query_params.get('limit', '50')) if query_params else 50
+    domain = req_dict.get('headers', {}).get('host', "")
+    return view_foursight_history(environ, check, start, limit, check_authorization(req_dict), domain)
+
+
+@app.route('/load/{environ}/{check}/{uuid}', methods=['GET'])
+def load_route(environ, check, uuid):
+    """
+    Protected route
+    """
+    if check_authorization(app.current_request.to_dict()):
+        return load_foursight_result(environ, check, uuid)
+    else:
+        return forbidden_response()
+
+
 @app.route('/run/{environ}/{check_group}', methods=['PUT', 'GET'])
 def run_route(environ, check_group):
     """

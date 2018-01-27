@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+<!-- Macro for toggle button to display _output fields of checks -->
+{% macro toggle_output(output, target, title) %}
+    <button class="commonstyle own-line btn btn-default btn-sm" data-toggle="collapse" data-target={{'#' + target}}>
+        {{title}}
+    </button>
+    <div class="commonstyle collapse" id={{target}}>
+        <pre><code>{{output}}</code></pre>
+    </div>
+{% endmacro %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="row">
+            <h4 class="in-line"><span>{{page_title}}</span></h4>
+            <h5 class="in-line pull-right">
+                <span>
+                    {{'Viewing results ' + (res_start + 1)|string + ' to ' + (res_start + res_actual)|string + '.'}}
+                </span>
+                {% if res_start > res_limit %}
+                    <a href={{"/api/history/" + env + "/" + check + "?start=" + (res_start - res_limit)|string + "&limit=" + res_limit|string}}>
+                        {{'Previous ' + res_limit|string}}
+                    </a>
+                {% elif res_start <= res_limit and res_start > 0 %}
+                    <a href={{"/api/history/" + env + "/" + check + "?start=0&limit=" + res_limit|string}}>
+                        {{'First ' + res_limit|string}}
+                    </a>
+                {% else %}
+                    <span></span>
+                {% endif %}
+                {% if res_start > 0 and res_actual == res_limit %}
+                    <span>{{"  |  "}}</span>
+                {% endif %}
+                {% if res_actual == res_limit %}
+                    <a href={{"/api/history/" + env + "/" + check + "?start=" + (res_start + res_limit)|string + "&limit=" + res_limit|string}}>
+                        {{'Next ' + res_limit|string}}
+                    </a>
+                {% endif %}
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered no-border">
+                <thead>
+                    <tr class="row active">
+                        <th scope="col">status</th>
+                        {% for kwarg in history_kwargs %}
+                            <th scope="col">{{kwarg}}</th>
+                        {% endfor %}
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in history %}
+                        {% set rowstat = '' %}
+                        {% if entry[0] in ['PASS', 'DONE'] %}
+                            {% set rowstat = 'success' %}
+                        {% elif entry[0] in ['WARN', 'PEND'] %}
+                            {% set rowstat = 'warning' %}
+                        {% elif entry[0] == 'FAIL' %}
+                            {% set rowstat = 'danger' %}
+                        {% elif entry[0] == 'ERROR' %}
+                            {% set rowstat = 'active' %}
+                        {% else %}
+                            {% set rowstat = '' %}
+                        {% endif %}
+                        <tr class="{{'row ' + rowstat}}">
+                            <td>{{entry[0]}}</td>
+                            {% for kw in history_kwargs %}
+                                <td>{{entry[1].get(kw)}}</td>
+                            {% endfor %}
+                            {% if 'uuid' in entry[1] %}
+                                <td>
+                                    <a target="_blank" href={{"/api/load/" + env + "/" + check + "/" + entry[1]['uuid']}}>View</a>
+                                </td>
+                            {% else %}
+                                <td>Error</td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

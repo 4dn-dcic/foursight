@@ -10,6 +10,7 @@ It is assumed that you've already read the getting started documentation. If not
 * There should NOT be two checks with the same name. The tests will fail if this happens.
 * Attributes of the check result, such as status, are simply set like: `check.status = 'PASS'`.
 * Checks should always end by returning the value of the check result: `return check`.
+* Checks have variable parameters through key word arguments (kwargs), two of which are most important: `uuid` and `primary`.
 
 ## Attributes you can set on a check result
 The check result (i.e. the output of running `init_check_res`) has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the check function should return the check result (object initialized by `init_check_res`). Any of the following attributes can be set like this:
@@ -38,7 +39,6 @@ Lastly, there are a number of attributes that are used internally. These do not 
 * **s3_connection**: is set automatically when you use `init_check_res`.
 * **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
 * **title**: generated automatically from the name attribute unless it is set manually.
-* **uuid**: this is explained further later in this document. The only reason to use this is if you want a check to be automatically populated by a previous result. Usually handled by passing in the `uuid` parameter to `init_check_res`.
 
 ## Our example check
 Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
@@ -140,6 +140,9 @@ This would execute the `items_created_in_the_past_day` check with the default kw
 
 Default kwargs are very important to set if they are required for a check, since there are instances in which your check can be run outside of a check group. In such a case, it may break if those arguments are not provided. Really, this is up to the user to design his or her checks in a robust way.
 
+### The 'uuid' key word argument
+You should not have to set it directly, but the `uuid` key word argument is very important, as it controls where the check is stored in S3. It is a string formatted timestamp of when the check was run. It will be automatically set when running checks through the `queue_check_group` utility.
+
 ### The 'primary' key word argument
 The Foursight UI will automatically display the latest run check that was run with the `primary` key word argument set to `True`. In most cases, this argument should be set when defining the key word arguments in the entry of a check group; in some cases, you may want to set it during test. Omitting this argument or setting its value to `False` will still cause the check to store its record in AWS S3 and overwrite the `latest` result for that check, but that result will not be shown on the UI.
 
@@ -160,7 +163,7 @@ To achieve this, we will use manipulate the `item_type` key word argument and in
 First, add the `uuid` parameter to the `init_check_res` function. Read it from the kwargs. This will take care of initializing the check result with the attributes of the results of the check with the given uuid (if it exists).
 ```
 init_uuid = kwargs.get('uuid')
-check = init_check_res(connection, 'items_created_in_the_past_day', uuid=init_uuid)
+check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=init_uuid)
 ```
 
 Then, we just need to add the logic to use the `full_output` from previous results if available:

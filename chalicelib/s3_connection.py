@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 import requests
 import boto3
+import datetime
 
 class S3Connection(object):
     def __init__(self, bucket_name):
@@ -34,22 +35,69 @@ class S3Connection(object):
             return None
 
 
-    def list_keys_w_prefix(self, prefix):
-        try:
-            contents = self.client.list_objects_v2(Bucket=self.bucket, Prefix=prefix).get('Contents', [])
-        except:
-            return []
-        else:
-            return [obj['Key'] for obj in contents]
+    def list_keys_w_prefix(self, prefix, records_only=False):
+        """
+        List all s3 keys with the given prefix (should look like
+        '<prefix>/'). If records_only == True, then add '20' to the end of
+        the prefix to only find records that are in timestamp form (will
+        exclude 'latest' and 'primary'.)
+        s3 only returns up to 1000 results at once, hence the need for the
+        for loop. NextContinuationToken shows if there are more results to
+        return.
+
+        Returns the list of keys.
+
+        Also see list_all_keys()
+        """
+        reached_end = False
+        all_keys = []
+        token = None # for the NextContinuationToken in s3 response
+        # make sure prefix ends with a slash (bucket format)
+        prefix = ''.join([prefix, '/']) if not prefix.endswith('/') else prefix
+        # this will exclude 'primary' and 'latest' in records_only == True
+        use_prefix = ''.join([prefix, '20' ])if records_only else prefix
+        while not reached_end:
+            try:
+                # will limit to 1000 objects
+                if token:
+                    response = self.client.list_objects_v2(
+                        Bucket=self.bucket,
+                        Prefix=use_prefix,
+                        ContinuationToken=token
+                    )
+                else:
+                    response = self.client.list_objects_v2(
+                        Bucket=self.bucket,
+                        Prefix=use_prefix
+                    )
+                token = response.get('NextContinuationToken', None)
+                contents = response.get('Contents', [])
+            except:
+                contents = []
+                reached_end = True # bail
+            all_keys.extend([obj['Key'] for obj in contents])
+            if len(all_keys) > 0 and not token:
+                reached_end = True
+        # not sorted at this point
+        return all_keys
 
 
     def list_all_keys(self):
-        try:
-            contents = self.client.list_objects_v2(Bucket=self.bucket).get('Contents', [])
-        except:
-            return []
-        else:
-            return [obj['Key'] for obj in contents]
+        reached_end = False
+        all_keys = []
+        token = None
+        while not reached_end:
+            try:
+                # will limit to 1000 objects
+                response = self.client.list_objects_v2(Bucket=self.bucket)
+                token = response.get('NextContinuationToken', None)
+                contents = response.get('Contents', [])
+            except:
+                contents = []
+            all_keys.extend([obj['Key'] for obj in contents])
+            if len(all_keys) > 0 and not token:
+                reached_end = True
+        return all_keys
 
 
     def delete_keys(self, key_list):

@@ -46,6 +46,27 @@ def get_check_strings(specific_check=None):
         return list(set(all_checks))
 
 
+def get_action_strings(specific_action=None):
+    """
+    Basically the same thing as get_check_strings, but for actions...
+    """
+    all_actions = []
+    for check_mod in CHECK_MODULES:
+        if globals().get(check_mod):
+            methods = get_methods_by_deco(globals()[check_mod], ACTION_DECO)
+            for method in methods:
+                act_str = '/'.join([check_mod, method.__name__])
+                if specific_action and specific_action == method.__name__:
+                    return act_str
+                elif check_mod != 'test_checks':
+                    all_actions.append(act_str)
+    if specific_action:
+        # if we've gotten here, it means the specific action was not found
+        return None
+    else:
+        return list(set(all_actions))
+
+
 def get_check_group_results(connection, name, use_latest=False):
     """
     Initialize check results for each check in a group and get latest results,
@@ -176,3 +197,20 @@ def run_action(connection, act_name, act_method, act_kwargs):
         err_action.output = traceback.format_exc().split('\n')
         act_result = err_action.store_result()
     return act_result
+
+
+def init_check_or_action_res(connection, check):
+    """
+    Use in cases where a string is provided that could be a check or an action
+    Returns None if neither are valid. Tries checks first then actions.
+    If successful, returns a CheckResult or ActionResult
+    """
+    is_action = False
+    # determine whether it is a check or action
+    check_str = get_check_strings(check)
+    if not check_str:
+        check_str = get_action_strings(check)
+        is_action = True
+    if not check_str: # not a check or an action. abort
+        return None
+    return init_action_res(connection, check) if is_action else init_check_res(connection, check)
