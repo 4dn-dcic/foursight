@@ -703,12 +703,19 @@ def invoke_check_runner(runner_input):
     (dict containing {'sqs_url': <str>})
     """
     client = boto3.client('lambda')
-    # InvocationType=Event makes asynchronous
-    response = client.invoke(
-        FunctionName=RUNNER_NAME,
-        InvocationType='Event',
-        Payload=json.dumps(runner_input)
-    )
+    # InvocationType='Event' makes asynchronous
+    # try/except while async invokes are problematics
+    try:
+        response = client.invoke(
+            FunctionName=RUNNER_NAME,
+            InvocationType='Event',
+            Payload=json.dumps(runner_input)
+        )
+    except:
+        response = client.invoke(
+            FunctionName=RUNNER_NAME,
+            Payload=json.dumps(runner_input)
+        )
     return response
 
 
