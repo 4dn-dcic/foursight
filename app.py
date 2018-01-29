@@ -102,7 +102,7 @@ def view_run_route(environ, check, method):
     """
     req_dict = app.current_request.to_dict()
     query_params = req_dict.get('query_params', {})
-    if check_authorization(app.current_request.to_dict()):
+    if check_authorization(req_dict):
         if method == 'action':
             # query_params are not passed to actions
             return view_run_action(environ, check)
