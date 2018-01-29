@@ -100,11 +100,14 @@ def view_run_route(environ, check, method):
     """
     Protected route
     """
+    req_dict = app.current_request.to_dict()
+    query_params = req_dict.get('query_params', {})
     if check_authorization(app.current_request.to_dict()):
         if method == 'action':
+            # query_params are not passed to actions
             return view_run_action(environ, check)
         else:
-            return view_run_check(environ, check)
+            return view_run_check(environ, check, query_params)
     else:
         return forbidden_response()
 

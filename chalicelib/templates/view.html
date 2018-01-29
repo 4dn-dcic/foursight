@@ -67,21 +67,24 @@
                                 </div>
                                 <div class="col-sm-3 pull-right" style="text-align: right;">
                                     {% if check.get('runnable') and is_admin %}
-                                        <a class="commonstyle own-line" href={{'https://' + domain + '/api/view/' + env['environment'] + '/' + check['name'] + '/check'}}>
+                                        <a class="commonstyle own-line" href={{'/api/view/' + env['environment'] + '/' + check['name'] + '/check'}}>
                                             Run check
                                         </a>
                                     {% endif %}
                                     {% if check.get('kwargs') %}
-                                    <dl>
+                                    <form action={{'/api/view/' + env['environment'] + '/' + check['name'] + '/check'}} method="GET">
                                         {% for kwarg in check['kwargs'] %}
                                             {% if kwarg != 'uuid' %}
-                                                <dt>{{kwarg}}</dt>
-                                                <dd>{{check['kwargs'][kwarg]}}</dd>
+                                                <span>{{kwarg}}</span>
+                                                <input type="text" name={{kwarg}} value={{check['kwargs'][kwarg]}} /><br>
                                             {% endif %}
                                         {% endfor %}
-                                    </dl>
+                                        <button class="btn btn-default btn-sm" type="submit">
+                                            Run check
+                                        </button>
+                                    </form>
                                     {% endif %}
-                                    <a class="commonstyle own-line" target="_blank" href={{'https://' + domain + '/api/history/' + env['environment'] + '/' + check['name']}}>
+                                    <a class="commonstyle own-line" target="_blank" href={{'/api/history/' + env['environment'] + '/' + check['name']}}>
                                         Result history
                                     </a>
                                 </div>

@@ -194,21 +194,24 @@ def trim_output(output, max_size=100000):
 ##### ROUTE RUNNING FUNCTIONS #####
 
 
-def view_run_check(environ, check):
+def view_run_check(environ, check, params):
     """
     Called from the view endpoint (or manually, I guess), this re-runs the given
     checks for the given environment and returns the
     view_foursight templated result with the new check result.
+    Params are kwargs that are read from the url query_params; they will be
+    added to the kwargs used to run the check.
 
     This also be used to run a check group. This is checked before individual check names
     """
+    import pdb; pdb.set_trace()
     if check in CHECK_GROUPS:
         queue_check_group(environ, check)
     else:
         connection, _ = init_connection(environ)
         check_str = get_check_strings(check)
         if connection and check_str:
-            run_check_or_action(connection, check_str, {})
+            run_check_or_action(connection, check_str, params)
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
     return Response(

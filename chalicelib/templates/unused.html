@@ -21,4 +21,17 @@
             },
         });
     }
+
+
+    <dl>
+        {% for kwarg in check['kwargs'] %}
+            {% if kwarg != 'uuid' %}
+                <dt>{{kwarg}}</dt>
+                {% if is_admin %}
+                {% else %}
+                {% endif %}
+                <dd>{{check['kwargs'][kwarg]}}</dd>
+            {% endif %}
+        {% endfor %}
+    </dl>
 </script>-->
