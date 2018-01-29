@@ -66,27 +66,28 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-sm-3 pull-right" style="text-align: right;">
-                                    {% if check.get('runnable') and is_admin %}
-                                        <a class="commonstyle own-line" href={{'/api/view/' + env['environment'] + '/' + check['name'] + '/check'}}>
-                                            Run check
-                                        </a>
-                                    {% endif %}
-                                    {% if check.get('kwargs') %}
-                                    <form action={{'/api/view/' + env['environment'] + '/' + check['name'] + '/check'}} method="GET">
-                                        {% for kwarg in check['kwargs'] %}
-                                            {% if kwarg != 'uuid' %}
-                                                <span>{{kwarg}}</span>
-                                                <input type="text" name={{kwarg}} value={{check['kwargs'][kwarg]}} /><br>
-                                            {% endif %}
-                                        {% endfor %}
-                                        <button class="btn btn-default btn-sm" type="submit">
-                                            Run check
-                                        </button>
-                                    </form>
-                                    {% endif %}
                                     <a class="commonstyle own-line" target="_blank" href={{'/api/history/' + env['environment'] + '/' + check['name']}}>
                                         Result history
                                     </a>
+                                    {% if check.get('kwargs') %}
+                                        <form action={{'/api/view/' + env['environment'] + '/' + check['name'] + '/check'}} method="GET">
+                                            {% for kwarg in check['kwargs'] %}
+                                                {% if kwarg != 'uuid' %}
+                                                    <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
+                                                    {% if is_admin %}
+                                                        <input type="text" name={{kwarg}} value={{check['kwargs'][kwarg]}} /><br>
+                                                    {% else %}
+                                                        <span>{{check['kwargs'][kwarg]}}</span><br>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            {% if check.get('runnable') and is_admin %}
+                                                <button class="btn btn-default btn-sm" type="submit">
+                                                    Run check
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>

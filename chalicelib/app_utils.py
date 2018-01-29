@@ -180,12 +180,19 @@ def query_params_to_literals(params):
     Simple function to loop through the query params and convert them to
     bools/ints/floats other literals as applicable
     """
+    to_delete = []
     for key, value in params.items():
+        if not value:
+            # handles empty strings
+            to_delete.append(key)
+            continue
         try:
             as_literal = ast.literal_eval(value)
         except ValueError:
             as_literal = value
         params[key] = as_literal
+    for key in to_delete:
+        del params[key]
     return params
 
 
