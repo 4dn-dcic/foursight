@@ -6,6 +6,7 @@ import os
 import jwt
 import boto3
 import datetime
+import ast
 from itertools import chain
 from dateutil import tz
 from base64 import b64decode
@@ -174,6 +175,27 @@ def process_response(response):
     return response
 
 
+def query_params_to_literals(params):
+    """
+    Simple function to loop through the query params and convert them to
+    bools/ints/floats other literals as applicable
+    """
+    to_delete = []
+    for key, value in params.items():
+        if not value:
+            # handles empty strings
+            to_delete.append(key)
+            continue
+        try:
+            as_literal = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            as_literal = value
+        params[key] = as_literal
+    for key in to_delete:
+        del params[key]
+    return params
+
+
 def trim_output(output, max_size=100000):
     """
     AWS lambda has a maximum body response size of 6MB. Since results are currently delivered entirely
@@ -194,11 +216,13 @@ def trim_output(output, max_size=100000):
 ##### ROUTE RUNNING FUNCTIONS #####
 
 
-def view_run_check(environ, check):
+def view_run_check(environ, check, params):
     """
     Called from the view endpoint (or manually, I guess), this re-runs the given
     checks for the given environment and returns the
     view_foursight templated result with the new check result.
+    Params are kwargs that are read from the url query_params; they will be
+    added to the kwargs used to run the check.
 
     This also be used to run a check group. This is checked before individual check names
     """
@@ -207,8 +231,10 @@ def view_run_check(environ, check):
     else:
         connection, _ = init_connection(environ)
         check_str = get_check_strings(check)
+        # convert string query params to literals
+        params = query_params_to_literals(params)
         if connection and check_str:
-            run_check_or_action(connection, check_str, {})
+            run_check_or_action(connection, check_str, params)
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
     return Response(
