@@ -499,7 +499,7 @@ def run_put_check(environ, check, put_data):
         }
         response.status_code = 400
         return response
-    put_uuid = put_data.get('uuid')
+    put_uuid = put_data.get('uuid', datetime.datetime.utcnow().isoformat())
     putCheck = init_check_res(connection, check, init_uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
