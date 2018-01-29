@@ -378,7 +378,8 @@ class TestAppUtils(FSTest):
             'float': '12.1',
             'str': 'abc',
             'none_str': 'None',
-            'empty_str': ''
+            'empty_str': '',
+            'special': '&limit=all'
         }
         literal_params = app_utils.query_params_to_literals(test_params)
         self.assertTrue(literal_params['primary'] == True)
@@ -388,6 +389,7 @@ class TestAppUtils(FSTest):
         self.assertTrue(literal_params['str'] == 'abc')
         self.assertTrue(literal_params['none_str'] is None)
         self.assertTrue('empty_str' not in literal_params)
+        self.assertTrue(literal_params['special'] == '&limit=all')
 
 
 class TestCheckRunner(FSTest):
