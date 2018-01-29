@@ -75,14 +75,14 @@
                                                 {% if kwarg != 'uuid' %}
                                                     <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
                                                     {% if is_admin %}
-                                                        <input type="text" name={{kwarg}} value={{check['kwargs'][kwarg]}} /><br>
+                                                        <input style="width: 35%;" type="text" name={{kwarg}} value={{check['kwargs'][kwarg]}} /><br>
                                                     {% else %}
                                                         <span>{{check['kwargs'][kwarg]}}</span><br>
                                                     {% endif %}
                                                 {% endif %}
                                             {% endfor %}
                                             {% if check.get('runnable') and is_admin %}
-                                                <button class="btn btn-default btn-sm" type="submit">
+                                                <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit">
                                                     Run check
                                                 </button>
                                             {% endif %}

@@ -83,7 +83,7 @@ class TestAppRoutes(FSTest):
         self.assertTrue('Foursight' in res.body)
         self.assertTrue('Not logged in as admin.' in res.body)
         # run with a check
-        res2 = app_utils.view_run_check(self.environ, 'indexing_progress')
+        res2 = app_utils.view_run_check(self.environ, 'indexing_progress', {})
         self.assertTrue(res2.status_code == 302)
         self.assertTrue('/api/view/' + self.environ in res2.body)
         self.assertTrue(res.body != res2.body)
@@ -369,6 +369,25 @@ class TestAppUtils(FSTest):
         trimmed_long = app_utils.trim_output(long_output)
         self.assertTrue(trimmed_long != json.dumps(long_output, indent=4))
         self.assertTrue(trimmed_long.endswith('\n\n... Output truncated ...'))
+
+    def test_query_params_to_literals(self):
+        test_params = {
+            'primary': 'True',
+            'bad_bool': 'false',
+            'int': '12',
+            'float': '12.1',
+            'str': 'abc',
+            'none_str': 'None',
+            'empty_str': ''
+        }
+        literal_params = app_utils.query_params_to_literals(test_params)
+        self.assertTrue(literal_params['primary'] == True)
+        self.assertTrue(literal_params['bad_bool'] == 'false')
+        self.assertTrue(literal_params['int'] == 12)
+        self.assertTrue(literal_params['float'] == 12.1)
+        self.assertTrue(literal_params['str'] == 'abc')
+        self.assertTrue(literal_params['none_str'] is None)
+        self.assertTrue('empty_str' not in literal_params)
 
 
 class TestCheckRunner(FSTest):
