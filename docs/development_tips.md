@@ -46,8 +46,12 @@ app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_d
 app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'primary': True})
 ```
 
- If writing any results to S3 is not desirable during your testing, either insert a break point before that function or not return the check result.
+If writing any results to S3 is not desirable during your testing, either insert a break point before that function or not return the check result.
 
+### Testing on the UI
+The Foursight UI is also a useful place to test your checks, since it is very easy to adjust the check key word arguments when signed in as admin. In this mode, setting the `primary` argument to anything but `True` will cause your test to run (and be available on the /history/ page) with overwriting the current primary result.
+
+Just make sure to do your testing on the development stage of Foursight, which you can deploy to locally using `python -m deploy dev`. Please keep in mind that you will need to have some environment variables locally to make this work.
 
 ### Manual testing of your action
 Actions function very similarly to checks when run individually. In fact, testing them is completely the same; the only difference is the different output. Below is some code that would test an action called `patch_file_size` in the `wrangler_checks` module.
