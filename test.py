@@ -521,7 +521,6 @@ class TestCheckResult(FSTest):
     check_name = 'test_only_check'
     environ = 'mastertest' # hopefully this is up
     connection, _ = app_utils.init_connection(environ)
-    uuid = datetime.datetime.utcnow().isoformat()
 
     def test_check_result_methods(self):
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
@@ -529,8 +528,13 @@ class TestCheckResult(FSTest):
         self.assertTrue(check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
-        check.full_output = ['first_item']
-        check.kwargs = {'primary': True, 'uuid': self.uuid}
+        # first store without uuid and primary kwargs; should be generated
+        res = check.store_result()
+        self.assertTrue('uuid' in res['kwargs'])
+        self.assertTrue(res['kwargs']['primary'] == False)
+        # set the kwargs and store again
+        prime_uuid = datetime.datetime.utcnow().isoformat()
+        check.kwargs = {'primary': True, 'uuid': prime_uuid}
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
@@ -549,7 +553,7 @@ class TestCheckResult(FSTest):
         # should not have 'uuid' or 'kwargs' attrs with init_uuid
         self.assertTrue(getattr(check_copy, 'uuid', None) is None)
         self.assertTrue(getattr(check_copy, 'kwargs', {}) == {})
-        check_copy.kwargs = {'primary': True, 'uuid': self.uuid}
+        check_copy.kwargs = {'primary': True, 'uuid': prime_uuid}
         self.assertTrue(res == check_copy.store_result())
 
 
@@ -563,7 +567,7 @@ class TestActionResult(FSTest):
         res = action.store_result()
         self.assertTrue(res.get('status') == 'PEND')
         self.assertTrue(res.get('output') is None)
-        self.assertTrue(res.get('kwargs') == {})
+        self.assertTrue('uuid' in res.get('kwargs'))
         action.kwargs = {'do_not_store': True}
         unstored_res = action.store_result() # will not update latest result
         self.assertTrue('do_not_store' in unstored_res['kwargs'])
@@ -575,7 +579,8 @@ class TestActionResult(FSTest):
         res = action.store_result()
         self.assertTrue(res.get('status') == 'FAIL')
         self.assertTrue(res.get('description') == 'Malformed status; look at Foursight action definition.')
-        self.assertTrue(res.get('kwargs') == {'abc': 123})
+        self.assertTrue(res['kwargs']['abc'] == 123)
+        self.assertTrue('uuid' in res.get('kwargs'))
 
 
 class TestCheckUtils(FSTest):
@@ -693,7 +698,7 @@ class TestCheckUtils(FSTest):
         latest_res = check.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == latest_uuid)
         primary_res = check.get_primary_result()
-        self.assertTrue(primary_res.get('uuid') < latest_uuid)
+        self.assertTrue(primary_uuid < latest_uuid)
 
         # with an action
         action = utils.init_action_res(self.conn, 'add_random_test_nums')
