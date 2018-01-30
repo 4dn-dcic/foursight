@@ -579,7 +579,8 @@ class TestActionResult(FSTest):
         res = action.store_result()
         self.assertTrue(res.get('status') == 'FAIL')
         self.assertTrue(res.get('description') == 'Malformed status; look at Foursight action definition.')
-        self.assertTrue(res.get('kwargs') == {'abc': 123})
+        self.assertTrue(res['kwargs']['abc'] == 123)
+        self.assertTrue('uuid' in res.get('kwargs'))
 
 
 class TestCheckUtils(FSTest):
@@ -697,7 +698,7 @@ class TestCheckUtils(FSTest):
         latest_res = check.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == latest_uuid)
         primary_res = check.get_primary_result()
-        self.assertTrue(primary_res.get('uuid') < latest_uuid)
+        self.assertTrue(primary_uuid < latest_uuid)
 
         # with an action
         action = utils.init_action_res(self.conn, 'add_random_test_nums')
