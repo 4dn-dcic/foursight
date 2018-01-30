@@ -117,7 +117,7 @@ class RunResult(object):
         return results
 
 
-    def store_formatted_result(self, uuid, formatted, primary=False):
+    def store_formatted_result(self, uuid, formatted, primary):
         """
         Store the result in s3. Always makes an entry with key equal to the
         uuid timestamp. Will also store under (i.e. overwrite)the 'latest' key.
@@ -213,14 +213,17 @@ class CheckResult(RunResult):
             self.status = 'ERROR'
             self.description = 'Malformed status; look at Foursight check definition.'
         # if there's a set uuid field, use that instead of curr utc time
-        # kwargs should **always** have uuid
-        uuid = self.kwargs.get('uuid', datetime.datetime.utcnow().isoformat())
-        formatted = self.format_result(uuid)
+        # kwargs should **always** have uuid and some value of primary
+        if 'uuid' not in self.kwargs:
+            self.kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
+        if 'primary' not in self.kwargs:
+            self.kwargs['primary'] = False
+        formatted = self.format_result(self.kwargs['uuid'])
         is_primary = self.kwargs.get('primary', False) == True
         # bail if do_not_store is True within kwargs
         if self.kwargs.get('do_not_store', False) == True:
             return formatted
-        return self.store_formatted_result(uuid, formatted, primary=is_primary)
+        return self.store_formatted_result(self.kwargs['uuid'], formatted, is_primary)
 
 
 
@@ -254,14 +257,15 @@ class ActionResult(RunResult):
             self.status = 'FAIL'
             self.description = 'Malformed status; look at Foursight action definition.'
         # kwargs should **always** have uuid
-        uuid = self.kwargs.get('uuid', datetime.datetime.utcnow().isoformat())
-        formatted = self.format_result(uuid)
+        if 'uuid' not in self.kwargs:
+            self.kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
+        formatted = self.format_result(self.kwargs['uuid'])
         # action results are always stored as 'primary' and 'latest' and can be
         # fetched with the get_latest_result method.
         # bail if do_not_store is True within kwargs
         if self.kwargs.get('do_not_store', False) == True:
             return formatted
-        return self.store_formatted_result(uuid, formatted, primary=True)
+        return self.store_formatted_result(self.kwargs['uuid'], formatted, True)
 
 
 

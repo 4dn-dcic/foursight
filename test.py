@@ -521,7 +521,6 @@ class TestCheckResult(FSTest):
     check_name = 'test_only_check'
     environ = 'mastertest' # hopefully this is up
     connection, _ = app_utils.init_connection(environ)
-    uuid = datetime.datetime.utcnow().isoformat()
 
     def test_check_result_methods(self):
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
@@ -529,8 +528,13 @@ class TestCheckResult(FSTest):
         self.assertTrue(check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
-        check.full_output = ['first_item']
-        check.kwargs = {'primary': True, 'uuid': self.uuid}
+        # first store without uuid and primary kwargs; should be generated
+        res = check.store_result()
+        self.assertTrue('uuid' in res['kwargs'])
+        self.assertTrue(res['kwargs']['primary'] == False)
+        # set the kwargs and store again
+        prime_uuid = datetime.datetime.utcnow().isoformat()
+        check.kwargs = {'primary': True, 'uuid': prime_uuid}
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
@@ -549,7 +553,7 @@ class TestCheckResult(FSTest):
         # should not have 'uuid' or 'kwargs' attrs with init_uuid
         self.assertTrue(getattr(check_copy, 'uuid', None) is None)
         self.assertTrue(getattr(check_copy, 'kwargs', {}) == {})
-        check_copy.kwargs = {'primary': True, 'uuid': self.uuid}
+        check_copy.kwargs = {'primary': True, 'uuid': prime_uuid}
         self.assertTrue(res == check_copy.store_result())
 
 
