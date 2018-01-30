@@ -567,7 +567,7 @@ class TestActionResult(FSTest):
         res = action.store_result()
         self.assertTrue(res.get('status') == 'PEND')
         self.assertTrue(res.get('output') is None)
-        self.assertTrue(res.get('kwargs') == {})
+        self.assertTrue('uuid' in res.get('kwargs'))
         action.kwargs = {'do_not_store': True}
         unstored_res = action.store_result() # will not update latest result
         self.assertTrue('do_not_store' in unstored_res['kwargs'])
