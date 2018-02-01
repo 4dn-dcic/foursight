@@ -131,7 +131,7 @@ def history_route(environ, check):
     req_dict = app.current_request.to_dict()
     query_params = req_dict.get('query_params')
     start = int(query_params.get('start', '0')) if query_params else 0
-    limit = int(query_params.get('limit', '50')) if query_params else 50
+    limit = int(query_params.get('limit', '25')) if query_params else 25
     domain = req_dict.get('headers', {}).get('host', "")
     return view_foursight_history(environ, check, start, limit, check_authorization(req_dict), domain)
 
