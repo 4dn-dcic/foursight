@@ -86,8 +86,11 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices', runnable=True)
     ### the check
     es = connection.es
-    resp = requests.get(''.join([es,'_cat/indices?v']))
-    if getattr(resp, 'status_code', None) != 200:
+    try:
+        resp = requests.get(''.join([es,'_cat/indices?v']), timeout=20)
+    except:
+        resp = None
+    if resp is None or getattr(resp, 'status_code', None) != 200:
         check.status = 'ERROR'
         check.description = "Error connecting to ES at endpoint: _cat/indices"
         return check
@@ -151,8 +154,11 @@ def indexing_progress(connection, **kwargs):
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records', runnable=True)
     es = connection.es
-    es_resp = requests.get(''.join([es,'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc']))
-    if getattr(es_resp, 'status_code', None) != 200:
+    try:
+        es_resp = requests.get(''.join([es,'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc']), timeout=20)
+    except:
+        es_resp = None
+    if es_resp is None or getattr(es_resp, 'status_code', None) != 200:
         check.status = 'ERROR'
         check.description = "Error connecting to ES at endpoint: meta/meta/_search?q=_exists_:indexing_status"
         return check

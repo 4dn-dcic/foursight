@@ -29,13 +29,14 @@ def item_counts_by_type(connection, **kwargs):
     item_counts = {}
     warn_item_counts = {}
     server = connection.ff
+    req_location = ''.join([server,'counts?format=json']
     try:
-        counts_res = requests.get(''.join([server,'counts?format=json']))
+        counts_res = requests.get(req_location, timeout=20)
     except:
+        counts_res = None
+    if counts_res is None or counts_res.status_code != 200:
         check.status = 'ERROR'
-        return check
-    if counts_res.status_code != 200:
-        check.status = 'ERROR'
+        check.description = 'Error connecting to the counts endpoint at: %s' % req_location
         return check
     counts_json = json.loads(counts_res.text)
     for index in counts_json['db_es_compare']:
