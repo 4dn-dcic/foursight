@@ -29,7 +29,7 @@ def item_counts_by_type(connection, **kwargs):
     item_counts = {}
     warn_item_counts = {}
     server = connection.ff
-    req_location = ''.join([server,'counts?format=json']
+    req_location = ''.join([server,'counts?format=json'])
     try:
         counts_res = requests.get(req_location, timeout=20)
     except:
