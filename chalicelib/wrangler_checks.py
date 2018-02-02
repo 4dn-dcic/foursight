@@ -185,7 +185,7 @@ def experiment_set_reporting_data(connection, **kwargs):
             )
             exps = {}
             for exp in exp_set.get('experiments_in_set', []):
-                exp_res = extract_info(exp, ['uuid', 'status'])
+                exp_res = extract_info(exp, ['uuid', 'status', 'experiment_type'])
                 exp_res['files'] = extract_list_info(
                     exp.get('files'),
                     ['uuid', 'status', 'md5sum'],
@@ -201,6 +201,67 @@ def experiment_set_reporting_data(connection, **kwargs):
             exp_sets[exp_set['accession']] = exp_set_res
     check.full_output = exp_sets
     return check
+
+
+@check_function()
+def experiment_set_reporting(connection, **kwargs):
+    """
+    Diff two results of 'experiment_set_reporting_data' check.
+    uuid of the previous result to compare with is found from latest run
+    'build_experiment_set_reports' action.
+    Stores the information used by that action to build reports.
+    """
+    check = init_check_res(connection, 'experiment_set_reporting')
+    check.action = 'build_experiment_set_reports'
+    # build reference to the check that provides data and get information
+    data_check = init_check_res(connection, 'experiment_set_reporting_data')
+    latest_data_result = data_check.get_primary_result()
+    if not latest_data_result:
+        check.status = 'ERROR'
+        check.description = 'experiment_set_reporting_data results are not available.'
+        return check
+    action_result = init_action_res('build_experiment_set_reports')
+    latest_action = action_result.get_latest_result()
+    if latest_action is None or latest_action.get('output', {}).get('last_data_used') is None:
+        # the action has not run before
+        # store action as a reference point but don't actually run
+        action_result.output = {
+            'last_data_used': latest_data_result['uuid'],
+            'reports': []
+        }
+        action_result.store_result()
+        check.status = 'PASS'
+        check.description = 'Experiment set reporting is initialized.'
+        return check
+    last_data_used = latest_action['output']['last_data_used']
+    last_data_key = ''.join([data_check.name, '/', last_data_used, data_check.extension])
+    last_data_result = data_check.get_s3_object(last_data_key)
+    latest_output = latest_data_result['full_output']
+    last_output = last_data_result['full_output']
+    if not isinstance(latest_output, dict) or not isinstance(last_output, dict):
+        check.status = 'ERROR'
+        check.description = 'experiment_set_reporting_data results are malformed.'
+        return check
+    reports = []
+    significant_statuses = ['released', 'released_to_project']
+    # assuming experiment sets will NOT be deleted from DB
+    ### CREATE REPORTS
+    # for exp_set in latest_output:
+    #     if latest_output
+    #     set_report = {}
+    #     if exp_set not in last_output:
+    #         set_report['summary'] = 'New experiment set %s was added' %
+
+    # only set check.allow_action if things look good with full_output
+
+
+@action_function()
+def build_experiment_set_reports(connection **kwargs):
+    action = init_action_res(connection, 'build_experiment_set_reports')
+    report_check = init_check_res(connection, 'experiment_set_reporting')
+    report_output = report_check.get('full_output')
+    # do stuff with the report output (nothing for now)
+
 
 
 @check_function(delta_hours=24)
