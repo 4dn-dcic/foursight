@@ -113,10 +113,9 @@ def items_created_in_the_past_day(connection, **kwargs):
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join(['/search/?type=', item_type, '&limit=all&q=date_created:>=', date_str])
     search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame='object')
-    results = search_res.get('@graph', [])
     full_output = check.full_output if check.full_output else {}
     item_output = []
-    for res in results:
+    for res in search_res:
         item_output.append({
             'uuid': res.get('uuid'),
             '@id': res.get('@id'),
@@ -139,53 +138,68 @@ def items_created_in_the_past_day(connection, **kwargs):
 
 
 @check_function()
-def files_associated_with_replicates(connection, **kwargs):
-    def extract_file_info(res, **kwargs):
-        extracted = kwargs
-        acc = None
-        for field in ['status', 'md5sum', 'accession']:
-            extracted[field] = res.get(field, 'None') # have str None fallback
-            if field == 'accession':
-                acc = extracted[field]
-        return acc, extracted
+def experiment_set_reporting_data(connection, **kwargs):
+    """
+    Get a snapshot of all experiment sets, their experiments, and files of
+    all of the above. Include uuid, accession, status, and md5sum (for files).
+    """
+    # helper functions
+    def extract_info(res, fields):
+        return {field: res[field] for field in fields if field in res}
 
-    check = init_check_res(connection, 'files_associated_with_replicates')
+    def extract_list_info(res_list, fields, key_field):
+        if not res_list:
+            return {}
+        results = {}
+        for res in res_list:
+            if key_field not in res:
+                continue
+            results[res[key_field]] = extract_info(res, fields)
+        return results
+
+    check = init_check_res(connection, 'experiment_set_reporting_data')
     check.status = 'IGNORE'
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return check
-    total_replicates = None
+    exp_sets = {}
+    last_total = None
     curr_from = 0
-    limit = 100
-    set_files = {}
-    while not total_replicates or curr_from < total_replicates:
-        # sort by acession and grab 10 at a time to keep memory usage down
-        search_query = ''.join(['/browse/?type=ExperimentSetReplicate&experimentset_type=replicate&from=', str(curr_from), '&limit=', str(limit), '&sort=accession'])
+    limit = 20
+    while not last_total or last_total == limit:
+        # sort by accession and grab 20 at a time to keep memory usage down
+        search_query = ''.join(['/search/?type=ExperimentSetReplicate&experimentset_type=replicate&from=', str(curr_from), '&limit=', str(limit), '&sort=-date_created'])
         search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame='embedded')
-        if not total_replicates:
-            total_replicates = search_res.get('total')
-        results = search_res.get('@graph', [])
-        if not results:
-            break # can get no results, don't want to freeze
-        for res in results:
-            set_acc = res.get('accession')
-            files = {}
-            # do exp_set level files first
-            for file_meta in res.get('processed_files', []):
-                acc, extracted = extract_file_info(file_meta, exp_set_accession=set_acc)
-                files[acc] = extracted
-            for exp in res.get('experiments_in_set', []):
-                exp_acc = exp.get('accession')
-                file_fields = ['files', 'processed_files']
-                for file_field in file_fields:
-                    for file_meta in exp.get(file_field, []):
-                        acc, extracted = extract_file_info(file_meta, exp_set_accession=set_acc, exp_accession=exp_acc)
-                        files[acc] = extracted
-            set_files[set_acc] = files
-        curr_from += limit
-    check.full_output = set_files
+        if not search_res: # 0 results
+            break
+        last_total = len(search_res)
+        curr_from += last_total
+        for exp_set in search_res:
+            exp_set_res = extract_info(exp_set, ['uuid', 'status'])
+            exp_set_res['processed_files'] = extract_list_info(
+                exp_set.get('processed_files'),
+                ['uuid', 'status', 'md5sum'],
+                'accession'
+            )
+            exps = {}
+            for exp in exp_set.get('experiments_in_set', []):
+                exp_res = extract_info(exp, ['uuid', 'status'])
+                exp_res['files'] = extract_list_info(
+                    exp.get('files'),
+                    ['uuid', 'status', 'md5sum'],
+                    'accession'
+                )
+                exp_res['processed_files'] = extract_list_info(
+                    exp.get('processed_files'),
+                    ['uuid', 'status', 'md5sum'],
+                    'accession'
+                )
+                exps[exp['accession']] = exp_res
+            exp_set_res['experiments_in_set'] = exps
+            exp_sets[exp_set['accession']] = exp_set_res
+    check.full_output = exp_sets
     return check
 
 
@@ -272,8 +286,7 @@ def identify_files_without_filesize(connection, **kwargs):
     search_url = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded' + kwargs.get('search_add_on', '')
     search_res = ff_utils.search_metadata(search_url, connection=fdn_conn, frame='object')
     problem_files = []
-    hits = search_res.get('@graph', [])
-    for hit in hits:
+    for hit in search_res:
         if hit.get('file_size') is None:
             hit_dict = {
                 'accession': hit.get('accession'),
