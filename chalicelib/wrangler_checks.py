@@ -112,7 +112,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join(['/search/?type=', item_type, '&limit=all&q=date_created:>=', date_str])
-    search_res = ff_utils.get_metadata(search_query, connection=fdn_conn, frame='object')
+    search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame='object')
     results = search_res.get('@graph', [])
     full_output = check.full_output if check.full_output else {}
     item_output = []
@@ -163,7 +163,7 @@ def files_associated_with_replicates(connection, **kwargs):
     while not total_replicates or curr_from < total_replicates:
         # sort by acession and grab 10 at a time to keep memory usage down
         search_query = ''.join(['/browse/?type=ExperimentSetReplicate&experimentset_type=replicate&from=', str(curr_from), '&limit=', str(limit), '&sort=accession'])
-        search_res = ff_utils.get_metadata(search_query, connection=fdn_conn, frame='embedded')
+        search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame='embedded')
         if not total_replicates:
             total_replicates = search_res.get('total')
         results = search_res.get('@graph', [])
@@ -270,7 +270,7 @@ def identify_files_without_filesize(connection, **kwargs):
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return check
     search_url = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded' + kwargs.get('search_add_on', '')
-    search_res = ff_utils.get_metadata(search_url, connection=fdn_conn, frame='object')
+    search_res = ff_utils.search_metadata(search_url, connection=fdn_conn, frame='object')
     problem_files = []
     hits = search_res.get('@graph', [])
     for hit in hits:
