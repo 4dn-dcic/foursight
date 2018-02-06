@@ -275,7 +275,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     for this_environ in view_envs:
         connection, error_res = init_connection(this_environ)
         if connection:
-            results = get_check_group_results(connection, 'all_checks')
+            results = get_check_group_results(connection, 'all')
             processed_results = []
             for res in results:
                 # first check to see if res is just a string, meaning
@@ -351,7 +351,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     return process_response(html_resp)
 
 
-def view_foursight_history(environ, check, start=0, limit=50, is_admin=False, domain=""):
+def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, domain=""):
     """
     View a tabular format of the history of a given check or action (str name
     as the 'check' parameter) for the given environment. Results look like:
@@ -396,7 +396,7 @@ def view_foursight_history(environ, check, start=0, limit=50, is_admin=False, do
 def get_foursight_history(connection, check, start, limit):
     """
     Get a brief form of the historical results for a check, including
-    UUID, status, kwargs. Limit the number of results recieved to 50, unless
+    UUID, status, kwargs. Limit the number of results recieved to 500, unless
     otherwise specified ('limit' arg). 'start' arg determines where the start
     of the results grabbed is, with idx = 0 being the most recent one.
 

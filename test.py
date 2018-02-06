@@ -417,13 +417,13 @@ class TestCheckRunner(FSTest):
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
-            time.sleep(3)
+            time.sleep(1)
             sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
             if vis_messages == 0 and invis_messages == 0:
                 finished_count += 1
-        time.sleep(3)
+        time.sleep(1)
         # look at output
         post_res = check.get_latest_result()
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
@@ -438,13 +438,13 @@ class TestCheckRunner(FSTest):
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
-            time.sleep(3)
+            time.sleep(1)
             sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
             if vis_messages == 0 and invis_messages == 0:
                 finished_count += 1
-        time.sleep(3)
+        time.sleep(1)
         post_res = action.get_latest_result()
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
@@ -459,14 +459,14 @@ class TestCheckRunner(FSTest):
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
-            time.sleep(3)
+            time.sleep(1)
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
             if vis_messages == 0 and invis_messages == 0:
                 finished_count += 1
         # queue should be empty. check results
-        time.sleep(3)
+        time.sleep(1)
         post_res = check_utils.get_check_group_results(self.connection, 'all_checks', use_latest=True)
         # compare the runtimes to ensure checks have run
         res_compare = {}
@@ -491,12 +491,12 @@ class TestCheckRunner(FSTest):
         self.assertTrue(vis_messages > 0 or invis_messages > 0)
         # wait for queue to empty
         while vis_messages > 0 or invis_messages > 0:
-            time.sleep(6)
+            time.sleep(1)
             sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
         # queue should be empty. check results
-        time.sleep(3)
+        time.sleep(1)
         post_res = action.get_latest_result()
         print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid']}
         # compare the uuids to ensure actions have run
@@ -624,7 +624,7 @@ class TestCheckUtils(FSTest):
         self.assertTrue(bad_act_str is None)
 
     def test_fetch_check_group(self):
-        all_checks = check_utils.fetch_check_group('all_checks')
+        all_checks = check_utils.fetch_check_group('all')
         self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
         tm_checks = check_utils.fetch_check_group('ten_min_checks')
         # get list of check strings from lists of check info
@@ -650,7 +650,7 @@ class TestCheckUtils(FSTest):
         # dict to compare uuids
         uuid_compares = {}
         # will get primary results by default
-        all_res_primary = check_utils.get_check_group_results(self.conn, 'all_checks')
+        all_res_primary = check_utils.get_check_group_results(self.conn, 'all')
         for check_res in all_res_primary:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
@@ -658,7 +658,7 @@ class TestCheckUtils(FSTest):
             self.assertTrue('uuid' in check_res)
             uuid_compares[check_res['name']] = check_res['uuid']
         # compare to latest results (which should be the same or newer)
-        all_res_latest = check_utils.get_check_group_results(self.conn, 'all_checks', use_latest=True)
+        all_res_latest = check_utils.get_check_group_results(self.conn, 'all', use_latest=True)
         for check_res in all_res_latest:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)

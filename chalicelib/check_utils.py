@@ -73,6 +73,7 @@ def get_check_group_results(connection, name, use_latest=False):
     sorted alphabetically
     By default, gets the 'primary' results. If use_latest is True, get the
     'latest' results instead.
+    Using name = 'all' will return all non-test check strings
     """
     latest_results = []
     check_group = fetch_check_group(name)
@@ -98,8 +99,11 @@ def get_check_group_results(connection, name, use_latest=False):
 def fetch_check_group(name):
     """
     Will be none if the group is not defined.
-    Special case for all_checks, which gets all checks and uses default kwargs
+    Special case for 'all', which gets all checks and uses default kwargs
     """
+    if name == 'all':
+        all_checks = get_check_strings()
+        return [[check_str, {}, [], ''] for check_str in all_checks]
     group = CHECK_GROUPS.get(name, None)
     # maybe it's a test groups
     if not group:
