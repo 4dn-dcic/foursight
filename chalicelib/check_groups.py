@@ -42,7 +42,8 @@ ACTION_GROUPS = {
         ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3']
     ],
     'build_experiment_set_reports': [
-        ['wrangler_checks/build_experiment_set_reports', {}, [], 'besr1']
+        ['wrangler_checks/build_experiment_set_reports', {}, [], 'besr1'],
+        ['wrangler_checks/experiment_set_reporting', {}, ['besr1'], 'besr2']
     ]
 }
 

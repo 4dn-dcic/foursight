@@ -314,8 +314,9 @@ def experiment_set_reporting(connection, **kwargs):
 def build_experiment_set_reports(connection, **kwargs):
     action = init_action_res(connection, 'build_experiment_set_reports')
     report_check = init_check_res(connection, 'experiment_set_reporting')
-    report_output = report_check.get('full_output')
-    report_reference = report_check.get('admin_output')
+    report_result = report_check.get_primary_result()
+    report_output = report_result.get('full_output')
+    report_reference = report_result.get('admin_output')
     action.output = {
         'last_data_used': report_reference,
         'reports': report_output
