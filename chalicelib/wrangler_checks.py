@@ -178,8 +178,8 @@ def experiment_set_reporting_data(connection, **kwargs):
         curr_from += last_total
         for exp_set in search_res:
             exp_set_res = extract_info(exp_set, ['@id', 'status','lab', 'award'])
-            exp_set_res['lab'] = exp_set_res['lab']['@id']
-            exp_set_res['award'] = exp_set_res['award']['@id']
+            exp_set_res['lab'] = exp_set_res.get('lab', {}).get('@id')
+            exp_set_res['award'] = exp_set_res.get('award', {}).get('@id')
             exp_set_res['processed_files'] = extract_list_info(
                 exp_set.get('processed_files'),
                 ['@id', 'status', 'md5sum'],
