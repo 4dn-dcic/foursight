@@ -270,9 +270,10 @@ def experiment_set_reporting(connection, **kwargs):
         return check
     action_result = init_action_res(connection, 'build_experiment_set_reports')
     latest_action = action_result.get_latest_result()
-    if latest_action is None or latest_action.get('output', {}).get('last_data_used') is None:
+    if latest_action is None or latest_action['status'] != 'DONE':
         # the action has not run before
         # store action as a reference point but don't actually run
+        action.status = 'DONE'
         action_result.output = {
             'last_data_used': latest_data_result['uuid'],
             'reports': []
@@ -321,8 +322,7 @@ def build_experiment_set_reports(connection, **kwargs):
         'last_data_used': report_reference,
         'reports': report_output
     }
-    if report_output:
-        action.status = 'PASS'
+    action.status = 'DONE'
     return action
 
 
