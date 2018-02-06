@@ -273,7 +273,7 @@ def experiment_set_reporting(connection, **kwargs):
     if latest_action is None or latest_action['status'] != 'DONE':
         # the action has not run before
         # store action as a reference point but don't actually run
-        action.status = 'DONE'
+        action_result.status = 'DONE'
         action_result.output = {
             'last_data_used': latest_data_result['uuid'],
             'reports': []

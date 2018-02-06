@@ -43,7 +43,7 @@ ACTION_GROUPS = {
     ],
     'build_experiment_set_reports': [
         ['wrangler_checks/build_experiment_set_reports', {}, [], 'besr1'],
-        ['wrangler_checks/experiment_set_reporting', {}, ['besr1'], 'besr2']
+        ['wrangler_checks/experiment_set_reporting', {'primary': True}, ['besr1'], 'besr2']
     ]
 }
 
