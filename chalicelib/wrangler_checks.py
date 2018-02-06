@@ -177,23 +177,25 @@ def experiment_set_reporting_data(connection, **kwargs):
         last_total = len(search_res)
         curr_from += last_total
         for exp_set in search_res:
-            exp_set_res = extract_info(exp_set, ['uuid', 'status'])
+            exp_set_res = extract_info(exp_set, ['@id', 'status','lab', 'award'])
+            exp_set_res['lab'] = exp_set_res['lab']['@id']
+            exp_set_res['award'] = exp_set_res['award']['@id']
             exp_set_res['processed_files'] = extract_list_info(
                 exp_set.get('processed_files'),
-                ['uuid', 'status', 'md5sum'],
+                ['@id', 'status', 'md5sum'],
                 'accession'
             )
             exps = {}
             for exp in exp_set.get('experiments_in_set', []):
-                exp_res = extract_info(exp, ['uuid', 'status', 'experiment_type'])
+                exp_res = extract_info(exp, ['@id', 'status'])
                 exp_res['files'] = extract_list_info(
                     exp.get('files'),
-                    ['uuid', 'status', 'md5sum'],
+                    ['@id', 'status', 'md5sum'],
                     'accession'
                 )
                 exp_res['processed_files'] = extract_list_info(
                     exp.get('processed_files'),
-                    ['uuid', 'status', 'md5sum'],
+                    ['@id', 'status', 'md5sum'],
                     'accession'
                 )
                 exps[exp['accession']] = exp_res
@@ -211,7 +213,53 @@ def experiment_set_reporting(connection, **kwargs):
     'build_experiment_set_reports' action.
     Stores the information used by that action to build reports.
     """
-    check = init_check_res(connection, 'experiment_set_reporting')
+    # helper function
+    def generate_report(curr_res, prev_res, field_path=[]):
+        """
+        Takes a dictionary current res and previous res and generates a report
+        from them. Fields looked at are in report_fields and it will also
+        recursively generate a report for all dictionary children that contain
+        a uuid and are in children_fields.
+        Returns None if there is no significant reporting; dict report otherwise.
+        """
+        significant_fields = {
+            'status': ['released', 'released_to_project'] # significant statuses
+        }
+        report_fields = ['status', 'md5sum']
+        include_fields = ['lab', 'award']
+        children_fields = ['experiments_in_set', 'files', 'processed_files']
+        this_report = {'changes': []}
+        for key, val in curr_res.items():
+            if key in children_fields and isinstance(val, dict):
+                for c_key, c_val in val.items():
+                    if isinstance(c_val, dict) and '@id' in c_val:
+                        prev_child = prev_res.get(key, {}).get(c_key, {})
+                        child_path = field_path + [key]
+                        child_report = generate_report(c_val, prev_child, child_path)
+                        if child_report:
+                            this_report['changes'].extend(child_report['changes'])
+            elif key in report_fields:
+                curr_val = curr_res.get(key)
+                prev_val = prev_res.get(key)
+                if key in significant_fields:
+                    significant = significant_fields[key]
+                    is_sig = curr_val in significant or prev_val in significant
+                else:
+                    # if this field is not in significant_fields, just see if changed
+                    is_sig = True
+                if is_sig and curr_val != prev_val:
+                    this_report['changes'].append({
+                        'field': '.'.join(field_path + [key]),
+                        'previous': prev_val,
+                        'current': curr_val,
+                        'item': curr_res['@id'],
+                        'reason': ' '.join([key, 'changed from', str(prev_val), 'to', str(curr_val)])
+                    })
+            elif key in include_fields:
+                this_report[key] = val
+        return this_report if this_report.get('changes') else None
+
+    check = init_check_res(connection, 'experiment_set_reporting', runnable=True)
     check.action = 'build_experiment_set_reports'
     # build reference to the check that provides data and get information
     data_check = init_check_res(connection, 'experiment_set_reporting_data')
@@ -220,7 +268,7 @@ def experiment_set_reporting(connection, **kwargs):
         check.status = 'ERROR'
         check.description = 'experiment_set_reporting_data results are not available.'
         return check
-    action_result = init_action_res('build_experiment_set_reports')
+    action_result = init_action_res(connection, 'build_experiment_set_reports')
     latest_action = action_result.get_latest_result()
     if latest_action is None or latest_action.get('output', {}).get('last_data_used') is None:
         # the action has not run before
@@ -243,95 +291,38 @@ def experiment_set_reporting(connection, **kwargs):
         check.description = 'experiment_set_reporting_data results are malformed.'
         return check
     reports = []
-    significant_statuses = ['released', 'released_to_project']
-    # assuming experiment sets will NOT be deleted from DB
-    ### CREATE REPORTS
-    # for exp_set in latest_output:
-    #     if latest_output
-    #     set_report = {}
-    #     if exp_set not in last_output:
-    #         set_report['summary'] = 'New experiment set %s was added' %
-
-    # only set check.allow_action if things look good with full_output
+    ### CREATE REPORTS... assuming experiment sets will NOT be deleted from DB
+    for exp_set in latest_output:
+        last_res = last_output.get(exp_set, {})
+        exp_set_report = generate_report(latest_output[exp_set], last_res)
+        if exp_set_report is not None:
+            reports.append(exp_set_report)
+    check.full_output = reports
+    if reports:
+        # store new reference report in admin_output
+        check.admin_output = latest_data_result['uuid']
+        check.status = 'WARN'
+        check.description = 'Ready to generate new experiment set reports.'
+        check.allow_action = True
+    else:
+        check.status = 'PASS'
+        check.description = 'There are no new experiment set reports.'
+    return check
 
 
 @action_function()
-def build_experiment_set_reports(connection **kwargs):
+def build_experiment_set_reports(connection, **kwargs):
     action = init_action_res(connection, 'build_experiment_set_reports')
     report_check = init_check_res(connection, 'experiment_set_reporting')
     report_output = report_check.get('full_output')
-    # do stuff with the report output (nothing for now)
-
-
-
-@check_function(delta_hours=24)
-def replicate_file_reporting(connection, **kwargs):
-    """
-    Meta check on files_associated_with_replicates. delta_hours is the diff
-    between the results for the aforementioned checks that we compare
-    """
-
-    def build_report(report, exp_set, latest_file, prior_file):
-        file_acc = latest_file.get('accession') if latest_file else prior_file.get('accession')
-        if not file_acc:
-            return
-        exp_acc = latest_file.get('exp_accession') if latest_file else prior_file.get('exp_accession')
-        latest_md5 = latest_file.get('md5sum')
-        prior_md5 = prior_file.get('md5sum')
-        latest_stat = latest_file.get('status')
-        prior_stat = prior_file.get('status')
-        if exp_acc:
-            file_str = ''.join(['File ', file_acc, ' of experiment ', exp_acc])
-        else:
-            file_str = ''.join(['File ', file_acc])
-        file_str_adds = []
-        if latest_file and not prior_file:
-            file_str_adds.append(' has been added')
-            if latest_stat in ['released', 'released to project']:
-                file_str_adds.append(''.join([' with status ', latest_stat]))
-        elif prior_file and not latest_file:
-            file_str_adds.append(' has been removed')
-        elif any(i in ['released', 'released to project'] for i in [latest_stat, prior_stat]):
-            # we only care about specifics if the file has been released
-            if latest_stat != prior_stat and latest_stat and prior_stat:
-                file_str_adds.append(''.join([' has status changed from ', prior_stat, ' to ', latest_stat]))
-            if latest_md5 != prior_md5 and latest_md5 and prior_md5:
-                file_str_adds.append(' has a changed md5sum')
-        if file_str_adds:
-            fin_str = file_str + ' and'.join(file_str_adds) + '.'
-            if exp_set in report:
-                report[exp_set].append(fin_str)
-            else:
-                report[exp_set] = [fin_str]
-
-    delta_hours = kwargs.get('delta_hours')
-    check = init_check_res(connection, 'replicate_file_reporting')
-    files_check = init_check_res(connection, 'files_associated_with_replicates')
-    latest_results = files_check.get_primary_result().get('full_output')
-    prior_results = files_check.get_closest_result(delta_hours).get('full_output')
-    if not isinstance(latest_results, dict) or not isinstance(prior_results, dict):
-        check.status = 'ERROR'
-        check.description = 'Could not generate report due to missing output of files_associated_with_replicates check.'
-        return check
-    report = {}
-    all_sets = list(set(latest_results.keys()).union(set(prior_results.keys())))
-    for exp_set in all_sets:
-        latest_file_accs = latest_results.get(exp_set, {}).keys()
-        prior_file_accs = prior_results.get(exp_set, {}).keys()
-        file_accs = list(set(latest_file_accs).union(set(prior_file_accs)))
-        for file_acc in file_accs:
-            latest_file = latest_results.get(exp_set, {}).get(file_acc, {})
-            prior_file = prior_results.get(exp_set, {}).get(file_acc, {})
-            # modifies report in place
-            build_report(report, exp_set, latest_file, prior_file)
-    check.full_output = report
-    if report:
-        check.status = 'WARN'
-        check.description = ''.join(['Significant file changes to one or more experiment sets have occured in the last ', str(delta_hours), ' hours.'])
-    else:
-        check.status = 'PASS'
-        check.description = ''.join(['No significant file changes to one or more experiment sets have occured in the last ', str(delta_hours), ' hours.'])
-    return check
+    report_reference = report_check.get('admin_output')
+    action.output = {
+        'last_data_used': report_reference,
+        'reports': report_output
+    }
+    if report_output:
+        action.status = 'PASS'
+    return action
 
 
 @check_function(search_add_on='&limit=all')

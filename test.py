@@ -624,7 +624,7 @@ class TestCheckUtils(FSTest):
         self.assertTrue(bad_act_str is None)
 
     def test_fetch_check_group(self):
-        all_checks = check_utils.fetch_check_group('all_checks')
+        all_checks = check_utils.fetch_check_group('all')
         self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
         tm_checks = check_utils.fetch_check_group('ten_min_checks')
         # get list of check strings from lists of check info
@@ -650,7 +650,7 @@ class TestCheckUtils(FSTest):
         # dict to compare uuids
         uuid_compares = {}
         # will get primary results by default
-        all_res_primary = check_utils.get_check_group_results(self.conn, 'all_checks')
+        all_res_primary = check_utils.get_check_group_results(self.conn, 'all')
         for check_res in all_res_primary:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
@@ -658,7 +658,7 @@ class TestCheckUtils(FSTest):
             self.assertTrue('uuid' in check_res)
             uuid_compares[check_res['name']] = check_res['uuid']
         # compare to latest results (which should be the same or newer)
-        all_res_latest = check_utils.get_check_group_results(self.conn, 'all_checks', use_latest=True)
+        all_res_latest = check_utils.get_check_group_results(self.conn, 'all', use_latest=True)
         for check_res in all_res_latest:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)

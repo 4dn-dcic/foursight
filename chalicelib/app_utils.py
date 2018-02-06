@@ -275,7 +275,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     for this_environ in view_envs:
         connection, error_res = init_connection(this_environ)
         if connection:
-            results = get_check_group_results(connection, 'all_checks')
+            results = get_check_group_results(connection, 'all')
             processed_results = []
             for res in results:
                 # first check to see if res is just a string, meaning

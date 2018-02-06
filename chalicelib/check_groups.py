@@ -19,15 +19,15 @@ CHECK_GROUPS = {
         ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'm10_2'],
         ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_3'],
         ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
-        ['wrangler_checks/replicate_file_reporting', {'primary': True}, [], 'm10_5'],
-        ['system_checks/indexing_progress', {'primary': True}, [], 'm10_6'],
-        ['system_checks/staging_deployment', {'primary': True}, [], 'm10_7']
+        ['system_checks/indexing_progress', {'primary': True}, [], 'm10_5'],
+        ['system_checks/staging_deployment', {'primary': True}, [], 'm10_6'],
+        ['wrangler_checks/experiment_set_reporting_data', {'primary': True}, [], 'm10_7'],
     ],
     'thirty_min_checks': [
-        ['wrangler_checks/files_associated_with_replicates', {'primary': True}, [],'m30_1'],
-        ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_2'],
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_3'],
-        ['system_checks/indexing_records', {'primary': True}, [], 'm30_4']
+        ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
+        ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_2'],
+        ['system_checks/indexing_records', {'primary': True}, [], 'm30_2'],
+        ['wrangler_checks/experiment_set_reporting', {'primary': True}, [], 'm30_3'],
     ]
 }
 
@@ -40,6 +40,9 @@ ACTION_GROUPS = {
         ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, [], 'pfs1'],
         ['wrangler_checks/patch_file_size', {}, ['pfs1'], 'pfs2'],
         ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3']
+    ],
+    'build_experiment_set_reports': [
+        ['wrangler_checks/build_experiment_set_reports', {}, [], 'besr1']
     ]
 }
 
@@ -49,8 +52,6 @@ ACTION_GROUPS = {
 TEST_CHECK_GROUPS = {
     'all_checks': [
         ['wrangler_checks/items_created_in_the_past_day', {}, [], 'all1'],
-        ['wrangler_checks/files_associated_with_replicates', {}, [],'all2'],
-        ['wrangler_checks/replicate_file_reporting', {}, [], 'all3'],
         ['system_checks/elastic_beanstalk_health', {}, [], 'all4'],
         ['system_checks/status_of_elasticsearch_indices', {}, [], 'all5'],
         ['system_checks/indexing_records', {}, [], 'all6'],
