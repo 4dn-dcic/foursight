@@ -51,7 +51,7 @@ def generate_exp_set_report(curr_res, prev_res, field_path=[]):
                 if isinstance(c_val, dict) and '@id' in c_val:
                     prev_child = prev_res.get(key, {}).get(c_key, {})
                     child_path = field_path + [key]
-                    child_report = generate_report(c_val, prev_child, child_path)
+                    child_report = generate_exp_set_report(c_val, prev_child, child_path)
                     if child_report:
                         this_report['changes'].extend(child_report['changes'])
         elif key in report_fields:

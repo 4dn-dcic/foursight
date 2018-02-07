@@ -226,9 +226,9 @@ def view_run_check(environ, check, params):
 
     This also be used to queue a check group. This is checked before individual check names
     """
+    resp_headers = {'Location': '/api/view/' + environ}
     if check in CHECK_GROUPS:
         queue_check_group(environ, check)
-        resp_headers = {'Location': '/api/view/' + environ}
     else:
         connection, _ = init_connection(environ)
         check_str = get_check_strings(check)
@@ -236,10 +236,8 @@ def view_run_check(environ, check, params):
         params = query_params_to_literals(params)
         if connection and check_str:
             res = run_check_or_action(connection, check_str, params)
-        if res.get('uuid'):
-            resp_headers = {'Location': '/'.join(['/api/view', environ, check, res.get('uuid')])}
-        else:
-            resp_headers = {'Location': '/api/view/' + environ}
+            if res and res.get('uuid'):
+                resp_headers = {'Location': '/'.join(['/api/view', environ, check, res['uuid']])}
     # redirect to view page with a 302 so it isn't cached
     return Response(
         status_code=302,

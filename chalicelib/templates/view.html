@@ -52,7 +52,8 @@
                                         {{toggle_output(check['latest_action'], env['environment'] + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
                                     {% endif %}
                                     {% if check.get('action') and is_admin %}
-                                        <form class="commonstyle own-line" action={{"/api/view_run/" + env['environment'] + '/' + check['action'] + '/action?called_by=' + check['uuid']}} method="get">
+                                        <form class="commonstyle own-line" action={{"/api/view_run/" + env['environment'] + '/' + check['action'] + '/action'}} method="GET">
+                                            <input type="hidden" name="called_by" value={{check['kwargs']['uuid']}} />
                                             {% if not check.get('allow_action') or running_checks != '0' or queued_checks != '0' %}
                                                 <button class="btn btn-danger btn-sm" type="submit" disabled>
                                                     {{' '.join(check['action'].split('_')).title()}}
