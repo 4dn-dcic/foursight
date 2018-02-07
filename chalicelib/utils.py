@@ -93,6 +93,10 @@ def action_function(*default_args, **default_kwargs):
         @wraps(func)
         def wrapper(*args, **kwargs):
             kwargs = handle_kwargs(kwargs, default_kwargs)
+            # this is an absolute must for actions
+            if 'called_by' not in kwargs:
+                err_msg = 'Action is missing called_by in its kwargs.'
+                raise BadCheckOrAction(err_msg)
             action = func(*args, **kwargs)
             return store_result_wrapper(action, kwargs, is_action=True)
         wrapper.check_decorator = ACTION_DECO

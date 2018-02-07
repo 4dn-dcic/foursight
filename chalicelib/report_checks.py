@@ -183,11 +183,7 @@ def experiment_set_reporting(connection, **kwargs):
 def publish_experiment_set_reports(connection, **kwargs):
     action = init_action_res(connection, 'build_experiment_set_reports')
     report_check = init_check_res(connection, 'experiment_set_reporting')
-    report_uuid = kwargs.get('called_by')
-    if not report_uuid:
-        action.status = 'FAIL'
-        action.description = 'Could not identify which check called this.'
-        return action
+    report_uuid = kwargs['called_by']
     report_result = report_check.get_result_by_uuid(report_uuid)
     report_output = report_result.get('full_output')
     action.output = {
