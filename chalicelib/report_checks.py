@@ -30,7 +30,7 @@ def extract_list_info(res_list, fields, key_field):
     return results
 
 
-def generate_report(curr_res, prev_res, field_path=[]):
+def generate_exp_set_report(curr_res, prev_res, field_path=[]):
     """
     Takes a dictionary current res and previous res and generates a report
     from them. Fields looked at are in report_fields and it will also
@@ -165,7 +165,7 @@ def experiment_set_reporting(connection, **kwargs):
     ### CREATE REPORTS... assuming experiment sets will NOT be deleted from DB
     for exp_set in new_output:
         old_res = old_output.get(exp_set, {})
-        exp_set_report = generate_report(new_output[exp_set], old_res)
+        exp_set_report = generate_exp_set_report(new_output[exp_set], old_res)
         if exp_set_report is not None:
             reports.append(exp_set_report)
     check.full_output = reports

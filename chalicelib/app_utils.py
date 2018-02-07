@@ -397,8 +397,8 @@ def process_view_results(connection, results, is_admin):
         # get the latest result for the checks action, if present
         # also ENSURE that the action is in ACTION_GROUPS
         if res.get('action'):
-            if res.get('action') in ACTION_GROUPS:
-                action = init_action_res(connection, res.get('action'))
+            action = init_action_res(connection, res.get('action'))
+            if action:
                 latest_action = action.get_latest_result()
                 if latest_action:
                     res['latest_action'] = json.dumps(latest_action, indent=4)
