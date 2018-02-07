@@ -35,7 +35,7 @@ class S3Connection(object):
             return None
 
 
-    def list_keys_w_prefix(self, prefix, records_only=False):
+    def list_all_keys_w_prefix(self, prefix, records_only=False):
         """
         List all s3 keys with the given prefix (should look like
         '<prefix>/'). If records_only == True, then add '20' to the end of

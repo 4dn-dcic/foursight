@@ -53,7 +53,6 @@ class TestFSConnection(FSTest):
         self.assertTrue(formatted_res.get('status') == 'IGNORE')
         self.assertTrue(formatted_res.get('title') == 'Test Check')
         self.assertTrue(formatted_res.get('description') == 'Unittest check')
-        self.assertTrue(formatted_res.get('runnable') == False)
         # set a bad status on purpose
         test_check.status = "BAD_STATUS"
         check_res = test_check.store_result()
@@ -860,10 +859,9 @@ class TestUtils(FSTest):
         self.assertTrue(kwargs.get('primary') == False)
 
     def test_init_check_res(self):
-        check = utils.init_check_res(self.conn, 'test_check', runnable=True)
+        check = utils.init_check_res(self.conn, 'test_check')
         self.assertTrue(check.name == 'test_check')
         self.assertTrue(check.s3_connection is not None)
-        self.assertTrue(check.runnable == True)
 
     def test_init_action_res(self):
         action = utils.init_action_res(self.conn, 'test_action')

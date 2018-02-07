@@ -42,7 +42,7 @@ class RunResult(object):
         # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
+        relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix, records_only=True)
         if not relevant_checks:
             return None
         # now use only s3 objects with a valid uuid
@@ -75,11 +75,19 @@ class RunResult(object):
         return json_result
 
 
+    def get_result_by_uuid(self, uuid):
+        """
+        Returns result if it can be found by its uuid, otherwise None.
+        """
+        result_key = ''.join([self.name, '/', uuid, self.extension])
+        return self.get_s3_object(result_key)
+
+
     def get_all_results(self):
         # return all results for this check. Should use with care
         all_results = []
         s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.s3_connection.list_keys_w_prefix(s3_prefix)
+        relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix)
         for n in range(len(relevant_checks)):
             check = relevant_checks[n]
             if check.startswith(s3_prefix) and check.endswith(self.extension):
@@ -99,7 +107,7 @@ class RunResult(object):
         Probably only called from app_utils.get_foursight_history.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-        all_keys = self.s3_connection.list_keys_w_prefix(self.name, records_only=True)
+        all_keys = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
         # sort them from newest to oldest
         all_keys.sort(key = lambda x: x[len(self.name + '/'):], reverse=True)
         # enforce limit and start
@@ -151,7 +159,7 @@ class CheckResult(RunResult):
     check.descritpion = ...
     check.store_result()
     """
-    def __init__(self, s3_connection, name, init_uuid=None, runnable=False):
+    def __init__(self, s3_connection, name, init_uuid=None):
         # init_uuid arg used if you want to initialize using an existing check
         # init_uuid is in the stringified datetime format
         if init_uuid:
@@ -184,8 +192,6 @@ class CheckResult(RunResult):
         # you must set both create both of these to make an action work
         self.action = None
         self.allow_action = False # by default do not allow the action to be run
-        # runnable controls whether a check can be individually run on the UI
-        self.runnable = runnable
         super().__init__(s3_connection, name)
 
 
@@ -202,7 +208,6 @@ class CheckResult(RunResult):
             'ff_link': self.ff_link,
             'action': self.action,
             'allow_action': self.allow_action,
-            'runnable': self.runnable,
             'kwargs': self.kwargs
         }
 
