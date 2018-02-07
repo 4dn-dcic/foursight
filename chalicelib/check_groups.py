@@ -21,13 +21,13 @@ CHECK_GROUPS = {
         ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
         ['system_checks/indexing_progress', {'primary': True}, [], 'm10_5'],
         ['system_checks/staging_deployment', {'primary': True}, [], 'm10_6'],
-        ['wrangler_checks/experiment_set_reporting_data', {'primary': True}, [], 'm10_7'],
+        ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'm10_7'],
     ],
     'thirty_min_checks': [
         ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
         ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_2'],
         ['system_checks/indexing_records', {'primary': True}, [], 'm30_3'],
-        ['wrangler_checks/experiment_set_reporting', {'primary': True}, [], 'm30_4'],
+        ['report_checks/experiment_set_reporting', {'primary': True}, [], 'm30_4'],
     ]
 }
 
