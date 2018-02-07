@@ -80,12 +80,13 @@ def experiment_set_reporting_data(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(use_uuids=False, old_uuid=None, new_uuid=None)
 def experiment_set_reporting(connection, **kwargs):
     """
     Diff two results of 'experiment_set_reporting_data' check.
-    uuid of the previous result to compare with is found from latest run
-    'build_experiment_set_reports' action.
+    If use_uuids is True, old_uuid and new_uuid are check uuids that are used
+    to diff two results. Otherwise, automatically makes reports for the past
+    day.
     Stores the information used by that action to build reports.
     """
     # helper function
@@ -134,7 +135,7 @@ def experiment_set_reporting(connection, **kwargs):
                 this_report[key] = val
         return this_report if this_report.get('changes') else None
 
-    check = init_check_res(connection, 'experiment_set_reporting', runnable=True)
+    check = init_check_res(connection, 'experiment_set_reporting')
     check.action = 'build_experiment_set_reports'
     # build reference to the check that provides data and get information
     data_check = init_check_res(connection, 'experiment_set_reporting_data')

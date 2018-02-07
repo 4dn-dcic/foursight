@@ -24,7 +24,7 @@ def item_counts_by_type(connection, **kwargs):
         ret[split_str[2].strip(':')] = int(split_str[3])
         return ret
 
-    check = init_check_res(connection, 'item_counts_by_type', runnable=True)
+    check = init_check_res(connection, 'item_counts_by_type')
     # run the check
     item_counts = {}
     warn_item_counts = {}
@@ -64,7 +64,7 @@ def item_counts_by_type(connection, **kwargs):
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
-    check = init_check_res(connection, 'change_in_item_counts', runnable=True)
+    check = init_check_res(connection, 'change_in_item_counts')
     counts_check = init_check_res(connection, 'item_counts_by_type')
     latest = counts_check.get_primary_result()
     # get_item_counts run closest to 10 mins
@@ -103,7 +103,7 @@ def change_in_item_counts(connection, **kwargs):
 def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
     init_uuid = kwargs.get('uuid')
-    check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=init_uuid, runnable=True)
+    check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=init_uuid)
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
@@ -139,7 +139,7 @@ def items_created_in_the_past_day(connection, **kwargs):
 
 @check_function(search_add_on='&limit=all')
 def identify_files_without_filesize(connection, **kwargs):
-    check = init_check_res(connection, 'identify_files_without_filesize', runnable=True)
+    check = init_check_res(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action. also see ACTION_GROUPS in check_groups.py
     check.action = "patch_file_size"
     fdn_conn = get_FDN_connection(connection)

@@ -10,7 +10,7 @@ CHECK_DECO = 'check_function'
 ACTION_DECO = 'action_function'
 
 
-def init_check_res(connection, name, init_uuid=None, runnable=False):
+def init_check_res(connection, name, init_uuid=None):
     """
     Initialize a CheckResult object, which holds all information for a
     check and methods necessary to store and retrieve latest/historical
@@ -19,10 +19,8 @@ def init_check_res(connection, name, init_uuid=None, runnable=False):
 
     init_uuid is a a result uuid that the check will look for upon initialization.
     If found, the check fields will be pre-populated with its results.
-
-    runnable is a boolean that determines if the check can be executed from UI.
     """
-    return CheckResult(connection.s3_connection, name, init_uuid=init_uuid, runnable=runnable)
+    return CheckResult(connection.s3_connection, name, init_uuid=init_uuid)
 
 
 def init_action_res(connection, name):

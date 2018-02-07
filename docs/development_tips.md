@@ -28,7 +28,7 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 {'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day',
 'description': 'No items have been created in the past day.', 'status': 'PASS',
 'uuid': '2018-01-16T19:14:34.025445','brief_output': None,'full_output': {},
-'admin_output': None, 'ff_link': None, 'runnable': True}
+'admin_output': None, 'ff_link': None}
 
 # you can also run with kwargs...
 >>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})

@@ -25,6 +25,13 @@ def thirty_min_checks(event):
     for environ in list_environments():
         queue_check_group(environ, 'thirty_min_checks')
 
+
+# run every day at 11 am UTC
+@app.schedule(Cron(0, 11, '*', '*', '?', '*'))
+def morning_checks(event):
+    for environ in list_environments():
+        queue_check_group(environ, 'morning_checks')
+
 ######### END SCHEDULED FXNS #########
 
 @app.route('/callback')
