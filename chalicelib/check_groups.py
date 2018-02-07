@@ -41,7 +41,7 @@ CHECK_GROUPS = {
 ACTION_GROUPS = {
     'patch_file_size': [
         ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, [], 'pfs1'],
-        ['wrangler_checks/patch_file_size', {}, ['pfs1'], 'pfs2'],
+        ['wrangler_checks/patch_file_size', {'called_by': None}, ['pfs1'], 'pfs2'],
         ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3']
     ]
 }
