@@ -2,6 +2,7 @@
 CHECK_MODULES = [
     'system_checks',
     'wrangler_checks',
+    'report_checks',
     'test_checks'
 ]
 

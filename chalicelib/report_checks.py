@@ -84,7 +84,7 @@ def experiment_set_reporting_data(connection, **kwargs):
     all of the above. Include uuid, accession, status, and md5sum (for files).
     """
     check = init_check_res(connection, 'experiment_set_reporting_data')
-    check.status = 'IGNORE'
+    check.status = 'PASS'
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
@@ -144,8 +144,8 @@ def experiment_set_reporting(connection, **kwargs):
     # find needed experiment_set_reporting_data results
     data_check = init_check_res(connection, 'experiment_set_reporting_data')
     if kwargs.get('auto_uuids') == False: # use manual uuids
-        new_data_result = get_result_by_uuid(kwargs.get('new_uuid', 'miss'))
-        old_data_result = get_result_by_uuid(kwargs.get('old_uuid', 'miss'))
+        new_data_result = data_check.get_result_by_uuid(kwargs.get('new_uuid', 'miss'))
+        old_data_result = data_check.get_result_by_uuid(kwargs.get('old_uuid', 'miss'))
     else:
         new_data_result = data_check.get_primary_result()
         old_data_result = data_check.get_closest_result(diff_hours=24)
@@ -183,12 +183,16 @@ def experiment_set_reporting(connection, **kwargs):
 def publish_experiment_set_reports(connection, **kwargs):
     action = init_action_res(connection, 'build_experiment_set_reports')
     report_check = init_check_res(connection, 'experiment_set_reporting')
-    report_result = report_check.get_primary_result()
+    report_uuid = kwargs.get('called_by')
+    if not report_uuid:
+        action.status = 'FAIL'
+        action.description = 'Could not identify which check called this.'
+        return action
+    report_result = report_check.get_result_by_uuid(report_uuid)
     report_output = report_result.get('full_output')
-    report_reference = report_result.get('admin_output')
     action.output = {
-        'last_data_used': report_reference,
-        'reports': report_output
+        'reports': report_output,
+        'called_by': report_uuid
     }
     action.status = 'DONE'
     return action
