@@ -30,6 +30,117 @@ def extract_list_info(res_list, fields, key_field):
     return results
 
 
+def calculate_exp_set_severity(path, prev, curr, **kwargs):
+    # don't need to go any further if this is true...
+    if prev == curr:
+        return {
+            'severity': -1,
+            'summary': ''
+        }
+    set_status = kwargs.get('set_status') # should only be set if prev = curr for set status
+    exp_type = kwargs.get('experiment_type', 'unknown'),
+    file_type = kwargs.get('file_type', 'unknown')
+    report_info_w_released_set = {
+        'experiments_in_set.status': {
+            '*/released' : {
+                'severity': 1,
+                'summary': 'New %s Replicate Experiment has been replaced.' % exp_type
+            },
+            '*/*': {
+                'severity': 3,
+                'summary': 'WARNING! Released %s Replicate Experiment has changed to %s.' % (exp_type, curr)
+            },
+        },
+        'processed_files.status': {
+            '*/released': {
+                'severity': 0,
+                'summary': 'New %s file added to released %s Replicate Set' % (file_type, exp_type)
+            }
+        }
+    }
+    report_info_w_released_exp = {
+        'experiments_in_set.files.status': {
+            '*/released': {
+                'severity': 2,
+                'summary': 'New raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+            }
+        },
+        'experiments_in_set.files.status': {
+            '*/*': {
+                'severity': 3,
+                'summary': 'WARNING! New unreleased raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+            }
+        },
+        'experiments_in_set.processed_files.status': {
+            '*/released': {
+                'severity': 0,
+                'summary': 'New %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+            }
+        }
+    }
+    report_info = { # field is first key, "<prev>/<curr>" is second
+        'status': {
+            '*/released' : {
+                'severity': 0,
+                'summary': 'New %s Replicate Set has been released.' % exp_type
+            },
+            'replaced/released' : {
+                'severity': 0,
+                'summary': 'New %s Replicate Set has been released.' % exp_type
+            },
+            'released/replaced' : {
+                'severity': 1,
+                'summary': 'Released %s Replicate Set has been replaced.' % exp_type
+            },
+            'released/*': {
+                'severity': 3,
+                'summary': 'WARNING! Released %s Replicate Set has changed to %s.' % (exp_type, curr)
+            }
+        },
+        'experiments_in_set.status': {
+            'released/replaced' : {
+                'severity': 1,
+                'summary': 'Released %s Experiment has been replaced.' % exp_type
+            },
+            'released/*': {
+                'severity': 3,
+                'summary': 'WARNING! Released %s Experiment has changed to %s.' % (exp_type, curr)
+            },
+
+        },
+        'processed_files.status': {
+            'released/replaced': {
+                'severity': 1,
+                'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
+            },
+            'released/*': {
+                'severity': 3,
+                'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
+            }
+        },
+        'experiment_in_set.processed_files.status': {
+            'released/replaced': {
+                'severity': 1,
+                'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
+            },
+            'released/*': {
+                'severity': 3,
+                'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
+            }
+        },
+        'experiments_in_set.files.status': {
+            'released/replaced': {
+                'severity': 1,
+                'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
+            },
+            'released/*': {
+                'severity': 3,
+                'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
+            }
+        }
+    }
+
+
 def generate_exp_set_report(curr_res, prev_res, field_path=[]):
     """
     Takes a dictionary current res and previous res and generates a report
@@ -38,8 +149,16 @@ def generate_exp_set_report(curr_res, prev_res, field_path=[]):
     a uuid and are in children_fields.
     Returns None if there is no significant reporting; dict report otherwise.
     """
-    significant_fields = {
-        'status': ['released', 'released_to_project'] # significant statuses
+    severity = {
+        'status': []
+    }
+    # treat all equivalents as the first item in the list of equiv values
+    # i.e. status = 'released_to_project' == status = 'released'
+    equivalents = {
+        'status': ['released', 'released_to_project']
+    }
+    significants = {
+        'status': ['released', 'replaced', 'archived']
     }
     report_fields = ['status']
     include_fields = ['@id']
