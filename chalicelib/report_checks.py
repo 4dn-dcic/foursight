@@ -140,7 +140,7 @@ def experiment_set_reporting(connection, **kwargs):
     Stores the information used by that action to build reports.
     """
     check = init_check_res(connection, 'experiment_set_reporting')
-    check.action = 'build_experiment_set_reports'
+    check.action = 'publish_experiment_set_reports'
     # find needed experiment_set_reporting_data results
     data_check = init_check_res(connection, 'experiment_set_reporting_data')
     if kwargs.get('auto_uuids') == False: # use manual uuids
@@ -181,7 +181,7 @@ def experiment_set_reporting(connection, **kwargs):
 
 @action_function()
 def publish_experiment_set_reports(connection, **kwargs):
-    action = init_action_res(connection, 'build_experiment_set_reports')
+    action = init_action_res(connection, 'publish_experiment_set_reports')
     report_check = init_check_res(connection, 'experiment_set_reporting')
     report_uuid = kwargs['called_by']
     report_result = report_check.get_result_by_uuid(report_uuid)
