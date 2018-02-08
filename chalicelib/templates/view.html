@@ -123,8 +123,7 @@
     <script type="text/javascript">
         function confirm_action(uuid, message){
             var actionMessage = document.getElementById("action-message-" + uuid);
-            actionMessage.classList.add('commonstyle');
-            actionMessage.innerHTML = '<pre><code>' + message + '</code></pre>';
+            actionMessage.innerHTML = '<pre class="commonstyle"><code>' + message + '</code></pre>';
             var actionButton = document.getElementById("action-" + uuid);
             actionButton.classList.remove('btn-warning');
             actionButton.classList.add('btn-danger');
