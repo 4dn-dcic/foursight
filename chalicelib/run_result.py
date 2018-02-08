@@ -192,6 +192,7 @@ class CheckResult(RunResult):
         # you must set both create both of these to make an action work
         self.action = None
         self.allow_action = False # by default do not allow the action to be run
+        self.action_message = 'Are you sure you want to run this action?'
         super().__init__(s3_connection, name)
 
 
@@ -208,6 +209,7 @@ class CheckResult(RunResult):
             'ff_link': self.ff_link,
             'action': self.action,
             'allow_action': self.allow_action,
+            'action_message': self.action_message,
             'kwargs': self.kwargs
         }
 
