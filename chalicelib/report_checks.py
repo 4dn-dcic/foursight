@@ -171,7 +171,8 @@ def experiment_set_reporting(connection, **kwargs):
     check.full_output = reports
     if reports:
         check.status = 'WARN'
-        check.description = 'Ready to generate new experiment set reports.'
+        check.description = 'Ready to publish new experiment set reports.'
+        check.action_message = 'Will publish %s reports.' % str(len(reports))
         check.allow_action = True
     else:
         check.status = 'PASS'

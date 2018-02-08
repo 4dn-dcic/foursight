@@ -163,6 +163,7 @@ def identify_files_without_filesize(connection, **kwargs):
     if problem_files:
         check.status = 'WARN'
         check.description = "One or more files that are released/released to project/uploaded don't have file_size."
+        check.action_message = "Will attempt to patch file_size for %s files." % str(len(problem_files))
         check.allow_action = True # allows the action to be run
     else:
         check.status = 'PASS'
@@ -177,8 +178,8 @@ def patch_file_size(connection, **kwargs):
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
-    check_latest = filesize_check.get_primary_result() # what we want is in full_output
-    for hit in check_latest.get('full_output', []):
+    filesize_check_result = report_check.get_result_by_uuid(kwargs['called_by'])
+    for hit in filesize_check_result.get('full_output', []):
         bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
         head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
         if not head_info:

@@ -14,6 +14,8 @@ CHECK_MODULES = [
 # check group names should end in "_checks" or "_actions"
 # define check_groups within this dict
 
+ACTION_GROUPS = {}
+
 CHECK_GROUPS = {
     'ten_min_checks': [
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'm10_1'],
@@ -33,19 +35,6 @@ CHECK_GROUPS = {
         ['report_checks/experiment_set_reporting', {'primary': True}, [], 'morn_1'],
     ]
 }
-
-# action groups work the same as check groups, but can contain intermixed checks and actions
-# minimally, an action group should have the action itself and also the check that triggered it
-# (so that the check can be updated)
-
-ACTION_GROUPS = {
-    'patch_file_size': [
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, [], 'pfs1'],
-        ['wrangler_checks/patch_file_size', {'called_by': None}, ['pfs1'], 'pfs2'],
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3']
-    ]
-}
-
 
 ######## don't use the check groups below! just for testing ########
 
