@@ -28,10 +28,10 @@ def extract_list_info(res_list, fields, key_field):
 
 
 def calculate_report_from_change(path, prev, curr, add_ons):
-    exp_type = add_ons.get('exp_type', 'unknown'),
-    file_type = add_ons.get('file_type', 'unknown')
-    item_id = add_ons.get('@id', 'unknown')
-    set_id = add_ons.get('set_@id', 'unknown')
+    exp_type = add_ons.get('exp_type', 'UNKNOWN_TYPE')
+    file_type = add_ons.get('file_type', 'UNKNOWN_TYPE')
+    item_id = add_ons.get('@id', 'UNKNOWN_ID')
+    set_id = add_ons.get('set_@id', 'UNKNOWN_ID')
     released_exp_set = add_ons.get('released_exp_set', False)
     released_exp = add_ons.get('released_exp', False)
     field = path.split('.')[-1]
@@ -196,7 +196,6 @@ def generate_exp_set_report(curr_res, prev_res, field_path=[], add_ons={}):
     if field_path == []:
         exps_in_set = curr_res.get('experiments_in_set')
         if exps_in_set:
-            print('\nExperiment Set -- %s --' % curr_res.get('@id'))
             first_exp_type = exps_in_set[list(exps_in_set.keys())[0]].get('experiment_type')
             if first_exp_type:
                 add_ons['exp_type'] = first_exp_type
@@ -223,7 +222,6 @@ def generate_exp_set_report(curr_res, prev_res, field_path=[], add_ons={}):
             add_ons['@id'] = curr_res['@id']
             report = calculate_report_from_change(path, prev_val, curr_val, add_ons)
             if report:
-                print('-->', report)
                 reports.append(report)
     if reports:
         reports.sort(key = lambda r: r['priority'])
@@ -257,7 +255,7 @@ def experiment_set_reporting_data(connection, **kwargs):
         last_total = len(search_res)
         curr_from += last_total
         for exp_set in search_res:
-            exp_set_res = extract_info(exp_set, ['@id', 'status'])
+            exp_set_res = extract_info(exp_set, ['@id', 'status', 'tags'])
             exp_set_res['processed_files'] = extract_list_info(
                 exp_set.get('processed_files'),
                 ['@id', 'status', 'file_type'],
@@ -304,6 +302,7 @@ def experiment_set_reporting(connection, **kwargs):
         new_data_result = data_check.get_primary_result()
         old_data_result = data_check.get_closest_result(diff_hours=24)
     if not new_data_result or not old_data_result:
+        import pdb; pdb.set_trace()
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
         return check
@@ -317,13 +316,18 @@ def experiment_set_reporting(connection, **kwargs):
         check.description = 'One or both experiment_set_reporting_data results are malformed.' + used_res_strings
         return check
     reports = []
+    used_tag = '4DN Joint Analysis 2018'
     ### CREATE REPORTS... assuming experiment sets will NOT be deleted from DB
     for exp_set in new_output:
+        new_res = new_output[exp_set]
+        if used_tag not in new_res.get('tags', []):
+            continue
         old_res = old_output.get(exp_set, {})
-        exp_set_report = generate_exp_set_report(new_output[exp_set], old_res)
+        exp_set_report = generate_exp_set_report(new_res, old_res)
         if exp_set_report is not None:
             reports.append(exp_set_report)
-    # reports are not grouped at all
+    # reports are not grouped at all. sort them by summary first
+    reports.sort(key=lambda r: r['summary'])
     check.full_output = reports
     group_reports = []
     # group reports by summary
@@ -333,7 +337,12 @@ def experiment_set_reporting(connection, **kwargs):
         group_report = {r_key: first_report[r_key] for r_key in ['severity', 'summary']}
         first_report_items = {'set_@id': first_report['set_@id'], '@id': first_report['@id']}
         group_report['items'] = [first_report_items]
-        for gr in group:
+        # use this checks uuid as the timestamp for the reports
+        group_report['timestamp'] = kwargs['uuid']
+        group_report['report_tag'] = used_tag
+        group_report['newer_bound'] = kwargs['new_uuid']
+        group_report['older_bound'] = kwargs['old_uuid']
+        for gr in group: # iterate through the rest of the items
             group_report['items'].append({'set_@id': gr['set_@id'], '@id': gr['@id']})
         group_reports.append(group_report)
     check.brief_output = group_reports
