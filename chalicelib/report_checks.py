@@ -12,6 +12,7 @@ import sys
 import json
 import datetime
 import boto3
+import copy
 
 #### HELPER FUNCTIONS ####
 
@@ -30,30 +31,31 @@ def extract_list_info(res_list, fields, key_field):
     return results
 
 
-def calculate_exp_set_severity(path, prev, curr, **kwargs):
-    # don't need to go any further if this is true...
-    if prev == curr:
-        return {
-            'severity': -1,
-            'summary': ''
-        }
-    set_status = kwargs.get('set_status') # should only be set if prev = curr for set status
-    exp_type = kwargs.get('experiment_type', 'unknown'),
-    file_type = kwargs.get('file_type', 'unknown')
-    report_info_w_released_set = {
+def calculate_report_from_change(path, prev, curr, add_ons):
+    exp_type = add_ons.get('exp_type', 'unknown'),
+    file_type = add_ons.get('file_type', 'unknown')
+    item_id = add_ons.get('@id', 'unknown')
+    released_exp_set = add_ons.get('released_exp_set', False)
+    released_exp = add_ons.get('released_exp', False)
+    field = path.split('.')[-1]
+    # these dictionaries define the reports
+    report_info_w_released_exp_set = {
         'experiments_in_set.status': {
             '*/released' : {
                 'severity': 1,
-                'summary': 'New %s Replicate Experiment has been replaced.' % exp_type
+                'priority': 3,
+                'summary': 'New Replicate Experiment has been added to a released %s Replicate Set.' % exp_type
             },
             '*/*': {
                 'severity': 3,
-                'summary': 'WARNING! Released %s Replicate Experiment has changed to %s.' % (exp_type, curr)
+                'priority': 4,
+                'summary': 'WARNING! Replicate Experiment with status %s has been added to a released %s Replicate Set.' % (curr, exp_type)
             },
         },
         'processed_files.status': {
             '*/released': {
                 'severity': 0,
+                'priorty': 7,
                 'summary': 'New %s file added to released %s Replicate Set' % (file_type, exp_type)
             }
         }
@@ -62,48 +64,57 @@ def calculate_exp_set_severity(path, prev, curr, **kwargs):
         'experiments_in_set.files.status': {
             '*/released': {
                 'severity': 2,
+                'priority': 5,
                 'summary': 'New raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
             }
         },
         'experiments_in_set.files.status': {
             '*/*': {
                 'severity': 3,
+                'priority': 6,
                 'summary': 'WARNING! New unreleased raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
             }
         },
         'experiments_in_set.processed_files.status': {
             '*/released': {
                 'severity': 0,
+                'priority': 7,
                 'summary': 'New %s file added to released %s Replicate Experiment' % (file_type, exp_type)
             }
         }
     }
-    report_info = { # field is first key, "<prev>/<curr>" is second
+    report_info = {
         'status': {
             '*/released' : {
                 'severity': 0,
+                'priorty': 0, # 0 is highest priorty
                 'summary': 'New %s Replicate Set has been released.' % exp_type
             },
             'replaced/released' : {
                 'severity': 0,
+                'priorty': 0,
                 'summary': 'New %s Replicate Set has been released.' % exp_type
             },
             'released/replaced' : {
                 'severity': 1,
+                'priorty': 1,
                 'summary': 'Released %s Replicate Set has been replaced.' % exp_type
             },
             'released/*': {
                 'severity': 3,
+                'priorty': 2,
                 'summary': 'WARNING! Released %s Replicate Set has changed to %s.' % (exp_type, curr)
             }
         },
         'experiments_in_set.status': {
             'released/replaced' : {
                 'severity': 1,
+                'priorty': 1,
                 'summary': 'Released %s Experiment has been replaced.' % exp_type
             },
             'released/*': {
                 'severity': 3,
+                'priorty': 2,
                 'summary': 'WARNING! Released %s Experiment has changed to %s.' % (exp_type, curr)
             },
 
@@ -111,88 +122,111 @@ def calculate_exp_set_severity(path, prev, curr, **kwargs):
         'processed_files.status': {
             'released/replaced': {
                 'severity': 1,
-                'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
+                'priorty': 8,
+                'summary': 'Released %s file from %s Replicate Set has been replaced' % (file_type, exp_type)
             },
             'released/*': {
                 'severity': 3,
+                'priorty': 9,
                 'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
             }
         },
         'experiment_in_set.processed_files.status': {
             'released/replaced': {
                 'severity': 1,
+                'priorty': 8,
                 'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
             },
             'released/*': {
                 'severity': 3,
+                'priorty': 9,
                 'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
             }
         },
         'experiments_in_set.files.status': {
             'released/replaced': {
                 'severity': 1,
+                'priorty': 8,
                 'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
             },
             'released/*': {
                 'severity': 3,
+                'priorty': 9,
                 'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
             }
         }
     }
-
-
-def generate_exp_set_report(curr_res, prev_res, field_path=[]):
-    """
-    Takes a dictionary current res and previous res and generates a report
-    from them. Fields looked at are in report_fields and it will also
-    recursively generate a report for all dictionary children that contain
-    a uuid and are in children_fields.
-    Returns None if there is no significant reporting; dict report otherwise.
-    """
-    severity = {
-        'status': []
-    }
+    if released_exp_set:
+        report_info.update(report_info_w_released_exp_set)
+    if released_exp:
+        report_info.update(report_info_w_released_exp)
+    # create the prev/val key
     # treat all equivalents as the first item in the list of equiv values
     # i.e. status = 'released_to_project' == status = 'released'
     equivalents = {
-        'status': ['released', 'released_to_project']
+        'status': ['released', 'released to project']
     }
     significants = {
-        'status': ['released', 'replaced', 'archived']
+        'status': ['released', 'replaced']
     }
+    if field in equivalents:
+        prev = equivalents[field][0] if prev in equivalents[field] else prev
+        curr = equivalents[field][0] if curr in equivalents[field] else curr
+    if field in significants:
+        prev_key = prev if prev in equivalents[field] else '*'
+        curr_key = curr if curr in equivalents[field] else '*'
+    else:
+        prev_key, curr_key = prev, curr
+    level_1 = report_info.get(path)
+    if level_1:
+        level_2 = level_1.get('/'.join([prev_key, curr_key]))
+        if level_2:
+            level_2['@id'] = item_id
+            return level_2
+    # no report found
+    return None
+
+
+def generate_exp_set_report(curr_res, prev_res, field_path=[], add_ons={}):
+    add_ons = copy.copy(add_ons)
     report_fields = ['status']
     include_fields = ['@id']
     children_fields = ['experiments_in_set', 'files', 'processed_files']
-    this_report = {'changes': []}
+    released_statuses = ['released', 'released to project']
+    # can do this at the top level because all exp types should be identical in a replicate set
+    exps_in_set = curr_res.get('experiments_in_set')
+    if exps_in_set:
+        first_exp_type = exps_in_set[list(exps_in_set.keys())[0]].get('experiment_type', 'unknown')
+        add_ons['exp_type'] = first_exp_type
+    this_report = {'reports': []}
     for key, val in curr_res.items():
+        path = '.'.join(field_path + [key])
+        curr_val = curr_res.get(key)
+        prev_val = prev_res.get(key)
+        # START add_ons
+        if path == 'status' and curr_val in released_statuses and prev_val in released_statuses:
+            add_ons['released_exp_set'] = True
+        if path == 'experiments_in_set.status' and curr_val in released_statuses and prev_val in released_statuses:
+            add_ons['released_exp'] = True
+        # END add_ons
         if key in children_fields and isinstance(val, dict):
             for c_key, c_val in val.items():
                 if isinstance(c_val, dict) and '@id' in c_val:
                     prev_child = prev_res.get(key, {}).get(c_key, {})
                     child_path = field_path + [key]
-                    child_report = generate_exp_set_report(c_val, prev_child, child_path)
+                    child_report = generate_exp_set_report(c_val, prev_child, child_path, add_ons)
                     if child_report:
-                        this_report['changes'].extend(child_report['changes'])
+                        this_report['reports'].extend(child_report['reports'])
         elif key in report_fields:
-            curr_val = curr_res.get(key)
-            prev_val = prev_res.get(key)
-            if key in significant_fields:
-                significant = significant_fields[key]
-                is_sig = curr_val in significant or prev_val in significant
-            else:
-                # if this field is not in significant_fields, just see if changed
-                is_sig = True
-            if is_sig and curr_val != prev_val:
-                this_report['changes'].append({
-                    'field': '.'.join(field_path + [key]),
-                    'previous': prev_val,
-                    'current': curr_val,
-                    '@id': curr_res['@id'],
-                    'reason': ' '.join([key, 'changed from', str(prev_val), 'to', str(curr_val)])
-                })
+            add_ons['@id'] = curr_res['@id']
+            report = calculate_report_from_change(path, prev_val, curr_val, add_ons)
+            if report:
+                this_report['reports'].append(report)
         elif key in include_fields:
             this_report[key] = val
-    return this_report if this_report.get('changes') else None
+    if this_report['reports']:
+        this_report['reports'].sort(key = lambda r: r['priority'])
+    return this_report if this_report.get('reports') else None
 
 #### CHECKS / ACTIONS #####
 
