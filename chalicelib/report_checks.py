@@ -302,7 +302,6 @@ def experiment_set_reporting(connection, **kwargs):
         new_data_result = data_check.get_primary_result()
         old_data_result = data_check.get_closest_result(diff_hours=24)
     if not new_data_result or not old_data_result:
-        import pdb; pdb.set_trace()
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
         return check
