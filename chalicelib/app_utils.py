@@ -17,13 +17,12 @@ from .check_utils import (
     get_check_strings,
     get_action_strings,
     fetch_check_group,
-    fetch_action_group,
     init_check_res,
     init_action_res,
     init_check_or_action_res
 )
 from .s3_connection import S3Connection
-from .check_groups import CHECK_GROUPS, ACTION_GROUPS
+from .check_groups import CHECK_GROUPS
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -254,15 +253,12 @@ def view_run_action(environ, action, params):
 
     This also be used to queue an action group. This is checked before individual action names
     """
-    if action in ACTION_GROUPS:
-        queue_check_group(environ, action, use_action_group=True)
-    else:
-        connection, _ = init_connection(environ)
-        action_str = get_action_strings(action)
-        # convert string query params to literals
-        params = query_params_to_literals(params)
-        if connection and action_str:
-            run_check_or_action(connection, action_str, params)
+    connection, _ = init_connection(environ)
+    action_str = get_action_strings(action)
+    # convert string query params to literals
+    params = query_params_to_literals(params)
+    if connection and action_str:
+        run_check_or_action(connection, action_str, params)
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
     return Response(
@@ -393,7 +389,6 @@ def process_view_results(connection, results, is_admin):
         else:
             res['admin_output'] = None
         # get the latest result for the checks action, if present
-        # also ENSURE that the action is in ACTION_GROUPS
         if res.get('action'):
             action = init_action_res(connection, res.get('action'))
             if action:
@@ -697,7 +692,7 @@ def get_environment(environ):
 
 ##### CHECK RUNNER FUNCTIONS #####
 
-def queue_check_group(environ, check_group, use_action_group=False):
+def queue_check_group(environ, check_group):
     """
     Given a str environment and check group name, add the check info to the
     existing queue (or creates a new one if there is none). Then initiates 4
@@ -705,15 +700,9 @@ def queue_check_group(environ, check_group, use_action_group=False):
 
     Run with check_group = None to skip adding the check group to the queue
     and just initiate the check runners.
-
-    If use_action_group == True (default False), then it will attempt to queue an action group
-    rather than a check group.
     """
     if check_group is not None:
-        if use_action_group:
-            check_vals = fetch_action_group(check_group)
-        else:
-            check_vals = fetch_check_group(check_group)
+        check_vals = fetch_check_group(check_group)
         if not check_vals:
             print('-RUN-> %s is not a valid check group. Cannot queue it.' % (check_group))
             return

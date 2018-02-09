@@ -187,9 +187,7 @@ class CheckResult(RunResult):
         # admin output is only seen by admins on the UI
         self.admin_output = None
         self.ff_link = None
-        # self.action_name is the function name of the action AND
-        # should be an group in ACTION_GROUPS
-        # you must set both create both of these to make an action work
+        # self.action_name is the function name of the action to link to check
         self.action = None
         self.allow_action = False # by default do not allow the action to be run
         self.action_message = 'Are you sure you want to run this action?'

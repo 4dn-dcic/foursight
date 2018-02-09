@@ -84,17 +84,25 @@ class TestAppRoutes(FSTest):
         # run with a check
         res2 = app_utils.view_run_check(self.environ, 'indexing_progress', {})
         self.assertTrue(res2.status_code == 302)
-        self.assertTrue('/api/view/' + self.environ in res2.body)
-        self.assertTrue(res.body != res2.body)
+        self.assertTrue('/api/view/' + self.environ + '/indexing_progress/' in res2.body)
+        # running with an check brings you to that check
         # run with an action
-        res3 = app_utils.view_run_action(self.environ, 'add_random_test_nums')
+        res3 = app_utils.view_run_action(self.environ, 'add_random_test_nums', {})
         self.assertTrue(res3.status_code == 302)
         self.assertTrue('/api/view/' + self.environ in res3.body)
-        self.assertTrue(res2.body == res3.body)
         # lastly, check with is_admin
         res = app_utils.view_foursight(self.environ, True) # is_admin
         self.assertTrue(res.status_code == 200)
         self.assertTrue('Currently logged in as admin.' in res.body)
+
+    def test_view_foursight_check(self):
+        test_check_name = 'item_counts_by_type'
+        test_check = utils.init_check_res(self.conn, test_check_name)
+        uuid = test_check.get_primary_result()['uuid']
+        res = app_utils.view_foursight_check(self.environ, test_check_name, uuid)
+        self.assertTrue(res.status_code == 200)
+        self.assertTrue('<!DOCTYPE html>' in res.body)
+        self.assertTrue('Foursight' in res.body)
 
     def test_view_foursight_history(self):
         test_check = 'test_random_nums'
@@ -427,26 +435,6 @@ class TestCheckRunner(FSTest):
         post_res = check.get_latest_result()
         self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
-    def test_run_check_runner_actions(self):
-        action = utils.init_action_res(self.connection, 'add_random_test_nums')
-        prior_res = action.get_latest_result()
-        # need to manually add things to the queue
-        check_vals = check_utils.fetch_action_group('add_random_test_nums_solo')
-        app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
-        app_utils.run_check_runner({'sqs_url': self.queue.url})
-        finished_count = 0 # since queue attrs are approximate
-        # wait for queue to empty
-        while finished_count < 3:
-            time.sleep(1)
-            sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
-            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            if vis_messages == 0 and invis_messages == 0:
-                finished_count += 1
-        time.sleep(1)
-        post_res = action.get_latest_result()
-        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
-
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
         self.assertTrue(app_utils.QUEUE_NAME == 'foursight-test-check_queue')
@@ -476,30 +464,6 @@ class TestCheckRunner(FSTest):
         for check_name in res_compare:
             self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
             self.assertTrue(res_compare[check_name]['prior'] != res_compare[check_name]['post'])
-
-    def test_queue_action_group(self):
-        # get a reference point for action results
-        action = utils.init_action_res(self.connection, 'add_random_test_nums')
-        prior_res = action.get_latest_result()
-        run_input = app_utils.queue_check_group(self.environ, 'add_random_test_nums', use_action_group=True)
-        self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
-        sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
-        vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-        invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-        # there are dependencies, so this should be slow enough to work
-        self.assertTrue(vis_messages > 0 or invis_messages > 0)
-        # wait for queue to empty
-        while vis_messages > 0 or invis_messages > 0:
-            time.sleep(1)
-            sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
-            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-        # queue should be empty. check results
-        time.sleep(1)
-        post_res = action.get_latest_result()
-        print_dict = {'prior': prior_res['uuid'], 'post': post_res['uuid']}
-        # compare the uuids to ensure actions have run
-        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
 
     def test_get_sqs_attributes(self):
         # bad sqs url
@@ -636,15 +600,6 @@ class TestCheckUtils(FSTest):
         bad_checks = check_utils.fetch_check_group('not_a_check_group')
         self.assertTrue(bad_checks is None)
 
-    def test_fetch_action_group(self):
-        patch_actions = check_utils.fetch_action_group('patch_file_size')
-        self.assertTrue(isinstance(patch_actions, list) and len(patch_actions) > 0)
-        test_actions = check_utils.fetch_action_group('add_random_test_nums')
-        self.assertTrue(isinstance(test_actions, list) and len(test_actions) > 0)
-        # non-existant action group
-        bad_actions = check_utils.fetch_action_group('not_an_action_group')
-        self.assertTrue(bad_actions is None)
-
     def test_get_check_group_results(self):
         # dict to compare uuids
         uuid_compares = {}
@@ -701,13 +656,13 @@ class TestCheckUtils(FSTest):
 
         # with an action
         action = utils.init_action_res(self.conn, 'add_random_test_nums')
-        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True, 'uuid': test_uuid}, [] ,'xxx']
+        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True, 'uuid': test_uuid, 'called_by': latest_uuid}, [] ,'xxx']
         action_res = check_utils.run_check_or_action(self.conn, test_info_2[0], test_info_2[1])
         self.assertTrue(isinstance(action_res, dict))
         self.assertTrue('name' in action_res)
         self.assertTrue('status' in action_res)
         self.assertTrue('output' in action_res)
-        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid})
+        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid, 'called_by': latest_uuid})
         latest_uuid = action_res.get('uuid')
         time.sleep(3)
         latest_res = action.get_latest_result()
@@ -736,8 +691,15 @@ class TestCheckUtils(FSTest):
         self.assertTrue('by zero' in ''.join(check_res['full_output']))
         self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
 
-    def test_run_action_exception(self):
+    def test_run_action_no_called_by(self):
         action_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_action_error', {})
+        self.assertTrue(action_res['status'] == 'FAIL')
+        # this output is a list
+        self.assertTrue('Action is missing called_by in its kwargs' in ''.join(action_res['output']))
+        self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
+
+    def test_run_action_exception(self):
+        action_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_action_error', {'called_by': None})
         self.assertTrue(action_res['status'] == 'FAIL')
         # this output is a list
         self.assertTrue('by zero' in ''.join(action_res['output']))
@@ -799,34 +761,6 @@ class TestCheckGroup(FSTest):
                     self.assertTrue(isinstance(check_info[1], dict))
                     self.assertTrue(isinstance(check_info[2], list))
                     self.assertTrue(isinstance(check_info[3], app_utils.basestring))
-
-
-class TestActionGroups(FSTest):
-    def test_action_groups_content(self):
-        # verify all names of action groups are functions with the
-        # @action_function deco AND all checks/actions in the group are valid.
-        for action_group in check_groups.ACTION_GROUPS:
-            actions = []
-            self.assertTrue(isinstance(check_groups.ACTION_GROUPS[action_group], list))
-            for entry in check_groups.ACTION_GROUPS[action_group]:
-                entry_string = entry[0]
-                self.assertTrue(isinstance(entry_string, app_utils.basestring))
-                self.assertTrue(len(entry_string.split('/')) == 2)
-                [mod, name] = [st.strip() for st in entry_string.split('/')]
-                is_check = False
-                is_action = False
-                check_mod = check_utils.__dict__.get(mod)
-                self.assertTrue(check_mod is not None)
-                method = check_mod.__dict__.get(name)
-                self.assertTrue(method is not None)
-                if utils.check_method_deco(method, utils.CHECK_DECO):
-                    is_check = True
-                elif utils.check_method_deco(method, utils.ACTION_DECO):
-                    is_action = True
-                    actions.append(name)
-                self.assertTrue(is_check or is_action)
-            # ensure action_group name matches an action in the group
-            self.assertTrue(action_group in actions)
 
 
 class TestUtils(FSTest):

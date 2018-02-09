@@ -14,8 +14,6 @@ CHECK_MODULES = [
 # check group names should end in "_checks" or "_actions"
 # define check_groups within this dict
 
-ACTION_GROUPS = {}
-
 CHECK_GROUPS = {
     'ten_min_checks': [
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'm10_1'],

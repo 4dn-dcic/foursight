@@ -140,7 +140,7 @@ def items_created_in_the_past_day(connection, **kwargs):
 @check_function(search_add_on='&limit=all')
 def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize')
-    # must set this to be the function name of the action. also see ACTION_GROUPS in check_groups.py
+    # must set this to be the function name of the action
     check.action = "patch_file_size"
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
