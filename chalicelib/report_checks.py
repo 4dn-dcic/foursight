@@ -202,8 +202,11 @@ def generate_exp_set_report(curr_res, prev_res, field_path=[], add_ons={}):
         add_ons['set_@id'] = curr_res.get('@id')
     for key, val in curr_res.items():
         path = '.'.join(field_path + [key])
-        curr_val = curr_res.get(key)
-        prev_val = prev_res.get(key)
+        curr_val = curr_res.get(key, None)
+        prev_val = prev_res.get(key, None)
+        # catch cases where certain fields are missing, which is probably a schema adjustment issue
+        if (curr_res and curr_val is None) or (prev_res and prev_val is None):
+            continue
         # START add_ons
         if path == 'status' and curr_val in released_statuses and prev_val in released_statuses:
             add_ons['released_exp_set'] = True
