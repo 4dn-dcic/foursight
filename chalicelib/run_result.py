@@ -57,7 +57,16 @@ class RunResult(object):
         desired_time = (datetime.datetime.utcnow() -
             datetime.timedelta(hours=diff_hours, minutes=diff_mins))
         best_match = get_closest(check_tuples, desired_time)
-        return self.get_s3_object(best_match[0])
+        # ensure that the does not have status 'ERROR'
+        match_res = None
+        while not match_res:
+            possible_res = self.get_s3_object(best_match[0])
+            if possible_res.get('status', 'ERROR') != 'ERROR':
+                match_res = possible_res
+            else:
+                check_tuples.remove(best_match)
+                best_match = get_closest(check_tuples, desired_time)
+        return match_res
 
 
     def get_s3_object(self, key):

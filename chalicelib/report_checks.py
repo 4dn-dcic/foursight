@@ -239,7 +239,7 @@ def experiment_set_reporting_data(connection, **kwargs):
     all of the above. Include uuid, accession, status, and md5sum (for files).
     """
     check = init_check_res(connection, 'experiment_set_reporting_data')
-    check.status = 'PASS'
+    check.status = 'IGNORE'
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         check.status = 'ERROR'
