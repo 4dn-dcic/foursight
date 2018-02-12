@@ -519,6 +519,19 @@ class TestCheckResult(FSTest):
         check_copy.kwargs = {'primary': True, 'uuid': prime_uuid}
         self.assertTrue(res == check_copy.store_result())
 
+    def test_get_closest_result(self):
+        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check.status = 'ERROR'
+        res = check.store_result()
+        err_uuid = res['uuid']
+        closest_res_no_error = check.get_closest_result(diff_mins=0)
+        self.assertTrue(err_uuid > closest_res_no_error['uuid'])
+        check.status = 'PASS'
+        res2 = check.store_result()
+        pass_uuid = res2['uuid']
+        closest_res_no_error = check.get_closest_result(diff_mins=0)
+        self.assertTrue(pass_uuid == closest_res_no_error['uuid'])
+
 
 class TestActionResult(FSTest):
     act_name = 'test_only_action'
