@@ -5,7 +5,7 @@ from .utils import (
     action_function,
     init_action_res
 )
-from .wrangler_utils import get_s3_utils_obj, get_FDN_connection
+from .wrangler_utils import get_s3_utils_obj, get_FDN_connection, safe_search_with_callback
 from dcicutils import ff_utils, s3_utils
 import requests
 import sys
@@ -137,20 +137,10 @@ def items_created_in_the_past_day(connection, **kwargs):
     return check
 
 
-@check_function(search_add_on='&limit=all')
+@check_function(search_add_on=None)
 def identify_files_without_filesize(connection, **kwargs):
-    check = init_check_res(connection, 'identify_files_without_filesize')
-    # must set this to be the function name of the action
-    check.action = "patch_file_size"
-    fdn_conn = get_FDN_connection(connection)
-    if not (fdn_conn and fdn_conn.check):
-        check.status = 'ERROR'
-        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check
-    search_url = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded' + kwargs.get('search_add_on', '')
-    search_res = ff_utils.search_metadata(search_url, connection=fdn_conn, frame='object')
-    problem_files = []
-    for hit in search_res:
+    # helper function. params in form <hit, container>
+    def search_callback(hit, problem_files):
         if hit.get('file_size') is None:
             hit_dict = {
                 'accession': hit.get('accession'),
@@ -159,6 +149,20 @@ def identify_files_without_filesize(connection, **kwargs):
                 'upload_key': hit.get('upload_key')
             }
             problem_files.append(hit_dict)
+
+    check = init_check_res(connection, 'identify_files_without_filesize')
+    # must set this to be the function name of the action
+    check.action = "patch_file_size"
+    fdn_conn = get_FDN_connection(connection)
+    if not (fdn_conn and fdn_conn.check):
+        check.status = 'ERROR'
+        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
+        return check
+    search_query = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded'
+    if kwargs.get('search_add_on'):
+        search_query = ''.join(search_query, kwargs['search_add_on'])
+    problem_files = []
+    safe_search_with_callback(fdn_conn, search_query, problem_files, search_callback, limit=200, frame='object')
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
