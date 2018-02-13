@@ -5,7 +5,7 @@ from .utils import (
     action_function,
     init_action_res
 )
-from .wrangler_utils import get_FDN_connection
+from .wrangler_utils import get_FDN_connection, safe_search_with_callback
 from dcicutils import ff_utils
 import copy
 import itertools
@@ -238,6 +238,31 @@ def experiment_set_reporting_data(connection, **kwargs):
     Get a snapshot of all experiment sets, their experiments, and files of
     all of the above. Include uuid, accession, status, and md5sum (for files).
     """
+    # callback fxns
+    def search_callback(exp_set, exp_sets):
+        exp_set_res = extract_info(exp_set, ['@id', 'status', 'tags'])
+        exp_set_res['processed_files'] = extract_list_info(
+            exp_set.get('processed_files'),
+            ['@id', 'status', 'file_type'],
+            'accession'
+        )
+        exps = {}
+        for exp in exp_set.get('experiments_in_set', []):
+            exp_res = extract_info(exp, ['@id', 'status', 'experiment_type'])
+            exp_res['files'] = extract_list_info(
+                exp.get('files'),
+                ['@id', 'status', 'file_type'],
+                'accession'
+            )
+            exp_res['processed_files'] = extract_list_info(
+                exp.get('processed_files'),
+                ['@id', 'status', 'file_type'],
+                'accession'
+            )
+            exps[exp['accession']] = exp_res
+        exp_set_res['experiments_in_set'] = exps
+        exp_sets[exp_set['accession']] = exp_set_res
+
     check = init_check_res(connection, 'experiment_set_reporting_data')
     check.status = 'IGNORE'
     fdn_conn = get_FDN_connection(connection)
@@ -246,40 +271,8 @@ def experiment_set_reporting_data(connection, **kwargs):
         check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return check
     exp_sets = {}
-    last_total = None
-    curr_from = 0
-    limit = 20
-    while not last_total or last_total == limit:
-        # sort by accession and grab 20 at a time to keep memory usage down
-        search_query = ''.join(['/search/?type=ExperimentSetReplicate&experimentset_type=replicate&from=', str(curr_from), '&limit=', str(limit), '&sort=-date_created'])
-        search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame='embedded')
-        if not search_res: # 0 results
-            break
-        last_total = len(search_res)
-        curr_from += last_total
-        for exp_set in search_res:
-            exp_set_res = extract_info(exp_set, ['@id', 'status', 'tags'])
-            exp_set_res['processed_files'] = extract_list_info(
-                exp_set.get('processed_files'),
-                ['@id', 'status', 'file_type'],
-                'accession'
-            )
-            exps = {}
-            for exp in exp_set.get('experiments_in_set', []):
-                exp_res = extract_info(exp, ['@id', 'status', 'experiment_type'])
-                exp_res['files'] = extract_list_info(
-                    exp.get('files'),
-                    ['@id', 'status', 'file_type'],
-                    'accession'
-                )
-                exp_res['processed_files'] = extract_list_info(
-                    exp.get('processed_files'),
-                    ['@id', 'status', 'file_type'],
-                    'accession'
-                )
-                exps[exp['accession']] = exp_res
-            exp_set_res['experiments_in_set'] = exps
-            exp_sets[exp_set['accession']] = exp_set_res
+    search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
+    safe_search_with_callback(fdn_conn, search_query, exp_sets, search_callback, limit=20, frame='embedded')
     check.full_output = exp_sets
     return check
 

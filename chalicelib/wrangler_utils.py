@@ -43,6 +43,28 @@ def get_FDN_connection(connection):
     return fdn_conn if fdn_conn else None
 
 
+def safe_search_with_callback(fdn_conn, query, container, callback, limit=20, frame='embedded'):
+    """
+    Somewhat temporary function to avoid making search queries that cause
+    memory issues. Takes a ff_utils fdn_conn, a search query (without 'limit' or
+    'from' parameters), a container to put search results in after running
+    them through a given callback function, which should take a search hit as
+    its first parameter and the container as its second parameter.
+    """
+    last_total = None
+    curr_from = 0
+    while not last_total or last_total == limit:
+        print('...', curr_from)
+        search_query = ''.join([query, '&from=', str(curr_from), '&limit=', str(limit)])
+        search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame=frame)
+        if not search_res: # 0 results
+            break
+        last_total = len(search_res)
+        curr_from += last_total
+        for hit in search_res:
+            callback(hit, container)
+
+
 def parse_datetime_with_tz_to_utc(time_str):
     """
     Attempt to parse a given datetime string that may or may not contain
