@@ -225,12 +225,8 @@ def change_in_item_counts(connection, **kwargs):
 
 This check would compare the latest result and the result run closest to 24 hours ago from the current time for `counts_check`. After any comparison is done, the fields of `check` would be set and finally we return `check`.
 
-## Making checks runnable from the UI
-On the Foursight UI, users with administrator privileges can run individual checks directly, outside of the scope of a check group. When this is done, the check will run with the default kwargs that are within its `check_function()` decorator (hence the importance of those default arguments). Since not all checks are meant to be run individually, you must pass a `runnable=True` argument to `init_check_res` to achieve this functionality.
-
-```
-check = init_check_res(connection, 'change_in_item_counts', runnable=True)
-```
+## Running checks from the UI
+On the Foursight UI, users with administrator privileges can run individual checks directly, outside of the scope of a check group. When this is done, the user can input values for all defined check kwargs within its `check_function()` decorator (hence the importance of those default arguments). The check will run with the these kwargs that are specified.
 
 ## Check groups
 As we have seen in the previous section, kwargs can be set individually for each check in the check group, allowing a high level of flexibility with what can be done even with a single check. There are a couple more important points to mention about check groups.

@@ -5,8 +5,8 @@
     <button class="commonstyle own-line btn btn-default btn-sm" data-toggle="collapse" data-target={{'#' + target}}>
         {{title}}
     </button>
-    <div class="commonstyle collapse" id={{target}}>
-        <pre><code>{{output}}</code></pre>
+    <div class="collapse" id={{target}}>
+        <pre class="commonstyle"><code>{{output}}</code></pre>
     </div>
 {% endmacro %}
 
@@ -52,13 +52,15 @@
                                         {{toggle_output(check['latest_action'], env['environment'] + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
                                     {% endif %}
                                     {% if check.get('action') and is_admin %}
-                                        <form class="commonstyle own-line" action={{"/api/view/" + env['environment'] + '/' + check['action'] + '/action'}} method="get">
+                                        <div id={{"action-message-" + check['kwargs']['uuid']}}></div>
+                                        <form class="commonstyle own-line" action={{"/api/view_run/" + env['environment'] + '/' + check['action'] + '/action'}} method="GET">
+                                            <input type="hidden" name="called_by" value={{check['kwargs']['uuid']}} />
                                             {% if not check.get('allow_action') or running_checks != '0' or queued_checks != '0' %}
-                                                <button class="btn btn-danger btn-sm" type="submit" disabled>
+                                                <button id={{"action-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" disabled>
                                                     {{' '.join(check['action'].split('_')).title()}}
                                                 </button>
                                             {% else %}
-                                                <button class="btn btn-danger btn-sm" type="submit">
+                                                <button id={{"action-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" onclick="{{"return confirm_action('" + check['kwargs']['uuid'] + "', '" + check.get('action_message', 'Confirm run?') + "');" | safe}}" type="button">
                                                     {{' '.join(check['action'].split('_')).title()}}
                                                 </button>
                                             {% endif %}
@@ -70,7 +72,7 @@
                                         Result history
                                     </a>
                                     {% if check.get('kwargs') %}
-                                        <form action={{'/api/view/' + env['environment'] + '/' + check['name'] + '/check'}} method="GET">
+                                        <form action={{'/api/view_run/' + env['environment'] + '/' + check['name'] + '/check'}} method="GET">
                                             {% for kwarg in check['kwargs'] %}
                                                 {% if kwarg != 'uuid' %}
                                                     <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
@@ -81,7 +83,7 @@
                                                     {% endif %}
                                                 {% endif %}
                                             {% endfor %}
-                                            {% if check.get('runnable') and is_admin %}
+                                            {% if is_admin %}
                                                 <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit">
                                                     Run check
                                                 </button>
@@ -102,7 +104,7 @@
                         {% for groups in groups_4 %}
                             {% for group in groups %}
                                 <div class="col-sm-3">
-                                    <form action={{"/api/view/" + env['environment'] + '/' + group + '/check'}} method="get">
+                                    <form action={{"/api/view_run/" + env['environment'] + '/' + group + '/check'}} method="get">
                                         <button class="btn center-block color-hover" type="submit">
                                             <span>{{group}}</span>
                                         </button>
@@ -117,4 +119,20 @@
         <hr>
         {% endfor %}
     </ul>
+
+    <script type="text/javascript">
+        function confirm_action(uuid, message){
+            var actionMessage = document.getElementById("action-message-" + uuid);
+            actionMessage.innerHTML = '<pre class="commonstyle"><code>' + message + '</code></pre>';
+            var actionButton = document.getElementById("action-" + uuid);
+            actionButton.classList.remove('btn-warning');
+            actionButton.classList.add('btn-danger');
+            actionButton.onclick = null;
+            actionButton.disabled = true;
+            setTimeout(function(){
+                actionButton.disabled = false;
+                actionButton.type = "submit";
+            },1000);
+        }
+    </script>
 {% endblock %}

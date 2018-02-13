@@ -17,13 +17,12 @@ from .check_utils import (
     get_check_strings,
     get_action_strings,
     fetch_check_group,
-    fetch_action_group,
     init_check_res,
     init_action_res,
     init_check_or_action_res
 )
 from .s3_connection import S3Connection
-from .check_groups import CHECK_GROUPS, ACTION_GROUPS
+from .check_groups import CHECK_GROUPS
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -224,8 +223,9 @@ def view_run_check(environ, check, params):
     Params are kwargs that are read from the url query_params; they will be
     added to the kwargs used to run the check.
 
-    This also be used to run a check group. This is checked before individual check names
+    This also be used to queue a check group. This is checked before individual check names
     """
+    resp_headers = {'Location': '/api/view/' + environ}
     if check in CHECK_GROUPS:
         queue_check_group(environ, check)
     else:
@@ -234,22 +234,31 @@ def view_run_check(environ, check, params):
         # convert string query params to literals
         params = query_params_to_literals(params)
         if connection and check_str:
-            run_check_or_action(connection, check_str, params)
-    resp_headers = {'Location': '/api/view/' + environ}
-    # redirect to view_foursight page with a 302 so it isn't cached
+            res = run_check_or_action(connection, check_str, params)
+            if res and res.get('uuid'):
+                resp_headers = {'Location': '/'.join(['/api/view', environ, check, res['uuid']])}
+    # redirect to view page with a 302 so it isn't cached
     return Response(
         status_code=302,
         body=json.dumps(resp_headers),
         headers=resp_headers)
 
 
-def view_run_action(environ, action_group):
+def view_run_action(environ, action, params):
     """
     Called from the view endpoint (or manually, I guess), this runs the given
-    action group for the given environment and refreshes the foursight view.
+    action for the given environment and refreshes the foursight view.
+    Params are kwargs that are read from the url query_params; they will be
+    added to the kwargs used to run the check.
+
+    This also be used to queue an action group. This is checked before individual action names
     """
-    if action_group in ACTION_GROUPS:
-        queue_check_group(environ, action_group, use_action_group=True)
+    connection, _ = init_connection(environ)
+    action_str = get_action_strings(action)
+    # convert string query params to literals
+    params = query_params_to_literals(params)
+    if connection and action_str:
+        run_check_or_action(connection, action_str, params)
     resp_headers = {'Location': '/api/view/' + environ}
     # redirect to view_foursight page with a 302 so it isn't cached
     return Response(
@@ -276,52 +285,7 @@ def view_foursight(environ, is_admin=False, domain=""):
         connection, error_res = init_connection(this_environ)
         if connection:
             results = get_check_group_results(connection, 'all')
-            processed_results = []
-            for res in results:
-                # first check to see if res is just a string, meaning
-                # the check didn't execute properly
-                if not isinstance(res, dict):
-                    error_res = {
-                        'status': 'ERROR',
-                        'content': True,
-                        'title': 'Check System Error',
-                        'description': res,
-                        'uuid': 'Did not run.'
-                    }
-                    processed_results.append(error_res)
-                    continue
-                # change timezone to local
-                from_zone = tz.tzutc()
-                to_zone = tz.tzlocal()
-                # this can be removed once uuid has been around long enough
-                ts_utc = res['uuid'] if 'uuid' in res else res['timestamp']
-                ts_utc = datetime.datetime.strptime(ts_utc, "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
-                ts_utc = ts_utc.replace(tzinfo=from_zone)
-                ts_local = ts_utc.astimezone(to_zone)
-                proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
-                res['uuid'] = proc_ts
-                if res.get('brief_output'):
-                    res['brief_output'] = trim_output(res['brief_output'])
-                if res.get('full_output'):
-                    res['full_output'] = trim_output(res['full_output'])
-                # only return admin_output if an admin is logged in
-                if res.get('admin_output') and is_admin:
-                    res['admin_output'] = trim_output(res['admin_output'])
-                else:
-                    res['admin_output'] = None
-                # get the latest result for the checks action, if present
-                # also ENSURE that the action is in ACTION_GROUPS
-                if res.get('action'):
-                    if res.get('action') in ACTION_GROUPS:
-                        action = init_action_res(connection, res.get('action'))
-                        latest_action = action.get_latest_result()
-                        if latest_action:
-                            res['latest_action'] = json.dumps(latest_action, indent=4)
-                        else:
-                            res['latest_action'] = 'Not yet run.'
-                    else:
-                        del res['action']
-                processed_results.append(res)
+            processed_results = process_view_results(connection, results, is_admin)
             total_envs.append({
                 'status': 'success',
                 'environment': this_environ,
@@ -349,6 +313,94 @@ def view_foursight(environ, is_admin=False, domain=""):
     )
     html_resp.status_code = 200
     return process_response(html_resp)
+
+
+def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
+    """
+    View a formatted html response for a single check (environ, check, uuid)
+    """
+    html_resp = Response('Foursight viewing suite')
+    html_resp.headers = {'Content-Type': 'text/html'}
+    total_envs = []
+    connection, error_res = init_connection(environ)
+    if connection:
+        res_check = init_check_res(connection, check)
+        if res_check:
+            data = res_check.get_result_by_uuid(uuid)
+            processed_results = process_view_results(connection, [data], is_admin)
+            total_envs.append({
+                'status': 'success',
+                'environment': environ,
+                'checks': processed_results
+            })
+    template = jin_env.get_template('view.html')
+    groups = list(CHECK_GROUPS.keys()) # only the keys needed
+    # get these into groups of 4
+    groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
+    # get queue information
+    queue_attr = get_sqs_attributes(get_sqs_queue().url)
+    running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
+    queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    html_resp.body = template.render(
+        envs=total_envs,
+        groups_4=groups_4,
+        stage=STAGE,
+        is_admin=is_admin,
+        domain=domain,
+        running_checks=running_checks,
+        queued_checks=queued_checks
+    )
+    html_resp.status_code = 200
+    return process_response(html_resp)
+
+
+def process_view_results(connection, results, is_admin):
+    processed_results = []
+    for res in results:
+        # first check to see if res is just a string, meaning
+        # the check didn't execute properly
+        if not isinstance(res, dict):
+            error_res = {
+                'status': 'ERROR',
+                'content': True,
+                'title': 'Check System Error',
+                'description': res,
+                'uuid': 'Did not run.'
+            }
+            processed_results.append(error_res)
+            continue
+        # change timezone to local
+        from_zone = tz.tzutc()
+        to_zone = tz.tzlocal()
+        # this can be removed once uuid has been around long enough
+        ts_utc = res['uuid'] if 'uuid' in res else res['timestamp']
+        ts_utc = datetime.datetime.strptime(ts_utc, "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+        ts_utc = ts_utc.replace(tzinfo=from_zone)
+        ts_local = ts_utc.astimezone(to_zone)
+        proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
+        res['uuid'] = proc_ts
+        if res.get('brief_output'):
+            res['brief_output'] = trim_output(res['brief_output'])
+        if res.get('full_output'):
+            res['full_output'] = trim_output(res['full_output'])
+        # only return admin_output if an admin is logged in
+        if res.get('admin_output') and is_admin:
+            res['admin_output'] = trim_output(res['admin_output'])
+        else:
+            res['admin_output'] = None
+        # get the latest result for the checks action, if present
+        if res.get('action'):
+            action = init_action_res(connection, res.get('action'))
+            if action:
+                latest_action = action.get_latest_result()
+                if latest_action:
+                    res['latest_action'] = json.dumps(latest_action, indent=4)
+                else:
+                    res['latest_action'] = 'Not yet run.'
+            else:
+                del res['action']
+        processed_results.append(res)
+    return processed_results
 
 
 def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, domain=""):
@@ -426,8 +478,7 @@ def load_foursight_result(environ, check, uuid):
         }
         response.status_code = 400
     else:
-        uuid_key = ''.join([check, '/', uuid, res_obj.extension])
-        data = res_obj.get_s3_object(uuid_key)
+        data = res_obj.get_result_by_uuid(uuid)
         response.body = {
             'status': 'success',
             'data': data
@@ -641,7 +692,7 @@ def get_environment(environ):
 
 ##### CHECK RUNNER FUNCTIONS #####
 
-def queue_check_group(environ, check_group, use_action_group=False):
+def queue_check_group(environ, check_group):
     """
     Given a str environment and check group name, add the check info to the
     existing queue (or creates a new one if there is none). Then initiates 4
@@ -649,15 +700,9 @@ def queue_check_group(environ, check_group, use_action_group=False):
 
     Run with check_group = None to skip adding the check group to the queue
     and just initiate the check runners.
-
-    If use_action_group == True (default False), then it will attempt to queue an action group
-    rather than a check group.
     """
     if check_group is not None:
-        if use_action_group:
-            check_vals = fetch_action_group(check_group)
-        else:
-            check_vals = fetch_check_group(check_group)
+        check_vals = fetch_check_group(check_group)
         if not check_vals:
             print('-RUN-> %s is not a valid check group. Cannot queue it.' % (check_group))
             return
@@ -801,7 +846,7 @@ def collect_run_info(run_uuid):
     """
     s3_connection = S3Connection('foursight-runs')
     run_prefix = ''.join([run_uuid, '/'])
-    complete = s3_connection.list_keys_w_prefix(run_prefix)
+    complete = s3_connection.list_all_keys_w_prefix(run_prefix)
     # eliminate duplicates
     return set(complete)
 

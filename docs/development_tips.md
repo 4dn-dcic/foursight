@@ -28,7 +28,7 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 {'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day',
 'description': 'No items have been created in the past day.', 'status': 'PASS',
 'uuid': '2018-01-16T19:14:34.025445','brief_output': None,'full_output': {},
-'admin_output': None, 'ff_link': None, 'runnable': True}
+'admin_output': None, 'ff_link': None}
 
 # you can also run with kwargs...
 >>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
@@ -56,19 +56,21 @@ Just make sure to do your testing on the development stage of Foursight, which y
 ### Manual testing of your action
 Actions function very similarly to checks when run individually. In fact, testing them is completely the same; the only difference is the different output. Below is some code that would test an action called `patch_file_size` in the `wrangler_checks` module.
 
+**NOTE:** you must add some sort of `called_by` parameter to your `run_check_or_action` call to test an action. If your action doesn't leverage the `called_by` parameter specifically, you can give it whatever value you want.
+
 **WARNING:** when manually running an action, be aware that it actually be executed on the given Foursight connection. For that reason, when in testing stages it is best to remove any impactful code within an action or insert a break point to have manual control.
 
 ```
 >>> import app
 # create a Foursight connection to the 'mastertest' environment
 >>> connection, _ = app.init_connection('mastertest')
->>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {})
+>>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'called_by': None})
 # some possible output:
 {'name': 'patch_file_size','description': None, 'status': 'DONE',
-'uuid': '2018-01-16T19:14:34.025445', 'output': []}
+'uuid': '2018-01-16T19:14:34.025445', 'output': [] ...}
 
 # you can also run with kwargs...
->>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'some_arg': 'some_value'})
+>>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'called_by': 'some_uuid', 'some_arg': 'some_value'})
 ```
 
 ### Manual testing of your check group
@@ -81,15 +83,6 @@ Let's say you want to run a whole check group and not an individual check. To te
 # queue_check_group takes the environment name directly (not connection)
 # runs async; to see the results, see the Foursight UI, S3, or use Foursight API
 >>> app.queue_check_group('mastertest', 'my_test_checks')
-```
-
-### Manual testing of your action group
-Just like testing individual action functions is very similar to testing individual checks, testing action groups is almost the same as testing check groups. The only difference is you need to pass `use_action_group=True` into the `queue_check_group` function. Below is an example using the `patch_file_size` action group.
-
-```
->>> import app
->>> app.queue_check_group('mastertest', 'patch_file_size', use_action_group=True)
-# once checks have run, you can check the foursight UI or endpoints for the results
 ```
 
 ### Some other testing notes

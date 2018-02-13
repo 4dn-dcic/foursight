@@ -2,7 +2,8 @@ from __future__ import print_function, unicode_literals
 from .utils import (
     get_methods_by_deco,
     check_method_deco,
-    init_check_res, init_action_res,
+    init_check_res,
+    init_action_res,
     CHECK_DECO,
     ACTION_DECO
 )
@@ -108,21 +109,6 @@ def fetch_check_group(name):
     # maybe it's a test groups
     if not group:
         group = TEST_CHECK_GROUPS.get(name, None)
-    # ensure it is non-empty list
-    if not isinstance(group, list) or len(group) == 0:
-        return None
-    # copy it and return
-    return copy.deepcopy(group)
-
-
-def fetch_action_group(name):
-    """
-    Used only for ACTION_GROUPS, which mix actions and checks
-    """
-    group = ACTION_GROUPS.get(name, None)
-    # maybe it's a test groups
-    if not group:
-        group = TEST_ACTION_GROUPS.get(name, None)
     # ensure it is non-empty list
     if not isinstance(group, list) or len(group) == 0:
         return None
