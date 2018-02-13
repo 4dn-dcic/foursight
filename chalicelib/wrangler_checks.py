@@ -162,7 +162,7 @@ def identify_files_without_filesize(connection, **kwargs):
     if kwargs.get('search_add_on'):
         search_query = ''.join([search_query, kwargs['search_add_on']])
     problem_files = []
-    safe_search_with_callback(fdn_conn, search_query, problem_files, search_callback, limit=200, frame='object')
+    safe_search_with_callback(fdn_conn, search_query, problem_files, search_callback, limit=100, frame='object')
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
