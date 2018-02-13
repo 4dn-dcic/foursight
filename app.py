@@ -25,6 +25,13 @@ def thirty_min_checks(event):
     for environ in list_environments():
         queue_check_group(environ, 'thirty_min_checks')
 
+
+# run every day at 11 am UTC
+@app.schedule(Cron(0, 11, '*', '*', '?', '*'))
+def morning_checks(event):
+    for environ in list_environments():
+        queue_check_group(environ, 'morning_checks')
+
 ######### END SCHEDULED FXNS #########
 
 @app.route('/callback')
@@ -95,7 +102,7 @@ def introspect():
         return forbidden_response()
 
 
-@app.route('/view/{environ}/{check}/{method}', methods=['GET'])
+@app.route('/view_run/{environ}/{check}/{method}', methods=['GET'])
 def view_run_route(environ, check, method):
     """
     Protected route
@@ -104,8 +111,7 @@ def view_run_route(environ, check, method):
     query_params = req_dict.get('query_params', {})
     if check_authorization(req_dict):
         if method == 'action':
-            # query_params are not passed to actions
-            return view_run_action(environ, check)
+            return view_run_action(environ, check, query_params)
         else:
             return view_run_check(environ, check, query_params)
     else:
@@ -120,6 +126,19 @@ def view_route(environ):
     req_dict = app.current_request.to_dict()
     domain = req_dict.get('headers', {}).get('host', "")
     return view_foursight(environ, check_authorization(req_dict), domain)
+
+
+@app.route('/view/{environ}/{check}/{uuid}', methods=['GET'])
+def view_check_route(environ, check, uuid):
+    """
+    Protected route
+    """
+    req_dict = app.current_request.to_dict()
+    domain = req_dict.get('headers', {}).get('host', "")
+    if check_authorization(req_dict):
+        return view_foursight_check(environ, check, uuid, True, domain)
+    else:
+        return forbidden_response()
 
 
 @app.route('/history/{environ}/{check}', methods=['GET'])

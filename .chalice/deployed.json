@@ -34,6 +34,10 @@
         "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-thirty_min_checks",
         "type": "scheduled_event"
       },
+      "foursight-dev-morning_checks": {
+        "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-morning_checks",
+        "type": "scheduled_event"
+      },
       "foursight-dev-check_runner": {
         "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-check_runner",
         "type": "pure_lambda"

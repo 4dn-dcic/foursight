@@ -1,15 +1,5 @@
 {% extends "base.html" %}
 
-<!-- Macro for toggle button to display _output fields of checks -->
-{% macro toggle_output(output, target, title) %}
-    <button class="commonstyle own-line btn btn-default btn-sm" data-toggle="collapse" data-target={{'#' + target}}>
-        {{title}}
-    </button>
-    <div class="commonstyle collapse" id={{target}}>
-        <pre><code>{{output}}</code></pre>
-    </div>
-{% endmacro %}
-
 {% block content %}
     <div class="container-fluid">
         <div class="row">

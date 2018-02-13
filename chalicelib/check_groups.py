@@ -2,6 +2,7 @@
 CHECK_MODULES = [
     'system_checks',
     'wrangler_checks',
+    'report_checks',
     'test_checks'
 ]
 
@@ -21,32 +22,17 @@ CHECK_GROUPS = {
         ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
         ['system_checks/indexing_progress', {'primary': True}, [], 'm10_5'],
         ['system_checks/staging_deployment', {'primary': True}, [], 'm10_6'],
-        ['wrangler_checks/experiment_set_reporting_data', {'primary': True}, [], 'm10_7'],
     ],
     'thirty_min_checks': [
         ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
         ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_2'],
         ['system_checks/indexing_records', {'primary': True}, [], 'm30_3'],
-        ['wrangler_checks/experiment_set_reporting', {'primary': True}, [], 'm30_4'],
-    ]
-}
-
-# action groups work the same as check groups, but can contain intermixed checks and actions
-# minimally, an action group should have the action itself and also the check that triggered it
-# (so that the check can be updated)
-
-ACTION_GROUPS = {
-    'patch_file_size': [
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, [], 'pfs1'],
-        ['wrangler_checks/patch_file_size', {}, ['pfs1'], 'pfs2'],
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True, 'search_add_on': '&datastore=database'}, ['pfs2'], 'pfs3']
+        ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'm30_4'],
     ],
-    'build_experiment_set_reports': [
-        ['wrangler_checks/build_experiment_set_reports', {}, [], 'besr1'],
-        ['wrangler_checks/experiment_set_reporting', {'primary': True}, ['besr1'], 'besr2']
+    'morning_checks': [
+        ['report_checks/experiment_set_reporting', {'primary': True}, [], 'morn_1'],
     ]
 }
-
 
 ######## don't use the check groups below! just for testing ########
 
