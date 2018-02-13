@@ -893,6 +893,18 @@ class TestWranglerUtils(FSTest):
             fdn_conn = wrangler_utils.get_FDN_connection(conn)
             self.assertTrue(fdn_conn is not None)
 
+    def test_safe_search_with_callback(self):
+        def callback(hit, container):
+            container.append(hit)
+        container = []
+        query = '/search/?type=Page'
+        conn, _ = app_utils.init_connection('mastertest')
+        fdn_conn = wrangler_utils.get_FDN_connection(conn)
+        wrangler_utils.safe_search_with_callback(fdn_conn, query, container, callback, limit=30, frame='object')
+        self.assertTrue(len(container) > 0)
+        self.assertTrue(container[0].get('uuid') is not None)
+
+
 
 if __name__ == '__main__':
     unittest.main(warnings='ignore')
