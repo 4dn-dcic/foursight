@@ -18,14 +18,14 @@ CHECK_GROUPS = {
     'ten_min_checks': [
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'm10_1'],
         ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'm10_2'],
-        ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_3'],
-        ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
-        ['system_checks/indexing_progress', {'primary': True}, [], 'm10_5'],
+        # ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_3'],
+        # ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
+        # ['system_checks/indexing_progress', {'primary': True}, [], 'm10_5'],
         ['system_checks/staging_deployment', {'primary': True}, [], 'm10_6'],
     ],
     'thirty_min_checks': [
         ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_2'],
+        # ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_2'],
         ['system_checks/indexing_records', {'primary': True}, [], 'm30_3'],
         ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'm30_4'],
     ],
@@ -42,10 +42,10 @@ TEST_CHECK_GROUPS = {
         ['system_checks/elastic_beanstalk_health', {}, [], 'all4'],
         ['system_checks/status_of_elasticsearch_indices', {}, [], 'all5'],
         ['system_checks/indexing_records', {}, [], 'all6'],
-        # ['wrangler_checks/item_counts_by_type', {}, [], 'all7'],
-        # ['wrangler_checks/change_in_item_counts', {}, ['all7'], 'all8'],
-        # ['system_checks/indexing_progress', {}, [], 'all9'],
-        # ['wrangler_checks/identify_files_without_filesize', {}, [], 'all10'],
+        ['wrangler_checks/item_counts_by_type', {}, [], 'all7'],
+        ['wrangler_checks/change_in_item_counts', {}, ['all7'], 'all8'],
+        ['system_checks/indexing_progress', {}, [], 'all9'],
+        ['wrangler_checks/identify_files_without_filesize', {}, [], 'all10'],
         ['system_checks/staging_deployment', {}, [], 'all11']
     ],
     'malformed_test_checks': [
