@@ -42,9 +42,9 @@ TEST_CHECK_GROUPS = {
         ['system_checks/elastic_beanstalk_health', {}, [], 'all4'],
         ['system_checks/status_of_elasticsearch_indices', {}, [], 'all5'],
         ['system_checks/indexing_records', {}, [], 'all6'],
-        ['wrangler_checks/item_counts_by_type', {}, [], 'all7'],
-        ['wrangler_checks/change_in_item_counts', {}, ['all7'], 'all8'],
-        ['system_checks/indexing_progress', {}, [], 'all9'],
+        # ['wrangler_checks/item_counts_by_type', {}, [], 'all7'],
+        # ['wrangler_checks/change_in_item_counts', {}, ['all7'], 'all8'],
+        # ['system_checks/indexing_progress', {}, [], 'all9'],
         ['wrangler_checks/identify_files_without_filesize', {}, [], 'all10'],
         ['system_checks/staging_deployment', {}, [], 'all11']
     ],

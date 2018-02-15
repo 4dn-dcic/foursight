@@ -224,3 +224,9 @@ def indexing_records(connection, **kwargs):
 def staging_deployment(connection, **kwargs):
     check = init_check_res(connection, 'staging_deployment')
     return check
+
+
+@check_function()
+def fourfront_performance_metrics(connection, **kwargs):
+    check = init_check_res(connection, 'fourfront_performance_metrics')
+    return check
