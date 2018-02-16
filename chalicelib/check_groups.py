@@ -18,9 +18,9 @@ CHECK_GROUPS = {
     'ten_min_checks': [
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'm10_1'],
         ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'm10_2'],
-        # ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_3'],
-        # ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
-        # ['system_checks/indexing_progress', {'primary': True}, [], 'm10_5'],
+        ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_3'],
+        ['wrangler_checks/change_in_item_counts', {'primary': True}, ['m10_3'], 'm10_4'],
+        ['system_checks/indexing_progress', {'primary': True}, [], 'm10_5'],
         ['system_checks/staging_deployment', {'primary': True}, [], 'm10_6'],
     ],
     'thirty_min_checks': [

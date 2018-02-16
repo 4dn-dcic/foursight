@@ -31,7 +31,7 @@ def item_counts_by_type(connection, **kwargs):
     server = connection.ff
     req_location = ''.join([server,'counts?format=json'])
     try:
-        counts_res = requests.get(req_location, timeout=20)
+        counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
     except:
         counts_res = None
     if counts_res is None or counts_res.status_code != 200:
