@@ -28,8 +28,7 @@ def item_counts_by_type(connection, **kwargs):
     # run the check
     item_counts = {}
     warn_item_counts = {}
-    server = connection.ff
-    req_location = ''.join([server,'counts?format=json'])
+    req_location = ''.join([connection.ff,'counts?format=json'])
     try:
         counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
     except:
@@ -104,18 +103,18 @@ def items_created_in_the_past_day(connection, **kwargs):
     item_type = kwargs.get('item_type')
     init_uuid = kwargs.get('uuid')
     check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=init_uuid)
-    fdn_conn = get_FDN_connection(connection)
-    if not (fdn_conn and fdn_conn.check):
-        check.status = 'ERROR'
-        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check
+    full_output = check.full_output if check.full_output else {}
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-    search_query = ''.join(['/search/?type=', item_type, '&limit=all&q=date_created:>=', date_str])
-    search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame='object')
-    full_output = check.full_output if check.full_output else {}
+    search_query = ''.join([connection.ff, 'search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
+    try:
+        search_resp = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+    except:
+        check.status = 'ERROR'
+        check.description = 'Error connecting to FF at: %s' % search_query
+        return check
     item_output = []
-    for res in search_res.get('@graph', []):
+    for res in search_resp.json().get('@graph', []):
         item_output.append({
             'uuid': res.get('uuid'),
             '@id': res.get('@id'),
