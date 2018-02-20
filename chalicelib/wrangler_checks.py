@@ -115,7 +115,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     search_res = ff_utils.search_metadata(search_query, connection=fdn_conn, frame='object')
     full_output = check.full_output if check.full_output else {}
     item_output = []
-    for res in search_res:
+    for res in search_res.get('@graph', []):
         item_output.append({
             'uuid': res.get('uuid'),
             '@id': res.get('@id'),

@@ -229,4 +229,9 @@ def staging_deployment(connection, **kwargs):
 @check_function()
 def fourfront_performance_metrics(connection, **kwargs):
     check = init_check_res(connection, 'fourfront_performance_metrics')
+    # use a recent workflow, default browse, barplot aggs, items koray and andy sent me,,,
+    check_urls = [
+        '/counts',
+        '/'
+    ]
     return check
