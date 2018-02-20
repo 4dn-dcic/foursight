@@ -3,8 +3,10 @@ from .utils import (
     check_function,
     init_check_res,
     action_function,
-    init_action_res
+    init_action_res,
+    basestring
 )
+from dcicutils import ff_utils
 import requests
 import sys
 import json
@@ -223,4 +225,52 @@ def indexing_records(connection, **kwargs):
 @check_function(do_not_store=True)
 def staging_deployment(connection, **kwargs):
     check = init_check_res(connection, 'staging_deployment')
+    return check
+
+
+@check_function()
+def fourfront_performance_metrics(connection, **kwargs):
+    check = init_check_res(connection, 'fourfront_performance_metrics')
+    full_output = {}  # contains env_health, deploy_version, and performance
+    performance = {}  # keyed by check_url
+    # get information from elastic_beanstalk_health
+    eb_check = init_check_res(connection, 'elastic_beanstalk_health')
+    eb_info = eb_check.get_primary_result()['full_output']
+    full_output['env_health'] = eb_info.get('health_status', 'Unknown')
+    # get deploy version from the first instance
+    full_output['deploy_version'] = eb_info.get('instance_health', [{}])[0].get('deploy_version', 'Unknown')
+    check_urls = [
+        'counts',
+        'joint-analysis-plans',
+        'bar_plot_aggregations/type=ExperimentSetReplicate&experimentset_type=replicate/?field=experiments_in_set.experiment_type',
+        'browse/?type=ExperimentSetReplicate&experimentset_type=replicate',
+        'experiment-set-replicates/4DNESIE5R9HS/',
+        'experiment-set-replicates/4DNESIE5R9HS/?datastore=database',
+        'experiment-set-replicates/4DNESQWI9K2F/',
+        'experiment-set-replicates/4DNESQWI9K2F/?datastore=database',
+        'workflow-runs-awsem/ba50d240-5312-4aa7-b600-6b18d8230311/',
+        'workflow-runs-awsem/ba50d240-5312-4aa7-b600-6b18d8230311/?datastore=database',
+        'files-fastq/4DNFIX75FSJM/',
+        'files-fastq/4DNFIX75FSJM/?datastore=database'
+    ]
+    for check_url in check_urls:
+        try:
+            # set timeout really high
+            ff_resp = ff_utils.authorized_request(connection.ff + check_url, ff_env=connection.ff_env, timeout=1000)
+        except:
+            ff_resp = None
+        if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
+            x_stats = ff_resp.headers['X-stats']
+            if not isinstance(x_stats, basestring):
+                performance[check_url] = {}
+                continue
+            # X-stats in form: 'db_count=148&db_time=1215810&es_count=4& ... '
+            split_stats = x_stats.strip().split('&')
+            parse_stats = [stat.split('=') for stat in split_stats]
+            performance[check_url] = {stat[0]: int(stat[1]) for stat in parse_stats if len(stat) == 2}
+        else:
+            performance[check_url] = {}
+    check.status = 'PASS'
+    full_output['performance'] = performance
+    check.full_output = full_output
     return check
