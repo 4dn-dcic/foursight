@@ -135,7 +135,7 @@ class TestAppRoutes(FSTest):
         history = app_utils.get_foursight_history(self.conn, test_check, 0, 3)
         self.assertTrue(isinstance(history, list))
         self.assertTrue(len(history[0]) == 2)
-        self.assertTrue(isinstance(history[0][0], app_utils.basestring))
+        self.assertTrue(isinstance(history[0][0], utils.basestring))
         self.assertTrue(isinstance(history[0][1], dict))
         self.assertTrue('uuid' in history[0][1])
         self.assertTrue('primary' in history[0][1])
@@ -733,7 +733,7 @@ class TestCheckGroup(FSTest):
             used_dep_ids = []
             for check_info in val:
                 self.assertTrue(len(check_info) == 4)
-                self.assertTrue(isinstance(check_info[0], app_utils.basestring))
+                self.assertTrue(isinstance(check_info[0], utils.basestring))
                 self.assertTrue(len(check_info[0].split('/')) == 2)
                 # make sure each entry is a real check with decorator
                 [mod, name] = [st.strip() for st in check_info[0].split('/')]
@@ -746,7 +746,7 @@ class TestCheckGroup(FSTest):
                 self.assertTrue(isinstance(check_info[1], dict))
                 self.assertTrue(isinstance(check_info[2], list))
                 used_dep_ids.extend(check_info[2])
-                self.assertTrue(isinstance(check_info[3], app_utils.basestring))
+                self.assertTrue(isinstance(check_info[3], utils.basestring))
                 within_group_dep_ids.append(check_info[3])
             dependency_ids.extend(within_group_dep_ids)
             # ensure all ids within a group are unique
@@ -770,10 +770,10 @@ class TestCheckGroup(FSTest):
                     self.assertTrue(len(check_info) != 3)
                 else:
                     self.assertTrue(len(check_info) == 4)
-                    self.assertTrue(isinstance(check_info[0], app_utils.basestring))
+                    self.assertTrue(isinstance(check_info[0], utils.basestring))
                     self.assertTrue(isinstance(check_info[1], dict))
                     self.assertTrue(isinstance(check_info[2], list))
-                    self.assertTrue(isinstance(check_info[3], app_utils.basestring))
+                    self.assertTrue(isinstance(check_info[3], utils.basestring))
 
 
 class TestUtils(FSTest):

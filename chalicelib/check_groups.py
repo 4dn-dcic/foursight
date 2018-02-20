@@ -25,12 +25,14 @@ CHECK_GROUPS = {
     ],
     'thirty_min_checks': [
         ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
-        ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_2'],
+        # ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'm30_2'],
         ['system_checks/indexing_records', {'primary': True}, [], 'm30_3'],
         ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'm30_4'],
     ],
     'morning_checks': [
         ['report_checks/experiment_set_reporting', {'primary': True}, [], 'morn_1'],
+        ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'morn_2'],
+        ['system_checks/fourfront_performance_metrics', {'primary': True}, ['morn_2'], 'morn_3']
     ]
 }
 
