@@ -21,6 +21,7 @@ from .check_utils import (
     init_action_res,
     init_check_or_action_res
 )
+from .utils import basestring
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS
 
@@ -33,13 +34,6 @@ jin_env = Environment(
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
 QUEUE_NAME = '-'.join(['foursight', STAGE, 'check_queue'])
 RUNNER_NAME = '-'.join(['foursight', STAGE, 'check_runner'])
-
-# compare strings in both python 2 and python 3
-# in other files, compare with utils.basestring
-try:
-    basestring = basestring
-except NameError:
-    basestring = str
 
 
 def list_environments():

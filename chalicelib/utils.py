@@ -9,6 +9,13 @@ from .run_result import CheckResult, ActionResult
 CHECK_DECO = 'check_function'
 ACTION_DECO = 'action_function'
 
+# compare strings in both python 2 and python 3
+# in other files, compare with utils.basestring
+try:
+    basestring = basestring
+except NameError:
+    basestring = str
+
 
 def init_check_res(connection, name, init_uuid=None):
     """
