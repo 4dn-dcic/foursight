@@ -231,14 +231,16 @@ def staging_deployment(connection, **kwargs):
 @check_function()
 def fourfront_performance_metrics(connection, **kwargs):
     check = init_check_res(connection, 'fourfront_performance_metrics')
-    full_output = {}  # contains env_health, deploy_version, and performance
+    full_output = {}  # contains ff_env, env_health, deploy_version, num instances, and performance
     performance = {}  # keyed by check_url
     # get information from elastic_beanstalk_health
     eb_check = init_check_res(connection, 'elastic_beanstalk_health')
     eb_info = eb_check.get_primary_result()['full_output']
+    full_output['ff_env'] = connection.ff_env
     full_output['env_health'] = eb_info.get('health_status', 'Unknown')
     # get deploy version from the first instance
     full_output['deploy_version'] = eb_info.get('instance_health', [{}])[0].get('deploy_version', 'Unknown')
+    full_output['num_instances'] = len(eb_info.get('instance_health', []))
     check_urls = [
         'counts',
         'joint-analysis-plans',
