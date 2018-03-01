@@ -5,10 +5,15 @@ from .utils import (
     action_function,
     init_action_res
 )
-from .wrangler_utils import get_FDN_connection, safe_search_with_callback
+from .wrangler_utils import (
+    get_FDN_connection,
+    safe_search_with_callback,
+    parse_datetime_to_utc
+)
 from dcicutils import ff_utils
 import copy
 import itertools
+import datetime
 
 #### HELPER FUNCTIONS ####
 
@@ -34,6 +39,8 @@ def calculate_report_from_change(path, prev, curr, add_ons):
     set_id = add_ons.get('set_@id', 'UNKNOWN_ID')
     released_exp_set = add_ons.get('released_exp_set', False)
     released_exp = add_ons.get('released_exp', False)
+    equivalents = add_ons.get('equivalents', {})
+    significants = add_ons.get('significants', {})
     field = path.split('.')[-1]
     # these dictionaries define the reports
     report_info_w_released_exp_set = {
@@ -87,15 +94,15 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 0, # 0 is highest priority
                 'summary': 'New %s Replicate Set has been released.' % exp_type
             },
-            'replaced/released' : {
+            'archived/released' : {
                 'severity': 0,
                 'priority': 0,
                 'summary': 'New %s Replicate Set has been released.' % exp_type
             },
-            'released/replaced' : {
+            'released/archived' : {
                 'severity': 1,
                 'priority': 1,
-                'summary': 'Released %s Replicate Set has been replaced.' % exp_type
+                'summary': 'Released %s Replicate Set has been archived.' % exp_type
             },
             'released/*': {
                 'severity': 3,
@@ -104,10 +111,10 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             }
         },
         'experiments_in_set.status': {
-            'released/replaced' : {
+            'released/archived' : {
                 'severity': 1,
                 'priority': 1,
-                'summary': 'Released %s Experiment has been replaced.' % exp_type
+                'summary': 'Released %s Experiment has been archived.' % exp_type
             },
             'released/*': {
                 'severity': 3,
@@ -117,80 +124,85 @@ def calculate_report_from_change(path, prev, curr, add_ons):
 
         },
         'processed_files.status': {
-            'released/replaced': {
+            'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Set has been replaced' % (file_type, exp_type)
+                'summary': 'Released %s file from %s Replicate Set has been archived.' % (file_type, exp_type)
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
+                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
             }
         },
         'experiment_in_set.processed_files.status': {
-            'released/replaced': {
+            'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
+                'summary': 'Released %s file from %s Replicate Experiment has been archived.' % (file_type, exp_type)
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
+                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
             }
         },
         'experiments_in_set.files.status': {
-            'released/replaced': {
+            'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Experiment has been replaced' % (file_type, exp_type)
+                'summary': 'Released %s file from %s Replicate Experiment has been archived.' % (file_type, exp_type)
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s' % (file_type, curr)
+                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
             }
         }
     }
+    # update the reporting framework if necessary
     if released_exp_set:
         report_info.update(report_info_w_released_exp_set)
     if released_exp:
         report_info.update(report_info_w_released_exp)
-    # create the prev/val key
-    # treat all equivalents as the first item in the list of equiv values
-    # i.e. status = 'released_to_project' == status = 'released'
-    equivalents = {
-        'status': ['released', 'released to project']
-    }
-    significants = {
-        'status': ['released', 'replaced']
-    }
-    if field in equivalents:
-        prev = equivalents[field][0] if prev in equivalents[field] else prev
-        curr = equivalents[field][0] if curr in equivalents[field] else curr
+
     if field in significants:
-        prev_key = prev if prev in equivalents[field] else '*'
-        curr_key = curr if curr in equivalents[field] else '*'
-    else:
-        prev_key, curr_key = prev, curr
-    level_1 = report_info.get(path)
-    if level_1:
-        level_2 = level_1.get('/'.join([prev_key, curr_key]))
-        if level_2:
-            level_2['@id'] = item_id
-            level_2['set_@id'] = set_id
-            return level_2
+        # get the equivalent value for the field if it matches
+        if field in equivalents:
+            prev = equivalents[field].get(prev, prev)
+            curr = equivalents[field].get(curr, curr)
+        # if the field does not have a significant value, set to '*'
+        prev_key = prev if prev in significants[field] else '*'
+        curr_key = curr if curr in significants[field] else '*'
+        level_1 = report_info.get(path)
+        if level_1:
+            level_2 = level_1.get('/'.join([prev_key, curr_key]))
+            if level_2:
+                level_2['@id'] = item_id
+                level_2['set_@id'] = set_id
+                return level_2
     # no report found
     return None
 
 
-def generate_exp_set_report(curr_res, prev_res, field_path=[], add_ons={}):
-    add_ons = copy.copy(add_ons)
+def generate_exp_set_report(curr_res, prev_res, **kwargs):
+    """
+    curr_res and prev_res are dictionary objects to compare.
+    kwargs should include:
+    - add_ons (dict important info passed to calculate_report_from_change)
+    - field_path (list representing the path of objects we have traversed)
+    - report_fields (list of which fields are significant to report on)
+    - released_statuses (list of which statuses to consider "released")
+        Maybe this should be deprecated in favor of using existing equivalents in add_ons...
+    - children_fields (list of which fields could be child objects)
+    """
     reports = []
-    report_fields = ['status']
-    children_fields = ['experiments_in_set', 'files', 'processed_files']
-    released_statuses = ['released', 'released to project']
+    # kwargs
+    add_ons = copy.copy(kwargs.get('add_ons', {}))
+    field_path = kwargs.get('field_path', [])
+    report_fields = kwargs.get('report_fields', [])
+    released_statuses = kwargs.get('released_statuses', [])
+    children_fields = kwargs.get('children_fields', [])
     # set some top level exp set attributes in add_ons
     # top level because all exp types should be identical in a replicate set
     if field_path == []:
@@ -218,7 +230,15 @@ def generate_exp_set_report(curr_res, prev_res, field_path=[], add_ons={}):
                 if isinstance(c_val, dict) and '@id' in c_val:
                     prev_child = prev_res.get(key, {}).get(c_key, {})
                     child_path = field_path + [key]
-                    child_reports = generate_exp_set_report(c_val, prev_child, child_path, add_ons)
+                    child_reports = generate_exp_set_report(
+                        c_val,
+                        prev_child,
+                        report_fields=report_fields,
+                        released_statuses=released_statuses,
+                        children_fields=children_fields,
+                        field_path=child_path,
+                        add_ons=add_ons
+                    )
                     if child_reports:
                         reports.append(child_reports)
         elif key in report_fields:
@@ -229,6 +249,7 @@ def generate_exp_set_report(curr_res, prev_res, field_path=[], add_ons={}):
     if reports:
         reports.sort(key = lambda r: r['priority'])
     return reports[0] if reports else None
+
 
 #### CHECKS / ACTIONS #####
 
@@ -277,51 +298,113 @@ def experiment_set_reporting_data(connection, **kwargs):
     return check
 
 
-@check_function(old_uuid=None, new_uuid=None)
-def experiment_set_reporting(connection, **kwargs):
+@check_function(start_date=None, end_date=None, update_tag='DISCARD', required_tag='4DN Joint Analysis 2018')
+def data_release_updates(connection, **kwargs):
     """
     Diff two results of 'experiment_set_reporting_data' check.
-    If old_uuid and new_uuid are provided, use those timestamps to find
-    experiment_set_reporting_data results to diff. Otherwise, use the primary
-    result and the one closest to 24 hours ago.
 
-    Stores the information used by that action to build reports.
+    start_date and end_date are dates in form YYYY-MM-DD.
+    Check will find experiment_set_reporting_data results closest to 12pm UTC
+    for both those dates. If None is provided, it will consider it an empty
+    experiment_set_reporting_data result for start_date; this may
+    be used to effectively generate reports from a clean slate.
+
+    If None is provided to the end date, the primary result of
+    experiment_set_reporting_data is used.
+
+    update_tag is the tag used to organize updates in Fourfront.
+
+    required_tag is required to be in the 'tags' field of a given replicate set
+    for the set to be considered by this check. It defaults to the value used
+    on joint analysis replicate sets.
+
+    Stores the information used by that action to actually build reports.
     """
-    check = init_check_res(connection, 'experiment_set_reporting')
-    check.action = 'publish_experiment_set_reports'
+    check = init_check_res(connection, 'data_release_updates')
+    check.action = 'publish_data_release_updates'
     # find needed experiment_set_reporting_data results
     data_check = init_check_res(connection, 'experiment_set_reporting_data')
-    if kwargs.get('old_uuid') and kwargs.get('new_uuid'): # use manual uuids
-        new_data_result = data_check.get_result_by_uuid(kwargs.get('new_uuid', 'miss'))
-        old_data_result = data_check.get_result_by_uuid(kwargs.get('old_uuid', 'miss'))
+    if kwargs.get('start_date', None) is not None:
+        start_date = parse_datetime_to_utc(kwargs.get('start_date'), '%Y-%m-%d')
+        # use 11 am UTC
+        start_date = start_date.replace(hour=11)
+        start_date_str = datetime.datetime.strftime(start_date, '%Y-%m-%d')
+        start_data_result = data_check.get_closest_result(override_date=start_date)
     else:
-        new_data_result = data_check.get_primary_result()
-        old_data_result = data_check.get_closest_result(diff_hours=24)
-    if not new_data_result or not old_data_result:
+        start_data_result = {}
+        start_date_str = '2017-01-01'  # Arbitrary earliest time to display
+
+    if kwargs.get('end_date'):
+        end_date = parse_datetime_to_utc(kwargs.get('end_date'), '%Y-%m-%d')
+        # use 11 am UTC by default
+        end_date = end_date.replace(hour=11)
+        end_date_str = datetime.datetime.strftime(end_date, '%Y-%m-%d')
+        end_data_result = data_check.get_closest_result(override_date=end_date)
+    else:  # use primary result if end_data_result is not supplied
+        end_data_result = data_check.get_primary_result()
+        end_date_str = end_data_result['uuid'][:10] #YYYY-MM-DD
+
+    if (kwargs.get('start_date') and not start_data_result) or not end_data_result:
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
         return check
-    kwargs['new_uuid'] = new_data_result['uuid']
-    kwargs['old_uuid'] = old_data_result['uuid']
-    used_res_strings = ' Compared results for %s (new) to %s (old)' % (kwargs['new_uuid'], kwargs['old_uuid'])
-    new_output = new_data_result.get('full_output')
-    old_output = old_data_result.get('full_output')
-    if not isinstance(new_output, dict) or not isinstance(old_output, dict):
+    used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'])
+    start_output = start_data_result.get('full_output', {})  # this can be empty
+    end_output = end_data_result.get('full_output')  # this cannot be empty
+    if not isinstance(start_output, dict) or not isinstance(end_output, dict):
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are malformed.' + used_res_strings
         return check
+
     reports = []
-    used_tag = '4DN Joint Analysis 2018'
+    ### INFO USED TO CONTROL REPORTING
+    report_fields = ['status']  # fields we care about reporting on
+    children_fields = ['experiments_in_set', 'files', 'processed_files']  # possible linkTo fields
+    add_ons = {}
+    add_ons['significants'] = {
+        'status': ['released', 'archived']
+    }
+
+    ### THIS DIFFERENTIATES JOINT ANALYSIS UPDATES FROM GENERIC ONES
+    required_tag = kwargs.get('required_tag')
+    if required_tag == '4DN Joint Analysis 2018':
+        # effectively consider released and released_to_project the same
+        # same with archived and archived_to_project and replaced
+        released_statuses = ['released', 'released to project']
+        add_ons['equivalents'] = {
+            'status': {
+                'released to project': 'released',
+                'archived_to_project': 'archived',
+                'replaced': 'archived'
+            }
+        }
+    else:
+        # only consider archived and replaced the same
+        released_statuses = ['released']
+        add_ons['equivalents'] = {
+            'status': {
+                'replaced': 'archived'
+            }
+        }
+
     ### CREATE REPORTS... assuming experiment sets will NOT be deleted from DB
-    for exp_set in new_output:
-        new_res = new_output[exp_set]
-        if used_tag not in new_res.get('tags', []):
+    for exp_set in end_output:
+        end_res = end_output[exp_set]
+        if required_tag and required_tag not in end_res.get('tags', []):
             continue
-        old_res = old_output.get(exp_set, {})
-        exp_set_report = generate_exp_set_report(new_res, old_res)
+        start_res = start_output.get(exp_set, {})
+        exp_set_report = generate_exp_set_report(
+            end_res,
+            start_res,
+            report_fields=report_fields,
+            released_statuses=released_statuses,
+            children_fields=children_fields,
+            add_ons=add_ons
+        )
         if exp_set_report is not None:
             reports.append(exp_set_report)
-    # reports are not grouped at all. sort them by summary first
+
+    ### GROUP UPDATES BY SUMMARY AND BUILD METADATA
     reports.sort(key=lambda r: r['summary'])
     check.full_output = reports
     group_reports = []
@@ -330,36 +413,36 @@ def experiment_set_reporting(connection, **kwargs):
         # first item
         first_report = group.__next__()
         group_report = {r_key: first_report[r_key] for r_key in ['severity', 'summary']}
-        first_report_items = {'set_@id': first_report['set_@id'], '@id': first_report['@id']}
-        group_report['items'] = [first_report_items]
+        first_report_items = {'primary_id': first_report['set_@id'], 'secondary_id': first_report['@id']}
+        group_report['update_items'] = [first_report_items]
         # use this checks uuid as the timestamp for the reports
-        group_report['timestamp'] = kwargs['uuid']
-        group_report['report_tag'] = used_tag
-        group_report['newer_bound'] = kwargs['new_uuid']
-        group_report['older_bound'] = kwargs['old_uuid']
+        group_report['foursight_uuid'] = kwargs['uuid']
+        group_report['update_tag'] = kwargs['update_tag']
+        group_report['end_date'] = end_date_str
+        group_report['start_date'] = start_date_str
         for gr in group: # iterate through the rest of the items
-            group_report['items'].append({'set_@id': gr['set_@id'], '@id': gr['@id']})
+            group_report['update_items'].append({'primary_id': gr['set_@id'], 'secondary_id': gr['@id']})
         group_reports.append(group_report)
     check.brief_output = group_reports
     if group_reports:
         check.status = 'WARN'
-        check.description = 'Ready to publish new experiment set reports.' + used_res_strings
-        check.action_message = 'Will publish %s  grouped reports. See brief_output.' % str(len(group_reports))
+        check.description = 'Ready to publish new data release updates.' + used_res_strings
+        check.action_message = 'Will publish %s  grouped updates with the update_tag: %s. See brief_output.' % ( str(len(group_reports)), kwargs['update_tag'])
         check.allow_action = True
     else:
         check.status = 'PASS'
-        check.description = 'There are no new experiment set reports.' + used_res_strings
+        check.description = 'There are no data release updates for the given dates and required_tag.' + used_res_strings
     return check
 
 
 @action_function()
-def publish_experiment_set_reports(connection, **kwargs):
+def publish_data_release_updates(connection, **kwargs):
     action = init_action_res(connection, 'publish_experiment_set_reports')
-    report_check = init_check_res(connection, 'experiment_set_reporting')
+    report_check = init_check_res(connection, 'data_release_updates')
     report_uuid = kwargs['called_by']
     report_result = report_check.get_result_by_uuid(report_uuid)
     report_output = report_result.get('brief_output')
-    action.description = "Does not actually do anything yet!"
+    action.description = "Publish data release updates to Fourfront."
     action.output = {
         'reports': report_output
     }
