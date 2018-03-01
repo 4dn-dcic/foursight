@@ -417,23 +417,30 @@ class TestCheckRunner(FSTest):
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
         self.assertTrue(bad_res is None)
-        # need to manually add things to the queue
-        check_vals = check_utils.fetch_check_group('valid_test_checks')
-        app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
-        app_utils.run_check_runner({'sqs_url': self.queue.url})
-        finished_count = 0 # since queue attrs are approximate
-        # wait for queue to empty
-        while finished_count < 3:
+        retries = 0
+        test_success = False
+        while retries < 3 and not success:
+            # need to manually add things to the queue
+            check_vals = check_utils.fetch_check_group('valid_test_checks')
+            app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
+            app_utils.run_check_runner({'sqs_url': self.queue.url})
+            finished_count = 0 # since queue attrs are approximate
+            # wait for queue to empty
+            while finished_count < 3:
+                time.sleep(1)
+                sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
+                vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+                invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+                if vis_messages == 0 and invis_messages == 0:
+                    finished_count += 1
             time.sleep(1)
-            sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
-            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            if vis_messages == 0 and invis_messages == 0:
-                finished_count += 1
-        time.sleep(1)
-        # look at output
-        post_res = check.get_latest_result()
-        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
+            # look at output
+            post_res = check.get_latest_result()
+            if prior_res['uuid'] != post_res['uuid']:
+                test_success = True
+            else:
+                retries += 1
+        self.assertTrue(test_success)
 
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
