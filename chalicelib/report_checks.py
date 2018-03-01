@@ -424,6 +424,11 @@ def data_release_updates(connection, **kwargs):
         group_report['update_tag'] = kwargs['update_tag']
         group_report['end_date'] = end_date_str
         group_report['start_date'] = start_date_str
+        group_report['parameters'] = ['tags=' + required_tag] if required_tag else []
+        # use 4DN DCIC lab and award, with released status
+        group_report['lab'] = '4dn-dcic-lab'
+        group_report['award'] = '1U01CA200059-01'
+        group_report['status'] = 'released'
         for gr in group: # iterate through the rest of the items
             group_report['update_items'].append({'primary_id': gr['set_@id'], 'secondary_id': gr['@id']})
         group_reports.append(group_report)
@@ -445,10 +450,21 @@ def publish_data_release_updates(connection, **kwargs):
     report_check = init_check_res(connection, 'data_release_updates')
     report_uuid = kwargs['called_by']
     report_result = report_check.get_result_by_uuid(report_uuid)
-    report_output = report_result.get('brief_output')
     action.description = "Publish data release updates to Fourfront."
+    updates_to_post = report_result.get('brief_output')
+    # post items to FF
+    fdn_conn = get_FDN_connection(connection)
+    if not (fdn_conn and fdn_conn.check):
+        action.status = 'FAIL'
+        action.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
+        return action
+    posted = []
+    for update in updates_to_post:
+        # should be in good shape to post as-is
+        resp = ff_utils.post_to_metadata(update, 'data-release-updates', connection=fdn_conn)
+        posted.append({'update': update, 'response': resp})
     action.output = {
-        'reports': report_output
+        'updates_posted': posted
     }
     action.status = 'DONE'
     return action
