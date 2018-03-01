@@ -419,7 +419,7 @@ class TestCheckRunner(FSTest):
         self.assertTrue(bad_res is None)
         retries = 0
         test_success = False
-        while retries < 3 and not success:
+        while retries < 3 and not test_success:
             # need to manually add things to the queue
             check_vals = check_utils.fetch_check_group('valid_test_checks')
             app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
