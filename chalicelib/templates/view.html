@@ -77,7 +77,7 @@
                                                 {% if kwarg != 'uuid' %}
                                                     <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
                                                     {% if is_admin %}
-                                                        <input style="width: 35%;" type="text" name={{kwarg}} value={{check['kwargs'][kwarg]}} /><br>
+                                                        <input style="width: 35%;" type="text" name={{kwarg}} value="{{check['kwargs'][kwarg]}}" /><br>
                                                     {% else %}
                                                         <span>{{check['kwargs'][kwarg]}}</span><br>
                                                     {% endif %}

@@ -343,7 +343,11 @@ def data_release_updates(connection, **kwargs):
     else:  # use primary result if end_data_result is not supplied
         end_data_result = data_check.get_primary_result()
         end_date_str = end_data_result['uuid'][:10] #YYYY-MM-DD
-
+    # start_date must be before end_date
+    if start_date_str > end_date_str:
+        check.status = 'ERROR'
+        check.description = 'start_date cannot be greater than end_date.'
+        return check
     if (kwargs.get('start_date') and not start_data_result) or not end_data_result:
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
