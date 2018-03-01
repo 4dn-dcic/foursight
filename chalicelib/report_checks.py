@@ -441,7 +441,7 @@ def data_release_updates(connection, **kwargs):
 
 @action_function()
 def publish_data_release_updates(connection, **kwargs):
-    action = init_action_res(connection, 'publish_experiment_set_reports')
+    action = init_action_res(connection, 'publish_data_release_updates')
     report_check = init_check_res(connection, 'data_release_updates')
     report_uuid = kwargs['called_by']
     report_result = report_check.get_result_by_uuid(report_uuid)
