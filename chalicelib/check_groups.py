@@ -30,7 +30,7 @@ CHECK_GROUPS = {
         ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'm30_4'],
     ],
     'morning_checks': [
-        ['report_checks/experiment_set_reporting', {'primary': True}, [], 'morn_1'],
+        ['report_checks/data_release_updates', {'primary': True}, [], 'morn_1'],
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'morn_2'],
         ['system_checks/fourfront_performance_metrics', {'primary': True}, ['morn_2'], 'morn_3']
     ]

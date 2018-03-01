@@ -60,10 +60,10 @@ class RunResult(object):
                 check_time = check_time.replace(tzinfo=tz.tzutc()) # always UTC
                 check_tuples.append((check, check_time))
         if override_date:
-            desired_time = override_date
+            desired_time = override_date.replace(tzinfo=tz.tzutc())
         else:
             desired_time = (datetime.datetime.utcnow() -
-                datetime.timedelta(hours=diff_hours, minutes=diff_mins))
+                datetime.timedelta(hours=diff_hours, minutes=diff_mins)).replace(tzinfo=tz.tzutc())
         best_match = get_closest(check_tuples, desired_time)
         # ensure that the does not have status 'ERROR'
         match_res = None
