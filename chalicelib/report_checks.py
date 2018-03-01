@@ -420,7 +420,7 @@ def data_release_updates(connection, **kwargs):
         first_report_items = {'primary_id': first_report['set_@id'], 'secondary_id': first_report['@id']}
         group_report['update_items'] = [first_report_items]
         # use this checks uuid as the timestamp for the reports
-        group_report['foursight_uuid'] = kwargs['uuid']
+        group_report['foursight_uuid'] = kwargs['uuid'] + '+00:00'
         group_report['update_tag'] = kwargs['update_tag']
         group_report['end_date'] = end_date_str
         group_report['start_date'] = start_date_str
