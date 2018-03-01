@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 import datetime
+from dateutil import tz
 import json
 
 
@@ -31,10 +32,13 @@ class RunResult(object):
         return self.get_s3_object(primary_key)
 
 
-    def get_closest_result(self, diff_hours=0, diff_mins=0):
+    def get_closest_result(self, diff_hours=0, diff_mins=0, override_date=None):
         """
         Returns check result that is closest to the current time minus
         diff_hours and diff_mins (both integers).
+
+        If override_date is provided, ignore other arguments and use the given
+        date as the metric for finding the check. This MUST be a datetime obj.
 
         TODO: Add some way to control which results are returned by kwargs?
         For example, you might only want primary results.
@@ -53,9 +57,13 @@ class RunResult(object):
                     check_time = datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
                 except ValueError:
                     continue
+                check_time = check_time.replace(tzinfo=tz.tzutc()) # always UTC
                 check_tuples.append((check, check_time))
-        desired_time = (datetime.datetime.utcnow() -
-            datetime.timedelta(hours=diff_hours, minutes=diff_mins))
+        if override_date:
+            desired_time = override_date.replace(tzinfo=tz.tzutc())
+        else:
+            desired_time = (datetime.datetime.utcnow() -
+                datetime.timedelta(hours=diff_hours, minutes=diff_mins)).replace(tzinfo=tz.tzutc())
         best_match = get_closest(check_tuples, desired_time)
         # ensure that the does not have status 'ERROR'
         match_res = None

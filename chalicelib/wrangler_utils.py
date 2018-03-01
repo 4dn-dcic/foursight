@@ -4,6 +4,7 @@ from __future__ import print_function, unicode_literals
 from dcicutils import s3_utils, ff_utils
 from datetime import datetime, timedelta
 from dateutil import tz
+from .utils import basestring
 
 
 def get_s3_utils_obj(connection):
@@ -65,31 +66,36 @@ def safe_search_with_callback(fdn_conn, query, container, callback, limit=20, fr
             callback(hit, container)
 
 
-def parse_datetime_with_tz_to_utc(time_str):
+def parse_datetime_to_utc(time_str, manual_format=None):
     """
-    Attempt to parse a given datetime string that may or may not contain
-    timezone information. Returns a datetime object of the string in UTC
+    Attempt to parse the string time_str with the given string format.
+    If no format is given, attempt to automatically parse the given string
+    that may or may not contain timezone information.
+    Returns a datetime object of the string in UTC
     or None if the parsing was unsuccessful.
     """
-    if len(time_str) > 26 and time_str[26] in ['+', '-']:
-        try:
-            timeobj = datetime.strptime(time_str[:26],'%Y-%m-%dT%H:%M:%S.%f')
-        except ValueError:
-            return None
-        if time_str[26]=='+':
-            timeobj -= timedelta(hours=int(time_str[27:29]), minutes=int(time_str[30:]))
-        elif time_str[26]=='-':
-            timeobj += timedelta(hours=int(time_str[27:29]), minutes=int(time_str[30:]))
-    elif len(time_str) == 26 and '+' not in time_str[-6:] and '-' not in time_str[-6:]:
-        # nothing known about tz, just parse it without tz in this cause
-        try:
-            timeobj = datetime.strptime(time_str[0:26],'%Y-%m-%dT%H:%M:%S.%f')
-        except ValueError:
-            return None
-    else:
-        # last try: attempt without milliseconds
-        try:
-            timeobj = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S")
-        except ValueError:
-            return None
+    if manual_format and isinstance(manual_format, basestring):
+        timeobj = datetime.strptime(time_str, manual_format)
+    else:  # automatic parsing
+        if len(time_str) > 26 and time_str[26] in ['+', '-']:
+            try:
+                timeobj = datetime.strptime(time_str[:26],'%Y-%m-%dT%H:%M:%S.%f')
+            except ValueError:
+                return None
+            if time_str[26]=='+':
+                timeobj -= timedelta(hours=int(time_str[27:29]), minutes=int(time_str[30:]))
+            elif time_str[26]=='-':
+                timeobj += timedelta(hours=int(time_str[27:29]), minutes=int(time_str[30:]))
+        elif len(time_str) == 26 and '+' not in time_str[-6:] and '-' not in time_str[-6:]:
+            # nothing known about tz, just parse it without tz in this cause
+            try:
+                timeobj = datetime.strptime(time_str[0:26],'%Y-%m-%dT%H:%M:%S.%f')
+            except ValueError:
+                return None
+        else:
+            # last try: attempt without milliseconds
+            try:
+                timeobj = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                return None
     return timeobj.replace(tzinfo=tz.tzutc())
