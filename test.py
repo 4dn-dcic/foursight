@@ -417,23 +417,30 @@ class TestCheckRunner(FSTest):
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
         self.assertTrue(bad_res is None)
-        # need to manually add things to the queue
-        check_vals = check_utils.fetch_check_group('valid_test_checks')
-        app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
-        app_utils.run_check_runner({'sqs_url': self.queue.url})
-        finished_count = 0 # since queue attrs are approximate
-        # wait for queue to empty
-        while finished_count < 3:
+        retries = 0
+        test_success = False
+        while retries < 3 and not test_success:
+            # need to manually add things to the queue
+            check_vals = check_utils.fetch_check_group('valid_test_checks')
+            app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
+            app_utils.run_check_runner({'sqs_url': self.queue.url})
+            finished_count = 0 # since queue attrs are approximate
+            # wait for queue to empty
+            while finished_count < 3:
+                time.sleep(1)
+                sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
+                vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+                invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+                if vis_messages == 0 and invis_messages == 0:
+                    finished_count += 1
             time.sleep(1)
-            sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
-            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
-            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-            if vis_messages == 0 and invis_messages == 0:
-                finished_count += 1
-        time.sleep(1)
-        # look at output
-        post_res = check.get_latest_result()
-        self.assertTrue(prior_res['uuid'] != post_res['uuid'])
+            # look at output
+            post_res = check.get_latest_result()
+            if prior_res['uuid'] != post_res['uuid']:
+                test_success = True
+            else:
+                retries += 1
+        self.assertTrue(test_success)
 
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
@@ -504,8 +511,11 @@ class TestCheckResult(FSTest):
         self.assertTrue(late_res == res)
         primary_res = check.get_primary_result()
         self.assertTrue(primary_res == res)
+        # check get_closest_res without and with override_date
         close_res = check.get_closest_result(0, 0)
         self.assertTrue(close_res == res)
+        override_res = check.get_closest_result(override_date=datetime.datetime.utcnow())
+        self.assertTrue(override_res == res)
         all_res = check.get_all_results()
         self.assertTrue(len(all_res) > 0)
         # this should be true since all results will be identical
@@ -859,10 +869,10 @@ class TestWranglerUtils(FSTest):
     timestr_bad_2 = '2017-xxxxxT17:34:53.423589+00:00'
     timestr_bad_3 = '2017-xxxxxT17:34:53.423589'
 
-    def test_parse_datetime_with_tz_to_utc(self):
+    def parse_datetime_to_utc(self):
         [dt_tz_a, dt_tz_b, dt_tz_c] = ['None'] * 3
-        for t_str in [self.timestr_1, self.timestr_2, self.timestr_3, self.timestr_4, self.timestr_5]:
-            dt = wrangler_utils.parse_datetime_with_tz_to_utc(t_str)
+        for t_str in [self.timestr_1, self.timestr_2, self.timestr_3, self.timestr_4]:
+            dt = wrangler_utils.parse_datetime_to_utc(t_str)
             self.assertTrue(dt is not None)
             self.assertTrue(dt.tzinfo is not None and dt.tzinfo == tz.tzutc())
             if t_str == self.timestr_1:
@@ -873,8 +883,12 @@ class TestWranglerUtils(FSTest):
                 dt_tz_c = dt
         self.assertTrue(dt_tz_c > dt_tz_a > dt_tz_b)
         for bad_tstr in [self.timestr_bad_1, self.timestr_bad_2, self.timestr_bad_3]:
-            dt_bad = wrangler_utils.parse_datetime_with_tz_to_utc(bad_tstr)
+            dt_bad = wrangler_utils.parse_datetime_to_utc(bad_tstr)
             self.assertTrue(dt_bad is None)
+        # use a manual format
+        dt_5_man = wrangler_utils.parse_datetime_to_utc(self.timestr_5, manual_format="%Y-%m-%dT%H:%M:%S")
+        dt_5_auto = wrangler_utils.parse_datetime_to_utc(self.timestr_5)
+        self.assertTrue(dt_5_auto == dt_5_man)
 
     def test_get_s3_utils_obj(self):
         environments = app_utils.init_environments()
