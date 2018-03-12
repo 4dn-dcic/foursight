@@ -242,7 +242,7 @@ class CheckResult(RunResult):
             self.kwargs['primary'] = False
         formatted = self.format_result(self.kwargs['uuid'])
         is_primary = self.kwargs.get('primary', False) == True
-        # bail if do_not_store is True within kwargs
+        # if do_not_store is set, just return result without storing in s3
         if self.kwargs.get('do_not_store', False) == True:
             return formatted
         return self.store_formatted_result(self.kwargs['uuid'], formatted, is_primary)
@@ -282,11 +282,11 @@ class ActionResult(RunResult):
         if 'uuid' not in self.kwargs:
             self.kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
         formatted = self.format_result(self.kwargs['uuid'])
-        # action results are always stored as 'primary' and 'latest' and can be
-        # fetched with the get_latest_result method.
-        # bail if do_not_store is True within kwargs
+        # if do_not_store is set, just return result without storing in s3
         if self.kwargs.get('do_not_store', False) == True:
             return formatted
+        # action results are always stored as 'primary' and 'latest' and can be
+        # fetched with the get_latest_result method.
         return self.store_formatted_result(self.kwargs['uuid'], formatted, True)
 
 

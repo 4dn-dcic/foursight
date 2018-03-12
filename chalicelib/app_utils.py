@@ -363,16 +363,14 @@ def process_view_results(connection, results, is_admin):
             }
             processed_results.append(error_res)
             continue
-        # change timezone to local
-        from_zone = tz.tzutc()
-        to_zone = tz.tzlocal()
         # this can be removed once uuid has been around long enough
         ts_utc = res['uuid'] if 'uuid' in res else res['timestamp']
         ts_utc = datetime.datetime.strptime(ts_utc, "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
-        ts_utc = ts_utc.replace(tzinfo=from_zone)
-        ts_local = ts_utc.astimezone(to_zone)
+        ts_utc = ts_utc.replace(tzinfo=tz.tzutc())
+        # change timezone to EST
+        ts_local = ts_utc.astimezone(tz.gettz('EST'))
         proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
-        res['uuid'] = proc_ts
+        res['local_time'] = proc_ts
         if res.get('brief_output'):
             res['brief_output'] = trim_output(res['brief_output'])
         if res.get('full_output'):
