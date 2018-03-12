@@ -221,7 +221,8 @@ def indexing_records(connection, **kwargs):
     return check
 
 
-# do_not_store kwarg makes it so check.store_result will not write to s3
+# this is a dummy check that is not run but instead updated with put API
+# do_not_store parameter ensures running this check normally won't add to s3
 @check_function(do_not_store=True)
 def staging_deployment(connection, **kwargs):
     check = init_check_res(connection, 'staging_deployment')
