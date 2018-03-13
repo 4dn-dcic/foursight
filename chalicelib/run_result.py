@@ -132,11 +132,13 @@ class RunResult(object):
         results = []
         for n in range(len(all_keys)):
             s3_res = self.get_s3_object(all_keys[n])
-            # order: status <str>, kwargs <dict>
+            # order: status <str>, kwargs <dict>, is check? (boolean)
+            # it's a check if it has 'full_output' and 'brief_output'
             # handle records that might be malformed
             res_val = [
                 s3_res.get('status', 'Not found'),
-                s3_res.get('kwargs', {})
+                s3_res.get('kwargs', {}),
+                'full_output' in s3_res and 'brief_output' in s3_res
             ]
             results.append(res_val)
         return results
