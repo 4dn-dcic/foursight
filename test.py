@@ -134,7 +134,7 @@ class TestAppRoutes(FSTest):
         test_check = 'test_random_nums'
         history = app_utils.get_foursight_history(self.conn, test_check, 0, 3)
         self.assertTrue(isinstance(history, list))
-        self.assertTrue(len(history[0]) == 2)
+        self.assertTrue(len(history[0]) == 3)
         self.assertTrue(isinstance(history[0][0], utils.basestring))
         self.assertTrue(isinstance(history[0][1], dict))
         self.assertTrue('uuid' in history[0][1])

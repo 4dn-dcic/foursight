@@ -37,7 +37,7 @@
                         {% for kwarg in history_kwargs %}
                             <th scope="col">{{kwarg}}</th>
                         {% endfor %}
-                        <th scope="col"></th>
+                        <th colspan="2" scope="col"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -59,9 +59,15 @@
                             {% for kw in history_kwargs %}
                                 <td>{{entry[1].get(kw)}}</td>
                             {% endfor %}
+                            {# boolean in entry[2] saying if it's a check or not #}
+                            {% if entry[2] == True %}
+                                <td>
+                                    <a target="_blank" href={{"/api/view/" + env + "/" + check + "/" + entry[1]['uuid']}}>Result</a>
+                                </td>
+                            {% endif %}
                             {% if 'uuid' in entry[1] %}
                                 <td>
-                                    <a target="_blank" href={{"/api/load/" + env + "/" + check + "/" + entry[1]['uuid']}}>View</a>
+                                    <a target="_blank" href={{"/api/load/" + env + "/" + check + "/" + entry[1]['uuid']}}>JSON</a>
                                 </td>
                             {% else %}
                                 <td>Error</td>
