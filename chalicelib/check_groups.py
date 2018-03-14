@@ -23,10 +23,10 @@ CHECK_GROUPS = {
     'thirty_min_checks': [
         ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
         ['system_checks/indexing_records', {'primary': True}, [], 'm30_2'],
-        ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'm30_3'],
     ],
     'morning_checks': [
-        ['report_checks/data_release_updates', {'primary': True}, [], 'morn_1'],
+        ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'morn_0'],
+        ['report_checks/data_release_updates', {'primary': True}, ['morn_0'], 'morn_1'],
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'morn_2'],
         ['system_checks/fourfront_performance_metrics', {'primary': True}, ['morn_2'], 'morn_3'],
         ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'morn_4'],
