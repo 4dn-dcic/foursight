@@ -19,6 +19,7 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
     check = init_check_res(connection, 'mcool_not_registered_with_higlass')
     check.status = "ERROR"
     check.description = "not able to get data from fourfront"
+    check.action = "patch_file_higlass_uid"
 
     # run the check
     search_query = '%ssearch?higlass_uid=No+value&file_format=mcool&type=FileProcessed' % connection.ff
@@ -40,8 +41,54 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
     else:
         check.description = "%s files found not registered with higlass" % str(len(file_to_be_reg))
         check.full_output = file_to_be_reg
+        check.action_message = "Will attempt to patch higlass_uid for %s files." % str(len(file_to_be_reg))
+        check.allow_action = True # allows the action to be run
 
     return check
+
+
+@action_function()
+def patch_file_higlass_uid(connection, **kwargs):
+    action = init_action_res(connection, 'patch_file_higlass_uid')
+    s3_obj = get_s3_utils_obj(connection)
+    fdn_conn = get_FDN_connection(connection)
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    # get latest results
+    higlass_check = init_check_res(connection, 'mcool_not_registered_with_higlass')
+    higlass_check_result = higlass_check.get_latest_result()
+    # higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
+
+    # todo, where / how to store this?
+    # request configuration
+    import os
+    HIGLASS_USER = os.environ.get("HIGLASS_USER")
+    HIGLASS_PASS = os.environ.get("HIGLASS_PASS")
+    HIGLASS_SERVER = os.environ.get("HIGLASS_SERVER", "localhost")
+    authentication = (HIGLASS_USER, HIGLASS_PASS)
+    headers = {'Content-Type': 'application/json',
+               'Accept': 'application/json'}
+
+    import pdb; pdb.set_trace()
+    for hit in higlass_check_result.get('full_output', []):
+        payload = {"filepath": s3_obj.outfile_bucket + "/" + hit['upload_key'],
+                   "filetype": "cooler", "datatype": "matrix"}
+        res = requests.post(HIGLASS_SERVER + '/api/v1/link_tile/',
+                            data=json.dumps(payload), auth=authentication,
+                            headers=headers)
+        if res.status_code == 201:
+            # update the metadata file as well
+            patch_data = {'higlass_uid': res.json()['uuid']}
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], connection=fdn_conn)
+            except Exception as e:
+                acc_and_error = '\n'.join([hit['accession'], str(e)])
+                action_logs['patch_failure'].append(acc_and_error)
+            else:
+                action_logs['patch_success'].append(hit['accession'])
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
+
 
 @check_function()
 def item_counts_by_type(connection, **kwargs):
