@@ -15,6 +15,35 @@ import boto3
 
 
 @check_function()
+def mcool_not_registered_with_higlass(connection, **kwargs):
+    check = init_check_res(connection, 'mcool_not_registered_with_higlass')
+    check.status = "ERROR"
+    check.description = "not able to get data from fourfront"
+
+    # run the check
+    search_query = '%ssearch?higlass_uid=No+value&file_format=mcool&type=FileProcessed' % connection.ff
+    try:
+        not_reg = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+        file_to_be_reg = []
+        s3 = s3_utils.s3Utils(env=connection.ff_env)
+        for procfile in not_reg.json()['@graph']:
+            if s3.does_key_exist(procfile['upload_key']):
+                file_to_be_reg.append(procfile)
+    except Exception as e:
+        print(e)
+        # its default to failure
+        import pdb; pdb.set_trace()
+        return check
+    if not file_to_be_reg:
+        check.status = "PASS"
+        check.description = "All mcool files with files on s3 appear to already be registered"
+    else:
+        check.description = "%s files found not registered with higlass" % str(len(file_to_be_reg))
+        check.full_output = file_to_be_reg
+
+    return check
+
+@check_function()
 def item_counts_by_type(connection, **kwargs):
     def process_counts(count_str):
         # specifically formatted for FF health page
