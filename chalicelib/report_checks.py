@@ -358,7 +358,9 @@ def data_release_updates(connection, **kwargs):
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
         return check
-    used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end). Used filter on replicate sets tag is %s and the filter on award.project is %s (None means no filter in both cases).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'], filter_tag, filter_project)
+    tag_filter = kwargs.get('tag_filter')
+    project_filter = kwargs.get('project_filter')
+    used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end). Used filter on replicate sets tag is %s and the filter on award.project is %s (None means no filter in both cases).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'], tag_filter, project_filter)
     start_output = start_data_result.get('full_output', {})  # this can be empty
     end_output = end_data_result.get('full_output')  # this cannot be empty
     if not isinstance(start_output, dict) or not isinstance(end_output, dict):
@@ -400,9 +402,9 @@ def data_release_updates(connection, **kwargs):
     for exp_set in end_output:
         end_res = end_output[exp_set]
         # apply filters
-        if filter_tag and filter_tag not in end_res.get('tags', []):
+        if tag_filter and tag_filter not in end_res.get('tags', []):
             continue
-        if filter_project and filter_project != end_res.get('award.project'):
+        if project_filter and project_filter != end_res.get('award.project'):
             continue
         start_res = start_output.get(exp_set, {})
         exp_set_report = generate_exp_set_report(
@@ -432,12 +434,12 @@ def data_release_updates(connection, **kwargs):
         group_report['update_tag'] = kwargs['update_tag']
         group_report['end_date'] = end_date_str
         group_report['start_date'] = start_date_str
-        # handle parameters like filter_tag and filter_project used to create report
+        # handle parameters like tag_filter and project_filter used to create report
         group_report['parameters'] = []
-        if filter_tag:
-            group_report['parameters'].append('tags=' + filter_tag)
-        if filter_project:
-            group_report['parameters'].append('award.project=' + filter_project)
+        if tag_filter:
+            group_report['parameters'].append('tags=' + tag_filter)
+        if project_filter:
+            group_report['parameters'].append('award.project=' + project_filter)
         # use 4DN DCIC lab and award, with released status
         group_report['lab'] = '4dn-dcic-lab'
         group_report['award'] = '1U01CA200059-01'
