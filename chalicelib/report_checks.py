@@ -295,6 +295,10 @@ def experiment_set_reporting_data(connection, **kwargs):
     exp_sets = {}
     search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
     safe_search_with_callback(fdn_conn, search_query, exp_sets, search_callback, limit=20, frame='embedded')
+    # run a second search for status=deleted
+    # add results using the same callback function
+    search_query_del = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created&status=deleted'
+    safe_search_with_callback(fdn_conn, search_query_del, exp_sets, search_callback, limit=20, frame='embedded')
     check.full_output = exp_sets
     return check
 
