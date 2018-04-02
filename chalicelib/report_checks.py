@@ -262,6 +262,7 @@ def experiment_set_reporting_data(connection, **kwargs):
     # callback fxns
     def search_callback(exp_set, exp_sets):
         exp_set_res = extract_info(exp_set, ['@id', 'status', 'tags'])
+        exp_set_res['award.project'] = exp_set.get('award', {}).get('project')
         exp_set_res['processed_files'] = extract_list_info(
             exp_set.get('processed_files'),
             ['@id', 'status', 'file_type'],
@@ -298,7 +299,7 @@ def experiment_set_reporting_data(connection, **kwargs):
     return check
 
 
-@check_function(start_date=None, end_date=None, update_tag='DISCARD', required_tag='4DN Joint Analysis 2018')
+@check_function(start_date=None, end_date=None, update_tag='DISCARD', tag_filter=None, project_filter='4DN', is_internal=False)
 def data_release_updates(connection, **kwargs):
     """
     Diff two results of 'experiment_set_reporting_data' check.
@@ -314,9 +315,14 @@ def data_release_updates(connection, **kwargs):
 
     update_tag is the tag used to organize updates in Fourfront.
 
-    required_tag is required to be in the 'tags' field of a given replicate set
-    for the set to be considered by this check. It defaults to the value used
-    on joint analysis replicate sets.
+    tag_filter is a string value required to be in the 'tags' field of a given
+    replicate set for the set to be considered by this check. It defaults to
+    None, which means no tag is required. Another likely value is
+    '4DN Joint Analysis 2018'.
+
+    project_filter is a string value that is required to match the award.project
+    field of the replicate set to be considered by this check. If set to None,
+    all replicate sets will be used regardless of project.
 
     Stores the information used by that action to actually build reports.
     """
@@ -352,7 +358,7 @@ def data_release_updates(connection, **kwargs):
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
         return check
-    used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'])
+    used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end). Used filter on replicate sets tag is %s and the filter on award.project is %s (None means no filter in both cases).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'], filter_tag, filter_project)
     start_output = start_data_result.get('full_output', {})  # this can be empty
     end_output = end_data_result.get('full_output')  # this cannot be empty
     if not isinstance(start_output, dict) or not isinstance(end_output, dict):
@@ -369,9 +375,8 @@ def data_release_updates(connection, **kwargs):
         'status': ['released', 'archived']
     }
 
-    ### THIS DIFFERENTIATES JOINT ANALYSIS UPDATES FROM GENERIC ONES
-    required_tag = kwargs.get('required_tag')
-    if required_tag == '4DN Joint Analysis 2018':
+    ### THIS DIFFERENTIATES PUBLIC VS PUBLIC + INTERNAL RELEASE UPDATES
+    if kwargs.get('is_internal') == True:
         # effectively consider released and released_to_project the same
         # same with archived and archived_to_project and replaced
         released_statuses = ['released', 'released to project']
@@ -394,7 +399,10 @@ def data_release_updates(connection, **kwargs):
     ### CREATE REPORTS... assuming experiment sets will NOT be deleted from DB
     for exp_set in end_output:
         end_res = end_output[exp_set]
-        if required_tag and required_tag not in end_res.get('tags', []):
+        # apply filters
+        if filter_tag and filter_tag not in end_res.get('tags', []):
+            continue
+        if filter_project and filter_project != end_res.get('award.project'):
             continue
         start_res = start_output.get(exp_set, {})
         exp_set_report = generate_exp_set_report(
@@ -424,7 +432,12 @@ def data_release_updates(connection, **kwargs):
         group_report['update_tag'] = kwargs['update_tag']
         group_report['end_date'] = end_date_str
         group_report['start_date'] = start_date_str
-        group_report['parameters'] = ['tags=' + required_tag] if required_tag else []
+        # handle parameters like filter_tag and filter_project used to create report
+        group_report['parameters'] = []
+        if filter_tag:
+            group_report['parameters'].append('tags=' + filter_tag)
+        if filter_project:
+            group_report['parameters'].append('award.project=' + filter_project)
         # use 4DN DCIC lab and award, with released status
         group_report['lab'] = '4dn-dcic-lab'
         group_report['award'] = '1U01CA200059-01'
@@ -440,7 +453,7 @@ def data_release_updates(connection, **kwargs):
         check.allow_action = True
     else:
         check.status = 'PASS'
-        check.description = 'There are no data release updates for the given dates and required_tag.' + used_res_strings
+        check.description = 'There are no data release updates for the given dates and filters.' + used_res_strings
     return check
 
 
