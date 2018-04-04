@@ -170,6 +170,8 @@ def indexing_records(connection, **kwargs):
     recent_records = []
     warn_records = []
     for rec in all_records:
+        if rec['_id'] == 'latest_indexing':
+            continue
         time_diff = (datetime.datetime.utcnow() -
             datetime.datetime.strptime(rec['_id'], "%Y-%m-%dT%H:%M:%S.%f"))
         if time_diff < delta_days:
