@@ -70,7 +70,6 @@ def patch_file_higlass_uid(connection, **kwargs):
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
 
-    import pdb; pdb.set_trace()
     for hit in higlass_check_result.get('full_output', []):
         payload = {"filepath": s3_obj.outfile_bucket + "/" + hit['upload_key'],
                    "filetype": "cooler", "datatype": "matrix"}
