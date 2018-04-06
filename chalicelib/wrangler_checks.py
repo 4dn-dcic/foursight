@@ -22,18 +22,25 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
     check.action = "patch_file_higlass_uid"
 
     # run the check
-    search_query = '%ssearch?higlass_uid=No+value&file_format=mcool&type=FileProcessed' % connection.ff
+    search_query = '%ssearch/?file_format=mcool&type=FileProcessed&limit=all' % connection.ff
     try:
         not_reg = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
         file_to_be_reg = []
         s3 = s3_utils.s3Utils(env=connection.ff_env)
         for procfile in not_reg.json()['@graph']:
+            if procfile.get('higlass_uid'):
+                # if we already registered with higlass continue
+                print(procfile.get('accession') + " already registered")
+                continue
             if s3.does_key_exist(procfile['upload_key']):
+                print(procfile.get('accession') + " to be registered ")
                 file_to_be_reg.append(procfile)
+            else:
+                print(procfile.get('accession') + " no file on s3")
+
     except Exception as e:
         print(e)
         # its default to failure
-        import pdb; pdb.set_trace()
         return check
     if not file_to_be_reg:
         check.status = "PASS"
@@ -58,13 +65,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     higlass_check_result = higlass_check.get_latest_result()
     # higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
 
-    # todo, where / how to store this?
-    # request configuration
-    import os
-    HIGLASS_USER = os.environ.get("HIGLASS_USER")
-    HIGLASS_PASS = os.environ.get("HIGLASS_PASS")
-    HIGLASS_SERVER = os.environ.get("HIGLASS_SERVER", "localhost")
-    authentication = (HIGLASS_USER, HIGLASS_PASS)
+    higlass_key = s3_obj.get_higlass_key()
+    authentication = (higlass_key['secret'], higlass_key['key'])
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
 
