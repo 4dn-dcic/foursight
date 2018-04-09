@@ -17,7 +17,7 @@ import boto3
 @check_function()
 def mcool_not_registered_with_higlass(connection, **kwargs):
     check = init_check_res(connection, 'mcool_not_registered_with_higlass')
-    check.status = "ERROR"
+    check.status = "FAIL"
     check.description = "not able to get data from fourfront"
     check.action = "patch_file_higlass_uid"
 
