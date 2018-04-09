@@ -23,25 +23,20 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
 
     # run the check
     search_query = '%ssearch/?file_format=mcool&type=FileProcessed&limit=all' % connection.ff
-    try:
-        not_reg = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
-        file_to_be_reg = []
-        s3 = s3_utils.s3Utils(env=connection.ff_env)
-        for procfile in not_reg.json()['@graph']:
-            if procfile.get('higlass_uid'):
-                # if we already registered with higlass continue
-                print(procfile.get('accession') + " already registered")
-                continue
-            if s3.does_key_exist(procfile['upload_key']):
-                print(procfile.get('accession') + " to be registered ")
-                file_to_be_reg.append(procfile)
-            else:
-                print(procfile.get('accession') + " no file on s3")
+    not_reg = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+    file_to_be_reg = []
+    s3 = s3_utils.s3Utils(env=connection.ff_env)
+    for procfile in not_reg.json()['@graph']:
+        if procfile.get('higlass_uid'):
+            # if we already registered with higlass continue
+            print(procfile.get('accession') + " already registered")
+            continue
+        if s3.does_key_exist(procfile['upload_key']):
+            print(procfile.get('accession') + " to be registered ")
+            file_to_be_reg.append(procfile)
+        else:
+            print(procfile.get('accession') + " no file on s3")
 
-    except Exception as e:
-        print(e)
-        # its default to failure
-        return check
     if not file_to_be_reg:
         check.status = "PASS"
         check.description = "All mcool files with files on s3 appear to already be registered"
@@ -62,8 +57,10 @@ def patch_file_higlass_uid(connection, **kwargs):
     action_logs = {'patch_failure': [], 'patch_success': []}
     # get latest results
     higlass_check = init_check_res(connection, 'mcool_not_registered_with_higlass')
-    higlass_check_result = higlass_check.get_latest_result()
-    # higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
+    if kwargs.get('called_by', None):
+        higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
+    else:
+        higlass_check_result = higlass_check.get_primary_result()
 
     higlass_key = s3_obj.get_higlass_key()
     authentication = (higlass_key['secret'], higlass_key['key'])
