@@ -48,19 +48,22 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             '*/released' : {
                 'severity': 1,
                 'priority': 3,
-                'summary': 'New Replicate Experiment has been added to a released %s Replicate Set.' % exp_type
+                'summary': 'New replicate experiment has been added to a released %s replicate set.' % exp_type,
+                'summary_plural': 'new replicate experiments have been added to released %s replcate sets.' % exp_type,
             },
             '*/*': {
                 'severity': 3,
                 'priority': 4,
-                'summary': 'WARNING! Replicate Experiment with status %s has been added to a released %s Replicate Set.' % (curr, exp_type)
+                'summary': 'Replicate experiment with status %s has been added to a released %s replicate set.' % (curr, exp_type),
+                'summary_plural': 'new replicate experiments with status %s have been added to released %s replicate sets.' % (curr, exp_type),
             },
         },
         'processed_files.status': {
             '*/released': {
                 'severity': 0,
                 'priority': 7,
-                'summary': 'New %s file added to released %s Replicate Set' % (file_type, exp_type)
+                'summary': 'New %s file has been added to released %s replicate ret.' % (file_type, exp_type),
+                'summary_plural': 'new %s files have been added to released %s replicate sets.' % (file_type, exp_type),
             }
         }
     }
@@ -69,21 +72,24 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             '*/released': {
                 'severity': 2,
                 'priority': 5,
-                'summary': 'New raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+                'summary': 'New raw %s file has been added to released %s replicate experiment.' % (file_type, exp_type),
+                'summary_plural': 'new raw %s files have been added to released %s replicate experiments.' % (file_type, exp_type),
             }
         },
         'experiments_in_set.files.status': {
             '*/*': {
                 'severity': 3,
                 'priority': 6,
-                'summary': 'WARNING! New unreleased raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+                'summary': 'New unreleased raw %s file has been added to released %s replicate experiments.' % (file_type, exp_type),
+                'summary_plural': 'new unreleased raw %s files have been added to released %s replicate experiments.' % (file_type, exp_type)
             }
         },
         'experiments_in_set.processed_files.status': {
             '*/released': {
                 'severity': 0,
                 'priority': 7,
-                'summary': 'New %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+                'summary': 'New %s file has been added to released %s replicate experiment.' % (file_type, exp_type),
+                'summary_plural': 'new %s files have been added to released %s replicate experiments.' % (file_type, exp_type),
             }
         }
     }
@@ -92,34 +98,40 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             '*/released' : {
                 'severity': 0,
                 'priority': 0, # 0 is highest priority
-                'summary': 'New %s Replicate Set has been released.' % exp_type
+                'summary': 'New %s replicate set has been released.' % exp_type,
+                'summary_plural': 'new %s replicate sets have been released.' % exp_type,
             },
             'archived/released' : {
                 'severity': 0,
                 'priority': 0,
-                'summary': 'New %s Replicate Set has been released.' % exp_type
+                'summary': 'New %s replicate set has been released.' % exp_type,
+                'summary_plural': 'new %s replicate set have been released.' % exp_type,
             },
             'released/archived' : {
                 'severity': 1,
                 'priority': 1,
-                'summary': 'Released %s Replicate Set has been archived.' % exp_type
+                'summary': 'Released %s replicate set has been archived.' % exp_type,
+                'summary_plural': 'released %s replicate sets have been archived.' % exp_type,
             },
             'released/*': {
                 'severity': 3,
                 'priority': 2,
-                'summary': 'WARNING! Released %s Replicate Set has changed to %s.' % (exp_type, curr)
+                'summary': 'Released %s replicate set has changed to %s.' % (exp_type, curr),
+                'summary_plural': 'released %s replicate sets have changed to %s.' % (exp_type, curr),
             }
         },
         'experiments_in_set.status': {
             'released/archived' : {
                 'severity': 1,
                 'priority': 1,
-                'summary': 'Released %s Experiment has been archived.' % exp_type
+                'summary': 'Released %s experiment has been archived.' % exp_type,
+                'summary_plural': 'released %s experiments have been archived.' % exp_type,
             },
             'released/*': {
                 'severity': 3,
                 'priority': 2,
-                'summary': 'WARNING! Released %s Experiment has changed to %s.' % (exp_type, curr)
+                'summary': 'Released %s experiment has changed to %s.' % (exp_type, curr),
+                'summary_plural': 'released %s experiments have changed to %s.' % (exp_type, curr),
             },
 
         },
@@ -127,36 +139,42 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Set has been archived.' % (file_type, exp_type)
+                'summary': 'Released %s file from %s replicate set has been archived.' % (file_type, exp_type),
+                'summary_plural': 'released %s files from %s replicate set have been archived.' % (file_type, exp_type),
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
+                'summary': 'Released %s file has changed to %s.' % (file_type, curr),
+                'summary_plural': 'released %s files have changed to %s.' % (file_type, curr),
             }
         },
         'experiment_in_set.processed_files.status': {
             'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Experiment has been archived.' % (file_type, exp_type)
+                'summary': 'Released %s file from %s replicate experiment has been archived.' % (file_type, exp_type),
+                'summary_plural': 'released %s files from %s replicate experiments have been archived.' % (file_type, exp_type),
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
+                'summary': 'Released %s file has changed to %s.' % (file_type, curr),
+                'summary_plural': 'released %s files have changed to %s.' % (file_type, curr),
             }
         },
         'experiments_in_set.files.status': {
             'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Experiment has been archived.' % (file_type, exp_type)
+                'summary': 'Released %s file from %s replicate experiment has been archived.' % (file_type, exp_type),
+                'summary_plural': 'released %s files from %s replicate experiment have been archived.' % (file_type, exp_type),
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
+                'summary': 'Released %s file has changed to %s.' % (file_type, curr),
+                'summary_plural': 'released %s files have changed to %s.' % (file_type, curr),
             }
         }
     }
@@ -430,7 +448,7 @@ def data_release_updates(connection, **kwargs):
     for key, group in itertools.groupby(reports, lambda r: r['summary']):
         # first item
         first_report = group.__next__()
-        group_report = {r_key: first_report[r_key] for r_key in ['severity', 'summary']}
+        group_report = {r_key: first_report[r_key] for r_key in ['severity', 'summary', 'summary_plural']}
         first_report_items = {'primary_id': first_report['set_@id'], 'secondary_id': first_report['@id']}
         group_report['update_items'] = [first_report_items]
         # use this checks uuid as the timestamp for the reports
@@ -451,6 +469,12 @@ def data_release_updates(connection, **kwargs):
         for gr in group: # iterate through the rest of the items
             group_report['update_items'].append({'primary_id': gr['set_@id'], 'secondary_id': gr['@id']})
         group_reports.append(group_report)
+    # lastly, update summaries for plural cases
+    for group_report in group_reports:
+        num_items = len(group_report['update_items'])
+        if num_items > 1:
+            group_report['summary'] = ' '.join([str(num_items), group_report['summary_plural']])
+        del group_report['summary_plural']
     check.brief_output = group_reports
     if group_reports:
         check.status = 'WARN'
