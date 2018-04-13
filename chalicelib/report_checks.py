@@ -466,22 +466,39 @@ def data_release_updates(connection, **kwargs):
         group_report['lab'] = '4dn-dcic-lab'
         group_report['award'] = '1U01CA200059-01'
         group_report['status'] = 'released'
+        group_report['is_internal'] = is_internal
         for gr in group: # iterate through the rest of the items
             group_report['update_items'].append({'primary_id': gr['set_@id'], 'secondary_id': gr['@id']})
         group_reports.append(group_report)
-    # lastly, update summaries for plural cases
+    # update summaries for plural cases
     for group_report in group_reports:
         num_items = len(group_report['update_items'])
         if num_items > 1:
             group_report['summary'] = ' '.join([str(num_items), group_report['summary_plural']])
         del group_report['summary_plural']
-    check.brief_output = group_reports
+    # lastly make the static section for this update_tag
+    static_proj = project_filter if project_filter else ''
+    static_scope = 'network members' if is_internal else 'public'
+    static_tag = 'with %s tag' % tag_filter if tag_filter else ''
+    static_content = ' '.join(['All', static_proj, 'data released to', static_scope, 'between', start_date_str, 'and', end_date_str, static_tag])
+    report_static_section = {
+        'name': 'release-updates.' + update_tag,
+        'body': '<h4 style=\"margin-top:0px;font-weight:400\">' + static_content + '</h4>'
+    }
     if group_reports:
+        check.brief_output = {
+            'release_updates': group_reports,
+            'static_section': report_static_section
+        }
         check.status = 'WARN'
         check.description = 'Ready to publish new data release updates.' + used_res_strings
         check.action_message = 'Will publish %s  grouped updates with the update_tag: %s. See brief_output.' % ( str(len(group_reports)), kwargs['update_tag'])
         check.allow_action = True
     else:
+        check.brief_output = {
+            'release_updates': [],
+            'static_section': None
+        }
         check.status = 'PASS'
         check.description = 'There are no data release updates for the given dates and filters.' + used_res_strings
     return check
@@ -494,20 +511,27 @@ def publish_data_release_updates(connection, **kwargs):
     report_uuid = kwargs['called_by']
     report_result = report_check.get_result_by_uuid(report_uuid)
     action.description = "Publish data release updates to Fourfront."
-    updates_to_post = report_result.get('brief_output')
+    updates_to_post = report_result.get('brief_output', {}).get('release_updates', [])
+    section_to_post = report_result.get('brief_output', {}).get('static_section')
     # post items to FF
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         action.status = 'FAIL'
         action.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return action
-    posted = []
+    posted_updates = []
     for update in updates_to_post:
         # should be in good shape to post as-is
         resp = ff_utils.post_to_metadata(update, 'data-release-updates', connection=fdn_conn)
-        posted.append({'update': update, 'response': resp})
+        posted_updates.append({'update': update, 'response': resp})
+    if section_to_post:
+        resp = ff_utils.post_to_metadata(section_to_post, 'static-sections', connection=fdn_conn)
+        posted_section = {'static_section': section_to_post, 'response': resp}
+    else:
+        posted_section = None
     action.output = {
-        'updates_posted': posted
+        'updates_posted': posted_updates,
+        'section_posted': posted_section
     }
     action.status = 'DONE'
     return action
