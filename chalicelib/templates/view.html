@@ -55,7 +55,7 @@
                                         <div id={{"action-message-" + check['kwargs']['uuid']}}></div>
                                         <form class="commonstyle own-line" action={{"/api/view_run/" + env['environment'] + '/' + check['action'] + '/action'}} method="GET">
                                             <input type="hidden" name="called_by" value={{check['kwargs']['uuid']}} />
-                                            {% if not check.get('allow_action') or running_checks != '0' or queued_checks != '0' %}
+                                            {% if not check.get('allow_action') %}
                                                 <button id={{"action-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" disabled>
                                                     {{' '.join(check['action'].split('_')).title()}}
                                                 </button>
