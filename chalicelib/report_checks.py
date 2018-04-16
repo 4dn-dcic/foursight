@@ -482,7 +482,7 @@ def data_release_updates(connection, **kwargs):
     static_tag = 'with %s tag' % tag_filter if tag_filter else ''
     static_content = ' '.join(['All', static_proj, 'data released to', static_scope, 'between', start_date_str, 'and', end_date_str, static_tag])
     report_static_section = {
-        'name': 'release-updates.' + update_tag,
+        'name': 'release-updates.' + kwargs['update_tag'],
         'body': '<h4 style=\"margin-top:0px;font-weight:400\">' + static_content + '</h4>'
     }
     if group_reports:
