@@ -48,19 +48,22 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             '*/released' : {
                 'severity': 1,
                 'priority': 3,
-                'summary': 'New Replicate Experiment has been added to a released %s Replicate Set.' % exp_type
+                'summary': 'New replicate experiment has been added to a released %s replicate set.' % exp_type,
+                'summary_plural': 'new replicate experiments have been added to released %s replcate sets.' % exp_type,
             },
             '*/*': {
                 'severity': 3,
                 'priority': 4,
-                'summary': 'WARNING! Replicate Experiment with status %s has been added to a released %s Replicate Set.' % (curr, exp_type)
+                'summary': 'Replicate experiment with status %s has been added to a released %s replicate set.' % (curr, exp_type),
+                'summary_plural': 'new replicate experiments with status %s have been added to released %s replicate sets.' % (curr, exp_type),
             },
         },
         'processed_files.status': {
             '*/released': {
                 'severity': 0,
                 'priority': 7,
-                'summary': 'New %s file added to released %s Replicate Set' % (file_type, exp_type)
+                'summary': 'New %s file has been added to released %s replicate ret.' % (file_type, exp_type),
+                'summary_plural': 'new %s files have been added to released %s replicate sets.' % (file_type, exp_type),
             }
         }
     }
@@ -69,21 +72,24 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             '*/released': {
                 'severity': 2,
                 'priority': 5,
-                'summary': 'New raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+                'summary': 'New raw %s file has been added to released %s replicate experiment.' % (file_type, exp_type),
+                'summary_plural': 'new raw %s files have been added to released %s replicate experiments.' % (file_type, exp_type),
             }
         },
         'experiments_in_set.files.status': {
             '*/*': {
                 'severity': 3,
                 'priority': 6,
-                'summary': 'WARNING! New unreleased raw %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+                'summary': 'New unreleased raw %s file has been added to released %s replicate experiments.' % (file_type, exp_type),
+                'summary_plural': 'new unreleased raw %s files have been added to released %s replicate experiments.' % (file_type, exp_type)
             }
         },
         'experiments_in_set.processed_files.status': {
             '*/released': {
                 'severity': 0,
                 'priority': 7,
-                'summary': 'New %s file added to released %s Replicate Experiment' % (file_type, exp_type)
+                'summary': 'New %s file has been added to released %s replicate experiment.' % (file_type, exp_type),
+                'summary_plural': 'new %s files have been added to released %s replicate experiments.' % (file_type, exp_type),
             }
         }
     }
@@ -92,34 +98,40 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             '*/released' : {
                 'severity': 0,
                 'priority': 0, # 0 is highest priority
-                'summary': 'New %s Replicate Set has been released.' % exp_type
+                'summary': 'New %s replicate set has been released.' % exp_type,
+                'summary_plural': 'new %s replicate sets have been released.' % exp_type,
             },
             'archived/released' : {
                 'severity': 0,
                 'priority': 0,
-                'summary': 'New %s Replicate Set has been released.' % exp_type
+                'summary': 'New %s replicate set has been released.' % exp_type,
+                'summary_plural': 'new %s replicate set have been released.' % exp_type,
             },
             'released/archived' : {
                 'severity': 1,
                 'priority': 1,
-                'summary': 'Released %s Replicate Set has been archived.' % exp_type
+                'summary': 'Released %s replicate set has been archived.' % exp_type,
+                'summary_plural': 'released %s replicate sets have been archived.' % exp_type,
             },
             'released/*': {
                 'severity': 3,
                 'priority': 2,
-                'summary': 'WARNING! Released %s Replicate Set has changed to %s.' % (exp_type, curr)
+                'summary': 'Released %s replicate set has changed to %s.' % (exp_type, curr),
+                'summary_plural': 'released %s replicate sets have changed to %s.' % (exp_type, curr),
             }
         },
         'experiments_in_set.status': {
             'released/archived' : {
                 'severity': 1,
                 'priority': 1,
-                'summary': 'Released %s Experiment has been archived.' % exp_type
+                'summary': 'Released %s experiment has been archived.' % exp_type,
+                'summary_plural': 'released %s experiments have been archived.' % exp_type,
             },
             'released/*': {
                 'severity': 3,
                 'priority': 2,
-                'summary': 'WARNING! Released %s Experiment has changed to %s.' % (exp_type, curr)
+                'summary': 'Released %s experiment has changed to %s.' % (exp_type, curr),
+                'summary_plural': 'released %s experiments have changed to %s.' % (exp_type, curr),
             },
 
         },
@@ -127,36 +139,42 @@ def calculate_report_from_change(path, prev, curr, add_ons):
             'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Set has been archived.' % (file_type, exp_type)
+                'summary': 'Released %s file from %s replicate set has been archived.' % (file_type, exp_type),
+                'summary_plural': 'released %s files from %s replicate set have been archived.' % (file_type, exp_type),
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
+                'summary': 'Released %s file has changed to %s.' % (file_type, curr),
+                'summary_plural': 'released %s files have changed to %s.' % (file_type, curr),
             }
         },
         'experiment_in_set.processed_files.status': {
             'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Experiment has been archived.' % (file_type, exp_type)
+                'summary': 'Released %s file from %s replicate experiment has been archived.' % (file_type, exp_type),
+                'summary_plural': 'released %s files from %s replicate experiments have been archived.' % (file_type, exp_type),
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
+                'summary': 'Released %s file has changed to %s.' % (file_type, curr),
+                'summary_plural': 'released %s files have changed to %s.' % (file_type, curr),
             }
         },
         'experiments_in_set.files.status': {
             'released/archived': {
                 'severity': 1,
                 'priority': 8,
-                'summary': 'Released %s file from %s Replicate Experiment has been archived.' % (file_type, exp_type)
+                'summary': 'Released %s file from %s replicate experiment has been archived.' % (file_type, exp_type),
+                'summary_plural': 'released %s files from %s replicate experiment have been archived.' % (file_type, exp_type),
             },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
-                'summary': 'WARNING! Released %s file has changed to %s.' % (file_type, curr)
+                'summary': 'Released %s file has changed to %s.' % (file_type, curr),
+                'summary_plural': 'released %s files have changed to %s.' % (file_type, curr),
             }
         }
     }
@@ -362,7 +380,7 @@ def data_release_updates(connection, **kwargs):
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
         return check
-    tag_filter = kwargs.get('tag_filter')
+    tag_filter = kwargs['tag_filter']
     project_filter = kwargs.get('project_filter')
     used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end). Used filter on replicate sets tag is %s and the filter on award.project is %s (None means no filter in both cases).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'], tag_filter, project_filter)
     start_output = start_data_result.get('full_output', {})  # this can be empty
@@ -382,7 +400,7 @@ def data_release_updates(connection, **kwargs):
     }
 
     ### THIS DIFFERENTIATES PUBLIC VS PUBLIC + INTERNAL RELEASE UPDATES
-    if kwargs.get('is_internal') == True:
+    if kwargs['is_internal'] == True:
         # effectively consider released and released_to_project the same
         # same with archived and archived_to_project and replaced
         released_statuses = ['released', 'released to project']
@@ -430,7 +448,7 @@ def data_release_updates(connection, **kwargs):
     for key, group in itertools.groupby(reports, lambda r: r['summary']):
         # first item
         first_report = group.__next__()
-        group_report = {r_key: first_report[r_key] for r_key in ['severity', 'summary']}
+        group_report = {r_key: first_report[r_key] for r_key in ['severity', 'summary', 'summary_plural']}
         first_report_items = {'primary_id': first_report['set_@id'], 'secondary_id': first_report['@id']}
         group_report['update_items'] = [first_report_items]
         # use this checks uuid as the timestamp for the reports
@@ -448,16 +466,39 @@ def data_release_updates(connection, **kwargs):
         group_report['lab'] = '4dn-dcic-lab'
         group_report['award'] = '1U01CA200059-01'
         group_report['status'] = 'released'
+        group_report['is_internal'] = kwargs['is_internal']
         for gr in group: # iterate through the rest of the items
             group_report['update_items'].append({'primary_id': gr['set_@id'], 'secondary_id': gr['@id']})
         group_reports.append(group_report)
-    check.brief_output = group_reports
+    # update summaries for plural cases
+    for group_report in group_reports:
+        num_items = len(group_report['update_items'])
+        if num_items > 1:
+            group_report['summary'] = ' '.join([str(num_items), group_report['summary_plural']])
+        del group_report['summary_plural']
+    # lastly make the static section for this update_tag
+    static_proj = project_filter if project_filter else ''
+    static_scope = 'network members' if kwargs['is_internal'] else 'public'
+    static_tag = 'with %s tag' % tag_filter if tag_filter else ''
+    static_content = ' '.join(['All', static_proj, 'data released to', static_scope, 'between', start_date_str, 'and', end_date_str, static_tag])
+    report_static_section = {
+        'name': 'release-updates.' + kwargs['update_tag'],
+        'body': '<h4 style=\"margin-top:0px;font-weight:400\">' + static_content + '</h4>'
+    }
     if group_reports:
+        check.brief_output = {
+            'release_updates': group_reports,
+            'static_section': report_static_section
+        }
         check.status = 'WARN'
         check.description = 'Ready to publish new data release updates.' + used_res_strings
         check.action_message = 'Will publish %s  grouped updates with the update_tag: %s. See brief_output.' % ( str(len(group_reports)), kwargs['update_tag'])
         check.allow_action = True
     else:
+        check.brief_output = {
+            'release_updates': [],
+            'static_section': None
+        }
         check.status = 'PASS'
         check.description = 'There are no data release updates for the given dates and filters.' + used_res_strings
     return check
@@ -470,20 +511,27 @@ def publish_data_release_updates(connection, **kwargs):
     report_uuid = kwargs['called_by']
     report_result = report_check.get_result_by_uuid(report_uuid)
     action.description = "Publish data release updates to Fourfront."
-    updates_to_post = report_result.get('brief_output')
+    updates_to_post = report_result.get('brief_output', {}).get('release_updates', [])
+    section_to_post = report_result.get('brief_output', {}).get('static_section')
     # post items to FF
     fdn_conn = get_FDN_connection(connection)
     if not (fdn_conn and fdn_conn.check):
         action.status = 'FAIL'
         action.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
         return action
-    posted = []
+    posted_updates = []
     for update in updates_to_post:
         # should be in good shape to post as-is
         resp = ff_utils.post_to_metadata(update, 'data-release-updates', connection=fdn_conn)
-        posted.append({'update': update, 'response': resp})
+        posted_updates.append({'update': update, 'response': resp})
+    if section_to_post:
+        resp = ff_utils.post_to_metadata(section_to_post, 'static-sections', connection=fdn_conn)
+        posted_section = {'static_section': section_to_post, 'response': resp}
+    else:
+        posted_section = None
     action.output = {
-        'updates_posted': posted
+        'updates_posted': posted_updates,
+        'section_posted': posted_section
     }
     action.status = 'DONE'
     return action
