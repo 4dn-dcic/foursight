@@ -250,3 +250,12 @@ def check_runner(event, context):
     if not event:
         return
     run_check_runner(event)
+
+######### MISC UTILITY FUNCTIONS #########
+
+def set_stage(stage):
+    from chalicelib import app_utils
+    from deploy import CONFIG_BASE
+    if stage not in CONFIG_BASE['stages']:
+        print('ERROR! Input stage is not valid. Must be one of: %s' % str(list(CONFIG_BASE['stages'].keys())))
+    app_utils.STAGE = stage

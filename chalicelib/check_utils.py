@@ -9,7 +9,6 @@ from .utils import (
 )
 from .check_groups import *
 import sys
-import traceback
 import importlib
 import datetime
 import copy
@@ -118,9 +117,9 @@ def fetch_check_group(name):
 
 def run_check_or_action(connection, check_str, check_kwargs):
     """
-    Does validation of check_str and check_kwargs that would be passed to either run_check or run_action.
-    Determines by decorator whether the method is a check or action, then passes it to the appropriate
-    function (run_check or run_action)
+    Does validation of proviced check_str, it's module, and kwargs.
+    Determines by decorator whether the method is a check or action, then runs
+    it. All errors are taken care of within the running of the check/action.
 
     Takes a FS_connection object, a check string formatted as: <str check module/name>
     and a dictionary of check arguments.
@@ -129,8 +128,6 @@ def run_check_or_action(connection, check_str, check_kwargs):
     check_kwargs: '{"foo":123}'
     Fetches the check function and runs it (returning whatever it returns)
     Return a string for failed results, CheckResult/ActionResult object otherwise.
-    If the check code itself fails, then an Errored CheckResult is stored for
-    easier debugging.
     """
     # make sure parameters are good
     error_str = ' '.join(['Info: CHECK:', str(check_str), 'KWARGS:', str(check_kwargs)])
@@ -146,47 +143,9 @@ def run_check_or_action(connection, check_str, check_kwargs):
     check_method = check_mod.__dict__.get(check_name_str)
     if not check_method:
         return ' '.join(['ERROR. Check name is not valid.', error_str])
-    if check_method_deco(check_method, CHECK_DECO):
-        return run_check(connection, check_name_str, check_method, check_kwargs)
-    elif check_method_deco(check_method, ACTION_DECO):
-        return run_action(connection, check_name_str, check_method, check_kwargs)
-    else:
-        return ' '.join(['ERROR. Ensure the correct function decorator is present.', error_str])
-    return 'PASS', check_name, check_method
-
-
-def run_check(connection, check_name, check_method, check_kwargs):
-    """
-    Meant to be run from run_check_or_action.
-    Takes a connection, str check_name, check method (fxn), and dict check_kwargs.
-    Runs the check and returns a dict of results. On an error, stores a stack trace of the error in
-    full_output and stores the check with an ERROR.
-    """
-    try:
-        check_result = check_method(connection, **check_kwargs)
-    except Exception as e:
-        err_check = init_check_res(connection, check_name)
-        err_check.status = 'ERROR'
-        err_check.description = 'Check failed to run. See full output.'
-        err_check.full_output = traceback.format_exc().split('\n')
-        check_result = err_check.store_result()
-    return check_result
-
-
-def run_action(connection, act_name, act_method, act_kwargs):
-    """
-    Same as run_check, but meant for action. Arguments should be formatted the same way.
-    On error, stack trace is present in output and status will be set to FAIL.
-    """
-    try:
-        act_result = act_method(connection, **act_kwargs)
-    except Exception as e:
-        err_action = init_action_res(connection, act_name)
-        err_action.status = 'FAIL'
-        err_action.description = 'Action failed to run. See output.'
-        err_action.output = traceback.format_exc().split('\n')
-        act_result = err_action.store_result()
-    return act_result
+    if not check_method_deco(check_method, CHECK_DECO) and not check_method_deco(check_method, ACTION_DECO):
+        return ' '.join(['ERROR. Check or action must use a decorator.', error_str])
+    return check_method(connection, **check_kwargs)
 
 
 def init_check_or_action_res(connection, check):
