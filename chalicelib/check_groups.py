@@ -32,6 +32,7 @@ CHECK_GROUPS = {
         ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'morn_4'],
         ['wrangler_checks/change_in_item_counts', {'primary': True}, [], 'morn_5'],
         ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'morn_6'],
+        ['wrangler_checks/mcool_not_registered_with_higlass', {'primary': True}, [], 'morn_7'],
     ]
 }
 
