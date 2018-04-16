@@ -143,6 +143,8 @@ def run_check_or_action(connection, check_str, check_kwargs):
     check_method = check_mod.__dict__.get(check_name_str)
     if not check_method:
         return ' '.join(['ERROR. Check name is not valid.', error_str])
+    if not check_method_deco(check_method, CHECK_DECO) and not check_method_deco(check_method, ACTION_DECO):
+        return ' '.join(['ERROR. Check or action must use a decorator.', error_str])
     return check_method(connection, **check_kwargs)
 
 
