@@ -380,7 +380,7 @@ def data_release_updates(connection, **kwargs):
         check.status = 'ERROR'
         check.description = 'One or both experiment_set_reporting_data results are not available.'
         return check
-    tag_filter = kwargs.get('tag_filter')
+    tag_filter = kwargs['tag_filter']
     project_filter = kwargs.get('project_filter')
     used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end). Used filter on replicate sets tag is %s and the filter on award.project is %s (None means no filter in both cases).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'], tag_filter, project_filter)
     start_output = start_data_result.get('full_output', {})  # this can be empty
@@ -400,7 +400,7 @@ def data_release_updates(connection, **kwargs):
     }
 
     ### THIS DIFFERENTIATES PUBLIC VS PUBLIC + INTERNAL RELEASE UPDATES
-    if kwargs.get('is_internal') == True:
+    if kwargs['is_internal'] == True:
         # effectively consider released and released_to_project the same
         # same with archived and archived_to_project and replaced
         released_statuses = ['released', 'released to project']
@@ -466,7 +466,7 @@ def data_release_updates(connection, **kwargs):
         group_report['lab'] = '4dn-dcic-lab'
         group_report['award'] = '1U01CA200059-01'
         group_report['status'] = 'released'
-        group_report['is_internal'] = is_internal
+        group_report['is_internal'] = kwargs['is_internal']
         for gr in group: # iterate through the rest of the items
             group_report['update_items'].append({'primary_id': gr['set_@id'], 'secondary_id': gr['@id']})
         group_reports.append(group_report)
@@ -478,7 +478,7 @@ def data_release_updates(connection, **kwargs):
         del group_report['summary_plural']
     # lastly make the static section for this update_tag
     static_proj = project_filter if project_filter else ''
-    static_scope = 'network members' if is_internal else 'public'
+    static_scope = 'network members' if kwargs['is_internal'] else 'public'
     static_tag = 'with %s tag' % tag_filter if tag_filter else ''
     static_content = ' '.join(['All', static_proj, 'data released to', static_scope, 'between', start_date_str, 'and', end_date_str, static_tag])
     report_static_section = {
