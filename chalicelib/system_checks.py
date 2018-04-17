@@ -78,8 +78,12 @@ def elastic_beanstalk_health(connection, **kwargs):
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
-    es = connection.es
-    resp = requests.get(''.join([es,'_cat/indices?v']), timeout=20)
+    status_location = ''.join([connection.es, '_cat/indices?v'])
+    resp = requests.get(status_location, timeout=20)
+    if resp.status_code >= 400:
+        check.status = 'ERROR'
+        check.description = 'Could not establish a connection to %s (status %s).' % (status_location, resp.status_code)
+        return check
     indices = resp.text.split('\n')
     split_indices = [ind.split() for ind in indices]
     headers = split_indices.pop(0)
@@ -139,8 +143,12 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
-    es = connection.es
-    es_resp = requests.get(''.join([es,'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc']), timeout=20)
+    record_location = ''.join([connection.es, 'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
+    es_resp = requests.get(record_location, timeout=20)
+    if es_resp.status_code >= 400:
+        check.status = 'ERROR'
+        check.description = 'Could not establish a connection to %s (status %s).' % (record_location, es_resp.status_code)
+        return check
     # 3 day timedelta
     delta_days = datetime.timedelta(days=3)
     all_records = es_resp.json().get('hits', {}).get('hits', [])
