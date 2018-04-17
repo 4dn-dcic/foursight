@@ -22,19 +22,14 @@ def elastic_beanstalk_health(connection, **kwargs):
     check = init_check_res(connection, 'elastic_beanstalk_health')
     full_output = {}
     eb_client = boto3.client('elasticbeanstalk')
-    try:
-        resp = eb_client.describe_environment_health(
-            EnvironmentName=connection.ff_env,
-            AttributeNames=['All']
-        )
-    except:
-        check.status = 'ERROR'
-        check.description = 'Could get EB environment information from AWS.'
-        return check
+    resp = eb_client.describe_environment_health(
+        EnvironmentName=connection.ff_env,
+        AttributeNames=['All']
+    )
     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status != 200:
+    if resp_status >= 400:
         check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS.'
+        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
         return check
     full_output['status'] = resp.get('Status')
     full_output['environment_name'] = resp.get('EnvironmentName')
@@ -42,19 +37,15 @@ def elastic_beanstalk_health(connection, **kwargs):
     full_output['health_status'] = resp.get('HealthStatus')
     full_output['causes'] = resp.get('Causes')
     full_output['instance_health'] = []
-    try:
-        resp = eb_client.describe_instances_health(
-            EnvironmentName=connection.ff_env,
-            AttributeNames=['All']
-        )
-    except:
-        check.status = 'ERROR'
-        check.description = 'Could get EB instance health information from AWS.'
-        return check
+    # now look at the individual instances
+    resp = eb_client.describe_instances_health(
+        EnvironmentName=connection.ff_env,
+        AttributeNames=['All']
+    )
     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status != 200:
+    if resp_status >= 400:
         check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS.'
+        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
         return check
     instances_health = resp.get('InstanceHealthList', [])
     for instance in instances_health:
@@ -88,14 +79,7 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
     es = connection.es
-    try:
-        resp = requests.get(''.join([es,'_cat/indices?v']), timeout=20)
-    except:
-        resp = None
-    if resp is None or getattr(resp, 'status_code', None) != 200:
-        check.status = 'ERROR'
-        check.description = "Error connecting to ES at endpoint: _cat/indices"
-        return check
+    resp = requests.get(''.join([es,'_cat/indices?v']), timeout=20)
     indices = resp.text.split('\n')
     split_indices = [ind.split() for ind in indices]
     headers = split_indices.pop(0)
@@ -156,14 +140,7 @@ def indexing_progress(connection, **kwargs):
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
     es = connection.es
-    try:
-        es_resp = requests.get(''.join([es,'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc']), timeout=20)
-    except:
-        es_resp = None
-    if es_resp is None or getattr(es_resp, 'status_code', None) != 200:
-        check.status = 'ERROR'
-        check.description = "Error connecting to ES at endpoint: meta/meta/_search?q=_exists_:indexing_status"
-        return check
+    es_resp = requests.get(''.join([es,'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc']), timeout=20)
     # 3 day timedelta
     delta_days = datetime.timedelta(days=3)
     all_records = es_resp.json().get('hits', {}).get('hits', [])
