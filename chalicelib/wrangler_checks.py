@@ -70,7 +70,7 @@ def patch_file_higlass_uid(connection, **kwargs):
     for hit in higlass_check_result.get('full_output', []):
         payload = {"filepath": s3_obj.outfile_bucket + "/" + hit['upload_key'],
                    "filetype": "cooler", "datatype": "matrix"}
-        res = requests.post(HIGLASS_SERVER + '/api/v1/link_tile/',
+        res = requests.post('https://higlass.4dnucleome.org/api/v1/link_tile/,
                             data=json.dumps(payload), auth=authentication,
                             headers=headers)
         if res.status_code == 201:
