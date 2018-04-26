@@ -52,19 +52,19 @@
                                         {{toggle_output(check['latest_action'], env['environment'] + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
                                     {% endif %}
                                     {% if check.get('action') and is_admin %}
-                                        <div id={{"action-message-" + check['kwargs']['uuid']}}></div>
                                         <form class="commonstyle own-line" action={{"/api/view_run/" + env['environment'] + '/' + check['action'] + '/action'}} method="GET">
                                             <input type="hidden" name="called_by" value={{check['kwargs']['uuid']}} />
                                             {% if not check.get('allow_action') %}
-                                                <button id={{"action-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" disabled>
+                                                <button id={{"action-" + check['name'] + "-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" disabled>
                                                     {{' '.join(check['action'].split('_')).title()}}
                                                 </button>
                                             {% else %}
-                                                <button id={{"action-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" onclick="{{"return confirm_action('" + check['kwargs']['uuid'] + "', '" + check.get('action_message', 'Confirm run?') + "');" | safe}}" type="button">
+                                                <button id={{"action-" + check['name'] + "-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" onclick="{{"return confirm_action('" + check['name'] + "-" + check['kwargs']['uuid'] + "', '" + check.get('action_message', 'Confirm run?') + "');" | safe}}" type="button">
                                                     {{' '.join(check['action'].split('_')).title()}}
                                                 </button>
                                             {% endif %}
                                         </form>
+                                        <div id={{"action-message-" +check['name'] + "-" + check['kwargs']['uuid']}}></div>
                                     {% endif %}
                                 </div>
                                 <div class="col-sm-3 pull-right" style="text-align: right;">
