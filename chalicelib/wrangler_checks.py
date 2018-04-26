@@ -103,13 +103,10 @@ def item_counts_by_type(connection, **kwargs):
     item_counts = {}
     warn_item_counts = {}
     req_location = ''.join([connection.ff,'counts?format=json'])
-    try:
-        counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
-    except:
-        counts_res = None
-    if counts_res is None or counts_res.status_code != 200:
+    counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
+    if counts_res.status_code >= 400:
         check.status = 'ERROR'
-        check.description = 'Error connecting to the counts endpoint at: %s' % req_location
+        check.description = 'Error (bad status code %s) connecting to the counts endpoint at: %s.' % (counts_res.status_code, req_location)
         return check
     counts_json = json.loads(counts_res.text)
     for index in counts_json['db_es_compare']:
@@ -181,12 +178,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join([connection.ff, 'search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
-    try:
-        search_resp = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
-    except:
-        check.status = 'ERROR'
-        check.description = 'Error connecting to FF at: %s' % search_query
-        return check
+    search_resp = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
     item_output = []
     for res in search_resp.json().get('@graph', []):
         item_output.append({
