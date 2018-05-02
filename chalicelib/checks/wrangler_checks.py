@@ -1,11 +1,11 @@
 from __future__ import print_function, unicode_literals
-from .utils import (
+from ..utils import (
     check_function,
     init_check_res,
     action_function,
     init_action_res
 )
-from .wrangler_utils import get_s3_utils_obj, get_FDN_connection, safe_search_with_callback
+from ..wrangler_utils import get_s3_utils_obj, get_FDN_connection, safe_search_with_callback
 from dcicutils import ff_utils, s3_utils
 import requests
 import sys

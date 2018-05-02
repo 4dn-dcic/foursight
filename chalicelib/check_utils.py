@@ -5,20 +5,29 @@ from .utils import (
     init_check_res,
     init_action_res,
     CHECK_DECO,
-    ACTION_DECO
+    ACTION_DECO,
+    BadCheckSetup,
+    basestring
 )
-from .check_groups import *
+# import modules that contain the checks
+from .checks import *
+from .checks import __all__ as CHECK_MODULES
+from os.path import dirname
+import glob
 import sys
 import importlib
 import datetime
 import copy
+import json
 
-# import modules that contain the checks
-for check_mod in CHECK_MODULES:
-    try:
-        globals()[check_mod] = importlib.import_module('.'.join(['chalicelib', check_mod]))
-    except ImportError:
-        print(''.join(['ERROR importing checks from ', check_mod]), file=sys.stderr)
+# read in the check_setup.json and parse it
+setup_paths = glob.glob(dirname(__file__)+"/check_setup.json")
+if not len(setup_paths) == 1:
+    raise Exception('Exactly one check_setup.json must be present in chalicelib!')
+with open(setup_paths[0], 'r') as jfile:
+    CHECK_SETUP = json.load(jfile)
+# a bit confusing, but the next two functions must be defined and run
+# to validate CHECK_SETUP and process it
 
 
 def get_check_strings(specific_check=None):
@@ -44,6 +53,61 @@ def get_check_strings(specific_check=None):
         return None
     else:
         return list(set(all_checks))
+
+
+def validate_check_setup(check_setup):
+    """
+    Go through the check_setup json that was read in and make sure everything
+    is properly formatted. Since scheduled kwargs and dependencies are
+    optional, add those in at this point.
+
+    Also takes care of ensuring that multiple checks were not written with the
+    same name and adds check module information to the check setup. Accordingly,
+    verifies that each check in the check_setup is a real check.
+    """
+    found_checks = {}
+    all_check_strings = get_check_strings()
+    # validate all checks
+    for check_string in all_check_strings:
+        check_mod, check_name = check_string.split('/')
+        if check_name in found_checks:
+            raise BadCheckSetup('More than one check with name %s was found.' % check_name)
+        found_checks[check_name] = check_mod
+    for check_name in check_setup:
+        if check_name not in found_checks:
+            raise BadCheckSetup('Check with name %s was in check_setup.json but does not have a proper check function defined.' % check_name)
+        if not isinstance(check_setup[check_name], dict):
+            raise BadCheckSetup('Entry for "%s" in check_setup.json must be a dictionary.' % check_name)
+        # these fields are required
+        if not {'title', 'group', 'schedule'} <= set(check_setup[check_name].keys()):
+            raise BadCheckSetup('Entry for "%s" in check_setup.json must have the required keys: "title", "group", and "schedule".' % check_name)
+        # these fields must be strings
+        for field in ['title', 'group']:
+            if not isinstance(check_setup[check_name][field], basestring):
+                raise BadCheckSetup('Entry for "%s" in check_setup.json must have a string value for field "%s".' % (check_name, field))
+        if not isinstance(check_setup[check_name]['schedule'], dict):
+            raise BadCheckSetup('Entry for "%s" in check_setup.json must have a dictionary value for field "schedule".' % check_name)
+        # now validate and add defaults to the schedule
+        for sched_name, schedule in check_setup[check_name]['schedule'].items():
+            if not isinstance(schedule, dict):
+                raise BadCheckSetup('Schedule "%s" for "%s" in check_setup.json must have a dictionary value.' % (sched_name, check_name))
+            for env_name, env_detail in schedule.items():
+                if not isinstance(env_detail, dict):
+                    raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a dictionary value.' % (env_name, sched_name, check_name))
+                if 'id' not in env_detail:
+                    raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a value for field "id"' % (env_name, sched_name, check_name))
+                if not 'kwargs' in env_detail:
+                    # default value
+                    env_detail['kwargs'] = {'primary': True}
+                if not 'dependencies' in env_detail:
+                    env_detail['dependencies'] = []
+        # lastly, add the check module information to each check in the setup
+        check_setup[check_name]['module'] = found_checks[check_name]
+    return check_setup
+
+
+# Validate and finalize CHECK_SETUP
+CHECK_SETUP = validate_check_setup(CHECK_SETUP)
 
 
 def get_action_strings(specific_action=None):

@@ -164,3 +164,14 @@ class BadCheckOrAction(Exception):
         if message is None:
             message = "Check or action function seems to be malformed."
         super().__init__(message)
+
+class BadCheckSetup(Exception):
+    """
+    Generic exception for an issue with a check setup.
+    __init__ takes some string error message
+    """
+    def __init__(self, message=None):
+        # default error message if none provided
+        if message is None:
+            message = "Malformed check setup found."
+        super().__init__(message)
