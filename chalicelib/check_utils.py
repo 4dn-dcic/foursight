@@ -23,7 +23,7 @@ import json
 # read in the check_setup.json and parse it
 setup_paths = glob.glob(dirname(__file__)+"/check_setup.json")
 if not len(setup_paths) == 1:
-    raise Exception('Exactly one check_setup.json must be present in chalicelib!')
+    raise BadCheckSetup('Exactly one check_setup.json must be present in chalicelib!')
 with open(setup_paths[0], 'r') as jfile:
     CHECK_SETUP = json.load(jfile)
 # a bit confusing, but the next two functions must be defined and run
@@ -160,23 +160,27 @@ def get_check_group_results(connection, name, use_latest=False):
     return latest_results
 
 
-def fetch_check_group(name):
+def get_check_schedule(schedule_name):
     """
-    Will be none if the group is not defined.
-    Special case for 'all', which gets all checks and uses default kwargs
+    Go through CHECK_SETUP and return all the required info for to run a given
+    schedule for any environment.
+
+    Returns a dictionary keyed by schedule, with inner dicts keyed by environ.
+    The check running info is the standard format of:
+    [<check_mod/check_str>, <kwargs>, <dependencies>, <id>]
     """
-    if name == 'all':
-        all_checks = get_check_strings()
-        return [[check_str, {}, [], ''] for check_str in all_checks]
-    group = CHECK_GROUPS.get(name, None)
-    # maybe it's a test groups
-    if not group:
-        group = TEST_CHECK_GROUPS.get(name, None)
-    # ensure it is non-empty list
-    if not isinstance(group, list) or len(group) == 0:
-        return None
-    # copy it and return
-    return copy.deepcopy(group)
+    check_schedule = {}
+    for check_name, detail in CHECK_SETUP.items():
+        if not schedule_name in detail['schedule']:
+            continue
+        for env_name, env_detail in detail['schedule'][schedule_name].items():
+            check_str = '/'.join([detail['check_mod'], check_name])
+            run_info = [check_str, env_detail['kwargs'], env_detail['dependencies'], env_detail['id']]
+            if env_name in check_schedule:
+                check_schedule[env_name].append(run_info)
+            else:
+                check_schedule[env_name] == [run_info]
+    return copy.deepcopy(check_schedule)
 
 
 def run_check_or_action(connection, check_str, check_kwargs):

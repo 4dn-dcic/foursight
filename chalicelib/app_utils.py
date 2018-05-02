@@ -13,10 +13,10 @@ from base64 import b64decode
 from .fs_connection import FSConnection
 from .check_utils import (
     get_check_group_results,
-    run_check_or_action,
     get_check_strings,
     get_action_strings,
-    fetch_check_group,
+    get_check_schedule,
+    run_check_or_action,
     init_check_res,
     init_action_res,
     init_check_or_action_res
@@ -220,17 +220,14 @@ def view_run_check(environ, check, params):
     This also be used to queue a check group. This is checked before individual check names
     """
     resp_headers = {'Location': '/api/view/' + environ}
-    if check in CHECK_GROUPS:
-        queue_check_group(environ, check)
-    else:
-        connection, _ = init_connection(environ)
-        check_str = get_check_strings(check)
-        # convert string query params to literals
-        params = query_params_to_literals(params)
-        if connection and check_str:
-            res = run_check_or_action(connection, check_str, params)
-            if res and res.get('uuid'):
-                resp_headers = {'Location': '/'.join(['/api/view', environ, check, res['uuid']])}
+    connection, _ = init_connection(environ)
+    check_str = get_check_strings(check)
+    # convert string query params to literals
+    params = query_params_to_literals(params)
+    if connection and check_str:
+        res = run_check_or_action(connection, check_str, params)
+        if res and res.get('uuid'):
+            resp_headers = {'Location': '/'.join(['/api/view', environ, check, res['uuid']])}
     # redirect to view page with a 302 so it isn't cached
     return Response(
         status_code=302,
@@ -289,16 +286,12 @@ def view_foursight(environ, is_admin=False, domain=""):
     env_order = ['data', 'staging', 'webdev', 'hotseat']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
     template = jin_env.get_template('view.html')
-    groups = list(CHECK_GROUPS.keys()) # only the keys needed
-    # get these into groups of 4
-    groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
     # get queue information
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
     html_resp.body = template.render(
         envs=total_envs,
-        groups_4=groups_4,
         stage=STAGE,
         is_admin=is_admin,
         domain=domain,
@@ -328,16 +321,11 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
                 'checks': processed_results
             })
     template = jin_env.get_template('view.html')
-    groups = list(CHECK_GROUPS.keys()) # only the keys needed
-    # get these into groups of 4
-    groups_4 = [groups[i:i + 4] for i in range(0, len(groups), 4)]
-    # get queue information
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
     html_resp.body = template.render(
         envs=total_envs,
-        groups_4=groups_4,
         stage=STAGE,
         is_admin=is_admin,
         domain=domain,
@@ -620,24 +608,32 @@ def get_environment(environ):
 
 ##### CHECK RUNNER FUNCTIONS #####
 
-def queue_check_group(environ, check_group):
+def queue_scheduled_checks(sched_environ, schedule_name):
     """
-    Given a str environment and check group name, add the check info to the
+    Given a str environment and schedule name, add the check info to the
     existing queue (or creates a new one if there is none). Then initiates 4
-    check runners that are linked to the queue that are self-propgating.
+    check runners that are linked to the queue that are self-propogating.
 
-    Run with check_group = None to skip adding the check group to the queue
+    If sched_environ == 'all', then loop through all in list_environments()
+
+    Run with schedule_name = None to skip adding the check group to the queue
     and just initiate the check runners.
     """
-    if check_group is not None:
-        check_vals = fetch_check_group(check_group)
-        if not check_vals:
-            print('-RUN-> %s is not a valid check group. Cannot queue it.' % (check_group))
+    if schedule_name is not None:
+        if sched_environ != 'all' and sched_environ not in list_environments():
+            print('-RUN-> %s is not a valid environment. Cannot queue.' % sched_environ)
             return
-    else:
-        check_vals = []
-    queue = get_sqs_queue()
-    send_sqs_messages(queue, environ, check_vals)
+        sched_environs = list_environments() if sched_environ == 'all' else [sched_environ]
+        check_schedule = get_check_schedule(schedule_name)
+        if not check_schedule:
+            print('-RUN-> %s is not a valid schedule. Cannot queue.' % schedule_name)
+            return
+        for environ in sched_environs:
+            # add the run info from 'all' as well as this specific environ
+            check_vals = check_schedule.get('all', [])
+            check_vals.extend(check_schedule.get(environ, []))
+            queue = get_sqs_queue()
+            send_sqs_messages(queue, environ, check_vals)
     runner_input = {'sqs_url': queue.url}
     for n in range(4): # number of parallel runners to kick off
         invoke_check_runner(runner_input)

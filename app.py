@@ -15,22 +15,19 @@ app.debug = True
 # run every 10 mins
 @app.schedule(Rate(10, unit=Rate.MINUTES))
 def ten_min_checks(event):
-    for environ in list_environments():
-        queue_check_group(environ, 'ten_min_checks')
+    queue_scheduled_checks('all', 'ten_min_checks')
 
 
 # run every 30 mins
 @app.schedule(Rate(30, unit=Rate.MINUTES))
 def thirty_min_checks(event):
-    for environ in list_environments():
-        queue_check_group(environ, 'thirty_min_checks')
+    queue_scheduled_checks('all','thirty_min_checks')
 
 
 # run every day at 11 am UTC
 @app.schedule(Cron(0, 11, '*', '*', '?', '*'))
 def morning_checks(event):
-    for environ in list_environments():
-        queue_check_group(environ, 'morning_checks')
+    queue_scheduled_checks('all', 'morning_checks')
 
 ######### END SCHEDULED FXNS #########
 
