@@ -71,7 +71,7 @@ def validate_check_setup(check_setup):
     for check_string in all_check_strings:
         check_mod, check_name = check_string.split('/')
         if check_name in found_checks:
-            raise BadCheckSetup('More than one check with name %s was found.' % check_name)
+            raise BadCheckSetup('More than one check with name "%s" was found. See module "%s"' % (check_name, check_mod))
         found_checks[check_name] = check_mod
     for check_name in check_setup:
         if check_name not in found_checks:

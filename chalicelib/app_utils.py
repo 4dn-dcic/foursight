@@ -454,10 +454,11 @@ def get_foursight_history(connection, check, start, limit):
     return result_obj.get_result_history(start, limit)
 
 
-def load_foursight_result(environ, check, uuid):
+def run_get_check(environ, check, uuid=None):
     """
     Loads a specific check or action result given an environment, check or
-    action name, and uuid (all strings)
+    action name, and uuid (all strings).
+    If uuid is not provided, get the primary_result.
     """
     connection, response = init_response(environ)
     if not connection:
@@ -470,80 +471,15 @@ def load_foursight_result(environ, check, uuid):
         }
         response.status_code = 400
     else:
-        data = res_obj.get_result_by_uuid(uuid)
+        if uuid:
+            data = res_obj.get_result_by_uuid(uuid)
+        else:
+            data = res_obj.get_primary_result()
         response.body = {
             'status': 'success',
             'data': data
         }
         response.status_code = 200
-    return process_response(response)
-
-
-def run_foursight_checks(environ, check_group):
-    """
-    Run the given checks on the given environment, creating a record in the
-    corresponding S3 bucket under the check's method name.
-    The latest run of checks replaces the 'latest' label for each check
-    directory in S3 and also creates a timestamped record.
-    """
-    connection, response = init_response(environ)
-    if not connection:
-        return response
-    queue_check_group(environ, check_group)
-    response.body = {
-        'status': 'success',
-        'environment': environ,
-        'check_group': check_group
-    }
-    response.status_code = 200
-    return process_response(response)
-
-
-def get_foursight_checks(environ, check_group):
-    """
-    Return JSON of each check tagged with the "latest" tag for checks
-    within given check_group for the given environment.
-    Must be a valid check_group name.
-    """
-    connection, response = init_response(environ)
-    if not connection:
-        return response
-    results = get_check_group_results(connection, check_group)
-    response.body = {
-        'status': 'success',
-        'environment': environ,
-        'check_group': check_group,
-        'checks': results
-    }
-    response.status_code = 200
-    return process_response(response)
-
-
-def get_check(environ, check):
-    """
-    Get a check result that isn't necessarily defined within foursight.
-    """
-    connection, response = init_response(environ)
-    if not connection:
-        return response
-    tempCheck = init_check_res(connection, check)
-    latest_res = tempCheck.get_primary_result()
-    if latest_res:
-        response.body = {
-            'status': 'success',
-            'checks': latest_res,
-            'checks_found': check,
-            'environment': environ
-        }
-        response.status_code = 200
-    else:
-        response.body = {
-            'status': 'error',
-            'checks': {},
-            'description': ''.join(['Could not get results for: ', check,'. Maybe no such check result exists?']),
-            'environment': environ
-        }
-        response.status_code = 400
     return process_response(response)
 
 

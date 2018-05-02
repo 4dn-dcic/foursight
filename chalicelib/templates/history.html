@@ -67,7 +67,7 @@
                             {% endif %}
                             {% if 'uuid' in entry[1] %}
                                 <td>
-                                    <a target="_blank" href={{"/api/load/" + env + "/" + check + "/" + entry[1]['uuid']}}>JSON</a>
+                                    <a target="_blank" href={{"/api/checks/" + env + "/" + check + "/" + entry[1]['uuid']}}>JSON</a>
                                 </td>
                             {% else %}
                                 <td>Error</td>

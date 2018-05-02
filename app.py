@@ -155,27 +155,13 @@ def history_route(environ, check):
     return view_foursight_history(environ, check, start, limit, check_authorization(req_dict), domain)
 
 
-@app.route('/load/{environ}/{check}/{uuid}', methods=['GET'])
-def load_route(environ, check, uuid):
+@app.route('/checks/{environ}/{check}/{uuid}', methods=['GET'])
+def get_check_with_uuid_route(environ, check, uuid):
     """
     Protected route
     """
     if check_authorization(app.current_request.to_dict()):
-        return load_foursight_result(environ, check, uuid)
-    else:
-        return forbidden_response()
-
-
-@app.route('/run/{environ}/{check_group}', methods=['PUT', 'GET'])
-def run_route(environ, check_group):
-    """
-    Protected route
-    """
-    if check_authorization(app.current_request.to_dict()):
-        if app.current_request.method == 'PUT':
-            return run_foursight_checks(environ, check_group)
-        elif app.current_request.method == 'GET':
-            return get_foursight_checks(environ, check_group)
+        return run_get_check(environ, check, uuid)
     else:
         return forbidden_response()
 
@@ -186,7 +172,7 @@ def get_check_route(environ, check):
     Protected route
     """
     if check_authorization(app.current_request.to_dict()):
-        return get_check(environ, check)
+        return run_get_check(environ, check, None)
     else:
         return forbidden_response()
 
