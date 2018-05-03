@@ -130,7 +130,9 @@ def get_action_strings(specific_action=None):
     else:
         return list(set(all_actions))
 
-
+##################################
+##### NEED TO ATTEND TO THIS #####
+##################################
 def get_check_group_results(connection, name, use_latest=False):
     """
     Initialize check results for each check in a group and get latest results,
