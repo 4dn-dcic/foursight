@@ -19,6 +19,7 @@ CHECK_GROUPS = {
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'm10_1'],
         ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_2'],
         ['system_checks/indexing_progress', {'primary': True}, ['m10_2'], 'm10_3'],
+        ['system_checks/secondary_queue_deduplication', {'primary': True}, [], 'm30_4']
     ],
     'thirty_min_checks': [
         ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
