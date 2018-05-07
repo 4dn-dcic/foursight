@@ -144,7 +144,7 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
-    record_location = ''.join([connection.es, 'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
+    record_location = ''.join([connection.es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
     es_resp = requests.get(record_location, timeout=20)
     if es_resp.status_code >= 400:
         check.status = 'ERROR'
