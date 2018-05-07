@@ -240,7 +240,7 @@ def fourfront_performance_metrics(connection, **kwargs):
     return check
 
 
-@check_function(max_dedup_count=40000)
+@check_function(max_dedup_count=20000)
 def secondary_queue_deduplication(connection, **kwargs):
     from .app_utils import STAGE
     t0 = time.time()
