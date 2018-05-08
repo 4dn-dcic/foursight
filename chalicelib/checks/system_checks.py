@@ -240,10 +240,9 @@ def fourfront_performance_metrics(connection, **kwargs):
     return check
 
 
-@check_function(max_dedup_count=20000)
+@check_function()
 def secondary_queue_deduplication(connection, **kwargs):
     from .app_utils import STAGE
-    t0 = time.time()
     check = init_check_res(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
     if STAGE != 'prod':
@@ -264,19 +263,21 @@ def secondary_queue_deduplication(connection, **kwargs):
         ]
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
-    visible = int(visible)
-    max_dedup_count = kwargs['max_dedup_count']
-    max_dedup_count = visible if visible < max_dedup_count else max_dedup_count
-    curr_dedup_count = 0
+    starting_count = int(visible)
+    print('STARTING COUNT: %s' % starting_count)
+    time_limit = 270 # 4.5 minutes
+    t0 = time.time()
     sent = 0
     deleted = 0
     deduplicated = 0
+    replaced = 0
     done = False
+    elapsed = round(time.time() - t0, 2)
     failed = []
     seen_uuids = {}
     # 2 conditions for the check finishing: we hit the max dedup count OR
-    # we run into an already-deduplicated message
-    while curr_dedup_count < max_dedup_count:
+    # we hit 4 and a half minutes
+    while (replaced + deduplicated) < starting_count and elapsed < time_limit:
         to_send = []
         to_delete = []
         uuid_coordination = {}  # aws returns its own id, must coordinate
@@ -302,7 +303,9 @@ def secondary_queue_deduplication(connection, **kwargs):
             if msg_uuid in seen_uuids and to_process['Id'] != seen_uuids[msg_uuid]:
                 deduplicated += 1
             else:
-                curr_dedup_count += 1
+                # don't increment replaced count if we've seen the item before
+                if not msg_uuid in seen_uuids:
+                    replaced += 1
                 # create a record of what Id was associated with this uuid and
                 # then put item back on the queue by sending + deleting old
                 time.sleep(0.001)  # needed to for new_id
@@ -335,13 +338,19 @@ def secondary_queue_deduplication(connection, **kwargs):
             )
             failed.extend(res.get('Failed', []))
             deleted += len(to_delete)
+        elapsed = round(time.time() - t0, 2)
 
+    check.full_output = {
+        'uuids_covered': len(seen_uuids),
+        'deduplicated': deduplicated,
+        'replaced': replaced,
+        'time': elapsed
+    }
     if failed:
         check.status = 'WARN'
-        check.full_output = failed
+        check.full_output['failed'] = failed
     else:
         check.status = 'PASS'
-    elapsed = time.time() - t0
-    check.description = 'Items on %s secondary queue were deduplicated. Covered %s uuids and removed %s duplicates. Took %s seconds.' % (connection.ff_env, len(seen_uuids), deduplicated, elapsed)
-    check.full_output = {'uuids_covered': len(seen_uuids), 'deduplicated': deduplicated}
+    check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, elapsed)
+
     return check

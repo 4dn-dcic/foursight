@@ -27,7 +27,6 @@ CHECK_GROUPS = {
     ],
     'morning_checks': [
         ['report_checks/experiment_set_reporting_data', {'primary': True}, [], 'morn_0'],
-        ['report_checks/data_release_updates', {'primary': True}, ['morn_0'], 'morn_1'],
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'morn_2'],
         ['system_checks/fourfront_performance_metrics', {'primary': True}, ['morn_2'], 'morn_3'],
         ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'morn_4'],
