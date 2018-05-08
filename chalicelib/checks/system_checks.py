@@ -245,7 +245,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     from .app_utils import STAGE
     t0 = time.time()
     check = init_check_res(connection, 'secondary_queue_deduplication')
-    # handle this differently with FF-1084
+    # maybe handle this in check_setup.json
     if STAGE != 'prod':
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
@@ -343,5 +343,5 @@ def secondary_queue_deduplication(connection, **kwargs):
         check.status = 'PASS'
     elapsed = time.time() - t0
     check.description = 'Items on %s secondary queue were deduplicated. Covered %s uuids and removed %s duplicates. Took %s seconds.' % (connection.ff_env, len(seen_uuids), deduplicated, elapsed)
-
+    check.full_output = {'uuids_covered': len(seen_uuids), 'deduplicated': deduplicated}
     return check

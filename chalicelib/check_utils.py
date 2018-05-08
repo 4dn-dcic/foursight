@@ -176,12 +176,13 @@ def get_check_schedule(schedule_name):
         if not schedule_name in detail['schedule']:
             continue
         for env_name, env_detail in detail['schedule'][schedule_name].items():
-            check_str = '/'.join([detail['check_mod'], check_name])
+            check_str = '/'.join([detail['module'], check_name])
             run_info = [check_str, env_detail['kwargs'], env_detail['dependencies'], env_detail['id']]
             if env_name in check_schedule:
                 check_schedule[env_name].append(run_info)
             else:
-                check_schedule[env_name] == [run_info]
+                check_schedule[env_name] = [run_info]
+    # although not strictly necessary right now, this is a precaution
     return copy.deepcopy(check_schedule)
 
 

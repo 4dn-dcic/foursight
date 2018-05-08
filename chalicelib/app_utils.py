@@ -7,6 +7,7 @@ import jwt
 import boto3
 import datetime
 import ast
+import copy
 from itertools import chain
 from dateutil import tz
 from base64 import b64decode
@@ -619,6 +620,7 @@ def queue_scheduled_checks(sched_environ, schedule_name):
     Run with schedule_name = None to skip adding the check group to the queue
     and just initiate the check runners.
     """
+    queue = get_sqs_queue()
     if schedule_name is not None:
         if sched_environ != 'all' and sched_environ not in list_environments():
             print('-RUN-> %s is not a valid environment. Cannot queue.' % sched_environ)
@@ -630,9 +632,8 @@ def queue_scheduled_checks(sched_environ, schedule_name):
             return
         for environ in sched_environs:
             # add the run info from 'all' as well as this specific environ
-            check_vals = check_schedule.get('all', [])
+            check_vals = copy.copy(check_schedule.get('all', []))
             check_vals.extend(check_schedule.get(environ, []))
-            queue = get_sqs_queue()
             send_sqs_messages(queue, environ, check_vals)
     runner_input = {'sqs_url': queue.url}
     for n in range(4): # number of parallel runners to kick off

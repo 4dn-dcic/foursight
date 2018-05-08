@@ -87,15 +87,7 @@
     "data_release_updates": {
         "title": "Data release updates",
         "group": "Fourfront checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": ["morning_exp_set_reporting"],
-                    "id": "morning_data_release_updates"
-                }
-            }
-        }
+        "schedule": {}
     },
     "fourfront_performance_metrics": {
         "title": "Fourfront performance metrics",
@@ -168,6 +160,19 @@
                     "kwargs": {"primary": true},
                     "dependencies": [],
                     "id": "morning_mcool_files_higlass"
+                }
+            }
+        }
+    },
+    "secondary_queue_deduplication": {
+        "title": "Secondary queue deduplication",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_secondary_dedup"
                 }
             }
         }
