@@ -12,6 +12,7 @@ import sys
 import json
 import datetime
 import boto3
+import time
 
 
 @check_function()
@@ -143,7 +144,7 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
-    record_location = ''.join([connection.es, 'meta/meta/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
+    record_location = ''.join([connection.es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
     es_resp = requests.get(record_location, timeout=20)
     if es_resp.status_code >= 400:
         check.status = 'ERROR'
@@ -236,4 +237,111 @@ def fourfront_performance_metrics(connection, **kwargs):
     check.status = 'PASS'
     full_output['performance'] = performance
     check.full_output = full_output
+    return check
+
+
+@check_function(max_dedup_count=20000)
+def secondary_queue_deduplication(connection, **kwargs):
+    from .app_utils import STAGE
+    t0 = time.time()
+    check = init_check_res(connection, 'secondary_queue_deduplication')
+    # handle this differently with FF-1084
+    if STAGE != 'prod':
+        check.full_output = 'Will not run on dev foursight.'
+        check.status = 'PASS'
+        return check
+
+    client = boto3.client('sqs')
+    sqs_res = client.get_queue_url(
+        QueueName=connection.ff_env + '-secondary-indexer-queue'
+    )
+    queue_url = sqs_res['QueueUrl']
+    # get approx number of messages
+    attrs = client.get_queue_attributes(
+        QueueUrl=queue_url,
+        AttributeNames=[
+            'ApproximateNumberOfMessages'
+        ]
+    )
+    visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
+    visible = int(visible)
+    max_dedup_count = kwargs['max_dedup_count']
+    max_dedup_count = visible if visible < max_dedup_count else max_dedup_count
+    curr_dedup_count = 0
+    sent = 0
+    deleted = 0
+    deduplicated = 0
+    done = False
+    failed = []
+    seen_uuids = {}
+    # 2 conditions for the check finishing: we hit the max dedup count OR
+    # we run into an already-deduplicated message
+    while curr_dedup_count < max_dedup_count:
+        to_send = []
+        to_delete = []
+        uuid_coordination = {}  # aws returns its own id, must coordinate
+        recieved = client.receive_message(
+            QueueUrl=queue_url,
+            MaxNumberOfMessages=10  # batch size for all sqs ops
+        )
+        batch = recieved.get("Messages", [])
+        for i in range(len(batch)):
+            string_mode = False  # old form of uuids
+            try:
+                msg_body = json.loads(batch[i]['Body'])
+                msg_uuid = msg_body['uuid']
+            except json.JSONDecodeError:
+                msg_body = msg_uuid = batch[i]['Body']
+                string_mode = True
+            to_process = {
+                'Id': batch[i]['MessageId'],
+                'ReceiptHandle': batch[i]['ReceiptHandle']
+            }
+            # every item gets deleted; original uuids get re-sent
+            to_delete.append(to_process)
+            if msg_uuid in seen_uuids and to_process['Id'] != seen_uuids[msg_uuid]:
+                deduplicated += 1
+            else:
+                curr_dedup_count += 1
+                # create a record of what Id was associated with this uuid and
+                # then put item back on the queue by sending + deleting old
+                time.sleep(0.001)  # needed to for new_id
+                new_id = str(int(time.time() * 1000000))
+                uuid_coordination[new_id] = msg_uuid
+                seen_uuids[msg_uuid] = new_id  # will be replaced with aws id
+                # add foursight uuid stamp
+                if not string_mode:
+                    msg_body['detail'] = 'Deduplicated by foursight: %s' % kwargs['uuid']
+                send_info = {
+                    'Id': new_id,
+                    'MessageBody': msg_body if string_mode else json.dumps(msg_body)
+                }
+                to_send.append(send_info)
+        if to_send:
+            res = client.send_message_batch(
+                QueueUrl=queue_url,
+                Entries=to_send
+            )
+            for success in res.get('Successful', []):
+                our_id, aws_id = success['Id'], success['MessageId']
+                msg_uuid = uuid_coordination[our_id]
+                seen_uuids[msg_uuid] = aws_id
+            failed.extend(res.get('Failed', []))
+            sent += len(to_send)
+        if to_delete:
+            res = client.delete_message_batch(
+                QueueUrl=queue_url,
+                Entries=to_delete
+            )
+            failed.extend(res.get('Failed', []))
+            deleted += len(to_delete)
+
+    if failed:
+        check.status = 'WARN'
+        check.full_output = failed
+    else:
+        check.status = 'PASS'
+    elapsed = time.time() - t0
+    check.description = 'Items on %s secondary queue were deduplicated. Covered %s uuids and removed %s duplicates. Took %s seconds.' % (connection.ff_env, len(seen_uuids), deduplicated, elapsed)
+
     return check
