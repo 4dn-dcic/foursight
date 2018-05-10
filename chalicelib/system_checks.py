@@ -351,6 +351,6 @@ def secondary_queue_deduplication(connection, **kwargs):
         check.full_output['failed'] = failed
     else:
         check.status = 'PASS'
-    check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, elapsed)
+    check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
 
     return check
