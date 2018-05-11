@@ -21,31 +21,78 @@ def biorxiv_is_now_published(connection, **kwargs):
     chkstatus = ''
     chkdesc = ''
     # run the check
-    search_query = '%ssearch/?journal=bioRxiv&type=Publication&limit=all' % connection.ff
+    search_query = '%ssearch/?journal=bioRxiv&type=Publication&status=current&limit=all' % connection.ff
     biorxivs = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
     if not biorxivs:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
         return check
 
-    pubmed_query = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&field=title&term=%s'
-    untitled = []
+    pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&field=title&'
+    problems = {}
+    fndcnt = 0
+    fulloutput = {}
     for bx in biorxivs.json()['@graph']:
         title = bx.get('title')
+        buuid = bx.get('uuid')
         if not title:
-            untitled.append(bx.get('uuid'))
-            check.status = "WARN"
-            check.description = "some biorxiv records do not have a title"
+            # problem with biorxiv record in ff
+            print("Biorxiv %s lacks a title" % buuid)
+            if problems.get('notitle'):
+                problems['notitle'].append(buuid)
+            else:
+                problems['notitle'] = [buuid]
+            if not chkstatus or chkstatus != 'WARN':
+                chkstatus = 'WARN'
+            if "some biorxiv records do not have a title\n" not in chkdesc:
+                chkdesc = chkdesc + "some biorxiv records do not have a title\n"
             continue
-        pubmed_query = pubmed_query % title
+        term = 'term=%s' % title
+        pubmed_query = pubmed_url + term
         time.sleep(1)
         res = requests.get(pubmed_query)
         if res.status_code != 200:
-                result = res.json().get('esearchresult')
-                if result:
-                    ids = result.get('id_list')
-                    if ids:
-                        # we have possible article(s) - populate check
+            print("We got a status code other than 200 for %s" % buuid)
+            # problem with request to pubmed
+            if problems.get('eutilsq'):
+                problems['eutilsq'].append(buuid)
+            else:
+                problems['eutilsq'] = [buuid]
+            if not chkstatus or chkstatus != 'WARN':
+                chkstatus = 'WARN'
+            if "problem with eutils query for some records\n" not in chkdesc:
+                chkdesc = chkdesc + "problem with eutils query for some records\n"
+            continue
+        result = res.json().get('esearchresult')
+        if not result or result.get('idlist') is None:
+            # problem with format of results returned by esearch
+            if not chkstatus or chkstatus != 'WARN':
+                chkstatus = 'WARN'
+            if problems.get('pubmedresult'):
+                problems['pubmedresult'].append(buuid)
+            else:
+                problems['pubmedresult'] = [buuid]
+            if "problem with results format for some records\n" not in chkdesc:
+                chkdesc = chkdesc + "problem with results format for some records\n"
+            continue
+        ids = result.get('idlist')
+        if ids:
+            # we have possible article(s) - populate check_result
+            fndcnt += 1
+            fulloutput[buuid] = ['PMID:' + id for id in ids]
+
+    if not chkstatus:
+        chkstatus = 'PASS'
+    if fndcnt != 0:
+        chkdesc = "Candidate Biorxivs to replace found\n"
+    else:
+        chkdesc = "No Biorxivs to replace\n"
+
+    check.status = chkstatus
+    check.description = chkdesc
+    check.brief_output = fndcnt
+    check.full_output = fulloutput
+    return check
 
 
 @check_function()
