@@ -6,7 +6,6 @@ from .utils import (
     init_action_res
 )
 from .wrangler_utils import (
-    get_FDN_connection,
     safe_search_with_callback,
     parse_datetime_to_utc
 )
@@ -319,18 +318,13 @@ def experiment_set_reporting_data(connection, **kwargs):
 
     check = init_check_res(connection, 'experiment_set_reporting_data')
     check.status = 'IGNORE'
-    fdn_conn = get_FDN_connection(connection)
-    if not (fdn_conn and fdn_conn.check):
-        check.status = 'ERROR'
-        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check
     exp_sets = {}
     search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
-    safe_search_with_callback(fdn_conn, search_query, exp_sets, search_callback, limit=20, frame='embedded')
+    safe_search_with_callback(connection.ff_env, search_query, exp_sets, search_callback, limit=20, frame='embedded')
     # run a second search for status=deleted
     # add results using the same callback function
     search_query_del = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created&status=deleted'
-    safe_search_with_callback(fdn_conn, search_query_del, exp_sets, search_callback, limit=20, frame='embedded')
+    safe_search_with_callback(connection.ff_env, search_query_del, exp_sets, search_callback, limit=20, frame='embedded')
     check.full_output = exp_sets
     return check
 
@@ -529,18 +523,13 @@ def publish_data_release_updates(connection, **kwargs):
     updates_to_post = report_result.get('brief_output', {}).get('release_updates', [])
     section_to_post = report_result.get('brief_output', {}).get('static_section')
     # post items to FF
-    fdn_conn = get_FDN_connection(connection)
-    if not (fdn_conn and fdn_conn.check):
-        action.status = 'FAIL'
-        action.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return action
     posted_updates = []
     for update in updates_to_post:
         # should be in good shape to post as-is
-        resp = ff_utils.post_to_metadata(update, 'data-release-updates', connection=fdn_conn)
+        resp = ff_utils.post_metadata(update, 'data-release-updates', ff_env=connection.ff_env)
         posted_updates.append({'update': update, 'response': resp})
     if section_to_post:
-        resp = ff_utils.post_to_metadata(section_to_post, 'static-sections', connection=fdn_conn)
+        resp = ff_utils.post_metadata(section_to_post, 'static-sections', ff_env=connection.ff_env)
         posted_section = {'static_section': section_to_post, 'response': resp}
     else:
         posted_section = None

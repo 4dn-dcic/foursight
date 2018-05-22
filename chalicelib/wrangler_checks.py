@@ -5,7 +5,7 @@ from .utils import (
     action_function,
     init_action_res
 )
-from .wrangler_utils import get_s3_utils_obj, get_FDN_connection, safe_search_with_callback
+from .wrangler_utils import safe_search_with_callback
 from dcicutils import ff_utils, s3_utils
 import requests
 import sys
@@ -21,8 +21,8 @@ def biorxiv_is_now_published(connection, **kwargs):
     chkstatus = ''
     chkdesc = ''
     # run the check
-    search_query = '%ssearch/?journal=bioRxiv&type=Publication&status=current&limit=all' % connection.ff
-    biorxivs = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+    search_query = 'search/?journal=bioRxiv&type=Publication&status=current&limit=all'
+    biorxivs = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
     if not biorxivs:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
@@ -103,8 +103,8 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
     check.action = "patch_file_higlass_uid"
 
     # run the check
-    search_query = '%ssearch/?file_format=mcool&type=FileProcessed&limit=all' % connection.ff
-    not_reg = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+    search_query = 'search/?file_format=mcool&type=FileProcessed&limit=all'
+    not_reg = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
     file_to_be_reg = []
     s3 = s3_utils.s3Utils(env=connection.ff_env)
     for procfile in not_reg.json()['@graph']:
@@ -133,8 +133,7 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
 @action_function()
 def patch_file_higlass_uid(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_higlass_uid')
-    s3_obj = get_s3_utils_obj(connection)
-    fdn_conn = get_FDN_connection(connection)
+    s3_obj = s3_utils.s3Utils(env=connection.ff_env)
     action_logs = {'patch_failure': [], 'patch_success': []}
     # get latest results
     higlass_check = init_check_res(connection, 'mcool_not_registered_with_higlass')
@@ -144,21 +143,21 @@ def patch_file_higlass_uid(connection, **kwargs):
         higlass_check_result = higlass_check.get_primary_result()
 
     higlass_key = s3_obj.get_higlass_key()
-    authentication = (higlass_key['secret'], higlass_key['key'])
+    authentication = (higlass_key['key'], higlass_key['secret'])
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
 
     for hit in higlass_check_result.get('full_output', []):
         payload = {"filepath": s3_obj.outfile_bucket + "/" + hit['upload_key'],
                    "filetype": "cooler", "datatype": "matrix"}
-        res = requests.post('https://higlass.4dnucleome.org/api/v1/link_tile/',
+        res = requests.post(higlass_key['server'] + '/api/v1/link_tile/',
                             data=json.dumps(payload), auth=authentication,
                             headers=headers)
         if res.status_code == 201:
             # update the metadata file as well
             patch_data = {'higlass_uid': res.json()['uuid']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], connection=fdn_conn)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], ff_env=connection.ff_env)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
@@ -183,7 +182,7 @@ def item_counts_by_type(connection, **kwargs):
     # run the check
     item_counts = {}
     warn_item_counts = {}
-    req_location = ''.join([connection.ff,'counts?format=json'])
+    req_location = ''.join([connection.ff, 'counts?format=json'])
     counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
     if counts_res.status_code >= 400:
         check.status = 'ERROR'
@@ -258,8 +257,8 @@ def items_created_in_the_past_day(connection, **kwargs):
     full_output = check.full_output if check.full_output else {}
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-    search_query = ''.join([connection.ff, 'search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
-    search_resp = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+    search_query = ''.join(['search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
+    search_resp = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
     item_output = []
     for res in search_resp.json().get('@graph', []):
         item_output.append({
@@ -299,16 +298,11 @@ def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
     check.action = "patch_file_size"
-    fdn_conn = get_FDN_connection(connection)
-    if not (fdn_conn and fdn_conn.check):
-        check.status = 'ERROR'
-        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check
-    search_query = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded'
+    search_query = 'search/?type=File&status=released%20to%20project&status=released&status=uploaded'
     if kwargs.get('search_add_on'):
         search_query = ''.join([search_query, kwargs['search_add_on']])
     problem_files = []
-    safe_search_with_callback(fdn_conn, search_query, problem_files, search_callback, limit=100, frame='object')
+    safe_search_with_callback(connection.ff_env, search_query, problem_files, search_callback, limit=50, frame='object')
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
@@ -323,8 +317,7 @@ def identify_files_without_filesize(connection, **kwargs):
 @action_function()
 def patch_file_size(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_size')
-    s3_obj = get_s3_utils_obj(connection)
-    fdn_conn = get_FDN_connection(connection)
+    s3_obj = s3_utils.s3Utils(env=connection.ff_env)
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
@@ -337,7 +330,7 @@ def patch_file_size(connection, **kwargs):
         else:
             patch_data = {'file_size': head_info['ContentLength']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], connection=fdn_conn)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], ff_env=connection.ff_env)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)

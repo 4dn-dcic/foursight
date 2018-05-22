@@ -50,41 +50,33 @@ def items_created_in_the_past_day(connection, **kwargs):
     return check
 ```
 
-At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. Let's use some helper functions defined in chalicelib/wrangler_utils.py to establish a connection to Fourfront (a FDN_Connection, such as those used in Submit4DN). If making a new check module, remember to import these helper functions. If the connection fails, store that information in the check result and abort the check. Let's also set a description and status for the check if the connection is established.
+At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. To actually get our check to do something, let's import ff_utils module from the central dcicutils package, which allows us to easily make requests to Fourfront. Imports should generally be done at the top level of your checks file, but they are shown in the function here for completeness. It's important to note that we can always get the current Fourfront enviroment (such as `foufront-webdev` or `fourfront-webprod`) using the `connection.ff_env` field. This is leveraged to make connections in the ff_utils module.
 
 ```
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
+    from dcicutils import ff_utils
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    fdn_conn = wrangler_utils.get_FDN_connection(connection)
-    if not fdn_conn:
-        check.status = 'ERROR'
-        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check
+    # can get Fourfront environment with connection.ff_env
     check.status = 'PASS'
     check.description = 'Working description.'
     return check
 ```
 
-Okay, now we have a check that will attempt to make a Fourfront connection and fail and provide helpful information if it can't. Next we need to get a search result from Fourfront and use those results within our check. The big idea is that we will iterate through the search results and see which items have a `date_created` value of less than a day ago. I'm going to go ahead and add a lot to the check and describe it afterwards.
+Okay, now we are ready to use the ff_utils module to connect to Fourfront. Next we need to get a search result from Fourfront and use those results within our check. The big idea is that we will iterate through the search results and see which items have a `date_created` value of less than a day ago. I'm going to go ahead and add a lot to the check and describe it afterwards.
 
 ```
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
+    from dcicutils import ff_utils
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    fdn_conn = wrangler_utils.get_FDN_connection(connection)
-    if not fdn_conn:
-        check.status = 'ERROR'
-        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check
-
     ### let item_type = 'Item for now'
     item_type = 'Item'
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-    search_query = ''.join(['/search/?type=', item_type, '&q=date_created:>=', date_str])
-    search_res = ff_utils.get_metadata(search_query, connection=fdn_conn, frame='object')
-    results = search_res.get('@graph', [])
+    search_query = ''.join(['search/?type=', item_type, '&q=date_created:>=', date_str, '&frame=object'])
+    # this will return a list of hits from the search
+    search_res = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
     full_output = {}
     item_output = []
     for res in results:
@@ -105,7 +97,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     return check
 ```
 
-There are a couple funky things happening in the check above. First, the ff_utils package is an external package used by 4DN and uses the fdn_conn object we established earlier. The `get_metadata` function gets search results for all items of the type `item_type` with a date_created field greater than that of the current UTC time minus one day. We then iterate through those results and add them to the `full_output` dictionary, keyed by `item_type`. If any results were found, let's set the status to WARN and give a helpful description. If no items have been created in the past day, let's set the status to PASS to show that this check requires no attention.
+There are a couple funky things happening in the check above. First, the `search_metadata` function gets search results for all items of the type `item_type` with a date_created field greater than that of the current UTC time minus one day. We then iterate through those results and add them to the `full_output` dictionary, keyed by `item_type`. If any results were found, let's set the status to WARN and give a helpful description. If no items have been created in the past day, let's set the status to PASS to show that this check requires no attention.
 
 This check is fully functional as written above, but it has a couple limitations. For example, it only operates on the `item_type` Item, which is the most generalized type of item and may cause a timeout in the lambda running this function if the resulting search result is very large. In the next section, we will use default check arguments and the check_group to further break down the check into different runs for different item types.
 
