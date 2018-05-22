@@ -34,6 +34,7 @@ CHECK_GROUPS = {
         ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'morn_6'],
         ['wrangler_checks/mcool_not_registered_with_higlass', {'primary': True}, [], 'morn_7'],
         ['wrangler_checks/biorxiv_is_now_published', {'primary': True}, [], 'morn_8'],
+        ['system_checks/clean_up_travis_queues', {'primary': True}, [], 'morn_9'],
     ]
 }
 
