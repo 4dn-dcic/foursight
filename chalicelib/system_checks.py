@@ -354,3 +354,35 @@ def secondary_queue_deduplication(connection, **kwargs):
     check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
 
     return check
+    
+    
+@check_function()
+def clean_up_travis_queues(connection, **kwargs):
+    """
+    Clean up old sqs queues based on the name ("travis-job")
+    and the creation date. Only run on data for now
+    """
+    from .app_utils import STAGE
+    check = init_check_res(connection, 'clean_up_travis_queues')
+    check.status = 'PASS'
+    if connection.fs_environment != 'data' or STAGE != 'prod':
+        check.description = 'This check only runs on the data environment for Foursight prod.'
+        return check
+    sqs = boto3.resource('sqs')
+    queues = sqs.queues.all()
+    num_deleted = 0
+    for queue in queues:
+        if 'travis-job' in queue.url:
+            creation = queue.attributes['CreatedTimestamp']
+            if isinstance(creation, basestring):
+                creation = float(creation)
+            dt_creation = datetime.datetime.utcfromtimestamp(creation)
+            queue_age = datetime.datetime.utcnow() - dt_creation
+            # delete queues 3 days old or older
+            if queue_age > datetime.timedelta(days=3):
+                print('... %s' % queue.url)
+                queue.delete()
+                num_deleted += 1
+    
+    check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted 
+    return check
