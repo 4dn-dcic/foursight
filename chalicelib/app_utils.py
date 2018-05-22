@@ -88,7 +88,7 @@ def init_connection(environ):
             'environment': environ,
             'checks': {}
         }
-        raise Exception(str(e))
+        raise Exception(str(error_res))
     connection = FSConnection(environ, environments[environ])
     return connection
 
@@ -101,6 +101,7 @@ def init_response(environ):
     try:
         connection = init_connection(environ)
     except Exception as e:
+        connection = None
         response.body = str(e)
         response.status_code = 400
     return connection, response

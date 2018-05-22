@@ -314,7 +314,7 @@ class TestAppUtils(FSTest):
     def test_init_bad_connection(self):
         with self.assertRaises(Exception) as exc:
             conn2 = app_utils.init_connection('not_an_environment')
-        self.assertTrue('invalid environment provided' in str(exc))
+        self.assertTrue('invalid environment provided' in str(exc.exception))
         
     def test_init_environments(self):
         environments = app_utils.init_environments() # default to 'all' environments
