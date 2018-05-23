@@ -19,7 +19,7 @@ Let's assume that you've already finished steps 1 through 4 in the list above (t
 ```
 >>> import app
 # create a Foursight connection to the 'mastertest' environment
->>> connection, _ = app.init_connection('mastertest')
+>>> connection = app.init_connection('mastertest')
 # run your check using the run_check_or_action utility
 # args are: FS connection object, string check name, dict of kwargs to run with
 # it could be useful to add a break point within your check function to see what's happening
@@ -63,7 +63,7 @@ Actions function very similarly to checks when run individually. In fact, testin
 ```
 >>> import app
 # create a Foursight connection to the 'mastertest' environment
->>> connection, _ = app.init_connection('mastertest')
+>>> connection = app.init_connection('mastertest')
 >>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'called_by': None})
 # some possible output:
 {'name': 'patch_file_size','description': None, 'status': 'DONE',
@@ -88,6 +88,7 @@ Let's say you want to run a whole check group and not an individual check. To te
 ### Some other testing notes
 * By default, you will use the `dev` stage of Foursight from the Python interpreter and test.py. To change to `prod` (USE WITH CARE), use `app.set_stage('prod')`.
 * You can get the latest check group results using `app.get_check_group_results(connection, name)` given a Foursight connection and a valid check group name.
+* Make sure to use dcicutils for lots of handy utility functions to connect with Fourfront!
 
 ### Scheduling your check group
 Okay, so you've got a check group that you're confident in. To schedule it using a CRON or rate expression, go to the top of app.py and create a new scheduled function (leading with the `@app.schedule()` decorator). Two examples are below:
