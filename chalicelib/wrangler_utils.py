@@ -19,7 +19,6 @@ def safe_search_with_callback(ff_env, query, container, callback, limit=20, fram
     last_total = None
     curr_from = 0
     while not last_total or last_total == limit:
-        print('...', curr_from)
         search_query = ''.join([query, '&from=', str(curr_from), '&limit=', str(limit), '&frame=', frame])
         search_res = ff_utils.search_metadata(search_query, ff_env=ff_env)
         if not search_res: # 0 results

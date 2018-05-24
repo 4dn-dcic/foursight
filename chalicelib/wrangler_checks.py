@@ -32,7 +32,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     problems = {}
     fndcnt = 0
     fulloutput = {}
-    for bx in biorxivs.json()['@graph']:
+    for bx in biorxivs:
         title = bx.get('title')
         buuid = bx.get('uuid')
         if not title:
@@ -107,7 +107,7 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
     not_reg = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
     file_to_be_reg = []
     s3 = s3_utils.s3Utils(env=connection.ff_env)
-    for procfile in not_reg.json()['@graph']:
+    for procfile in not_reg:
         if procfile.get('higlass_uid'):
             # if we already registered with higlass continue
             print(procfile.get('accession') + " already registered")
@@ -260,7 +260,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     search_query = ''.join(['search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
     search_resp = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
     item_output = []
-    for res in search_resp.json().get('@graph', []):
+    for res in search_resp:
         item_output.append({
             'uuid': res.get('uuid'),
             '@id': res.get('@id'),
