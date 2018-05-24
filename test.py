@@ -13,9 +13,10 @@ from chalicelib import (
     check_groups,
     wrangler_utils,
     run_result,
-    fs_connection
+    fs_connection,
+    s3_connection
 )
-from dcicutils import s3_utils
+from dcicutils import s3_utils, ff_utils
 from dateutil import tz
 
 
@@ -34,14 +35,16 @@ class TestFSConnection(FSTest):
         'bucket': None,
         'ff_env': 'test3'
     }
-    connection = fs_connection.FSConnection('test', environ_info)
+    connection = fs_connection.FSConnection('test', environ_info, test=True)
 
     def test_connection_fields(self):
-        self.assertTrue(self.connection.fs_environment == 'test')
+        self.assertTrue(self.connection.fs_env == 'test')
         self.assertTrue(self.connection.s3_connection.status_code == 404)
-        self.assertTrue(self.connection.ff == 'test1')
-        self.assertTrue(self.connection.es == 'test2')
+        self.assertTrue(self.connection.ff_server == 'test1')
+        self.assertTrue(self.connection.ff_es == 'test2')
         self.assertTrue(self.connection.ff_env == 'test3')
+        self.assertTrue(self.connection.ff_s3 is None)
+        self.assertTrue(self.connection.ff_keys is None)
 
     def test_run_check_with_bad_connection(self):
         check_res = check_utils.run_check_or_action(self.connection, 'wrangler_checks/item_counts_by_type', {})
@@ -69,7 +72,44 @@ class TestFSConnection(FSTest):
         self.assertTrue(check_res.get('description') == "Malformed status; look at Foursight check definition.")
         self.assertTrue(check_res.get('brief_output') == formatted_res.get('brief_output') == None)
         self.assertTrue(check_res.get('ff_link') == 'not_a_real_http_link')
-
+        
+    def test_bad_ff_connection_in_fs_connection(self):
+        # do not set test=True, should raise because it's not a real FF
+        with self.assertRaises(Exception) as exc:
+            bad_connection = fs_connection.FSConnection('test', self.environ_info)
+        self.assertTrue('Could not initiate connection to Fourfront' in str(exc.exception))
+        
+        
+class TestS3Connection(FSTest):
+    environ = 'mastertest'
+    conn = app_utils.init_connection(environ)
+    
+    def test_s3_conn_fields(self):
+        s3_conn = self.conn.s3_connection
+        self.assertTrue(s3_conn.bucket)
+        self.assertTrue(s3_conn.location)
+        self.assertTrue(s3_conn.status_code != 404)
+        
+    def test_test_s3_conn_methods(self):
+        # clean up after yourself
+        test_s3_conn = s3_connection.S3Connection('foursight-test-s3')
+        test_key = 'test/' + ff_utils.generate_rand_accession()
+        test_value = {'abc': 123}
+        self.assertTrue(test_s3_conn.status_code != 404)
+        put_res = test_s3_conn.put_object(test_key, json.dumps(test_value))
+        self.assertTrue(put_res is not None)
+        get_res = test_s3_conn.get_object(test_key)
+        self.assertTrue(json.loads(get_res) == test_value)
+        prefix_keys = test_s3_conn.list_all_keys_w_prefix('test/')
+        self.assertTrue(len(prefix_keys) > 0)
+        self.assertTrue(test_key in prefix_keys)
+        all_keys = test_s3_conn.list_all_keys()
+        self.assertTrue(len(all_keys) == len(prefix_keys))
+        test_s3_conn.delete_keys(all_keys)
+        # now there should be 0
+        all_keys = test_s3_conn.list_all_keys()
+        self.assertTrue(len(all_keys) == 0)
+        
 
 class TestAppRoutes(FSTest):
     environ = 'mastertest' # hopefully this is up
@@ -305,11 +345,16 @@ class TestAppUtils(FSTest):
     conn = app_utils.init_connection(environ)
 
     def test_init_connection(self):
-        # test the ff connection
-        self.assertTrue(self.conn.fs_environment == 'mastertest')
-        self.assertTrue(self.conn.ff)
-        self.assertTrue(self.conn.es)
+        # test the fs connection
+        self.assertTrue(self.conn.fs_env == 'mastertest')
+        self.assertTrue(self.conn.s3_connection)
+        # test the ff connection        
+        self.assertTrue(self.conn.ff_server)
+        self.assertTrue(self.conn.ff_es)
         self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
+        self.assertTrue(self.conn.ff_s3 is not None)
+        self.assertTrue(isinstance(self.conn.ff_keys, dict))
+        self.assertTrue({'key', 'secret', 'server'} <= set(self.conn.ff_keys.keys()))
         
     def test_init_bad_connection(self):
         with self.assertRaises(Exception) as exc:
@@ -915,7 +960,7 @@ class TestWranglerUtils(FSTest):
         conn = app_utils.init_connection('mastertest')
         # sometimes this error happens when mastertest is down
         try:
-            wrangler_utils.safe_search_with_callback(conn.ff_env, query, container, callback, limit=30, frame='object')
+            wrangler_utils.safe_search_with_callback(conn, query, container, callback, limit=30, frame='object')
         except json.decoder.JSONDecodeError:
             self.assertTrue(True)
             return

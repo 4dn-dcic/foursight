@@ -320,11 +320,11 @@ def experiment_set_reporting_data(connection, **kwargs):
     check.status = 'IGNORE'
     exp_sets = {}
     search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
-    safe_search_with_callback(connection.ff_env, search_query, exp_sets, search_callback, limit=20, frame='embedded')
+    safe_search_with_callback(connection, search_query, exp_sets, search_callback, limit=20, frame='embedded')
     # run a second search for status=deleted
     # add results using the same callback function
     search_query_del = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created&status=deleted'
-    safe_search_with_callback(connection.ff_env, search_query_del, exp_sets, search_callback, limit=20, frame='embedded')
+    safe_search_with_callback(connection, search_query_del, exp_sets, search_callback, limit=20, frame='embedded')
     check.full_output = exp_sets
     return check
 
@@ -526,10 +526,10 @@ def publish_data_release_updates(connection, **kwargs):
     posted_updates = []
     for update in updates_to_post:
         # should be in good shape to post as-is
-        resp = ff_utils.post_metadata(update, 'data-release-updates', ff_env=connection.ff_env)
+        resp = ff_utils.post_metadata(update, 'data-release-updates', key=connection.ff_keys, ff_env=connection.ff_env)
         posted_updates.append({'update': update, 'response': resp})
     if section_to_post:
-        resp = ff_utils.post_metadata(section_to_post, 'static-sections', ff_env=connection.ff_env)
+        resp = ff_utils.post_metadata(section_to_post, 'static-sections', key=connection.ff_keys, ff_env=connection.ff_env)
         posted_section = {'static_section': section_to_post, 'response': resp}
     else:
         posted_section = None

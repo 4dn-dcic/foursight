@@ -79,7 +79,7 @@ def elastic_beanstalk_health(connection, **kwargs):
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
-    status_location = ''.join([connection.es, '_cat/indices?v'])
+    status_location = ''.join([connection.ff_es, '_cat/indices?v'])
     resp = requests.get(status_location, timeout=20)
     if resp.status_code >= 400:
         check.status = 'ERROR'
@@ -144,7 +144,7 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
-    record_location = ''.join([connection.es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
+    record_location = ''.join([connection.ff_es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
     es_resp = requests.get(record_location, timeout=20)
     if es_resp.status_code >= 400:
         check.status = 'ERROR'
@@ -220,7 +220,7 @@ def fourfront_performance_metrics(connection, **kwargs):
     for check_url in check_urls:
         try:
             # set timeout really high
-            ff_resp = ff_utils.authorized_request(connection.ff + check_url, ff_env=connection.ff_env, timeout=1000)
+            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url, ff_env=connection.ff_env, timeout=1000)
         except:
             ff_resp = None
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
@@ -365,7 +365,7 @@ def clean_up_travis_queues(connection, **kwargs):
     from .app_utils import STAGE
     check = init_check_res(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
-    if connection.fs_environment != 'data' or STAGE != 'prod':
+    if connection.fs_env != 'data' or STAGE != 'prod':
         check.description = 'This check only runs on the data environment for Foursight prod.'
         return check
     sqs = boto3.resource('sqs')

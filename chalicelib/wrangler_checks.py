@@ -6,7 +6,7 @@ from .utils import (
     init_action_res
 )
 from .wrangler_utils import safe_search_with_callback
-from dcicutils import ff_utils, s3_utils
+from dcicutils import ff_utils
 import requests
 import sys
 import json
@@ -22,7 +22,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     chkdesc = ''
     # run the check
     search_query = 'search/?journal=bioRxiv&type=Publication&status=current&limit=all'
-    biorxivs = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
+    biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     if not biorxivs:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
@@ -104,15 +104,14 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
 
     # run the check
     search_query = 'search/?file_format=mcool&type=FileProcessed&limit=all'
-    not_reg = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
+    not_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     file_to_be_reg = []
-    s3 = s3_utils.s3Utils(env=connection.ff_env)
     for procfile in not_reg:
         if procfile.get('higlass_uid'):
             # if we already registered with higlass continue
             print(procfile.get('accession') + " already registered")
             continue
-        if s3.does_key_exist(procfile['upload_key']):
+        if connection.ff_s3.does_key_exist(procfile['upload_key']):
             print(procfile.get('accession') + " to be registered ")
             file_to_be_reg.append(procfile)
         else:
@@ -133,7 +132,6 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
 @action_function()
 def patch_file_higlass_uid(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_higlass_uid')
-    s3_obj = s3_utils.s3Utils(env=connection.ff_env)
     action_logs = {'patch_failure': [], 'patch_success': []}
     # get latest results
     higlass_check = init_check_res(connection, 'mcool_not_registered_with_higlass')
@@ -142,13 +140,13 @@ def patch_file_higlass_uid(connection, **kwargs):
     else:
         higlass_check_result = higlass_check.get_primary_result()
 
-    higlass_key = s3_obj.get_higlass_key()
+    higlass_key = connection.ff_s3.get_higlass_key()
     authentication = (higlass_key['key'], higlass_key['secret'])
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
 
     for hit in higlass_check_result.get('full_output', []):
-        payload = {"filepath": s3_obj.outfile_bucket + "/" + hit['upload_key'],
+        payload = {"filepath": connection.ff_s3.outfile_bucket + "/" + hit['upload_key'],
                    "filetype": "cooler", "datatype": "matrix"}
         res = requests.post(higlass_key['server'] + '/api/v1/link_tile/',
                             data=json.dumps(payload), auth=authentication,
@@ -157,7 +155,7 @@ def patch_file_higlass_uid(connection, **kwargs):
             # update the metadata file as well
             patch_data = {'higlass_uid': res.json()['uuid']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], ff_env=connection.ff_env)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
@@ -182,7 +180,7 @@ def item_counts_by_type(connection, **kwargs):
     # run the check
     item_counts = {}
     warn_item_counts = {}
-    req_location = ''.join([connection.ff, 'counts?format=json'])
+    req_location = ''.join([connection.ff_server, 'counts?format=json'])
     counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
     if counts_res.status_code >= 400:
         check.status = 'ERROR'
@@ -258,7 +256,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join(['search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
-    search_resp = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
+    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     item_output = []
     for res in search_resp:
         item_output.append({
@@ -273,7 +271,7 @@ def items_created_in_the_past_day(connection, **kwargs):
         check.status = 'WARN'
         check.description = 'Items have been created in the past day.'
         # create a ff_link
-        check.ff_link = ''.join([connection.ff, 'search/?type=Item&limit=all&q=date_created:>=', date_str])
+        check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&limit=all&q=date_created:>=', date_str])
         # test admin output
         check.admin_output = check.ff_link
     else:
@@ -302,7 +300,7 @@ def identify_files_without_filesize(connection, **kwargs):
     if kwargs.get('search_add_on'):
         search_query = ''.join([search_query, kwargs['search_add_on']])
     problem_files = []
-    safe_search_with_callback(connection.ff_env, search_query, problem_files, search_callback, limit=50, frame='object')
+    safe_search_with_callback(connection, search_query, problem_files, search_callback, limit=50, frame='object')
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
@@ -317,20 +315,19 @@ def identify_files_without_filesize(connection, **kwargs):
 @action_function()
 def patch_file_size(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_size')
-    s3_obj = s3_utils.s3Utils(env=connection.ff_env)
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
     filesize_check_result = filesize_check.get_result_by_uuid(kwargs['called_by'])
     for hit in filesize_check_result.get('full_output', []):
-        bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
-        head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
+        bucket = connection.ff_s3.outfile_bucket if 'FileProcessed' in hit['@type'] else connection.ff_s3.raw_file_bucket
+        head_info = connection.ff_s3.does_key_exist(hit['upload_key'], bucket)
         if not head_info:
             action_logs['s3_file_not_found'].append(hit['accession'])
         else:
             patch_data = {'file_size': head_info['ContentLength']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], ff_env=connection.ff_env)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
