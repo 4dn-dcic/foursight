@@ -5,6 +5,7 @@ from dcicutils import ff_utils
 from datetime import datetime, timedelta
 from dateutil import tz
 from .utils import basestring
+import time
 
 
 def safe_search_with_callback(connection, query, container, callback, limit=20, frame='embedded'):
@@ -27,6 +28,7 @@ def safe_search_with_callback(connection, query, container, callback, limit=20, 
         curr_from += last_total
         for hit in search_res:
             callback(hit, container)
+        time.sleep(0.25)
 
 
 def parse_datetime_to_utc(time_str, manual_format=None):
