@@ -5,12 +5,7 @@ from ..utils import (
     action_function,
     init_action_res
 )
-<<<<<<< HEAD:chalicelib/checks/release_updates_checks.py
 from ..wrangler_utils import (
-    get_FDN_connection,
-=======
-from .wrangler_utils import (
->>>>>>> 1611c0efedbc36e29ababc3aac8b8bb90e9b14f5:chalicelib/report_checks.py
     safe_search_with_callback,
     parse_datetime_to_utc
 )

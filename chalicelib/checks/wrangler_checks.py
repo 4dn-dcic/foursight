@@ -5,13 +5,8 @@ from ..utils import (
     action_function,
     init_action_res
 )
-<<<<<<< HEAD:chalicelib/checks/wrangler_checks.py
-from ..wrangler_utils import get_s3_utils_obj, get_FDN_connection, safe_search_with_callback
-from dcicutils import ff_utils, s3_utils
-=======
-from .wrangler_utils import safe_search_with_callback
+from ..wrangler_utils import  safe_search_with_callback
 from dcicutils import ff_utils
->>>>>>> 1611c0efedbc36e29ababc3aac8b8bb90e9b14f5:chalicelib/wrangler_checks.py
 import requests
 import sys
 import json

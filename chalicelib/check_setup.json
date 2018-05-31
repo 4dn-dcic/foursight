@@ -176,5 +176,31 @@
                 }
             }
         }
+    },
+    "biorxiv_is_now_published": {
+        "title": "biorxiv is now published",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_biorxiv_published"
+                }
+            }
+        }
+    },
+    "clean_up_travis_queues": {
+        "title": "Clean up Travis queues",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_clean_travis_queues"
+                }
+            }
+        }
     }
 }
