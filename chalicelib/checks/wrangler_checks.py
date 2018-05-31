@@ -5,13 +5,99 @@ from ..utils import (
     action_function,
     init_action_res
 )
+<<<<<<< HEAD:chalicelib/checks/wrangler_checks.py
 from ..wrangler_utils import get_s3_utils_obj, get_FDN_connection, safe_search_with_callback
 from dcicutils import ff_utils, s3_utils
+=======
+from .wrangler_utils import safe_search_with_callback
+from dcicutils import ff_utils
+>>>>>>> 1611c0efedbc36e29ababc3aac8b8bb90e9b14f5:chalicelib/wrangler_checks.py
 import requests
 import sys
 import json
 import datetime
+import time
 import boto3
+
+
+@check_function()
+def biorxiv_is_now_published(connection, **kwargs):
+    check = init_check_res(connection, 'biorxiv_is_now_published')
+    chkstatus = ''
+    chkdesc = ''
+    # run the check
+    search_query = 'search/?journal=bioRxiv&type=Publication&status=current&limit=all'
+    biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    if not biorxivs:
+        check.status = "FAIL"
+        check.description = "Could not retrieve biorxiv records from fourfront"
+        return check
+
+    pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&field=title&'
+    problems = {}
+    fndcnt = 0
+    fulloutput = {}
+    for bx in biorxivs:
+        title = bx.get('title')
+        buuid = bx.get('uuid')
+        if not title:
+            # problem with biorxiv record in ff
+            print("Biorxiv %s lacks a title" % buuid)
+            if problems.get('notitle'):
+                problems['notitle'].append(buuid)
+            else:
+                problems['notitle'] = [buuid]
+            if not chkstatus or chkstatus != 'WARN':
+                chkstatus = 'WARN'
+            if "some biorxiv records do not have a title\n" not in chkdesc:
+                chkdesc = chkdesc + "some biorxiv records do not have a title\n"
+            continue
+        term = 'term=%s' % title
+        pubmed_query = pubmed_url + term
+        time.sleep(1)
+        res = requests.get(pubmed_query)
+        if res.status_code != 200:
+            print("We got a status code other than 200 for %s" % buuid)
+            # problem with request to pubmed
+            if problems.get('eutilsq'):
+                problems['eutilsq'].append(buuid)
+            else:
+                problems['eutilsq'] = [buuid]
+            if not chkstatus or chkstatus != 'WARN':
+                chkstatus = 'WARN'
+            if "problem with eutils query for some records\n" not in chkdesc:
+                chkdesc = chkdesc + "problem with eutils query for some records\n"
+            continue
+        result = res.json().get('esearchresult')
+        if not result or result.get('idlist') is None:
+            # problem with format of results returned by esearch
+            if not chkstatus or chkstatus != 'WARN':
+                chkstatus = 'WARN'
+            if problems.get('pubmedresult'):
+                problems['pubmedresult'].append(buuid)
+            else:
+                problems['pubmedresult'] = [buuid]
+            if "problem with results format for some records\n" not in chkdesc:
+                chkdesc = chkdesc + "problem with results format for some records\n"
+            continue
+        ids = result.get('idlist')
+        if ids:
+            # we have possible article(s) - populate check_result
+            fndcnt += 1
+            fulloutput[buuid] = ['PMID:' + id for id in ids]
+
+    if not chkstatus:
+        chkstatus = 'PASS'
+    if fndcnt != 0:
+        chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
+    else:
+        chkdesc = "No Biorxivs to replace\n" + chkdesc
+
+    check.status = chkstatus
+    check.description = chkdesc
+    check.brief_output = fndcnt
+    check.full_output = fulloutput
+    return check
 
 
 @check_function()
@@ -22,16 +108,15 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
     check.action = "patch_file_higlass_uid"
 
     # run the check
-    search_query = '%ssearch/?file_format=mcool&type=FileProcessed&limit=all' % connection.ff
-    not_reg = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+    search_query = 'search/?file_format=mcool&type=FileProcessed&limit=all'
+    not_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     file_to_be_reg = []
-    s3 = s3_utils.s3Utils(env=connection.ff_env)
-    for procfile in not_reg.json()['@graph']:
+    for procfile in not_reg:
         if procfile.get('higlass_uid'):
             # if we already registered with higlass continue
             print(procfile.get('accession') + " already registered")
             continue
-        if s3.does_key_exist(procfile['upload_key']):
+        if connection.ff_s3.does_key_exist(procfile['upload_key']):
             print(procfile.get('accession') + " to be registered ")
             file_to_be_reg.append(procfile)
         else:
@@ -52,8 +137,6 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
 @action_function()
 def patch_file_higlass_uid(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_higlass_uid')
-    s3_obj = get_s3_utils_obj(connection)
-    fdn_conn = get_FDN_connection(connection)
     action_logs = {'patch_failure': [], 'patch_success': []}
     # get latest results
     higlass_check = init_check_res(connection, 'mcool_not_registered_with_higlass')
@@ -62,22 +145,22 @@ def patch_file_higlass_uid(connection, **kwargs):
     else:
         higlass_check_result = higlass_check.get_primary_result()
 
-    higlass_key = s3_obj.get_higlass_key()
-    authentication = (higlass_key['secret'], higlass_key['key'])
+    higlass_key = connection.ff_s3.get_higlass_key()
+    authentication = (higlass_key['key'], higlass_key['secret'])
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
 
     for hit in higlass_check_result.get('full_output', []):
-        payload = {"filepath": s3_obj.outfile_bucket + "/" + hit['upload_key'],
+        payload = {"filepath": connection.ff_s3.outfile_bucket + "/" + hit['upload_key'],
                    "filetype": "cooler", "datatype": "matrix"}
-        res = requests.post('https://higlass.4dnucleome.org/api/v1/link_tile/',
+        res = requests.post(higlass_key['server'] + '/api/v1/link_tile/',
                             data=json.dumps(payload), auth=authentication,
                             headers=headers)
         if res.status_code == 201:
             # update the metadata file as well
             patch_data = {'higlass_uid': res.json()['uuid']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], connection=fdn_conn)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
@@ -102,7 +185,7 @@ def item_counts_by_type(connection, **kwargs):
     # run the check
     item_counts = {}
     warn_item_counts = {}
-    req_location = ''.join([connection.ff,'counts?format=json'])
+    req_location = ''.join([connection.ff_server, 'counts?format=json'])
     counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
     if counts_res.status_code >= 400:
         check.status = 'ERROR'
@@ -177,10 +260,10 @@ def items_created_in_the_past_day(connection, **kwargs):
     full_output = check.full_output if check.full_output else {}
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-    search_query = ''.join([connection.ff, 'search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
-    search_resp = ff_utils.authorized_request(search_query, ff_env=connection.ff_env)
+    search_query = ''.join(['search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
+    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     item_output = []
-    for res in search_resp.json().get('@graph', []):
+    for res in search_resp:
         item_output.append({
             'uuid': res.get('uuid'),
             '@id': res.get('@id'),
@@ -193,7 +276,7 @@ def items_created_in_the_past_day(connection, **kwargs):
         check.status = 'WARN'
         check.description = 'Items have been created in the past day.'
         # create a ff_link
-        check.ff_link = ''.join([connection.ff, 'search/?type=Item&limit=all&q=date_created:>=', date_str])
+        check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&limit=all&q=date_created:>=', date_str])
         # test admin output
         check.admin_output = check.ff_link
     else:
@@ -218,16 +301,11 @@ def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
     check.action = "patch_file_size"
-    fdn_conn = get_FDN_connection(connection)
-    if not (fdn_conn and fdn_conn.check):
-        check.status = 'ERROR'
-        check.description = ''.join(['Could not establish a FDN_Connection using the FF env: ', connection.ff_env])
-        return check
-    search_query = '/search/?type=File&status=released%20to%20project&status=released&status=uploaded'
+    search_query = 'search/?type=File&status=released%20to%20project&status=released&status=uploaded'
     if kwargs.get('search_add_on'):
         search_query = ''.join([search_query, kwargs['search_add_on']])
     problem_files = []
-    safe_search_with_callback(fdn_conn, search_query, problem_files, search_callback, limit=100, frame='object')
+    safe_search_with_callback(connection, search_query, problem_files, search_callback, limit=50, frame='object')
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
@@ -242,21 +320,19 @@ def identify_files_without_filesize(connection, **kwargs):
 @action_function()
 def patch_file_size(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_size')
-    s3_obj = get_s3_utils_obj(connection)
-    fdn_conn = get_FDN_connection(connection)
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_filesize
     filesize_check = init_check_res(connection, 'identify_files_without_filesize')
     filesize_check_result = filesize_check.get_result_by_uuid(kwargs['called_by'])
     for hit in filesize_check_result.get('full_output', []):
-        bucket = s3_obj.outfile_bucket if 'FileProcessed' in hit['@type'] else s3_obj.raw_file_bucket
-        head_info = s3_obj.does_key_exist(hit['upload_key'], bucket)
+        bucket = connection.ff_s3.outfile_bucket if 'FileProcessed' in hit['@type'] else connection.ff_s3.raw_file_bucket
+        head_info = connection.ff_s3.does_key_exist(hit['upload_key'], bucket)
         if not head_info:
             action_logs['s3_file_not_found'].append(hit['accession'])
         else:
             patch_data = {'file_size': head_info['ContentLength']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], connection=fdn_conn)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)

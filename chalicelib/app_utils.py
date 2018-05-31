@@ -77,8 +77,7 @@ def init_connection(environ):
     """
     Initialize the fourfront/s3 connection using the FSConnection object
     and the given environment.
-    Returns an FSConnection object (or None if error) and a dictionary
-    error response.
+    Returns an FSConnection object or raises an error.
     """
     error_res = {}
     environments = init_environments()
@@ -90,9 +89,9 @@ def init_connection(environ):
             'environment': environ,
             'checks': {}
         }
-        return None, error_res
+        raise Exception(str(error_res))
     connection = FSConnection(environ, environments[environ])
-    return connection, error_res
+    return connection
 
 
 def init_response(environ):
@@ -100,9 +99,11 @@ def init_response(environ):
     Generalized function to init response given an environment
     """
     response = Response('Foursight response')
-    connection, error_res = init_connection(environ)
-    if connection is None:
-        response.body = error_res
+    try:
+        connection = init_connection(environ)
+    except Exception as e:
+        connection = None
+        response.body = str(e)
         response.status_code = 400
     return connection, response
 
@@ -221,7 +222,7 @@ def view_run_check(environ, check, params):
     This also be used to queue a check group. This is checked before individual check names
     """
     resp_headers = {'Location': '/api/view/' + environ}
-    connection, _ = init_connection(environ)
+    connection = init_connection(environ)
     check_str = get_check_strings(check)
     # convert string query params to literals
     params = query_params_to_literals(params)
@@ -245,7 +246,7 @@ def view_run_action(environ, action, params):
 
     This also be used to queue an action group. This is checked before individual action names
     """
-    connection, _ = init_connection(environ)
+    connection = init_connection(environ)
     action_str = get_action_strings(action)
     # convert string query params to literals
     params = query_params_to_literals(params)
@@ -274,7 +275,10 @@ def view_foursight(environ, is_admin=False, domain=""):
     total_envs = []
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
-        connection, error_res = init_connection(this_environ)
+        try:
+            connection = init_connection(this_environ)
+        except Exception:
+            connection = None
         if connection:
             results = get_check_group_results(connection, 'all')
             processed_results = process_view_results(connection, results, is_admin)
@@ -310,7 +314,10 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
     html_resp = Response('Foursight viewing suite')
     html_resp.headers = {'Content-Type': 'text/html'}
     total_envs = []
-    connection, error_res = init_connection(environ)
+    try:
+        connection = init_connection(environ)
+    except Exception:
+        connection = None
     if connection:
         res_check = init_check_res(connection, check)
         if res_check:
@@ -395,7 +402,10 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, do
     """
     html_resp = Response('Foursight history view')
     html_resp.headers = {'Content-Type': 'text/html'}
-    connection, error_res = init_connection(environ)
+    try:
+        connection = init_connection(environ)
+    except Exception:
+        connection = None
     if connection:
         history = get_foursight_history(connection, check, start, limit)
         history_kwargs = list(set(chain.from_iterable([l[1] for l in history])))
@@ -822,8 +832,8 @@ def run_check_runner(runner_input):
             print('-RUN-> Not ready for: %s' % (check_name))
     else:
         finished_dependencies = True
-    connection, error_res = init_connection(run_env)
-    if connection and finished_dependencies:
+    connection = init_connection(run_env)
+    if finished_dependencies:
         # add the run uuid as the uuid to kwargs so that checks will coordinate
         if 'uuid' not in check_kwargs:
             check_kwargs['uuid'] = run_uuid

@@ -79,7 +79,7 @@ def elastic_beanstalk_health(connection, **kwargs):
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
-    status_location = ''.join([connection.es, '_cat/indices?v'])
+    status_location = ''.join([connection.ff_es, '_cat/indices?v'])
     resp = requests.get(status_location, timeout=20)
     if resp.status_code >= 400:
         check.status = 'ERROR'
@@ -144,7 +144,7 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
-    record_location = ''.join([connection.es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
+    record_location = ''.join([connection.ff_es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
     es_resp = requests.get(record_location, timeout=20)
     if es_resp.status_code >= 400:
         check.status = 'ERROR'
@@ -220,7 +220,7 @@ def fourfront_performance_metrics(connection, **kwargs):
     for check_url in check_urls:
         try:
             # set timeout really high
-            ff_resp = ff_utils.authorized_request(connection.ff + check_url, ff_env=connection.ff_env, timeout=1000)
+            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url, ff_env=connection.ff_env, timeout=1000)
         except:
             ff_resp = None
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
@@ -351,6 +351,38 @@ def secondary_queue_deduplication(connection, **kwargs):
         check.full_output['failed'] = failed
     else:
         check.status = 'PASS'
-    check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, elapsed)
+    check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
 
+    return check
+    
+    
+@check_function()
+def clean_up_travis_queues(connection, **kwargs):
+    """
+    Clean up old sqs queues based on the name ("travis-job")
+    and the creation date. Only run on data for now
+    """
+    from .app_utils import STAGE
+    check = init_check_res(connection, 'clean_up_travis_queues')
+    check.status = 'PASS'
+    if connection.fs_env != 'data' or STAGE != 'prod':
+        check.description = 'This check only runs on the data environment for Foursight prod.'
+        return check
+    sqs = boto3.resource('sqs')
+    queues = sqs.queues.all()
+    num_deleted = 0
+    for queue in queues:
+        if 'travis-job' in queue.url:
+            creation = queue.attributes['CreatedTimestamp']
+            if isinstance(creation, basestring):
+                creation = float(creation)
+            dt_creation = datetime.datetime.utcfromtimestamp(creation)
+            queue_age = datetime.datetime.utcnow() - dt_creation
+            # delete queues 3 days old or older
+            if queue_age > datetime.timedelta(days=3):
+                print('... %s' % queue.url)
+                queue.delete()
+                num_deleted += 1
+    
+    check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted 
     return check
