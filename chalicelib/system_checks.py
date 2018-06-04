@@ -218,22 +218,29 @@ def fourfront_performance_metrics(connection, **kwargs):
         'files-fastq/4DNFIX75FSJM/?datastore=database'
     ]
     for check_url in check_urls:
+        performance[check_url] = {}
         try:
             # set timeout really high
             ff_resp = ff_utils.authorized_request(connection.ff_server + check_url, ff_env=connection.ff_env, timeout=1000)
-        except:
-            ff_resp = None
+        except Exception as e:
+            performance[check_url]['error'] = str(e)
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
             x_stats = ff_resp.headers['X-stats']
             if not isinstance(x_stats, basestring):
-                performance[check_url] = {}
+                performance[check_url]['error'] = 'Stats response is not a string.'
                 continue
             # X-stats in form: 'db_count=148&db_time=1215810&es_count=4& ... '
             split_stats = x_stats.strip().split('&')
             parse_stats = [stat.split('=') for stat in split_stats]
-            performance[check_url] = {stat[0]: int(stat[1]) for stat in parse_stats if len(stat) == 2}
-        else:
-            performance[check_url] = {}
+            # stats can be strings or integers
+            for stat in parse_stats:
+                if not len(stat) == 2:
+                    continue
+                try:
+                    performance[check_url][stat[0]] = int(stat[1])
+                except ValueError:
+                    performance[check_url][stat[0]] = stat[1]
+            performance[check_url]['error'] = ''
     check.status = 'PASS'
     full_output['performance'] = performance
     check.full_output = full_output
@@ -354,8 +361,8 @@ def secondary_queue_deduplication(connection, **kwargs):
     check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
 
     return check
-    
-    
+
+
 @check_function()
 def clean_up_travis_queues(connection, **kwargs):
     """
@@ -383,6 +390,6 @@ def clean_up_travis_queues(connection, **kwargs):
                 print('... %s' % queue.url)
                 queue.delete()
                 num_deleted += 1
-    
-    check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted 
+
+    check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted
     return check
