@@ -239,7 +239,7 @@ def change_in_item_counts(connection, **kwargs):
         diff_counts[index] = -1 * prior[index]['DB']
     check.full_output = diff_counts
     # see if we have negative counts
-    negative_counts = any([count < 0 for count in diff_counts])
+    negative_counts = any([diff_counts[coll] < 0 for coll in diff_counts])
     if negative_counts:
         check.status = 'FAIL'
         check.description = ('DB counts have changed in past day. Positive '
