@@ -242,8 +242,9 @@ def change_in_item_counts(connection, **kwargs):
     negative_counts = any([count < 0 for count in diff_counts])
     if negative_counts:
         check.status = 'FAIL'
-        check.description = 'DB counts have changed in past day. Positive ' +
-            'numbers represent an increase in counts. Some counts have decreased!'
+        check.description = ('DB counts have changed in past day. Positive '
+                             'numbers represent an increase in counts. '
+                             'Some counts have decreased!')
     elif diff_counts:
         check.status = 'WARN'
         check.description = 'DB counts have changed in past day. Positive numbers represent an increase in counts.'
