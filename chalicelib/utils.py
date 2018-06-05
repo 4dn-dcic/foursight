@@ -4,12 +4,23 @@ import types
 from datetime import datetime, timedelta
 from dateutil import tz
 import traceback
+import signal
+import time
+import boto3
+import sys
+import os
+import json
 from importlib import import_module
-from functools import wraps
+from functools import wraps, partial
 from .run_result import CheckResult, ActionResult
 
+# set environmental variables in .chalice/config.json
+STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
+QUEUE_NAME = '-'.join(['foursight', STAGE, 'check_queue'])
+RUNNER_NAME = '-'.join(['foursight', STAGE, 'check_runner'])
 CHECK_DECO = 'check_function'
 ACTION_DECO = 'action_function'
+CHECK_TIMEOUT = 280  # in seconds. set to less than lambda limit (300 s)
 
 # compare strings in both python 2 and python 3
 # in other files, compare with utils.basestring
@@ -86,7 +97,12 @@ def check_function(*default_args, **default_kwargs):
     def check_deco(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            start_time = time.time()
             kwargs = handle_kwargs(kwargs, default_kwargs)
+            partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': True,
+                        'start_time': start_time, 'connection': args[0]}
+            signal.signal(signal.SIGALRM, partial(timeout_handler, partials))
+            signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
             try:
                 check = func(*args, **kwargs)
                 validate_run_result(check, is_check=True)
@@ -96,6 +112,8 @@ def check_function(*default_args, **default_kwargs):
                 check.status = 'ERROR'
                 check.description = 'Check failed to run. See full output.'
                 check.full_output = traceback.format_exc().split('\n')
+            signal.alarm(0)
+            kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
             check.kwargs = kwargs
             return check.store_result()
         wrapper.check_decorator = CHECK_DECO
@@ -116,7 +134,12 @@ def action_function(*default_args, **default_kwargs):
     def action_deco(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            start_time = time.time()
             kwargs = handle_kwargs(kwargs, default_kwargs)
+            partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': False,
+                        'start_time': start_time, 'connection': args[0]}
+            signal.signal(signal.SIGALRM, partial(timeout_handler, partials))
+            signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
             try:
                 if 'called_by' not in kwargs:
                     raise BadCheckOrAction('Action is missing called_by in its kwargs.')
@@ -128,6 +151,8 @@ def action_function(*default_args, **default_kwargs):
                 action.status = 'FAIL'
                 action.description = 'Action failed to run. See output.'
                 action.output = traceback.format_exc().split('\n')
+            signal.alarm(0)
+            kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
             action.kwargs = kwargs
             return action.store_result()
         wrapper.check_decorator = ACTION_DECO
@@ -167,6 +192,30 @@ class BadCheckOrAction(Exception):
         super().__init__(message)
 
 
+def timeout_handler(partials, signum, frame):
+    """
+    Custom handler for signal that stores the current check
+    or action with the appropriate information and then exits using sys.exit
+    """
+    if partials['is_check']:
+        result = init_check_res(partials['connection'], partials['name'])
+        result.status = 'ERROR'
+    else:
+        result = init_action_res(partials['connection'], partials['name'])
+        result.status = 'FAIL'
+    result.description = 'AWS lambda execution reached the time limit. Please see check/action code.'
+    signal.alarm(0)
+    kwargs = partials['kwargs']
+    kwargs['runtime_seconds'] = round(time.time() - partials['start_time'], 2)
+    result.kwargs = kwargs
+    result.store_result()
+    # need to delete the sqs message and propogate if this is using the queue
+    if kwargs.get('_run_info') and {'receipt', 'sqs_url'} <= set(kwargs['_run_info'].keys()):
+        runner_input = {'sqs_url': kwargs['_run_info']['sqs_url']}
+        delete_message_and_propogate(runner_input, kwargs['_run_info']['receipt'])
+    sys.exit()
+
+
 def parse_datetime_to_utc(time_str, manual_format=None):
     """
     Attempt to parse the string time_str with the given string format.
@@ -200,3 +249,66 @@ def parse_datetime_to_utc(time_str, manual_format=None):
             except ValueError:
                 return None
     return timeobj.replace(tzinfo=tz.tzutc())
+
+
+##### SQS Utils related to check error handling #####
+
+
+def invoke_check_runner(runner_input):
+    """
+    Simple function to invoke the next check_runner lambda with runner_input
+    (dict containing {'sqs_url': <str>})
+    """
+    client = boto3.client('lambda')
+    # InvocationType='Event' makes asynchronous
+    # try/except while async invokes are problematics
+    try:
+        response = client.invoke(
+            FunctionName=RUNNER_NAME,
+            InvocationType='Event',
+            Payload=json.dumps(runner_input)
+        )
+    except:
+        response = client.invoke(
+            FunctionName=RUNNER_NAME,
+            Payload=json.dumps(runner_input)
+        )
+    return response
+
+
+def delete_message_and_propogate(runner_input, receipt):
+    """
+    Delete the message with given receipt from sqs queue and invoke the next
+    lambda runner.
+    """
+    sqs_url = runner_input.get('sqs_url')
+    if not sqs_url or not receipt:
+        return
+    client = boto3.client('sqs')
+    client.delete_message(
+        QueueUrl=sqs_url,
+        ReceiptHandle=receipt
+    )
+    invoke_check_runner(runner_input)
+
+
+def recover_message_and_propogate(runner_input, receipt):
+    """
+    Recover the message with given receipt to sqs queue and invoke the next
+    lambda runner.
+
+    Changing message VisibilityTimeout to 15 seconds means the message will be
+    available to the queue in that much time. This is a slight lag to allow
+    dependencies to process.
+    NOTE: VisibilityTimeout should be less than WaitTimeSeconds in run_check_runner
+    """
+    sqs_url = runner_input.get('sqs_url')
+    if not sqs_url or not receipt:
+        return
+    client = boto3.client('sqs')
+    client.change_message_visibility(
+        QueueUrl=sqs_url,
+        ReceiptHandle=receipt,
+        VisibilityTimeout=15
+    )
+    invoke_check_runner(runner_input)

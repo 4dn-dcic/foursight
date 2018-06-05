@@ -387,7 +387,6 @@ def clean_up_travis_queues(connection, **kwargs):
             queue_age = datetime.datetime.utcnow() - dt_creation
             # delete queues 3 days old or older
             if queue_age > datetime.timedelta(days=3):
-                print('... %s' % queue.url)
                 queue.delete()
                 num_deleted += 1
 

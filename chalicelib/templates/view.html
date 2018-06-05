@@ -74,7 +74,7 @@
                                     {% if check.get('kwargs') %}
                                         <form action={{'/api/view_run/' + env['environment'] + '/' + check['name'] + '/check'}} method="GET">
                                             {% for kwarg in check['kwargs'] %}
-                                                {% if kwarg != 'uuid' %}
+                                                {% if kwarg not in ['uuid', '_run_info', 'runtime_seconds'] %}
                                                     <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
                                                     {% if is_admin %}
                                                         <input style="width: 35%;" type="text" name={{kwarg}} value="{{check['kwargs'][kwarg]}}" /><br>
