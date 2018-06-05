@@ -11,7 +11,6 @@ from chalicelib import (
     check_utils,
     utils,
     check_groups,
-    wrangler_utils,
     run_result,
     fs_connection,
     s3_connection
@@ -72,24 +71,24 @@ class TestFSConnection(FSTest):
         self.assertTrue(check_res.get('description') == "Malformed status; look at Foursight check definition.")
         self.assertTrue(check_res.get('brief_output') == formatted_res.get('brief_output') == None)
         self.assertTrue(check_res.get('ff_link') == 'not_a_real_http_link')
-        
+
     def test_bad_ff_connection_in_fs_connection(self):
         # do not set test=True, should raise because it's not a real FF
         with self.assertRaises(Exception) as exc:
             bad_connection = fs_connection.FSConnection('test', self.environ_info)
         self.assertTrue('Could not initiate connection to Fourfront' in str(exc.exception))
-        
-        
+
+
 class TestS3Connection(FSTest):
     environ = 'mastertest'
     conn = app_utils.init_connection(environ)
-    
+
     def test_s3_conn_fields(self):
         s3_conn = self.conn.s3_connection
         self.assertTrue(s3_conn.bucket)
         self.assertTrue(s3_conn.location)
         self.assertTrue(s3_conn.status_code != 404)
-        
+
     def test_test_s3_conn_methods(self):
         # clean up after yourself
         test_s3_conn = s3_connection.S3Connection('foursight-test-s3')
@@ -109,7 +108,7 @@ class TestS3Connection(FSTest):
         # now there should be 0
         all_keys = test_s3_conn.list_all_keys()
         self.assertTrue(len(all_keys) == 0)
-        
+
 
 class TestAppRoutes(FSTest):
     environ = 'mastertest' # hopefully this is up
@@ -348,19 +347,19 @@ class TestAppUtils(FSTest):
         # test the fs connection
         self.assertTrue(self.conn.fs_env == 'mastertest')
         self.assertTrue(self.conn.s3_connection)
-        # test the ff connection        
+        # test the ff connection
         self.assertTrue(self.conn.ff_server)
         self.assertTrue(self.conn.ff_es)
         self.assertTrue(self.conn.ff_env == 'fourfront-mastertest')
         self.assertTrue(self.conn.ff_s3 is not None)
         self.assertTrue(isinstance(self.conn.ff_keys, dict))
         self.assertTrue({'key', 'secret', 'server'} <= set(self.conn.ff_keys.keys()))
-        
+
     def test_init_bad_connection(self):
         with self.assertRaises(Exception) as exc:
             conn2 = app_utils.init_connection('not_an_environment')
         self.assertTrue('invalid environment provided' in str(exc.exception))
-        
+
     def test_init_environments(self):
         environments = app_utils.init_environments() # default to 'all' environments
         self.assertTrue(self.environ in environments)
@@ -847,6 +846,14 @@ class TestCheckGroup(FSTest):
 class TestUtils(FSTest):
     environ = 'mastertest' # hopefully this is up
     conn = app_utils.init_connection(environ)
+    timestr_1 = '2017-04-09T17:34:53.423589+00:00' # UTC
+    timestr_2 = '2017-04-09T17:34:53.423589+05:00' # 5 hours ahead of UTC
+    timestr_3 = '2017-04-09T17:34:53.423589-05:00' # 5 hours behind of UTC
+    timestr_4 = '2017-04-09T17:34:53.423589'
+    timestr_5 = '2017-04-09T17:34:53'
+    timestr_bad_1 = '2017-04-0589+00:00'
+    timestr_bad_2 = '2017-xxxxxT17:34:53.423589+00:00'
+    timestr_bad_3 = '2017-xxxxxT17:34:53.423589'
 
     @utils.check_function(abc=123, do_not_store=True, uuid=datetime.datetime.utcnow().isoformat())
     def test_function_dummy(*args, **kwargs):
@@ -904,21 +911,10 @@ class TestUtils(FSTest):
             utils.validate_run_result(check, is_check=True)
         self.assertTrue(str(exc.exception) == 'Do not overwrite the store_result method of the check or action result.')
 
-
-class TestWranglerUtils(FSTest):
-    timestr_1 = '2017-04-09T17:34:53.423589+00:00' # UTC
-    timestr_2 = '2017-04-09T17:34:53.423589+05:00' # 5 hours ahead of UTC
-    timestr_3 = '2017-04-09T17:34:53.423589-05:00' # 5 hours behind of UTC
-    timestr_4 = '2017-04-09T17:34:53.423589'
-    timestr_5 = '2017-04-09T17:34:53'
-    timestr_bad_1 = '2017-04-0589+00:00'
-    timestr_bad_2 = '2017-xxxxxT17:34:53.423589+00:00'
-    timestr_bad_3 = '2017-xxxxxT17:34:53.423589'
-
     def parse_datetime_to_utc(self):
         [dt_tz_a, dt_tz_b, dt_tz_c] = ['None'] * 3
         for t_str in [self.timestr_1, self.timestr_2, self.timestr_3, self.timestr_4]:
-            dt = wrangler_utils.parse_datetime_to_utc(t_str)
+            dt = utils.parse_datetime_to_utc(t_str)
             self.assertTrue(dt is not None)
             self.assertTrue(dt.tzinfo is not None and dt.tzinfo == tz.tzutc())
             if t_str == self.timestr_1:
@@ -929,11 +925,11 @@ class TestWranglerUtils(FSTest):
                 dt_tz_c = dt
         self.assertTrue(dt_tz_c > dt_tz_a > dt_tz_b)
         for bad_tstr in [self.timestr_bad_1, self.timestr_bad_2, self.timestr_bad_3]:
-            dt_bad = wrangler_utils.parse_datetime_to_utc(bad_tstr)
+            dt_bad = utils.parse_datetime_to_utc(bad_tstr)
             self.assertTrue(dt_bad is None)
         # use a manual format
-        dt_5_man = wrangler_utils.parse_datetime_to_utc(self.timestr_5, manual_format="%Y-%m-%dT%H:%M:%S")
-        dt_5_auto = wrangler_utils.parse_datetime_to_utc(self.timestr_5)
+        dt_5_man = utils.parse_datetime_to_utc(self.timestr_5, manual_format="%Y-%m-%dT%H:%M:%S")
+        dt_5_auto = utils.parse_datetime_to_utc(self.timestr_5)
         self.assertTrue(dt_5_auto == dt_5_man)
 
     def test_get_s3_utils(self):
@@ -951,22 +947,6 @@ class TestWranglerUtils(FSTest):
             self.assertTrue({'server', 'key', 'secret'} <= set(ff_keys.keys()))
             hg_keys = s3_obj.get_higlass_key()
             self.assertTrue({'server', 'key', 'secret'} <= set(hg_keys.keys()))
-
-    def test_safe_search_with_callback(self):
-        def callback(hit, container):
-            container.append(hit)
-        container = []
-        query = 'search/?type=Page'
-        conn = app_utils.init_connection('mastertest')
-        # sometimes this error happens when mastertest is down
-        try:
-            wrangler_utils.safe_search_with_callback(conn, query, container, callback, limit=30, frame='object')
-        except json.decoder.JSONDecodeError:
-            self.assertTrue(True)
-            return
-        self.assertTrue(len(container) > 0)
-        self.assertTrue(container[0].get('uuid') is not None)
-
 
 
 if __name__ == '__main__':

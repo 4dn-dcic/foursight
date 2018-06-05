@@ -3,10 +3,7 @@ from .utils import (
     check_function,
     init_check_res,
     action_function,
-    init_action_res
-)
-from .wrangler_utils import (
-    safe_search_with_callback,
+    init_action_res,
     parse_datetime_to_utc
 )
 from dcicutils import ff_utils
@@ -29,6 +26,35 @@ def extract_list_info(res_list, fields, key_field):
             continue
         results[res[key_field]] = extract_info(res, fields)
     return results
+
+
+def add_to_report(exp_set, exp_sets):
+    """
+    Used to process search hits in experiment_set_reporting_data
+    """
+    exp_set_res = extract_info(exp_set, ['@id', 'status', 'tags'])
+    exp_set_res['award.project'] = exp_set.get('award', {}).get('project')
+    exp_set_res['processed_files'] = extract_list_info(
+        exp_set.get('processed_files'),
+        ['@id', 'status', 'file_type'],
+        'accession'
+    )
+    exps = {}
+    for exp in exp_set.get('experiments_in_set', []):
+        exp_res = extract_info(exp, ['@id', 'status', 'experiment_type'])
+        exp_res['files'] = extract_list_info(
+            exp.get('files'),
+            ['@id', 'status', 'file_type'],
+            'accession'
+        )
+        exp_res['processed_files'] = extract_list_info(
+            exp.get('processed_files'),
+            ['@id', 'status', 'file_type'],
+            'accession'
+        )
+        exps[exp['accession']] = exp_res
+    exp_set_res['experiments_in_set'] = exps
+    exp_sets[exp_set['accession']] = exp_set_res
 
 
 def calculate_report_from_change(path, prev, curr, add_ons):
@@ -290,41 +316,17 @@ def experiment_set_reporting_data(connection, **kwargs):
     Get a snapshot of all experiment sets, their experiments, and files of
     all of the above. Include uuid, accession, status, and md5sum (for files).
     """
-    # callback fxns
-    def search_callback(exp_set, exp_sets):
-        exp_set_res = extract_info(exp_set, ['@id', 'status', 'tags'])
-        exp_set_res['award.project'] = exp_set.get('award', {}).get('project')
-        exp_set_res['processed_files'] = extract_list_info(
-            exp_set.get('processed_files'),
-            ['@id', 'status', 'file_type'],
-            'accession'
-        )
-        exps = {}
-        for exp in exp_set.get('experiments_in_set', []):
-            exp_res = extract_info(exp, ['@id', 'status', 'experiment_type'])
-            exp_res['files'] = extract_list_info(
-                exp.get('files'),
-                ['@id', 'status', 'file_type'],
-                'accession'
-            )
-            exp_res['processed_files'] = extract_list_info(
-                exp.get('processed_files'),
-                ['@id', 'status', 'file_type'],
-                'accession'
-            )
-            exps[exp['accession']] = exp_res
-        exp_set_res['experiments_in_set'] = exps
-        exp_sets[exp_set['accession']] = exp_set_res
-
     check = init_check_res(connection, 'experiment_set_reporting_data')
     check.status = 'IGNORE'
     exp_sets = {}
     search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
-    safe_search_with_callback(connection, search_query, exp_sets, search_callback, limit=20, frame='embedded')
+    set_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=20)
     # run a second search for status=deleted
-    # add results using the same callback function
-    search_query_del = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created&status=deleted'
-    safe_search_with_callback(connection, search_query_del, exp_sets, search_callback, limit=20, frame='embedded')
+    set_hits_del = ff_utils.search_metadata(search_query + '&status=deleted',
+                                            ff_env=connection.ff_env, page_limit=20)
+    set_hits.extend(set_hits_del)
+    for hit in set_hits:
+        add_to_report(hit, exp_sets)
     check.full_output = exp_sets
     return check
 
@@ -494,12 +496,12 @@ def data_release_updates(connection, **kwargs):
         'name': 'release-updates.' + kwargs['update_tag'],
         'body': '<h4 style=\"margin-top:0px;font-weight:400\">' + static_content + '</h4>'
     }
+    check.status = 'PASS'
     if group_reports:
         check.brief_output = {
             'release_updates': group_reports,
             'static_section': report_static_section
         }
-        check.status = 'WARN'
         check.description = 'Ready to publish new data release updates.' + used_res_strings
         check.action_message = 'Will publish %s  grouped updates with the update_tag: %s. See brief_output.' % ( str(len(group_reports)), kwargs['update_tag'])
         check.allow_action = True
@@ -508,7 +510,6 @@ def data_release_updates(connection, **kwargs):
             'release_updates': [],
             'static_section': None
         }
-        check.status = 'PASS'
         check.description = 'There are no data release updates for the given dates and filters.' + used_res_strings
     return check
 
