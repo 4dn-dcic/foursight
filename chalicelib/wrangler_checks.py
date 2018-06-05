@@ -292,11 +292,12 @@ def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
     check.action = "patch_file_size"
-    search_query = 'search/?type=File&status=released%20to%20project&status=released&status=uploaded'
+    search_query = ('search/?type=File&status=released%20to%20project'
+                    '&status=released&status=uploaded&frame=object')
     if kwargs.get('search_add_on'):
         search_query = ''.join([search_query, kwargs['search_add_on']])
     problem_files = []
-    file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
+    file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
     for hit in file_hits:
         if hit.get('file_size') is None:
             hit_dict = {
