@@ -876,12 +876,11 @@ class TestUtils(FSTest):
 
     def test_check_times_out(self):
         # set to one second, which is slower than test check
-        prev_timeout = utils.CHECK_TIMEOUT
         utils.CHECK_TIMEOUT = 1
         with self.assertRaises(SystemExit) as exc:
             check_utils.run_check_or_action(self.conn, 'test_checks/test_random_nums', {})
         self.assertTrue('-RUN-> TIMEOUT' in str(exc.exception))
-        utils.CHECK_TIMEOUT = prev_timeout
+        utils.CHECK_TIMEOUT = 280
 
 
     def test_check_function_deco_default_kwargs(self):
