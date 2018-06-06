@@ -114,9 +114,6 @@ class TestAppRoutes(FSTest):
     environ = 'mastertest' # hopefully this is up
     conn = app_utils.init_connection(environ)
 
-    def test_stage(self):
-        self.assertTrue(app_utils.STAGE == 'dev')
-
     def test_home_route(self):
         res = app.index()
         self.assertTrue(json.loads(res) == {'foursight': 'insight into fourfront'})
@@ -460,8 +457,8 @@ class TestCheckRunner(FSTest):
     environ = 'mastertest'
     connection = app_utils.init_connection(environ)
     # set up a queue for test checks
-    app_utils.QUEUE_NAME = 'foursight-test-check_queue'
-    queue = app_utils.get_sqs_queue()
+    utils.QUEUE_NAME = 'foursight-test-check_queue'
+    queue = utils.get_sqs_queue()
 
     def test_run_check_runner(self):
         """
@@ -479,13 +476,13 @@ class TestCheckRunner(FSTest):
         while retries < 3 and not test_success:
             # need to manually add things to the queue
             check_vals = check_utils.fetch_check_group('valid_test_checks')
-            app_utils.send_sqs_messages(self.queue, self.environ, check_vals)
+            utils.send_sqs_messages(self.queue, self.environ, check_vals)
             app_utils.run_check_runner({'sqs_url': self.queue.url})
             finished_count = 0 # since queue attrs are approximate
             # wait for queue to empty
             while finished_count < 3:
                 time.sleep(1)
-                sqs_attrs = app_utils.get_sqs_attributes(self.queue.url)
+                sqs_attrs = utils.get_sqs_attributes(self.queue.url)
                 vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
                 invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
                 if vis_messages == 0 and invis_messages == 0:
@@ -495,23 +492,25 @@ class TestCheckRunner(FSTest):
             post_res = check.get_latest_result()
             if prior_res['uuid'] != post_res['uuid']:
                 test_success = True
+                self.assertTrue('_run_info' in post_res['kwargs'])
+                self.assertTrue({'run_id', 'dep_id', 'receipt', 'sqs_url'} <= set(post_res['kwargs']['_run_info'].keys()))
             else:
                 retries += 1
         self.assertTrue(test_success)
 
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
-        self.assertTrue(app_utils.QUEUE_NAME == 'foursight-test-check_queue')
-        self.assertTrue(app_utils.RUNNER_NAME == 'foursight-dev-check_runner')
+        self.assertTrue(utils.QUEUE_NAME == 'foursight-test-check_queue')
+        self.assertTrue(utils.RUNNER_NAME == 'foursight-dev-check_runner')
         # get a reference point for check results
         prior_res = check_utils.get_check_group_results(self.connection, 'all_checks', use_latest=True)
         run_input = app_utils.queue_check_group(self.environ, 'all_checks')
-        self.assertTrue(app_utils.QUEUE_NAME in run_input.get('sqs_url'))
+        self.assertTrue(utils.QUEUE_NAME in run_input.get('sqs_url'))
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
             time.sleep(1)
-            sqs_attrs = app_utils.get_sqs_attributes(run_input.get('sqs_url'))
+            sqs_attrs = utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
             invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
             if vis_messages == 0 and invis_messages == 0:
@@ -531,15 +530,15 @@ class TestCheckRunner(FSTest):
 
     def test_get_sqs_attributes(self):
         # bad sqs url
-        bad_sqs_attrs = app_utils.get_sqs_attributes('not_a_queue')
+        bad_sqs_attrs = utils.get_sqs_attributes('not_a_queue')
         self.assertTrue(bad_sqs_attrs.get('ApproximateNumberOfMessages') == bad_sqs_attrs.get('ApproximateNumberOfMessagesNotVisible') == 'ERROR')
 
     def test_record_and_collect_run_info(self):
         test_run_uuid = 'test_run_uuid'
         test_dep_id = 'xxxxx'
-        resp = app_utils.record_run_info(test_run_uuid, test_dep_id, 'PASS')
+        resp = run_result.record_run_info(test_run_uuid, test_dep_id, 'PASS')
         self.assertTrue(resp is not None)
-        found_ids = app_utils.collect_run_info(test_run_uuid)
+        found_ids = utils.collect_run_info(test_run_uuid)
         self.assertTrue(set([''.join([test_run_uuid, '/', test_dep_id])]) == found_ids)
 
 
@@ -716,6 +715,9 @@ class TestCheckUtils(FSTest):
         self.assertTrue(isinstance(check_res, dict))
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
+        # make sure runtime is in kwargs and pop it
+        self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
+        check_res.get('kwargs').pop('runtime_seconds')
         self.assertTrue(check_res.get('kwargs') == {'primary': True, 'uuid': test_uuid})
         primary_uuid = check_res.get('uuid')
         time.sleep(3)
@@ -726,6 +728,8 @@ class TestCheckUtils(FSTest):
         # with a check and no primary=True flag
         check_res = check_utils.run_check_or_action(self.conn, test_info[0], {})
         latest_uuid = check_res.get('uuid')
+        self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
+        check_res.get('kwargs').pop('runtime_seconds')
         self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid})
         time.sleep(3)
         # latest res will be more recent than primary res now
@@ -742,6 +746,9 @@ class TestCheckUtils(FSTest):
         self.assertTrue('name' in action_res)
         self.assertTrue('status' in action_res)
         self.assertTrue('output' in action_res)
+        # pop runtime_seconds kwarg
+        self.assertTrue('runtime_seconds' in action_res['kwargs'])
+        action_res['kwargs'].pop('runtime_seconds')
         self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid, 'called_by': latest_uuid})
         latest_uuid = action_res.get('uuid')
         time.sleep(3)
@@ -861,15 +868,30 @@ class TestUtils(FSTest):
         check = utils.init_check_res(connection, 'not_a_check')
         return check
 
+    def test_stage(self):
+        self.assertTrue(utils.STAGE == 'dev')
+
+    def test_check_timeout(self):
+        self.assertTrue(isinstance(utils.CHECK_TIMEOUT, int))
+
     def test_check_function_deco_default_kwargs(self):
         # test to see if the check_function decorator correctly overrides
         # kwargs of decorated function if none are provided
         kwargs_default = self.test_function_dummy().get('kwargs')
+        # pop runtime_seconds from here
+        self.assertTrue('runtime_seconds' in kwargs_default)
+        runtime = kwargs_default.pop('runtime_seconds')
+        self.assertTrue(isinstance(runtime, float))
+        self.assertTrue('_run_info' not in kwargs_default)
         uuid = kwargs_default.get('uuid')
         self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid, 'primary': False})
         kwargs_add = self.test_function_dummy(bcd=234).get('kwargs')
+        self.assertTrue('runtime_seconds' in kwargs_add)
+        kwargs_add.pop('runtime_seconds')
         self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid, 'primary': False})
         kwargs_override = self.test_function_dummy(abc=234, primary=True).get('kwargs')
+        self.assertTrue('runtime_seconds' in kwargs_override)
+        kwargs_override.pop('runtime_seconds')
         self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid, 'primary': True})
 
     def test_handle_kwargs(self):
