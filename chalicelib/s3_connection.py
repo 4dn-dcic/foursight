@@ -76,8 +76,9 @@ class S3Connection(object):
                 contents = []
                 reached_end = True  # bail
             all_keys.extend([obj['Key'] for obj in contents])
-            if len(all_keys) > 0 and not token:
+            if not token and response.get('IsTruncated') is False:
                 reached_end = True
+
         # not sorted at this point
         return all_keys
 
@@ -92,7 +93,7 @@ class S3Connection(object):
             token = response.get('NextContinuationToken', None)
             contents = response.get('Contents', [])
             all_keys.extend([obj['Key'] for obj in contents])
-            if not contents or (len(all_keys) > 0 and not token):
+            if not token and response.get('IsTruncated') is False:
                 reached_end = True
         return all_keys
 

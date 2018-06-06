@@ -545,6 +545,8 @@ class TestCheckRunner(FSTest):
 class TestCheckResult(FSTest):
     # use a fake check name and store on mastertest
     check_name = 'test_only_check'
+    # another fake check, with only ERROR results
+    error_check_name = 'test_only_error_check'
     environ = 'mastertest' # hopefully this is up
     connection = app_utils.init_connection(environ)
 
@@ -597,6 +599,20 @@ class TestCheckResult(FSTest):
         pass_uuid = res2['uuid']
         closest_res_no_error = check.get_closest_result(diff_mins=0)
         self.assertTrue(pass_uuid == closest_res_no_error['uuid'])
+        # bad cases: no results and all results are ERROR
+        bad_check = run_result.CheckResult(self.connection.s3_connection, 'not_a_real_check')
+        with self.assertRaises(Exception) as exc:
+            bad_check.get_closest_result(diff_hours=0, diff_mins=0)
+        self.assertTrue('Could not find any results' in str(exc.exception))
+        error_check = run_result.CheckResult(self.connection.s3_connection, self.error_check_name)
+        error_check.status = 'ERROR'
+        error_check.store_result()
+        import pdb; pdb.set_trace()
+        with self.assertRaises(Exception) as exc:
+            error_check.get_closest_result(diff_hours=0, diff_mins=0)
+        self.assertTrue('Could not find closest non-ERROR result' in str(exc.exception))
+
+
 
 
 class TestActionResult(FSTest):
