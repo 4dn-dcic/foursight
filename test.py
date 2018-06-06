@@ -607,7 +607,6 @@ class TestCheckResult(FSTest):
         error_check = run_result.CheckResult(self.connection.s3_connection, self.error_check_name)
         error_check.status = 'ERROR'
         error_check.store_result()
-        import pdb; pdb.set_trace()
         with self.assertRaises(Exception) as exc:
             error_check.get_closest_result(diff_hours=0, diff_mins=0)
         self.assertTrue('Could not find closest non-ERROR result' in str(exc.exception))
