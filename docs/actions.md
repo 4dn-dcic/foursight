@@ -14,6 +14,7 @@ There are a few key requirements to keep in mind when writing an action:
 * The name of the action function must exactly match the value of `check.action` to link a check to an action. Only one action can be linked to a check.
 * To allow an action to be executed, use `check.allow_action = True`.
 * Only users with administrator privileges can run actions.
+* Due to lambda runtime limitations, actions will timeout and exit after running for a time set by the `CHECK_TIMEOUT` variable in `chalicelib/utils.py`. You must keep your action runtimes under this limit.
 
 Action results work much like check results, but have a smaller number of attributes that they use. Here are the ones you should know:
 * **status**: string value. Must be one of: 'DONE', 'PEND', or 'FAIL', otherwise it will be set to 'FAIL' automatically.

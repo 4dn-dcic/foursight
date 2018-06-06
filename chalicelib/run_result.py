@@ -141,7 +141,7 @@ class RunResult(object):
                 s3_res.get('kwargs', {}),
                 'full_output' in s3_res and 'brief_output' in s3_res
             ]
-            # kwargs to remove from the history results
+            # kwargs to remove from the history results. these will not be displayed
             for remove_key in ['_run_info']:
                 res_val[1].pop(remove_key, None)
             results.append(res_val)

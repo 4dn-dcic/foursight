@@ -28,7 +28,11 @@ from .utils import (
     basestring,
     recover_message_and_propogate,
     delete_message_and_propogate,
-    invoke_check_runner
+    invoke_check_runner,
+    get_sqs_queue,
+    collect_run_info,
+    send_sqs_messages,
+    get_sqs_attributes
 )
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS
@@ -720,69 +724,6 @@ def queue_check_group(environ, check_group):
     for n in range(4): # number of parallel runners to kick off
         invoke_check_runner(runner_input)
     return runner_input # for testing purposes
-
-
-def get_sqs_queue():
-    """
-    Returns boto3 sqs resource with QueueName=QUEUE_NAME
-    """
-    sqs = boto3.resource('sqs')
-    try:
-        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
-    except:
-        queue = sqs.create_queue(
-            QueueName=QUEUE_NAME,
-            Attributes={
-                'VisibilityTimeout': '300',
-                'MessageRetentionPeriod': '3600'
-            }
-        )
-    return queue
-
-
-def collect_run_info(run_uuid):
-    """
-    Returns a set of run checks under this run uuid
-    """
-    s3_connection = S3Connection('foursight-runs')
-    run_prefix = ''.join([run_uuid, '/'])
-    complete = s3_connection.list_all_keys_w_prefix(run_prefix)
-    # eliminate duplicates
-    return set(complete)
-
-
-def send_sqs_messages(queue, environ, check_vals):
-    """
-    Send the messafges to the queue. Check_vals are entries within a check_group
-    """
-    # uuid used as the MessageGroupId
-    uuid = datetime.datetime.utcnow().isoformat()
-    # append environ and uuid as first elements to all check_vals
-    proc_vals = [[environ, uuid] + val for val in check_vals]
-    for val in proc_vals:
-        response = queue.send_message(MessageBody=json.dumps(val))
-
-
-def get_sqs_attributes(sqs_url):
-    """
-    Returns a dict of the desired attributes form the queue with given url
-    """
-    backup = {
-        'ApproximateNumberOfMessages': 'ERROR',
-        'ApproximateNumberOfMessagesNotVisible': 'ERROR'
-    }
-    client = boto3.client('sqs')
-    try:
-        result = client.get_queue_attributes(
-            QueueUrl=sqs_url,
-            AttributeNames=[
-                'ApproximateNumberOfMessages',
-                'ApproximateNumberOfMessagesNotVisible'
-            ]
-        )
-    except:
-        return backup
-    return result.get('Attributes', backup)
 
 
 def run_check_runner(runner_input):

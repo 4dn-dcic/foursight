@@ -11,6 +11,7 @@ It is assumed that you've already read the getting started documentation. If not
 * Attributes of the check result, such as status, are simply set like: `check.status = 'PASS'`.
 * Checks should always end by returning the value of the check result: `return check`.
 * Checks have variable parameters through key word arguments (kwargs), two of which are most important: `uuid` and `primary`.
+* Due to lambda runtime limitations, checks will timeout and exit after running for a time set by the `CHECK_TIMEOUT` variable in `chalicelib/utils.py`. You must keep your check runtimes under this limit.
 
 ## Attributes you can set on a check result
 The check result (i.e. the output of running `init_check_res`) has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the check function should return the check result (object initialized by `init_check_res`). Any of the following attributes can be set like this:
@@ -79,7 +80,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     search_res = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
     full_output = {}
     item_output = []
-    for res in results:
+    for res in search_res:
         item_output.append({
             'uuid': res.get('uuid'),
             '@id': res.get('@id'),

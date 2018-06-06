@@ -253,9 +253,20 @@ def check_runner(event, context):
 
 ######### MISC UTILITY FUNCTIONS #########
 
+
 def set_stage(stage):
-    from chalicelib import app_utils
+    from chalicelib import utils
     from deploy import CONFIG_BASE
     if stage not in CONFIG_BASE['stages']:
         print('ERROR! Input stage is not valid. Must be one of: %s' % str(list(CONFIG_BASE['stages'].keys())))
-    app_utils.STAGE = stage
+    utils.STAGE = stage
+
+
+def set_timeout(timeout):
+    from chalicelib import utils
+    try:
+        timeout = int(timeout)
+    except ValueError:
+        print('ERROR! Timeout must be an integer. You gave: %s' % timeout)
+    else:
+        utils.CHECK_TIMEOUT = timeout

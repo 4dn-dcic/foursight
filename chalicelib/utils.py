@@ -13,6 +13,7 @@ import json
 from importlib import import_module
 from functools import wraps, partial
 from .run_result import CheckResult, ActionResult
+from .s3_connection import S3Connection
 
 # set environmental variables in .chalice/config.json
 STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
@@ -91,8 +92,10 @@ def check_function(*default_args, **default_kwargs):
     Any kwargs provided to the decorator will be passed to the function
     if no kwargs are explicitly passed.
     Handles all exceptions within running of the check, including validation
-    issues/some common errors when writing checks. If an exception is raised,
-    will store the result in full_output and return an ERROR CheckResult.
+    issues/some common errors when writing checks. Will also keep track of overall
+    runtime and cancel the check with status=ERROR if runtime exceeds CHECK_TIMEOUT.
+    If an exception is raised, will store the result in full_output and
+    return an ERROR CheckResult.
     """
     def check_deco(func):
         @wraps(func)
@@ -128,8 +131,10 @@ def action_function(*default_args, **default_kwargs):
     Any kwargs provided to the decorator will be passed to the function
     if no kwargs are explicitly passed.
     Handles all exceptions within running of the action, including validation
-    issues/some common errors when writing actions. If an exception is raised,
-    will store the result in output and return a ActionResult with status FAIL.
+    issues/some common errors when writing actions. Will also keep track of overall
+    runtime and cancel the check with status=ERROR if runtime exceeds CHECK_TIMEOUT.
+    If an exception is raised, will store the result in output and return an
+    ActionResult with status FAIL.
     """
     def action_deco(func):
         @wraps(func)
@@ -213,6 +218,8 @@ def timeout_handler(partials, signum, frame):
     if kwargs.get('_run_info') and {'receipt', 'sqs_url'} <= set(kwargs['_run_info'].keys()):
         runner_input = {'sqs_url': kwargs['_run_info']['sqs_url']}
         delete_message_and_propogate(runner_input, kwargs['_run_info']['receipt'])
+    print('-RUN-> TIMEOUT for execution of %s. Elapsed time is %s seconds; keep under %s.'
+          % (partials['name'], kwargs['runtime_seconds'], CHECK_TIMEOUT))
     sys.exit()
 
 
@@ -251,7 +258,7 @@ def parse_datetime_to_utc(time_str, manual_format=None):
     return timeobj.replace(tzinfo=tz.tzutc())
 
 
-##### SQS Utils related to check error handling #####
+##### SQS utils #####
 
 
 def invoke_check_runner(runner_input):
@@ -312,3 +319,66 @@ def recover_message_and_propogate(runner_input, receipt):
         VisibilityTimeout=15
     )
     invoke_check_runner(runner_input)
+
+
+def get_sqs_queue():
+    """
+    Returns boto3 sqs resource with QueueName=QUEUE_NAME
+    """
+    sqs = boto3.resource('sqs')
+    try:
+        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
+    except:
+        queue = sqs.create_queue(
+            QueueName=QUEUE_NAME,
+            Attributes={
+                'VisibilityTimeout': '300',
+                'MessageRetentionPeriod': '3600'
+            }
+        )
+    return queue
+
+
+def collect_run_info(run_uuid):
+    """
+    Returns a set of run checks under this run uuid
+    """
+    s3_connection = S3Connection('foursight-runs')
+    run_prefix = ''.join([run_uuid, '/'])
+    complete = s3_connection.list_all_keys_w_prefix(run_prefix)
+    # eliminate duplicates
+    return set(complete)
+
+
+def send_sqs_messages(queue, environ, check_vals):
+    """
+    Send the messages to the queue. Check_vals are entries within a check_group
+    """
+    # uuid used as the MessageGroupId
+    uuid = datetime.utcnow().isoformat()
+    # append environ and uuid as first elements to all check_vals
+    proc_vals = [[environ, uuid] + val for val in check_vals]
+    for val in proc_vals:
+        response = queue.send_message(MessageBody=json.dumps(val))
+
+
+def get_sqs_attributes(sqs_url):
+    """
+    Returns a dict of the desired attributes form the queue with given url
+    """
+    backup = {
+        'ApproximateNumberOfMessages': 'ERROR',
+        'ApproximateNumberOfMessagesNotVisible': 'ERROR'
+    }
+    client = boto3.client('sqs')
+    try:
+        result = client.get_queue_attributes(
+            QueueUrl=sqs_url,
+            AttributeNames=[
+                'ApproximateNumberOfMessages',
+                'ApproximateNumberOfMessagesNotVisible'
+            ]
+        )
+    except:
+        return backup
+    return result.get('Attributes', backup)
