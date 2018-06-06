@@ -490,7 +490,7 @@ class TestCheckRunner(FSTest):
             time.sleep(1)
             # look at output
             post_res = check.get_latest_result()
-            if prior_res['uuid'] != post_res['uuid']:
+            if prior_res['uuid'] < post_res['uuid']:
                 test_success = True
                 self.assertTrue('_run_info' in post_res['kwargs'])
                 self.assertTrue({'run_id', 'dep_id', 'receipt', 'sqs_url'} <= set(post_res['kwargs']['_run_info'].keys()))
