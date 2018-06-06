@@ -720,7 +720,7 @@ class TestCheckUtils(FSTest):
         check_res.get('kwargs').pop('runtime_seconds')
         self.assertTrue(check_res.get('kwargs') == {'primary': True, 'uuid': test_uuid})
         primary_uuid = check_res.get('uuid')
-        time.sleep(3)
+        time.sleep(5)
         primary_res = check.get_primary_result()
         self.assertTrue(primary_res.get('uuid') == primary_uuid)
         latest_res = check.get_latest_result()
@@ -731,7 +731,7 @@ class TestCheckUtils(FSTest):
         self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
         check_res.get('kwargs').pop('runtime_seconds')
         self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid})
-        time.sleep(3)
+        time.sleep(5)
         # latest res will be more recent than primary res now
         latest_res = check.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == latest_uuid)
