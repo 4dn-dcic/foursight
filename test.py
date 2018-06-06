@@ -58,7 +58,9 @@ class TestFSConnection(FSTest):
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_result() is None)
         self.assertTrue(test_check.get_primary_result() is None)
-        self.assertTrue(test_check.get_closest_result(1) is None)
+        with self.assertRaises(Exception) as exc:
+            test_check.get_closest_result(1)
+        self.assertTrue('Could not find any results' in str(exc.exception))
         self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
         self.assertTrue(formatted_res.get('status') == 'IGNORE')
