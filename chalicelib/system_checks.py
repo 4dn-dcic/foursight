@@ -53,11 +53,19 @@ def elastic_beanstalk_health(connection, **kwargs):
         inst_info = {}
         inst_info['deploy_status'] = instance['Deployment']['Status']
         inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
-        inst_info['deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+        # get version deployment time
+        application_versions = eb_client.describe_application_versions(
+            ApplicationName='4dn-web',
+            VersionLabels=[inst_info['deploy_version']]
+        )
+        deploy_info = application_versions['ApplicationVersions'][0]
+        inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
+        inst_info['version_description'] = deploy_info['Description']
+        inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+        inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
         inst_info['id'] = instance['InstanceId']
         inst_info['color'] = instance['Color']
         inst_info['health'] = instance['HealthStatus']
-        inst_info['launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
         inst_info['causes'] = instance.get('causes', [])
         full_output['instance_health'].append(inst_info)
     if full_output['color'] == 'Grey':
@@ -369,7 +377,7 @@ def clean_up_travis_queues(connection, **kwargs):
     Clean up old sqs queues based on the name ("travis-job")
     and the creation date. Only run on data for now
     """
-    from .app_utils import STAGE
+    from .utils import STAGE
     check = init_check_res(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
     if connection.fs_env != 'data' or STAGE != 'prod':
@@ -387,7 +395,6 @@ def clean_up_travis_queues(connection, **kwargs):
             queue_age = datetime.datetime.utcnow() - dt_creation
             # delete queues 3 days old or older
             if queue_age > datetime.timedelta(days=3):
-                print('... %s' % queue.url)
                 queue.delete()
                 num_deleted += 1
 

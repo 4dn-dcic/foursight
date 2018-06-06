@@ -87,6 +87,7 @@ Let's say you want to run a whole check group and not an individual check. To te
 
 ### Some other testing notes
 * By default, you will use the `dev` stage of Foursight from the Python interpreter and test.py. To change to `prod` (USE WITH CARE), use `app.set_stage('prod')`.
+* You can extend the timeout of your checks/actions locally by using `app.set_stage(num)`, where `num` is an integer representing timeout in seconds. Setting it 0 will disable the timeout completely.
 * You can get the latest check group results using `app.get_check_group_results(connection, name)` given a Foursight connection and a valid check group name.
 * Make sure to use dcicutils for lots of handy utility functions to connect with Fourfront!
 
