@@ -74,6 +74,7 @@ class S3Connection(object):
                 contents = response.get('Contents', [])
             except:
                 contents = []
+                response = {}
                 reached_end = True  # bail
             all_keys.extend([obj['Key'] for obj in contents])
             if not token and response.get('IsTruncated') is False:
