@@ -68,13 +68,18 @@ class RunResult(object):
         best_match = get_closest(check_tuples, desired_time)
         # ensure that the does not have status 'ERROR'
         match_res = None
+        tries = 0  # keep track of number of times we've found an ERROR response
         while not match_res:
             possible_res = self.get_s3_object(best_match[0])
-            if possible_res.get('status', 'ERROR') != 'ERROR':
+            if tries > 999:
+                raise Exception('Could not find closest non-ERROR result for prefix: %s. Attempted'
+                                ' with %s diff hours and %s diff mins.' % (s3_prefix, diff_hours, diff_mins))
+            elif isinstance(possible_res, dict) and possible_res.get('status', 'ERROR') != 'ERROR':
                 match_res = possible_res
             else:
                 check_tuples.remove(best_match)
                 best_match = get_closest(check_tuples, desired_time)
+                tries += 1
         return match_res
 
 
