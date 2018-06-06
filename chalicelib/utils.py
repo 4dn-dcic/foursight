@@ -218,9 +218,8 @@ def timeout_handler(partials, signum, frame):
     if kwargs.get('_run_info') and {'receipt', 'sqs_url'} <= set(kwargs['_run_info'].keys()):
         runner_input = {'sqs_url': kwargs['_run_info']['sqs_url']}
         delete_message_and_propogate(runner_input, kwargs['_run_info']['receipt'])
-    print('-RUN-> TIMEOUT for execution of %s. Elapsed time is %s seconds; keep under %s.'
+    sys.exit('-RUN-> TIMEOUT for execution of %s. Elapsed time is %s seconds; keep under %s.'
           % (partials['name'], kwargs['runtime_seconds'], CHECK_TIMEOUT))
-    sys.exit()
 
 
 def parse_datetime_to_utc(time_str, manual_format=None):
