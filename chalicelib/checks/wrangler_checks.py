@@ -5,7 +5,6 @@ from ..utils import (
     action_function,
     init_action_res
 )
-from ..wrangler_utils import  safe_search_with_callback
 from dcicutils import ff_utils
 import requests
 import sys
@@ -238,12 +237,20 @@ def change_in_item_counts(connection, **kwargs):
                 diff_counts[index] = diff_DB
     for index in prior_unique:
         diff_counts[index] = -1 * prior[index]['DB']
-    if diff_counts:
+    check.full_output = diff_counts
+    # see if we have negative counts
+    negative_counts = any([diff_counts[coll] < 0 for coll in diff_counts])
+    if negative_counts:
+        check.status = 'FAIL'
+        check.description = ('DB counts have changed in past day. Positive '
+                             'numbers represent an increase in counts. '
+                             'Some counts have decreased!')
+    elif diff_counts:
         check.status = 'WARN'
-        check.full_output = diff_counts
-        check.description = 'DB counts have changed in past day; positive numbers represent an increase in current counts.'
+        check.description = 'DB counts have changed in past day. Positive numbers represent an increase in counts.'
     else:
         check.status = 'PASS'
+        check.description = 'DB counts have not changed in the past day.'
     return check
 
 
@@ -282,8 +289,16 @@ def items_created_in_the_past_day(connection, **kwargs):
 
 @check_function(search_add_on=None)
 def identify_files_without_filesize(connection, **kwargs):
-    # helper function. params in form <hit, container>
-    def search_callback(hit, problem_files):
+    check = init_check_res(connection, 'identify_files_without_filesize')
+    # must set this to be the function name of the action
+    check.action = "patch_file_size"
+    search_query = ('search/?type=File&status=released%20to%20project'
+                    '&status=released&status=uploaded&frame=object')
+    if kwargs.get('search_add_on'):
+        search_query = ''.join([search_query, kwargs['search_add_on']])
+    problem_files = []
+    file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
+    for hit in file_hits:
         if hit.get('file_size') is None:
             hit_dict = {
                 'accession': hit.get('accession'),
@@ -292,15 +307,6 @@ def identify_files_without_filesize(connection, **kwargs):
                 'upload_key': hit.get('upload_key')
             }
             problem_files.append(hit_dict)
-
-    check = init_check_res(connection, 'identify_files_without_filesize')
-    # must set this to be the function name of the action
-    check.action = "patch_file_size"
-    search_query = 'search/?type=File&status=released%20to%20project&status=released&status=uploaded'
-    if kwargs.get('search_add_on'):
-        search_query = ''.join([search_query, kwargs['search_add_on']])
-    problem_files = []
-    safe_search_with_callback(connection, search_query, problem_files, search_callback, limit=50, frame='object')
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'

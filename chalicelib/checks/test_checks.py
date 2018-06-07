@@ -11,6 +11,7 @@ import json
 import datetime
 import boto3
 import random
+import time
 
 def test_function_unused():
     return
@@ -41,6 +42,8 @@ def test_random_nums(connection, **kwargs):
         output.append(random.randint(1,100))
     check.full_output = output
     check.description = 'A test check'
+    # sleep for 2 secs because this is used to test timing out
+    time.sleep(2)
     return check
 
 

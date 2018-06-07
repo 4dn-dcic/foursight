@@ -22,7 +22,19 @@ from .check_utils import (
     init_action_res,
     init_check_or_action_res
 )
-from .utils import basestring
+from .utils import (
+    STAGE,
+    QUEUE_NAME,
+    RUNNER_NAME,
+    basestring,
+    recover_message_and_propogate,
+    delete_message_and_propogate,
+    invoke_check_runner,
+    get_sqs_queue,
+    collect_run_info,
+    send_sqs_messages,
+    get_sqs_attributes
+)
 from .s3_connection import S3Connection
 from .check_groups import CHECK_GROUPS
 
@@ -30,12 +42,6 @@ jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
     autoescape=select_autoescape(['html', 'xml'])
 )
-
-# set environmental variables in .chalice/config.json
-STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
-QUEUE_NAME = '-'.join(['foursight', STAGE, 'check_queue'])
-RUNNER_NAME = '-'.join(['foursight', STAGE, 'check_runner'])
-
 
 def list_environments():
     """
@@ -617,6 +623,7 @@ def get_environment(environ):
         )
     return process_response(response)
 
+
 ##### CHECK RUNNER FUNCTIONS #####
 
 def queue_scheduled_checks(sched_environ, schedule_name):
@@ -649,141 +656,6 @@ def queue_scheduled_checks(sched_environ, schedule_name):
     for n in range(4): # number of parallel runners to kick off
         invoke_check_runner(runner_input)
     return runner_input # for testing purposes
-
-
-def get_sqs_queue():
-    """
-    Returns boto3 sqs resource with QueueName=QUEUE_NAME
-    """
-    sqs = boto3.resource('sqs')
-    try:
-        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
-    except:
-        queue = sqs.create_queue(
-            QueueName=QUEUE_NAME,
-            Attributes={
-                'VisibilityTimeout': '300',
-                'MessageRetentionPeriod': '3600'
-            }
-        )
-    return queue
-
-
-def send_sqs_messages(queue, environ, check_vals):
-    """
-    Send the messafges to the queue. Check_vals are entries within a check_group
-    """
-    # uuid used as the MessageGroupId
-    uuid = datetime.datetime.utcnow().isoformat()
-    # append environ and uuid as first elements to all check_vals
-    proc_vals = [[environ, uuid] + val for val in check_vals]
-    for val in proc_vals:
-        response = queue.send_message(MessageBody=json.dumps(val))
-
-
-def get_sqs_attributes(sqs_url):
-    """
-    Returns a dict of the desired attributes form the queue with given url
-    """
-    backup = {
-        'ApproximateNumberOfMessages': 'ERROR',
-        'ApproximateNumberOfMessagesNotVisible': 'ERROR'
-    }
-    client = boto3.client('sqs')
-    try:
-        result = client.get_queue_attributes(
-            QueueUrl=sqs_url,
-            AttributeNames=[
-                'ApproximateNumberOfMessages',
-                'ApproximateNumberOfMessagesNotVisible'
-            ]
-        )
-    except:
-        return backup
-    return result.get('Attributes', backup)
-
-
-def invoke_check_runner(runner_input):
-    """
-    Simple function to invoke the next check_runner lambda with runner_input
-    (dict containing {'sqs_url': <str>})
-    """
-    client = boto3.client('lambda')
-    # InvocationType='Event' makes asynchronous
-    # try/except while async invokes are problematics
-    try:
-        response = client.invoke(
-            FunctionName=RUNNER_NAME,
-            InvocationType='Event',
-            Payload=json.dumps(runner_input)
-        )
-    except:
-        response = client.invoke(
-            FunctionName=RUNNER_NAME,
-            Payload=json.dumps(runner_input)
-        )
-    return response
-
-
-def delete_message_and_propogate(runner_input, receipt):
-    """
-    Delete the message with given receipt from sqs queue and invoke the next
-    lambda runner.
-    """
-    sqs_url = runner_input.get('sqs_url')
-    if not sqs_url or not receipt:
-        return
-    client = boto3.client('sqs')
-    client.delete_message(
-        QueueUrl=sqs_url,
-        ReceiptHandle=receipt
-    )
-    invoke_check_runner(runner_input)
-
-
-def recover_message_and_propogate(runner_input, receipt):
-    """
-    Recover the message with given receipt to sqs queue and invoke the next
-    lambda runner.
-
-    Changing message VisibilityTimeout to 15 seconds means the message will be
-    available to the queue in that much time. This is a slight lag to allow
-    dependencies to process.
-    NOTE: VisibilityTimeout should be less than WaitTimeSeconds in run_check_runner
-    """
-    sqs_url = runner_input.get('sqs_url')
-    if not sqs_url or not receipt:
-        return
-    client = boto3.client('sqs')
-    client.change_message_visibility(
-        QueueUrl=sqs_url,
-        ReceiptHandle=receipt,
-        VisibilityTimeout=15
-    )
-    invoke_check_runner(runner_input)
-
-
-def record_run_info(run_uuid, dep_id, check_status):
-    """
-    Add a record of the completed check to the foursight-runs bucket with name
-    equal to the dependency id. The object itself is only the status of the run.
-    Returns True on success, False otherwise
-    """
-    s3_connection = S3Connection('foursight-runs')
-    record_key = '/'.join([run_uuid, dep_id])
-    resp = s3_connection.put_object(record_key, json.dumps(check_status))
-    return resp is not None
-
-
-def collect_run_info(run_uuid):
-    """
-    Returns a set of run checks under this run uuid
-    """
-    s3_connection = S3Connection('foursight-runs')
-    run_prefix = ''.join([run_uuid, '/'])
-    complete = s3_connection.list_all_keys_w_prefix(run_prefix)
-    # eliminate duplicates
-    return set(complete)
 
 
 def run_check_runner(runner_input):
@@ -837,13 +709,10 @@ def run_check_runner(runner_input):
         # add the run uuid as the uuid to kwargs so that checks will coordinate
         if 'uuid' not in check_kwargs:
             check_kwargs['uuid'] = run_uuid
-        # if run_checks times out, sqs will recover message in 300 sec (VisibilityTimeout)
+        check_kwargs['_run_info'] = {'run_id': run_uuid, 'dep_id': dep_id,
+                                     'receipt': receipt, 'sqs_url': sqs_url}
         run_result = run_check_or_action(connection, check_name, check_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
-        recorded = record_run_info(run_uuid, dep_id, run_result.get('status'))
-    else:
-        recorded = False
-    if recorded:
         print('-RUN-> Finished: %s' % (check_name))
         delete_message_and_propogate(runner_input, receipt)
     else:
