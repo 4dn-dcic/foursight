@@ -16,6 +16,7 @@ from .check_utils import (
     get_check_results,
     get_check_strings,
     get_action_strings,
+    get_schedule_names,
     get_check_schedule,
     run_check_or_action,
     init_check_res,
@@ -36,7 +37,6 @@ from .utils import (
     get_sqs_attributes
 )
 from .s3_connection import S3Connection
-from .check_groups import CHECK_GROUPS
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -575,7 +575,8 @@ def run_put_environment(environ, env_data):
             )
         else:
             # run some checks on the new env
-            queue_check_group(environ, 'all_checks')
+            for sched in get_schedule_names():
+                queue_scheduled_checks(environ, sched)
             response = Response(
                 body = {
                     'status': 'success',

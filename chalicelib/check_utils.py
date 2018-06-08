@@ -133,11 +133,12 @@ def get_action_strings(specific_action=None):
 
 def get_check_results(connection, checks=[], use_latest=False):
     """
-    Initialize check results for each check in a group and get results stored
-    in s3, sorted alphabetically
+    Initialize check results for each desired check and get results stored
+    in s3, sorted alphabetically.
+    May provide a list of string check names as `checks`; otherwise get all
+    checks by default.
     By default, gets the 'primary' results. If use_latest is True, get the
     'latest' results instead.
-    Using name = 'all' will return all non-test check strings
     """
     check_results = []
     if not checks:
@@ -153,6 +154,17 @@ def get_check_results(connection, checks=[], use_latest=False):
             check_results.append(found)
     # sort them alphabetically
     return sorted(check_results, key=lambda v: v['name'].lower())
+
+
+def get_schedule_names():
+    """
+    Simply return a list of all valid schedule names, as defined in CHECK_SETUP
+    """
+    schedules = set()
+    for _, detail in CHECK_SETUP.items():
+        for schedule in detail.get('schedule', []):
+            schedules.add(schedule)
+    return list(schedules)
 
 
 def get_check_schedule(schedule_name):
