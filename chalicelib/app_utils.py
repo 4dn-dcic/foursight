@@ -13,7 +13,7 @@ from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
 from .check_utils import (
-    get_check_group_results,
+    get_check_results,
     get_check_strings,
     get_action_strings,
     get_check_schedule,
@@ -286,7 +286,7 @@ def view_foursight(environ, is_admin=False, domain=""):
         except Exception:
             connection = None
         if connection:
-            results = get_check_group_results(connection, 'all')
+            results = get_check_results(connection)
             processed_results = process_view_results(connection, results, is_admin)
             total_envs.append({
                 'status': 'success',

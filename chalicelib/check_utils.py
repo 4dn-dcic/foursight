@@ -130,25 +130,19 @@ def get_action_strings(specific_action=None):
     else:
         return list(set(all_actions))
 
-##################################
-##### NEED TO ATTEND TO THIS #####
-##################################
-def get_check_group_results(connection, name, use_latest=False):
+
+def get_check_results(connection, checks=[], use_latest=False):
     """
-    Initialize check results for each check in a group and get latest results,
-    sorted alphabetically
+    Initialize check results for each check in a group and get results stored
+    in s3, sorted alphabetically
     By default, gets the 'primary' results. If use_latest is True, get the
     'latest' results instead.
     Using name = 'all' will return all non-test check strings
     """
-    latest_results = []
-    check_group = fetch_check_group(name)
-    if not check_group:
-        return latest_results
-    for check_info in check_group:
-        if len(check_info) != 4:
-            continue
-        check_name = check_info[0].strip().split('/')[1]
+    check_results = []
+    if not checks:
+        checks = [check_str.split('/')[1] for check_str in get_check_strings()]
+    for check_name in checks:
         tempCheck = init_check_res(connection, check_name)
         if use_latest:
             found = tempCheck.get_latest_result()
@@ -156,10 +150,9 @@ def get_check_group_results(connection, name, use_latest=False):
             found = tempCheck.get_primary_result()
         # checks with no records will return None. Skip IGNORE checks
         if found and found.get('status') != 'IGNORE':
-            latest_results.append(found)
+            check_results.append(found)
     # sort them alphabetically
-    latest_results = sorted(latest_results, key=lambda v: v['name'].lower())
-    return latest_results
+    return sorted(check_results, key=lambda v: v['name'].lower())
 
 
 def get_check_schedule(schedule_name):
