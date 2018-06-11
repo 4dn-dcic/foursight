@@ -4,7 +4,8 @@ from ..utils import (
     init_check_res,
     action_function,
     init_action_res,
-    basestring
+    basestring,
+    STAGE
 )
 from dcicutils import ff_utils
 import requests
@@ -257,7 +258,6 @@ def fourfront_performance_metrics(connection, **kwargs):
 
 @check_function()
 def secondary_queue_deduplication(connection, **kwargs):
-    from .app_utils import STAGE
     check = init_check_res(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
     if STAGE != 'prod':
@@ -377,7 +377,6 @@ def clean_up_travis_queues(connection, **kwargs):
     Clean up old sqs queues based on the name ("travis-job")
     and the creation date. Only run on data for now
     """
-    from .utils import STAGE
     check = init_check_res(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
     if connection.fs_env != 'data' or STAGE != 'prod':

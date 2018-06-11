@@ -13,9 +13,10 @@ from dateutil import tz
 from base64 import b64decode
 from .fs_connection import FSConnection
 from .check_utils import (
-    get_check_results,
+    get_grouped_check_results,
     get_check_strings,
     get_action_strings,
+    get_check_title_from_setup,
     get_schedule_names,
     get_check_schedule,
     run_check_or_action,
@@ -28,6 +29,7 @@ from .utils import (
     QUEUE_NAME,
     RUNNER_NAME,
     basestring,
+    list_environments,
     recover_message_and_propogate,
     delete_message_and_propogate,
     invoke_check_runner,
@@ -42,13 +44,6 @@ jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
     autoescape=select_autoescape(['html', 'xml'])
 )
-
-def list_environments():
-    """
-    Lists all environments in the foursight-envs s3. Returns a list of names
-    """
-    s3_connection = S3Connection('foursight-envs')
-    return s3_connection.list_all_keys()
 
 
 def init_environments(env='all'):
@@ -286,17 +281,24 @@ def view_foursight(environ, is_admin=False, domain=""):
         except Exception:
             connection = None
         if connection:
-            results = get_check_results(connection)
-            processed_results = process_view_results(connection, results, is_admin)
+            grouped_results = get_grouped_check_results(connection)
+            for group, one_result in grouped_results.items():
+                for title, result in one_result.items():
+                    if title == '_statuses':
+                        # convert counts to strings for jinja
+                        for stat, val in one_result[title].items():
+                            one_result[title][stat] = str(val)
+                        continue
+                    one_result[title] = process_view_result(connection, result, is_admin)
             total_envs.append({
                 'status': 'success',
                 'environment': this_environ,
-                'checks': processed_results
+                'groups': grouped_results
             })
     # prioritize these environments
     env_order = ['data', 'staging', 'webdev', 'hotseat']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
-    template = jin_env.get_template('view.html')
+    template = jin_env.get_template('view_groups.html')
     # get queue information
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
@@ -328,13 +330,14 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
         res_check = init_check_res(connection, check)
         if res_check:
             data = res_check.get_result_by_uuid(uuid)
-            processed_results = process_view_results(connection, [data], is_admin)
+            title = get_check_title_from_setup(check)
+            processed_result = process_view_result(connection, data, is_admin)
             total_envs.append({
                 'status': 'success',
                 'environment': environ,
-                'checks': processed_results
+                'checks': {title: processed_result}
             })
-    template = jin_env.get_template('view.html')
+    template = jin_env.get_template('view_checks.html')
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
@@ -350,51 +353,47 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
     return process_response(html_resp)
 
 
-def process_view_results(connection, results, is_admin):
-    processed_results = []
-    for res in results:
-        # first check to see if res is just a string, meaning
-        # the check didn't execute properly
-        if not isinstance(res, dict):
-            error_res = {
-                'status': 'ERROR',
-                'content': True,
-                'title': 'Check System Error',
-                'description': res,
-                'uuid': 'Did not run.'
-            }
-            processed_results.append(error_res)
-            continue
-        # this can be removed once uuid has been around long enough
-        ts_utc = res['uuid'] if 'uuid' in res else res['timestamp']
-        ts_utc = datetime.datetime.strptime(ts_utc, "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
-        ts_utc = ts_utc.replace(tzinfo=tz.tzutc())
-        # change timezone to EST (specific location needed for daylight savings)
-        ts_local = ts_utc.astimezone(tz.gettz('America/New_York'))
-        proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
-        res['local_time'] = proc_ts
-        if res.get('brief_output'):
-            res['brief_output'] = trim_output(res['brief_output'])
-        if res.get('full_output'):
-            res['full_output'] = trim_output(res['full_output'])
-        # only return admin_output if an admin is logged in
-        if res.get('admin_output') and is_admin:
-            res['admin_output'] = trim_output(res['admin_output'])
-        else:
-            res['admin_output'] = None
-        # get the latest result for the checks action, if present
-        if res.get('action'):
-            action = init_action_res(connection, res.get('action'))
-            if action:
-                latest_action = action.get_latest_result()
-                if latest_action:
-                    res['latest_action'] = json.dumps(latest_action, indent=4)
-                else:
-                    res['latest_action'] = 'Not yet run.'
+def process_view_result(connection, res, is_admin):
+    # first check to see if res is just a string, meaning
+    # the check didn't execute properly
+    if not isinstance(res, dict):
+        error_res = {
+            'status': 'ERROR',
+            'content': True,
+            'title': 'Check System Error',
+            'description': res,
+            'uuid': 'Did not run.'
+        }
+        return error_res
+    # this can be removed once uuid has been around long enough
+    ts_utc = res['uuid'] if 'uuid' in res else res['timestamp']
+    ts_utc = datetime.datetime.strptime(ts_utc, "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+    ts_utc = ts_utc.replace(tzinfo=tz.tzutc())
+    # change timezone to EST (specific location needed for daylight savings)
+    ts_local = ts_utc.astimezone(tz.gettz('America/New_York'))
+    proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
+    res['local_time'] = proc_ts
+    if res.get('brief_output'):
+        res['brief_output'] = trim_output(res['brief_output'])
+    if res.get('full_output'):
+        res['full_output'] = trim_output(res['full_output'])
+    # only return admin_output if an admin is logged in
+    if res.get('admin_output') and is_admin:
+        res['admin_output'] = trim_output(res['admin_output'])
+    else:
+        res['admin_output'] = None
+    # get the latest result for the checks action, if present
+    if res.get('action'):
+        action = init_action_res(connection, res.get('action'))
+        if action:
+            latest_action = action.get_latest_result()
+            if latest_action:
+                res['latest_action'] = json.dumps(latest_action, indent=4)
             else:
-                del res['action']
-        processed_results.append(res)
-    return processed_results
+                res['latest_action'] = 'Not yet run.'
+        else:
+            del res['action']
+    return res
 
 
 def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, domain=""):
@@ -418,7 +417,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, do
     else:
         history, history_kwargs = [], []
     template = jin_env.get_template('history.html')
-    check_title = ' '.join(check.split('_')).title()
+    check_title = get_check_title_from_setup(check)
     page_title = ''.join(['History for ', check_title, ' (', environ, ')'])
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')

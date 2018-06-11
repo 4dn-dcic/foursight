@@ -87,7 +87,14 @@
     "data_release_updates": {
         "title": "Data release updates",
         "group": "Fourfront checks",
-        "schedule": {}
+        "schedule": {},
+        "display": ["data"]
+    },
+    "staging_deployment": {
+        "title": "Staging deployment",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["staging"]
     },
     "fourfront_performance_metrics": {
         "title": "Fourfront performance metrics",

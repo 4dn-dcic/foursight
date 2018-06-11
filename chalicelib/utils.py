@@ -31,6 +31,14 @@ except NameError:
     basestring = str
 
 
+def list_environments():
+    """
+    Lists all environments in the foursight-envs s3. Returns a list of names
+    """
+    s3_connection = S3Connection('foursight-envs')
+    return s3_connection.list_all_keys()
+
+
 def init_check_res(connection, name, init_uuid=None):
     """
     Initialize a CheckResult object, which holds all information for a

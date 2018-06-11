@@ -1,4 +1,92 @@
-<!-- Define base template, <style> and <script> here -->
+<!-- Macro for toggle button to display _output fields of checks -->
+{% macro toggle_output(output, target, title) %}
+    <button class="commonstyle own-line btn btn-default btn-sm" data-toggle="collapse" data-target={{'#' + target}}>
+        {{title}}
+    </button>
+    <div class="collapse" id={{target}}>
+        <pre class="commonstyle"><code>{{output}}</code></pre>
+    </div>
+{% endmacro %}
+
+<!-- Macro for one check result -->
+{% macro check_result(check, title, environment, is_admin) %}
+    <div class="{{'check-' + check['status'].lower() + ' boxstyle'}}">
+        <h5 style='margin:10px 5px 10px 5px;'}}>
+            <a class="title-hover" data-toggle="collapse" href={{'#' + environment + '-' + check['name']}}>
+                {{title}}
+            </a>
+            <span class="pull-right">
+                {{check.get('local_time', 'No timestamp')}}
+            </span>
+        </h5>
+        <div class="collapse collapse-div commonstyle container-fluid" id={{environment + '-' + check['name']}}>
+            <hr style="margin:0px 0px 8px 0px; border-top:1px solid #ccc;">
+            <div class='row'>
+                <div class="col-sm-9">
+                    {% if check.get('description') %}
+                        <div class="commonstyle own-line">{{check['description']}}</div>
+                    {% endif %}
+                    {% if check.get('ff_link') %}
+                        <a href={{check['ff_link']}} target="_blank" class="commonstyle own-line">{{check['ff_link']}}</a>
+                    {% endif %}
+                    {% if check.get('brief_output')%}
+                        {{toggle_output(check['brief_output'], environment + '-' + check['name'] + '-brief', 'Toggle brief output')}}
+                    {% endif %}
+                    {% if check.get('full_output')%}
+                        {{toggle_output(check['full_output'], environment + '-' + check['name'] + '-full', 'Toggle full output')}}
+                    {% endif %}
+                    {% if check.get('admin_output') and is_admin %}
+                        {{toggle_output(check['admin_output'], environment + '-' + check['name'] + '-admin', 'Toggle admin output')}}
+                    {% endif %}
+                    {% if check.get('latest_action') %}
+                        {{toggle_output(check['latest_action'], environment + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
+                    {% endif %}
+                    {% if check.get('action') and is_admin %}
+                        <form class="commonstyle own-line" action={{"/api/view_run/" + environment + '/' + check['action'] + '/action'}} method="GET">
+                            <input type="hidden" name="called_by" value={{check['kwargs']['uuid']}} />
+                            {% if not check.get('allow_action') %}
+                                <button id={{"action-" + check['name'] + "-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" disabled>
+                                    {{' '.join(check['action'].split('_')).title()}}
+                                </button>
+                            {% else %}
+                                <button id={{"action-" + check['name'] + "-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" onclick="{{"return confirm_action('" + check['name'] + "-" + check['kwargs']['uuid'] + "', '" + check.get('action_message', 'Confirm run?') + "');" | safe}}" type="button">
+                                    {{' '.join(check['action'].split('_')).title()}}
+                                </button>
+                            {% endif %}
+                        </form>
+                        <div id={{"action-message-" +check['name'] + "-" + check['kwargs']['uuid']}}></div>
+                    {% endif %}
+                </div>
+                <div class="col-sm-3 pull-right" style="text-align: right;">
+                    <a class="commonstyle own-line" target="_blank" href={{'/api/history/' + environment + '/' + check['name']}}>
+                        Result history
+                    </a>
+                    {% if check.get('kwargs') %}
+                        <form action={{'/api/view_run/' + environment + '/' + check['name'] + '/check'}} method="GET">
+                            {% for kwarg in check['kwargs'] %}
+                                {% if kwarg not in ['uuid', '_run_info', 'runtime_seconds'] %}
+                                    <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
+                                    {% if is_admin %}
+                                        <input style="width: 35%;" type="text" name={{kwarg}} value="{{check['kwargs'][kwarg]}}" /><br>
+                                    {% else %}
+                                        <span>{{check['kwargs'][kwarg]}}</span><br>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if is_admin %}
+                                <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit">
+                                    Run check
+                                </button>
+                            {% endif %}
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+<!-- Main body template. Define the base template, <style> and <script> here -->
 <!DOCTYPE html>
 <html class="html-scroll">
 <head>
@@ -17,7 +105,7 @@
         overflow-y: scroll;
     }
     .container {
-        max-width: 1400px;
+        max-width: 1900px;
         padding-top: 10px;
     }
     .control-form {
@@ -147,6 +235,29 @@
             theme: { logo: 'https://data.4dnucleome.org/static/img/favicon-fs.ico' },
             allowedConnections: ['github', 'google-oauth2']
         });
+    </script>
+    <script type="text/javascript">
+        function collapse_element(e, id){
+            console.log(e.target.id);
+            if(e.target.id == 'bg-' + id){
+                $('#' + id).collapse('toggle');
+            }
+        }
+    </script>
+    <script type="text/javascript">
+        function confirm_action(uuid, message){
+            var actionMessage = document.getElementById("action-message-" + uuid);
+            actionMessage.innerHTML = '<pre class="commonstyle"><code>' + message + '</code></pre>';
+            var actionButton = document.getElementById("action-" + uuid);
+            actionButton.classList.remove('btn-warning');
+            actionButton.classList.add('btn-danger');
+            actionButton.onclick = null;
+            actionButton.disabled = true;
+            setTimeout(function(){
+                actionButton.disabled = false;
+                actionButton.type = "submit";
+            },1000);
+        }
     </script>
     {% block script %}{% endblock %}
 </body>

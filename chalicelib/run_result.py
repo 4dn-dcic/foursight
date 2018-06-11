@@ -266,7 +266,7 @@ class CheckResult(RunResult):
 
 class ActionResult(RunResult):
     """
-    Inherits from RunResult and is meant to be used with actions.
+    Inherits from RunResult and is meant to be used with actions
     """
     def __init__(self, s3_connection, name):
         self.description = None

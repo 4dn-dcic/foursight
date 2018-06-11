@@ -373,12 +373,6 @@ class TestAppUtils(FSTest):
         bad_envs = app_utils.init_environments('not_an_environment')
         self.assertTrue(bad_envs == {})
 
-    def test_list_environments(self):
-        env_list = app_utils.list_environments()
-        # assume we have at least one environments
-        self.assertTrue(isinstance(env_list, list))
-        self.assertTrue(self.environ in env_list)
-
     def test_init_response(self):
         # a good reponse
         connection, response = app_utils.init_response(self.environ)
@@ -892,6 +886,7 @@ class TestUtils(FSTest):
     def test_check_timeout(self):
         self.assertTrue(isinstance(utils.CHECK_TIMEOUT, int))
 
+
     def test_check_times_out(self):
         # set to one second, which is slower than test check
         utils.CHECK_TIMEOUT = 1
@@ -900,6 +895,11 @@ class TestUtils(FSTest):
         self.assertTrue('-RUN-> TIMEOUT' in str(exc.exception))
         utils.CHECK_TIMEOUT = 280
 
+    def test_list_environments(self):
+        env_list = utils.list_environments()
+        # assume we have at least one environments
+        self.assertTrue(isinstance(env_list, list))
+        self.assertTrue(self.environ in env_list)
 
     def test_check_function_deco_default_kwargs(self):
         # test to see if the check_function decorator correctly overrides
