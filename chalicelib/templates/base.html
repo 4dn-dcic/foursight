@@ -11,14 +11,26 @@
 <!-- Macro for one check result -->
 {% macro check_result(check, title, environment, is_admin) %}
     <!-- check-result is a reserved class name -->
+    {% set check_summary = check['summary'] if check.get('summary') != None else '' %}
     <div class="{{'check-' + check['status'].lower() + ' boxstyle'}} check-result">
         <h5 style='margin:10px 5px 10px 5px;'}}>
-            <a class="title-hover" data-toggle="collapse" href={{'#' + environment + '-' + check['name']}}>
-                {{title}}
-            </a>
-            <span class="pull-right">
-                {{check.get('local_time', 'No timestamp')}}
-            </span>
+            <div class='row'>
+                <div class="col-sm-4">
+                    <a class="title-hover" data-toggle="collapse" id={{'toggle-' + environment + '-' + check['name']}} href={{'#' + environment + '-' + check['name']}}>
+                        {{title}}
+                    </a>
+                </div>
+                <div class="col-sm-6">
+                    <span class="opacity-transition" id={{'summary-' + environment + '-' + check['name']}} style="font-weight:350;">
+                        {{check_summary[:77] + '...' if (check_summary and check_summary|length > 80) else check_summary}}
+                    </span>
+                </div>
+                <div class="col-sm-2 pull-right">
+                    <span style="font-weight:350;">
+                        {{check.get('local_time', 'No timestamp')}}
+                    </span>
+                </div>
+            </div>
         </h5>
         <div class="collapse collapse-div commonstyle container-fluid" id={{environment + '-' + check['name']}}>
             <hr style="margin:0px 0px 8px 0px; border-top:1px solid #ccc;">
@@ -175,6 +187,10 @@
     .center-element {
         text-align: center;
     }
+    .opacity-transition {
+        -webkit-transition: opacity 0.5s;
+        transition: opacity 0.5s;
+    }
     .title-hover, .title-hover:visited, .title-hover:active {
         color: inherit;
     }
@@ -272,6 +288,21 @@
                 actionButton.type = "submit";
             },1000);
         }
+    </script>
+    <script>
+        // Toggle opacity of a check result summary when the anchor to open/close result is used
+        $(document).ready(function() {
+            $('.title-hover').click(function(){
+                var anchorId = $(this).attr("id");
+                var variablePart = anchorId.replace("toggle-","");
+                var summaryEle = $('#summary-'+variablePart);
+                if (summaryEle.css('opacity') == 0){
+                    summaryEle.css({ opacity: 1 });
+                }else{
+                    summaryEle.css({ opacity: 0 });
+                }
+            });
+        });
     </script>
     {% block script %}{% endblock %}
 </body>

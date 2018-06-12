@@ -1,7 +1,7 @@
 {
     "item_counts_by_type": {
         "title": "Item counts by type",
-        "group": "System checks",
+        "group": "Metadata checks",
         "schedule": {
             "ten_min_checks": {
                 "all": {
@@ -73,7 +73,7 @@
     },
     "experiment_set_reporting_data": {
         "title": "Release updates data collection",
-        "group": "Fourfront checks",
+        "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
                 "data": {
@@ -86,7 +86,7 @@
     },
     "data_release_updates": {
         "title": "Data release updates",
-        "group": "Fourfront checks",
+        "group": "Metadata checks",
         "schedule": {},
         "display": ["data"]
     },
@@ -98,7 +98,7 @@
     },
     "fourfront_performance_metrics": {
         "title": "Fourfront performance metrics",
-        "group": "Fourfront checks",
+        "group": "System checks",
         "schedule": {
             "morning_checks": {
                 "data": {
@@ -109,22 +109,9 @@
             }
         }
     },
-    "items_created_in_the_past_day": {
-        "title": "Items created in the past day",
-        "group": "Fourfront checks",
-        "schedule": {
-            "morning_checks": {
-                "all": {
-                    "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_items_past_day"
-                }
-            }
-        }
-    },
     "change_in_item_counts": {
         "title": "Change in item counts",
-        "group": "Fourfront checks",
+        "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
                 "all": {
@@ -137,7 +124,7 @@
     },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
-        "group": "Fourfront checks",
+        "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
                 "data": {
@@ -155,7 +142,7 @@
     },
     "mcool_not_registered_with_higlass": {
         "title": "mcool files not registered with higlass",
-        "group": "Fourfront checks",
+        "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
                 "data": {
@@ -173,7 +160,7 @@
     },
     "secondary_queue_deduplication": {
         "title": "Secondary queue deduplication",
-        "group": "Fourfront checks",
+        "group": "System checks",
         "schedule": {
             "morning_checks": {
                 "all": {
@@ -186,7 +173,7 @@
     },
     "biorxiv_is_now_published": {
         "title": "biorxiv is now published",
-        "group": "Fourfront checks",
+        "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
                 "all": {

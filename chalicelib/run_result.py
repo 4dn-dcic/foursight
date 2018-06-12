@@ -208,6 +208,8 @@ class CheckResult(RunResult):
                         setattr(self, key, val)
                 super().__init__(s3_connection, name)
                 return
+        # summary will be displayed next to title when set
+        self.summary = None
         self.description = None
         # valid values are: 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
         # start with IGNORE as the default check status
@@ -225,9 +227,15 @@ class CheckResult(RunResult):
 
 
     def format_result(self, uuid):
+        # use summary as description if descrip is missing
+        if self.summary and not self.description:
+            use_description = self.summary
+        else:
+            use_description = self.description
         return {
             'name': self.name,
-            'description': self.description,
+            'summary': self.summary,
+            'description': use_description,
             'status': self.status.upper(),
             'uuid': uuid,
             'brief_output': self.brief_output,

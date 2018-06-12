@@ -374,7 +374,7 @@ def process_view_result(connection, res, is_admin):
     ts_utc = ts_utc.replace(tzinfo=tz.tzutc())
     # change timezone to EST (specific location needed for daylight savings)
     ts_local = ts_utc.astimezone(tz.gettz('America/New_York'))
-    proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time()), ' (', str(ts_local.tzname()), ')'])
+    proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time())])
     res['local_time'] = proc_ts
     if res.get('brief_output'):
         res['brief_output'] = trim_output(res['brief_output'])

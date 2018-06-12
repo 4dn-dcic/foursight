@@ -27,6 +27,7 @@ return check
 
 Here is a list of attributes that you will routinely use, with brief descriptions:
 * **status**: string value. Must be one of: 'PASS', 'WARN', 'FAIL', 'ERROR', or 'IGNORE', otherwise it will be set to 'ERROR' automatically. 'IGNORE' by default, which means the check result will not be displayed on the UI.
+* **summary**: string check summary that should be a short form of the description. If present, it will be displayed on the UI.
 * **description**: string description of what the check is doing or explaining the output. Will be displayed on the UI.
 * **brief_output**: Any value that will be displayed on the UI if set. The intended use of this attribute is as any output relevant to a check having a non-PASS status.
 * **full_output**: same as brief_output, but is intended to hold the entirety of the check data.
