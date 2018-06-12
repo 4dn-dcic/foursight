@@ -129,15 +129,15 @@
         background-color: #f8f8f8;
     }
     .group-boxstyle:hover {
-        background-color: #e9e9e9;
+        background-color: #f2f2f2;
     }
-    .color-hover {
+    .login-w-hover {
         border: 1px solid #ccc;
         border-radius: 8px;
         background-color: #f8f8f8;
         font-weight: 350;
     }
-    .color-hover:hover {
+    .login-w-hover:hover {
         background-color: #d9d9d9;
     }
     .commonstyle {
@@ -175,10 +175,10 @@
     .center-element {
         text-align: center;
     }
-    .title-hover {
+    .title-hover, .title-hover:visited, .title-hover:active {
         color: inherit;
     }
-    .title-hover:hover, .title-hover:active, .title-hover:visited, .title-hover:focus{
+    .title-hover:hover, .title-hover:focus{
         text-decoration: none;
         color: #000;
     }
@@ -215,7 +215,7 @@
         {% else %}
             <h5 class="center-element">
                 <span>{{'Not logged in as admin.'}}</span>
-                <button class="color-hover in-line" onclick="lock.show();">Log in</button>
+                <button class="login-w-hover in-line" onclick="lock.show();">Log in</button>
             </h5>
         {% endif %}
         {% if running_checks != '0' or queued_checks != '0' %}
