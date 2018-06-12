@@ -212,8 +212,8 @@ def get_grouped_check_results(connection):
     """
     Return a group-centric view of the information from get_check_results for
     given connection (i.e. fs environment).
-    Returns a dict keyed by group name that contains dicts of check results
-    keyed by title and also counts of result statuses.
+    Returns a list of dicts dict that contains dicts of check results
+    keyed by title and also counts of result statuses and group name.
     All groups are returned
     """
     grouped_results = {}
@@ -231,11 +231,14 @@ def get_grouped_check_results(connection):
             group = setup_info['group']
             if group not in grouped_results:
                 grouped_results[group] = {}
+                grouped_results[group]['_name'] = group
                 grouped_results[group]['_statuses'] = {'ERROR': 0, 'FAIL': 0, 'WARN': 0, 'PASS': 0}
             grouped_results[group][setup_info['title']] = res
             if res['status'] in grouped_results[group]['_statuses']:
                 grouped_results[group]['_statuses'][res['status']] += 1
-    return grouped_results
+    # format into a list and sort alphabetically
+    grouped_list = [group for group in grouped_results.values()]
+    return sorted(grouped_list, key=lambda v: v['_name'])
 
 
 def run_check_or_action(connection, check_str, check_kwargs):

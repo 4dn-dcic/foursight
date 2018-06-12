@@ -282,14 +282,17 @@ def view_foursight(environ, is_admin=False, domain=""):
             connection = None
         if connection:
             grouped_results = get_grouped_check_results(connection)
-            for group, one_result in grouped_results.items():
-                for title, result in one_result.items():
-                    if title == '_statuses':
-                        # convert counts to strings for jinja
-                        for stat, val in one_result[title].items():
-                            one_result[title][stat] = str(val)
+            for group in grouped_results:
+                for title, result in group.items():
+                    if title == '_name':
                         continue
-                    one_result[title] = process_view_result(connection, result, is_admin)
+                    elif title == '_statuses':
+                        # convert counts to strings for jinja
+                        for stat, val in group[title].items():
+                            group[title][stat] = str(val)
+                        continue
+                    else:
+                        group[title] = process_view_result(connection, result, is_admin)
             total_envs.append({
                 'status': 'success',
                 'environment': this_environ,

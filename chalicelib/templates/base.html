@@ -10,7 +10,8 @@
 
 <!-- Macro for one check result -->
 {% macro check_result(check, title, environment, is_admin) %}
-    <div class="{{'check-' + check['status'].lower() + ' boxstyle'}}">
+    <!-- check-result is a reserved class name -->
+    <div class="{{'check-' + check['status'].lower() + ' boxstyle'}} check-result">
         <h5 style='margin:10px 5px 10px 5px;'}}>
             <a class="title-hover" data-toggle="collapse" href={{'#' + environment + '-' + check['name']}}>
                 {{title}}
@@ -118,6 +119,17 @@
         margin-bottom: 5px;
         border-radius: 8px;
         padding: 0px 0px 0px 0px;
+    }
+    .group-boxstyle {
+        border: 1px solid #ccc;
+        margin-bottom: 5px;
+        border-radius: 8px;
+        padding: 0px 0px 0px 0px;
+        cursor: pointer;
+        background-color: #f8f8f8;
+    }
+    .group-boxstyle:hover {
+        background-color: #e9e9e9;
     }
     .color-hover {
         border: 1px solid #ccc;
@@ -237,9 +249,11 @@
         });
     </script>
     <script type="text/javascript">
-        function collapse_element(e, id){
-            console.log(e.target.id);
-            if(e.target.id == 'bg-' + id){
+        function collapse_group(e, id){
+            // Do not trigger collapse if click is on or a child of a check-result
+            var isCheck = $(e.target).hasClass("check-result")
+            var parents = $(e.target).parents(".check-result");
+            if(!isCheck && parents.length === 0){
                 $('#' + id).collapse('toggle');
             }
         }
