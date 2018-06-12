@@ -2,6 +2,7 @@ from __future__ import print_function, unicode_literals
 import datetime
 from dateutil import tz
 import json
+from .s3_connection import S3Connection
 
 
 class RunResult(object):
@@ -48,7 +49,7 @@ class RunResult(object):
         s3_prefix = ''.join([self.name, '/'])
         relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix, records_only=True)
         if not relevant_checks:
-            return None
+            raise Exception('Could not find any results for prefix: %s' % s3_prefix)
         # now use only s3 objects with a valid uuid
         for check in relevant_checks:
             if check.startswith(s3_prefix) and check.endswith(self.extension):
@@ -67,13 +68,21 @@ class RunResult(object):
         best_match = get_closest(check_tuples, desired_time)
         # ensure that the does not have status 'ERROR'
         match_res = None
+        tries = 0  # keep track of number of times we've found an ERROR response
         while not match_res:
+            if not best_match or tries > 999:
+                raise Exception('Could not find closest non-ERROR result for prefix: %s. Attempted'
+                                ' with %s diff hours and %s diff mins.' % (s3_prefix, diff_hours, diff_mins))
             possible_res = self.get_s3_object(best_match[0])
-            if possible_res.get('status', 'ERROR') != 'ERROR':
+            if possible_res and possible_res.get('status', 'ERROR') != 'ERROR':
                 match_res = possible_res
             else:
                 check_tuples.remove(best_match)
-                best_match = get_closest(check_tuples, desired_time)
+                if check_tuples:
+                    best_match = get_closest(check_tuples, desired_time)
+                else:
+                    best_match = None
+                tries += 1
         return match_res
 
 
@@ -140,6 +149,9 @@ class RunResult(object):
                 s3_res.get('kwargs', {}),
                 'full_output' in s3_res and 'brief_output' in s3_res
             ]
+            # kwargs to remove from the history results. these will not be displayed
+            for remove_key in ['_run_info']:
+                res_val[1].pop(remove_key, None)
             results.append(res_val)
         return results
 
@@ -242,6 +254,9 @@ class CheckResult(RunResult):
             self.kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
         if 'primary' not in self.kwargs:
             self.kwargs['primary'] = False
+        # if this was triggered from the check_runner, store record of the run
+        if '_run_info' in self.kwargs and {'run_id', 'dep_id'} <= set(self.kwargs['_run_info'].keys()):
+            record_run_info(self.kwargs['_run_info']['run_id'], self.kwargs['_run_info']['dep_id'], self.status)
         formatted = self.format_result(self.kwargs['uuid'])
         is_primary = self.kwargs.get('primary', False) == True
         # if do_not_store is set, just return result without storing in s3
@@ -283,6 +298,9 @@ class ActionResult(RunResult):
         # kwargs should **always** have uuid
         if 'uuid' not in self.kwargs:
             self.kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
+        # if this was triggered from the check_runner, store record of the run
+        if '_run_info' in self.kwargs and {'run_id', 'dep_id'} <= set(self.kwargs['_run_info'].keys()):
+            record_run_info(self.kwargs['_run_info']['run_id'], self.kwargs['_run_info']['dep_id'], self.status)
         formatted = self.format_result(self.kwargs['uuid'])
         # if do_not_store is set, just return result without storing in s3
         if self.kwargs.get('do_not_store', False) == True:
@@ -302,3 +320,15 @@ def get_closest(items, pivot):
     See: S.O. 32237862
     """
     return min(items, key=lambda x: abs(x[1] - pivot))
+
+
+def record_run_info(run_id, dep_id, check_status):
+    """
+    Add a record of the completed check to the foursight-runs bucket with name
+    equal to the dependency id. The object itself is only the status of the run.
+    Returns True on success, False otherwise
+    """
+    s3_connection = S3Connection('foursight-runs')
+    record_key = '/'.join([run_id, dep_id])
+    resp = s3_connection.put_object(record_key, json.dumps(check_status))
+    return resp is not None

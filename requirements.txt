@@ -5,6 +5,6 @@ PyJWT==1.5.3
 Jinja2==2.9.6
 chalice==1.1.0
 MarkupSafe==1.0
-dcicutils>=0.1.85
 elasticsearch>=5.0.0,<6.0.0
 elasticsearch-curator>=5.0.0,<6.0.0
+dcicutils>=0.2.6

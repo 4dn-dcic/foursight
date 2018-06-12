@@ -74,10 +74,12 @@ class S3Connection(object):
                 contents = response.get('Contents', [])
             except:
                 contents = []
-                reached_end = True # bail
+                response = {}
+                reached_end = True  # bail
             all_keys.extend([obj['Key'] for obj in contents])
-            if len(all_keys) > 0 and not token:
+            if not token and response.get('IsTruncated') is False:
                 reached_end = True
+
         # not sorted at this point
         return all_keys
 
@@ -87,15 +89,12 @@ class S3Connection(object):
         all_keys = []
         token = None
         while not reached_end:
-            try:
-                # will limit to 1000 objects
-                response = self.client.list_objects_v2(Bucket=self.bucket)
-                token = response.get('NextContinuationToken', None)
-                contents = response.get('Contents', [])
-            except:
-                contents = []
+            # will limit to 1000 objects
+            response = self.client.list_objects_v2(Bucket=self.bucket)
+            token = response.get('NextContinuationToken', None)
+            contents = response.get('Contents', [])
             all_keys.extend([obj['Key'] for obj in contents])
-            if len(all_keys) > 0 and not token:
+            if not token and response.get('IsTruncated') is False:
                 reached_end = True
         return all_keys
 

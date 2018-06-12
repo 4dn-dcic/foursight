@@ -19,7 +19,7 @@ CHECK_GROUPS = {
         ['system_checks/elastic_beanstalk_health', {'primary': True}, [], 'm10_1'],
         ['wrangler_checks/item_counts_by_type', {'primary': True}, [], 'm10_2'],
         ['system_checks/indexing_progress', {'primary': True}, ['m10_2'], 'm10_3'],
-        ['system_checks/secondary_queue_deduplication', {'primary': True}, [], 'm30_4'],
+        ['system_checks/secondary_queue_deduplication', {'primary': True}, [], 'm10_4'],
     ],
     'thirty_min_checks': [
         ['system_checks/status_of_elasticsearch_indices', {'primary': True}, [], 'm30_1'],
@@ -34,6 +34,7 @@ CHECK_GROUPS = {
         ['wrangler_checks/identify_files_without_filesize', {'primary': True}, [], 'morn_6'],
         ['wrangler_checks/mcool_not_registered_with_higlass', {'primary': True}, [], 'morn_7'],
         ['wrangler_checks/biorxiv_is_now_published', {'primary': True}, [], 'morn_8'],
+        ['system_checks/clean_up_travis_queues', {'primary': True}, [], 'morn_9'],
     ]
 }
 

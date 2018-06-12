@@ -53,11 +53,19 @@ def elastic_beanstalk_health(connection, **kwargs):
         inst_info = {}
         inst_info['deploy_status'] = instance['Deployment']['Status']
         inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
-        inst_info['deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+        # get version deployment time
+        application_versions = eb_client.describe_application_versions(
+            ApplicationName='4dn-web',
+            VersionLabels=[inst_info['deploy_version']]
+        )
+        deploy_info = application_versions['ApplicationVersions'][0]
+        inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
+        inst_info['version_description'] = deploy_info['Description']
+        inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+        inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
         inst_info['id'] = instance['InstanceId']
         inst_info['color'] = instance['Color']
         inst_info['health'] = instance['HealthStatus']
-        inst_info['launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
         inst_info['causes'] = instance.get('causes', [])
         full_output['instance_health'].append(inst_info)
     if full_output['color'] == 'Grey':
@@ -79,7 +87,7 @@ def elastic_beanstalk_health(connection, **kwargs):
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
-    status_location = ''.join([connection.es, '_cat/indices?v'])
+    status_location = ''.join([connection.ff_es, '_cat/indices?v'])
     resp = requests.get(status_location, timeout=20)
     if resp.status_code >= 400:
         check.status = 'ERROR'
@@ -144,7 +152,7 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
-    record_location = ''.join([connection.es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
+    record_location = ''.join([connection.ff_es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
     es_resp = requests.get(record_location, timeout=20)
     if es_resp.status_code >= 400:
         check.status = 'ERROR'
@@ -218,22 +226,29 @@ def fourfront_performance_metrics(connection, **kwargs):
         'files-fastq/4DNFIX75FSJM/?datastore=database'
     ]
     for check_url in check_urls:
+        performance[check_url] = {}
         try:
             # set timeout really high
-            ff_resp = ff_utils.authorized_request(connection.ff + check_url, ff_env=connection.ff_env, timeout=1000)
-        except:
-            ff_resp = None
+            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url, ff_env=connection.ff_env, timeout=1000)
+        except Exception as e:
+            performance[check_url]['error'] = str(e)
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
             x_stats = ff_resp.headers['X-stats']
             if not isinstance(x_stats, basestring):
-                performance[check_url] = {}
+                performance[check_url]['error'] = 'Stats response is not a string.'
                 continue
             # X-stats in form: 'db_count=148&db_time=1215810&es_count=4& ... '
             split_stats = x_stats.strip().split('&')
             parse_stats = [stat.split('=') for stat in split_stats]
-            performance[check_url] = {stat[0]: int(stat[1]) for stat in parse_stats if len(stat) == 2}
-        else:
-            performance[check_url] = {}
+            # stats can be strings or integers
+            for stat in parse_stats:
+                if not len(stat) == 2:
+                    continue
+                try:
+                    performance[check_url][stat[0]] = int(stat[1])
+                except ValueError:
+                    performance[check_url][stat[0]] = stat[1]
+            performance[check_url]['error'] = ''
     check.status = 'PASS'
     full_output['performance'] = performance
     check.full_output = full_output
@@ -353,4 +368,35 @@ def secondary_queue_deduplication(connection, **kwargs):
         check.status = 'PASS'
     check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
 
+    return check
+
+
+@check_function()
+def clean_up_travis_queues(connection, **kwargs):
+    """
+    Clean up old sqs queues based on the name ("travis-job")
+    and the creation date. Only run on data for now
+    """
+    from .utils import STAGE
+    check = init_check_res(connection, 'clean_up_travis_queues')
+    check.status = 'PASS'
+    if connection.fs_env != 'data' or STAGE != 'prod':
+        check.description = 'This check only runs on the data environment for Foursight prod.'
+        return check
+    sqs = boto3.resource('sqs')
+    queues = sqs.queues.all()
+    num_deleted = 0
+    for queue in queues:
+        if 'travis-job' in queue.url:
+            creation = queue.attributes['CreatedTimestamp']
+            if isinstance(creation, basestring):
+                creation = float(creation)
+            dt_creation = datetime.datetime.utcfromtimestamp(creation)
+            queue_age = datetime.datetime.utcnow() - dt_creation
+            # delete queues 3 days old or older
+            if queue_age > datetime.timedelta(days=3):
+                queue.delete()
+                num_deleted += 1
+
+    check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted
     return check
