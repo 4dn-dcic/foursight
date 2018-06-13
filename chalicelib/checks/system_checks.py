@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import (
+from ..utils import (
     check_function,
     init_check_res,
     action_function,
@@ -259,7 +259,7 @@ def fourfront_performance_metrics(connection, **kwargs):
 def secondary_queue_deduplication(connection, **kwargs):
     from .app_utils import STAGE
     check = init_check_res(connection, 'secondary_queue_deduplication')
-    # handle this differently with FF-1084
+    # maybe handle this in check_setup.json
     if STAGE != 'prod':
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'

@@ -208,7 +208,6 @@ class CheckResult(RunResult):
                         setattr(self, key, val)
                 super().__init__(s3_connection, name)
                 return
-        self.title = ' '.join(name.split('_')).title()
         self.description = None
         # valid values are: 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
         # start with IGNORE as the default check status
@@ -228,7 +227,6 @@ class CheckResult(RunResult):
     def format_result(self, uuid):
         return {
             'name': self.name,
-            'title': self.title,
             'description': self.description,
             'status': self.status.upper(),
             'uuid': uuid,

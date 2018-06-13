@@ -1,0 +1,206 @@
+{
+    "item_counts_by_type": {
+        "title": "Item counts by type",
+        "group": "System checks",
+        "schedule": {
+            "ten_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "10_min_item_counts"
+                }
+            }
+        }
+    },
+    "indexing_progress": {
+        "title": "Indexing progress",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "ten_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": ["10_min_item_counts"],
+                    "id": "10_min_indexing_progress"
+                }
+            }
+        }
+    },
+    "elastic_beanstalk_health": {
+        "title": "Elastic Beanstalk health",
+        "group": "System checks",
+        "schedule": {
+            "ten_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "10_min_eb_health"
+                }
+            },
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_eb_health"
+                }
+            }
+        }
+    },
+    "status_of_elasticsearch_indices": {
+        "title": "Status of elasticsearch indices",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "30_min_es_indices_status"
+                }
+            }
+        }
+    },
+    "indexing_records": {
+        "title": "Indexing records",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "30_min_indexing_records"
+                }
+            }
+        }
+    },
+    "experiment_set_reporting_data": {
+        "title": "Release updates data collection",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_exp_set_reporting"
+                }
+            }
+        }
+    },
+    "data_release_updates": {
+        "title": "Data release updates",
+        "group": "Fourfront checks",
+        "schedule": {}
+    },
+    "fourfront_performance_metrics": {
+        "title": "Fourfront performance metrics",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": ["morning_eb_health"],
+                    "id": "morning_ff_performance_metrics"
+                }
+            }
+        }
+    },
+    "items_created_in_the_past_day": {
+        "title": "Items created in the past day",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_items_past_day"
+                }
+            }
+        }
+    },
+    "change_in_item_counts": {
+        "title": "Change in item counts",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_item_counts_change"
+                }
+            }
+        }
+    },
+    "identify_files_without_filesize": {
+        "title": "Files without filesize",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_files_wo_filesize"
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_files_wo_filesize"
+                }
+            }
+        }
+    },
+    "mcool_not_registered_with_higlass": {
+        "title": "mcool files not registered with higlass",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_mcool_files_higlass"
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_mcool_files_higlass"
+                }
+            }
+        }
+    },
+    "secondary_queue_deduplication": {
+        "title": "Secondary queue deduplication",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_secondary_dedup"
+                }
+            }
+        }
+    },
+    "biorxiv_is_now_published": {
+        "title": "biorxiv is now published",
+        "group": "Fourfront checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_biorxiv_published"
+                }
+            }
+        }
+    },
+    "clean_up_travis_queues": {
+        "title": "Clean up Travis queues",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": [],
+                    "id": "morning_clean_travis_queues"
+                }
+            }
+        }
+    }
+}

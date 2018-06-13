@@ -696,11 +696,11 @@ class TestCheckUtils(FSTest):
         bad_checks = check_utils.fetch_check_group('not_a_check_group')
         self.assertTrue(bad_checks is None)
 
-    def test_get_check_group_results(self):
+    def test_get_check_results(self):
         # dict to compare uuids
         uuid_compares = {}
         # will get primary results by default
-        all_res_primary = check_utils.get_check_group_results(self.conn, 'all')
+        all_res_primary = check_utils.get_check_results(self.conn)
         for check_res in all_res_primary:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
@@ -708,7 +708,7 @@ class TestCheckUtils(FSTest):
             self.assertTrue('uuid' in check_res)
             uuid_compares[check_res['name']] = check_res['uuid']
         # compare to latest results (which should be the same or newer)
-        all_res_latest = check_utils.get_check_group_results(self.conn, 'all', use_latest=True)
+        all_res_latest = check_utils.get_check_results(self.conn, use_latest=True)
         for check_res in all_res_latest:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
@@ -716,11 +716,12 @@ class TestCheckUtils(FSTest):
             self.assertTrue('uuid' in check_res)
             if check_res['name'] in uuid_compares:
                 self.assertTrue(check_res['uuid'] >= uuid_compares[check_res['name']])
-        # non-existant check group
-        bad_res = check_utils.get_check_group_results(self.conn, 'not_a_check_group')
-        assert(bad_res == [])
-        # bad check group. will skip all malformed checks
-        test_res = check_utils.get_check_group_results(self.conn, 'malformed_test_checks')
+        # get a specific check
+        one_res = check_utils.get_check_results(self.conn, check=['indexing_progress'])
+        self.assertTrue(len(one_res) == 1)
+        self.assertTrue(one_res[0]['name'] == 'indexing_progress')
+        # bad check name
+        test_res = check_utils.get_check_results(self.conn, check=['not_a_real_check'])
         assert(len(test_res) == 0)
 
     def test_run_check_or_action(self):

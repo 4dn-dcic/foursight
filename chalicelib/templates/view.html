@@ -97,24 +97,6 @@
                 </li>
                 {% endfor %}
             </ul>
-            {% if is_admin %}
-                <h5>{{'Queue group:'}}</h5>
-                <div class='container-fluid'>
-                    <div class='row'>
-                        {% for groups in groups_4 %}
-                            {% for group in groups %}
-                                <div class="col-sm-3">
-                                    <form action={{"/api/view_run/" + env['environment'] + '/' + group + '/check'}} method="get">
-                                        <button class="btn center-block color-hover" type="submit">
-                                            <span>{{group}}</span>
-                                        </button>
-                                    </form>
-                                </div>
-                            {% endfor %}
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
         </li>
         <hr>
         {% endfor %}

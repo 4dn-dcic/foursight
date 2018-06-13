@@ -5,20 +5,29 @@ from .utils import (
     init_check_res,
     init_action_res,
     CHECK_DECO,
-    ACTION_DECO
+    ACTION_DECO,
+    BadCheckSetup,
+    basestring
 )
-from .check_groups import *
+# import modules that contain the checks
+from .checks import *
+from .checks import __all__ as CHECK_MODULES
+from os.path import dirname
+import glob
 import sys
 import importlib
 import datetime
 import copy
+import json
 
-# import modules that contain the checks
-for check_mod in CHECK_MODULES:
-    try:
-        globals()[check_mod] = importlib.import_module('.'.join(['chalicelib', check_mod]))
-    except ImportError:
-        print(''.join(['ERROR importing checks from ', check_mod]), file=sys.stderr)
+# read in the check_setup.json and parse it
+setup_paths = glob.glob(dirname(__file__)+"/check_setup.json")
+if not len(setup_paths) == 1:
+    raise BadCheckSetup('Exactly one check_setup.json must be present in chalicelib!')
+with open(setup_paths[0], 'r') as jfile:
+    CHECK_SETUP = json.load(jfile)
+# a bit confusing, but the next two functions must be defined and run
+# to validate CHECK_SETUP and process it
 
 
 def get_check_strings(specific_check=None):
@@ -46,6 +55,61 @@ def get_check_strings(specific_check=None):
         return list(set(all_checks))
 
 
+def validate_check_setup(check_setup):
+    """
+    Go through the check_setup json that was read in and make sure everything
+    is properly formatted. Since scheduled kwargs and dependencies are
+    optional, add those in at this point.
+
+    Also takes care of ensuring that multiple checks were not written with the
+    same name and adds check module information to the check setup. Accordingly,
+    verifies that each check in the check_setup is a real check.
+    """
+    found_checks = {}
+    all_check_strings = get_check_strings()
+    # validate all checks
+    for check_string in all_check_strings:
+        check_mod, check_name = check_string.split('/')
+        if check_name in found_checks:
+            raise BadCheckSetup('More than one check with name "%s" was found. See module "%s"' % (check_name, check_mod))
+        found_checks[check_name] = check_mod
+    for check_name in check_setup:
+        if check_name not in found_checks:
+            raise BadCheckSetup('Check with name %s was in check_setup.json but does not have a proper check function defined.' % check_name)
+        if not isinstance(check_setup[check_name], dict):
+            raise BadCheckSetup('Entry for "%s" in check_setup.json must be a dictionary.' % check_name)
+        # these fields are required
+        if not {'title', 'group', 'schedule'} <= set(check_setup[check_name].keys()):
+            raise BadCheckSetup('Entry for "%s" in check_setup.json must have the required keys: "title", "group", and "schedule".' % check_name)
+        # these fields must be strings
+        for field in ['title', 'group']:
+            if not isinstance(check_setup[check_name][field], basestring):
+                raise BadCheckSetup('Entry for "%s" in check_setup.json must have a string value for field "%s".' % (check_name, field))
+        if not isinstance(check_setup[check_name]['schedule'], dict):
+            raise BadCheckSetup('Entry for "%s" in check_setup.json must have a dictionary value for field "schedule".' % check_name)
+        # now validate and add defaults to the schedule
+        for sched_name, schedule in check_setup[check_name]['schedule'].items():
+            if not isinstance(schedule, dict):
+                raise BadCheckSetup('Schedule "%s" for "%s" in check_setup.json must have a dictionary value.' % (sched_name, check_name))
+            for env_name, env_detail in schedule.items():
+                if not isinstance(env_detail, dict):
+                    raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a dictionary value.' % (env_name, sched_name, check_name))
+                if 'id' not in env_detail:
+                    raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a value for field "id"' % (env_name, sched_name, check_name))
+                if not 'kwargs' in env_detail:
+                    # default value
+                    env_detail['kwargs'] = {'primary': True}
+                if not 'dependencies' in env_detail:
+                    env_detail['dependencies'] = []
+        # lastly, add the check module information to each check in the setup
+        check_setup[check_name]['module'] = found_checks[check_name]
+    return check_setup
+
+
+# Validate and finalize CHECK_SETUP
+CHECK_SETUP = validate_check_setup(CHECK_SETUP)
+
+
 def get_action_strings(specific_action=None):
     """
     Basically the same thing as get_check_strings, but for actions...
@@ -67,22 +131,19 @@ def get_action_strings(specific_action=None):
         return list(set(all_actions))
 
 
-def get_check_group_results(connection, name, use_latest=False):
+def get_check_results(connection, checks=[], use_latest=False):
     """
-    Initialize check results for each check in a group and get latest results,
-    sorted alphabetically
+    Initialize check results for each desired check and get results stored
+    in s3, sorted alphabetically.
+    May provide a list of string check names as `checks`; otherwise get all
+    checks by default.
     By default, gets the 'primary' results. If use_latest is True, get the
     'latest' results instead.
-    Using name = 'all' will return all non-test check strings
     """
-    latest_results = []
-    check_group = fetch_check_group(name)
-    if not check_group:
-        return latest_results
-    for check_info in check_group:
-        if len(check_info) != 4:
-            continue
-        check_name = check_info[0].strip().split('/')[1]
+    check_results = []
+    if not checks:
+        checks = [check_str.split('/')[1] for check_str in get_check_strings()]
+    for check_name in checks:
         tempCheck = init_check_res(connection, check_name)
         if use_latest:
             found = tempCheck.get_latest_result()
@@ -90,29 +151,44 @@ def get_check_group_results(connection, name, use_latest=False):
             found = tempCheck.get_primary_result()
         # checks with no records will return None. Skip IGNORE checks
         if found and found.get('status') != 'IGNORE':
-            latest_results.append(found)
+            check_results.append(found)
     # sort them alphabetically
-    latest_results = sorted(latest_results, key=lambda v: v['name'].lower())
-    return latest_results
+    return sorted(check_results, key=lambda v: v['name'].lower())
 
 
-def fetch_check_group(name):
+def get_schedule_names():
     """
-    Will be none if the group is not defined.
-    Special case for 'all', which gets all checks and uses default kwargs
+    Simply return a list of all valid schedule names, as defined in CHECK_SETUP
     """
-    if name == 'all':
-        all_checks = get_check_strings()
-        return [[check_str, {}, [], ''] for check_str in all_checks]
-    group = CHECK_GROUPS.get(name, None)
-    # maybe it's a test groups
-    if not group:
-        group = TEST_CHECK_GROUPS.get(name, None)
-    # ensure it is non-empty list
-    if not isinstance(group, list) or len(group) == 0:
-        return None
-    # copy it and return
-    return copy.deepcopy(group)
+    schedules = set()
+    for _, detail in CHECK_SETUP.items():
+        for schedule in detail.get('schedule', []):
+            schedules.add(schedule)
+    return list(schedules)
+
+
+def get_check_schedule(schedule_name):
+    """
+    Go through CHECK_SETUP and return all the required info for to run a given
+    schedule for any environment.
+
+    Returns a dictionary keyed by schedule, with inner dicts keyed by environ.
+    The check running info is the standard format of:
+    [<check_mod/check_str>, <kwargs>, <dependencies>, <id>]
+    """
+    check_schedule = {}
+    for check_name, detail in CHECK_SETUP.items():
+        if not schedule_name in detail['schedule']:
+            continue
+        for env_name, env_detail in detail['schedule'][schedule_name].items():
+            check_str = '/'.join([detail['module'], check_name])
+            run_info = [check_str, env_detail['kwargs'], env_detail['dependencies'], env_detail['id']]
+            if env_name in check_schedule:
+                check_schedule[env_name].append(run_info)
+            else:
+                check_schedule[env_name] = [run_info]
+    # although not strictly necessary right now, this is a precaution
+    return copy.deepcopy(check_schedule)
 
 
 def run_check_or_action(connection, check_str, check_kwargs):
