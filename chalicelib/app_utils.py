@@ -618,7 +618,7 @@ def run_put_environment(environ, env_data):
     return process_response(response)
 
 
-def get_environment(environ):
+def run_get_environment(environ):
     """
     Return config information about a given environment, or throw an error
     if it is not valid.

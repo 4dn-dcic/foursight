@@ -217,7 +217,7 @@ def get_environment_route(environ):
     Protected route
     """
     if check_authorization(app.current_request.to_dict()):
-        return get_environment(environ)
+        return run_get_environment(environ)
     else:
         return forbidden_response()
 
