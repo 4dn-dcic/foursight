@@ -191,6 +191,13 @@
         -webkit-transition: opacity 0.5s;
         transition: opacity 0.5s;
     }
+    .title-image-hover {
+        text-decoration: none;
+        opacity: 0.7;
+    }
+    .title-image-hover:hover {
+        opacity: 1.0;
+    }
     .title-hover, .title-hover:visited, .title-hover:active {
         color: inherit;
     }
@@ -221,7 +228,7 @@
 <body>
     <div class="container">
         <h3 class="center-element">
-            <a href={{'/api/view/data,staging'}}>
+            <a class="title-image-hover opacity-transition" href={{'/api/view/data,staging'}}>
                 <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src="https://data.4dnucleome.org/static/img/favicon-fs.ico"></img>
             </a>
             <span>{{'Foursight (' + stage + ')'}}</span>
