@@ -137,7 +137,6 @@
         margin-bottom: 5px;
         border-radius: 8px;
         padding: 0px 0px 0px 0px;
-        cursor: pointer;
         background-color: #f8f8f8;
     }
     .group-boxstyle:hover {
@@ -191,11 +190,12 @@
         -webkit-transition: opacity 0.5s;
         transition: opacity 0.5s;
     }
-    .title-image-hover {
+    .title-image-hover, .title-image-hover:visited, .title-image-hover:active {
         text-decoration: none;
         opacity: 0.7;
     }
-    .title-image-hover:hover {
+    .title-image-hover:hover, .title-image-hover:focus {
+        text-decoration: none;
         opacity: 1.0;
     }
     .title-hover, .title-hover:visited, .title-hover:active {

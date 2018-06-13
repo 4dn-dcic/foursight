@@ -163,7 +163,7 @@ def get_check_schedule(schedule_name):
     Go through CHECK_SETUP and return all the required info for to run a given
     schedule for any environment.
 
-    Returns a dictionary keyed by schedule, with inner dicts keyed by environ.
+    Returns a dictionary keyed by environ.
     The check running info is the standard format of:
     [<check_mod/check_str>, <kwargs>, <dependencies>, <id>]
     """
