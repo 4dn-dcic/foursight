@@ -362,7 +362,7 @@ def get_load_time():
     """
     Returns the current time in ET, formatted the same was process_view_result
     """
-    ts_utc = datetime.datetime.strptime(datetime.datetime.utcnow(), "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+    ts_utc = datetime.datetime.utcnow().replace(microsecond=0)
     ts_utc = ts_utc.replace(tzinfo=tz.tzutc())
     # change timezone to EST (specific location needed for daylight savings)
     ts_local = ts_utc.astimezone(tz.gettz('America/New_York'))
