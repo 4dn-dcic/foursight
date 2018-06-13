@@ -1,6 +1,6 @@
 # Foursight Checks #
 
-Checks are the fundamental unit of work done in Foursight. They contain the entirety of code needed to make some observation or do some work and then take care of setting the result fields and storing the result. As mentioned in the [getting started](./getting_started.md) documentation, checks are written in files called check modules and are grouped together to run as check groups. This document contains information on writing checks, as well as best practices for running them.
+Checks are the fundamental unit of work done in Foursight. They contain the entirety of code needed to make some observation or do some work and then take care of setting the result fields and storing the result. As mentioned in the [getting started](./getting_started.md) documentation, checks are written in files called check modules and organized in the check setup. This document contains information on writing checks, as well as best practices for running them.
 
 It is assumed that you've already read the getting started documentation. If not, head over and check that out before continuing. If you are interested in tips on the check development process, [go here](./development_tips.md).
 
@@ -40,10 +40,9 @@ Lastly, there are a number of attributes that are used internally. These do not 
 * **kwargs**: these are set to the value of the key word parameters used by the check, which is a combination of default arguments and any overriding arguments (defined in the check group or a manual call to run the check).
 * **s3_connection**: is set automatically when you use `init_check_res`.
 * **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
-* **title**: generated automatically from the name attribute unless it is set manually.
 
 ## Our example check
-Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
+Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/checks/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
 
 ```
 @check_function()

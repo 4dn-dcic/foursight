@@ -162,7 +162,7 @@
         "title": "Secondary queue deduplication",
         "group": "System checks",
         "schedule": {
-            "morning_checks": {
+            "ten_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": [],
