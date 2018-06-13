@@ -309,6 +309,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     html_resp.body = template.render(
         envs=total_envs,
         stage=STAGE,
+        load_time = get_load_time(),
         is_admin=is_admin,
         domain=domain,
         running_checks=running_checks,
@@ -347,6 +348,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
     html_resp.body = template.render(
         envs=total_envs,
         stage=STAGE,
+        load_time = get_load_time(),
         is_admin=is_admin,
         domain=domain,
         running_checks=running_checks,
@@ -356,7 +358,22 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
     return process_response(html_resp)
 
 
+def get_load_time():
+    """
+    Returns the current time in ET, formatted the same was process_view_result
+    """
+    ts_utc = datetime.datetime.strptime(datetime.datetime.utcnow(), "%Y-%m-%dT%H:%M:%S.%f").replace(microsecond=0)
+    ts_utc = ts_utc.replace(tzinfo=tz.tzutc())
+    # change timezone to EST (specific location needed for daylight savings)
+    ts_local = ts_utc.astimezone(tz.gettz('America/New_York'))
+    return ''.join([str(ts_local.date()), ' at ', str(ts_local.time())])
+
+
 def process_view_result(connection, res, is_admin):
+    """
+    Do some processing on the content of one check result (res arg, a dict)
+    Processes timestamp string, trims output fields, and adds action info
+    """
     # first check to see if res is just a string, meaning
     # the check didn't execute properly
     if not isinstance(res, dict):
@@ -428,6 +445,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, do
     html_resp.body = template.render(
         env=environ,
         check=check,
+        load_time = get_load_time(),
         history=history,
         history_kwargs=history_kwargs,
         res_start=start,

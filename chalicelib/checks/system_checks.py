@@ -389,7 +389,7 @@ def clean_up_travis_queues(connection, **kwargs):
     check = init_check_res(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
     if connection.fs_env != 'data' or STAGE != 'prod':
-        check.description = 'This check only runs on the data environment for Foursight prod.'
+        check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
         return check
     sqs = boto3.resource('sqs')
     queues = sqs.queues.all()

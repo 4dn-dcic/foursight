@@ -275,7 +275,7 @@ def change_in_item_counts(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.summary = 'There are %s new items in the past day' % total_counts
-        check.description = check_summary + '. Positive numbers represent an increase in counts.'
+        check.description = check.summary + '. Positive numbers represent an increase in counts.'
     return check
 
 

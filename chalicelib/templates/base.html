@@ -221,16 +221,23 @@
 <body>
     <div class="container">
         <h3 class="center-element">
-            <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src="https://data.4dnucleome.org/static/img/favicon-fs.ico"></img>
+            <a href={{'/api/view/data,staging'}}>
+                <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src="https://data.4dnucleome.org/static/img/favicon-fs.ico"></img>
+            </a>
             <span>{{'Foursight (' + stage + ')'}}</span>
         </h3>
+        {% if load_time %}
+            <h5 class="center-element">
+                <span>{{'Loaded on ' + load_time}}</span>
+            </h5>
+        {% endif %}
         {% if is_admin %}
             <h5 class="center-element">
-                <span>{{'Currently logged in as admin.'}}</span>
+                <span>{{'Currently logged in as admin'}}</span>
             </h5>
         {% else %}
             <h5 class="center-element">
-                <span>{{'Not logged in as admin.'}}</span>
+                <span>{{'Not logged in as admin'}}</span>
                 <button class="login-w-hover in-line" onclick="lock.show();">Log in</button>
             </h5>
         {% endif %}
