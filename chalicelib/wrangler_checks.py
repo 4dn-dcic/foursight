@@ -15,6 +15,55 @@ import boto3
 
 
 @check_function()
+def workflow_run_has_deleted_input_file(connection, **kwargs):
+    check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
+    chkstatus = ''
+    check.status = "PASS"
+    check.action = "patch_workflow_run_to_deleted"
+    # run the check
+    search_query = 'search/?type=WorkflowRun&status!=deleted&input_files.value.status=deleted&limit=all'
+    bad_wfrs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    if not bad_wfrs:
+        check.description = "No live WorkflowRuns linked to deleted input Files"
+        return check
+
+    brief = str(len(bad_wfrs)) + " live WorkflowRuns linked to deleted input Files"
+    fulloutput = {}
+    for wfr in bad_wfrs:
+        infiles = wfr.get('input_files', [])
+        wfruuid = wfr.get('uuid', '')
+        delfiles = [f.get('uuid') for f in infiles if f.get('status') == 'deleted']
+        fulloutput[wfruuid] = delfiles
+    check.description = "Live WorkflowRuns found linked to deleted Input Files"
+    check.brief_output = brief
+    check.full_output = fulloutput
+    check.action_message = "Will attempt to patch %s workflow_runs with deleted inputs to status=deleted." % str(len(bad_wfrs))
+    check.allow_action = True  # allows the action to be run
+    return check
+
+
+@action_function()
+def patch_workflow_run_to_deleted(connection, **kwargs):
+    action = init_action_res(connection, 'patch_workflow_run_to_deleted')
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    # get latest results
+    wfr_w_del_check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
+    for wfruid in wfr_w_del_check:
+        patch_data = {'status': 'deleted'}
+        try:
+            ff_utils.patch_metadata(patch_data, obj_id=wfruid, key=connection.ff_keys, ff_env=connection.ff_env)
+        except Exception as e:
+            acc_and_error = '\n'.join([wfruid, str(e)])
+            action_logs['patch_failure'].append(acc_and_error)
+        else:
+            action_logs['patch_success'].append(wfruid)
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+
+@check_function()
 def biorxiv_is_now_published(connection, **kwargs):
     check = init_check_res(connection, 'biorxiv_is_now_published')
     chkstatus = ''
@@ -123,7 +172,7 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
         check.description = "%s files found not registered with higlass" % str(len(file_to_be_reg))
         check.full_output = file_to_be_reg
         check.action_message = "Will attempt to patch higlass_uid for %s files." % str(len(file_to_be_reg))
-        check.allow_action = True # allows the action to be run
+        check.allow_action = True  # allows the action to be run
 
     return check
 
