@@ -27,7 +27,7 @@ if not len(setup_paths) == 1:
     raise BadCheckSetup('Exactly one check_setup.json must be present in chalicelib!')
 with open(setup_paths[0], 'r') as jfile:
     CHECK_SETUP = json.load(jfile)
-# a bit confusing, but the next two functions must be defined and run
+# a bit confusing, but the next three functions must be defined and run
 # to validate CHECK_SETUP and process it
 
 
@@ -54,6 +54,18 @@ def get_check_strings(specific_check=None):
         return None
     else:
         return list(set(all_checks))
+
+
+def get_checks_within_schedule(schedule_name):
+    """
+    Simply return a list of string check names within the given schedule
+    """
+    checks_in_schedule = []
+    for check_name, detail in CHECK_SETUP.items():
+        if not schedule_name in detail['schedule']:
+            continue
+        checks_in_schedule.append(check_name)
+    return checks_in_schedule
 
 
 def validate_check_setup(check_setup):
@@ -103,13 +115,23 @@ def validate_check_setup(check_setup):
                                         % (env_name, sched_name, check_name))
                 if not isinstance(env_detail, dict):
                     raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a dictionary value.' % (env_name, sched_name, check_name))
-                if 'id' not in env_detail:
-                    raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a value for field "id"' % (env_name, sched_name, check_name))
+                # default values
                 if not 'kwargs' in env_detail:
-                    # default value
                     env_detail['kwargs'] = {'primary': True}
+                else:
+                    if not isinstance(env_detail['kwargs'], dict):
+                        raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a dictionary value for "kwargs".' % (env_name, sched_name, check_name))
                 if not 'dependencies' in env_detail:
                     env_detail['dependencies'] = []
+                else:
+                    if not isinstance(env_detail['dependencies'], list):
+                        raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a list value for "dependencies".' % (env_name, sched_name, check_name))
+                    else:
+                        # confirm all dependencies are legitimate check names
+                        for dep_id in env_detail['dependencies']:
+                            if dep_id not in get_checks_within_schedule(sched_name):
+                                raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must has a dependency "%s" that is not a valid check name that shares the same schedule.' % (env_name, sched_name, check_name, dep_id))
+
         # lastly, add the check module information to each check in the setup
         check_setup[check_name]['module'] = found_checks[check_name]
     return check_setup
@@ -165,7 +187,7 @@ def get_check_schedule(schedule_name):
 
     Returns a dictionary keyed by environ.
     The check running info is the standard format of:
-    [<check_mod/check_str>, <kwargs>, <dependencies>, <id>]
+    [<check_mod/check_str>, <kwargs>, <dependencies>]
     """
     check_schedule = {}
     for check_name, detail in CHECK_SETUP.items():
@@ -173,7 +195,7 @@ def get_check_schedule(schedule_name):
             continue
         for env_name, env_detail in detail['schedule'][schedule_name].items():
             check_str = '/'.join([detail['module'], check_name])
-            run_info = [check_str, env_detail['kwargs'], env_detail['dependencies'], env_detail['id']]
+            run_info = [check_str, env_detail['kwargs'], env_detail['dependencies']]
             if env_name in check_schedule:
                 check_schedule[env_name].append(run_info)
             else:

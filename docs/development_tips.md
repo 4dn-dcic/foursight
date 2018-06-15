@@ -1,20 +1,18 @@
 # Development Tips #
 
-This documentation is meant to help you get up and running writing checks for Foursight. It includes some useful tips and functions outside of the scope of the strictly necessary stuff contained in the [getting started](./getting_started.md) and [checks](./checks.md) documentation. First, we will go over the timeline of writing a new check module containing new checks and adding a new check group.
+This documentation is meant to help you get up and running writing checks for Foursight. It includes some useful tips and functions outside of the scope of the strictly necessary stuff contained in the [getting started](./getting_started.md) and [checks](./checks.md) documentation. First, we will go over the timeline of writing a new check module containing new checks and scheduling it.
 
-## Overall process for adding, testing, and scheduling a brand new check group
-1. Create your new check module file in the `chalicelib` directory.
+## Overall process for adding, testing, and scheduling a brand new check
+1. Create your new check module file in the `chalicelib/checks` directory.
 2. Write your checks within that file.
-3. Add the check module to CHECK_MODULES within chalicelib/check_groups.py.
-4. Add a new check group to CHECK_GROUPS within chalicelib/check_groups.py.
-5. Do some testing of your new check group.
-6. Schedule your new check group in app.py.
-7. Deploy to Foursight `dev` and test it live. [See here](./deployment.md).
+3. Add your check to `check_setup.json`.
+4. Do some testing of your new check.
+5. Deploy to Foursight `dev` and test it live. [See here](./deployment.md).
 
 ## Testing tips
 
 ### Manual testing of your check
-Let's assume that you've already finished steps 1 through 4 in the list above (these are pretty much covered in the getting started and checks documentation). For step 5, it is recommended that you go into a local Python interpreter and run your check directly to ensure that it provides the output you want. Below is some code run from the root directory of this project that will outline manual testing of the `items_created_in_the_past_day` check contained within the `wrangler_checks` check module. The code below is run from the Python interpreter.
+Let's assume that you've already finished steps 1 through 3 in the list above (these are pretty much covered in the getting started and checks documentation). For step 4, it is recommended that you go into a local Python interpreter and run your check directly to ensure that it provides the output you want. Below is some code run from the root directory of this project that will outline manual testing of the `items_created_in_the_past_day` check contained within the `wrangler_checks` check module. The code below is run from the Python interpreter.
 
 ```
 >>> import app
@@ -73,32 +71,32 @@ Actions function very similarly to checks when run individually. In fact, testin
 >>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'called_by': 'some_uuid', 'some_arg': 'some_value'})
 ```
 
-### Manual testing of your check group
-Let's say you want to run a whole check group and not an individual check. To test this, you can use `app.queue_check_group`, which causes your checks to run synchronously. This function is the one that is internally used to schedule check groups for, but it is difficult to track output. For that reason, it may be easier to test with `run_check_or_action` as described above. Below are examples from the Python interpreter with the example check group named `my_test_checks`.
+### Manual testing of your schedule
+Let's say you want to run a whole schedule and not an individual check. To test this, you can use `app.queue_scheduled_checks`, which causes your checks to run on AWS. This function is the one that is internally used to run checks, but it is difficult to track output. For that reason, it may be easier to test with `run_check_or_action` as described above. Below are examples from the Python interpreter with the example schedule named `morning_checks`.
 
-**NOTE:** if a check group has kwargs including `primary=True`, then the result will be written live to the Foursight UI. Omitting this argument when testing your check group may be desirable.
+**NOTE:** if a check setup has kwargs including `primary=True`, then the result will be written live to the Foursight UI. Omitting this argument when testing your check may be desirable.
 
 ```
 >>> import app
-# queue_check_group takes the environment name directly (not connection)
+# queue_scheduled_checks takes the environment name directly (not connection)
 # runs async; to see the results, see the Foursight UI, S3, or use Foursight API
->>> app.queue_check_group('mastertest', 'my_test_checks')
+>>> app.queue_scheduled_checks('mastertest', 'morning_checks')
 ```
 
 ### Some other testing notes
 * By default, you will use the `dev` stage of Foursight from the Python interpreter and test.py. To change to `prod` (USE WITH CARE), use `app.set_stage('prod')`.
 * You can extend the timeout of your checks/actions locally by using `app.set_stage(num)`, where `num` is an integer representing timeout in seconds. Setting it 0 will disable the timeout completely.
-* You can get the latest check group results using `app.get_check_group_results(connection, name)` given a Foursight connection and a valid check group name.
+* You can get the latest check results using `app.get_check_results(connection)` given a Foursight connection.
 * Make sure to use dcicutils for lots of handy utility functions to connect with Fourfront!
 
-### Scheduling your check group
-Okay, so you've got a check group that you're confident in. To schedule it using a CRON or rate expression, go to the top of app.py and create a new scheduled function (leading with the `@app.schedule()` decorator). Two examples are below:
+### Scheduling your checks
+Okay, so you've written a check function and want to make a new schedule for it. To schedule it using a CRON or rate expression, go to the top of app.py and create a new scheduled function (leading with the `@app.schedule()` decorator). Two examples are below:
 
 ```
 @app.schedule(Rate(1, unit=Rate.HOURS))
 def one_hour_checks(event):
-    for environ in list_environments():
-        queue_check_group(environ, 'my_test_checks')
+    # run this schedule for all environments
+    queue_scheduled_checks('all', 'one_hour_checks')
 ```
 
 Or scheduling with a CRON expression... for more info, [see here](http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html).
@@ -106,8 +104,5 @@ Or scheduling with a CRON expression... for more info, [see here](http://docs.aw
 # run at 10 am UTC every day
 @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
 def daily_checks(event):
-    for environ in list_environments():
-        queue_check_group(environ, 'my_test_checks')
+    queue_scheduled_checks('all', 'daily_checks')
 ```
-
-It is easy to constrict the environments that a given check is run on in the `for` loop of the schedule function.
