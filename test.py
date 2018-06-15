@@ -10,7 +10,6 @@ from chalicelib import (
     app_utils,
     check_utils,
     utils,
-    check_groups,
     run_result,
     fs_connection,
     s3_connection
@@ -53,7 +52,7 @@ class TestFSConnection(FSTest):
 
     def test_check_result_basics(self):
         test_check = utils.init_check_res(self.connection, 'test_check')
-        test_check.description = 'Unittest check'
+        test_check.summary = 'Unittest check'
         test_check.ff_link = 'not_a_real_http_link'
         self.assertTrue(test_check.s3_connection.status_code == 404)
         self.assertTrue(test_check.get_latest_result() is None)
@@ -61,10 +60,9 @@ class TestFSConnection(FSTest):
         with self.assertRaises(Exception) as exc:
             test_check.get_closest_result(1)
         self.assertTrue('Could not find any results' in str(exc.exception))
-        self.assertTrue(test_check.title == 'Test Check')
         formatted_res = test_check.format_result(datetime.datetime.utcnow())
         self.assertTrue(formatted_res.get('status') == 'IGNORE')
-        self.assertTrue(formatted_res.get('title') == 'Test Check')
+        self.assertTrue(formatted_res.get('summary') == 'Unittest check')
         self.assertTrue(formatted_res.get('description') == 'Unittest check')
         # set a bad status on purpose
         test_check.status = "BAD_STATUS"
@@ -127,7 +125,7 @@ class TestAppRoutes(FSTest):
         self.assertTrue(set(res.to_dict().keys()) == set(['body', 'headers', 'statusCode']))
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
-        self.assertTrue('Not logged in as admin.' in res.body)
+        self.assertTrue('Not logged in as admin' in res.body)
         # run with a check
         res2 = app_utils.view_run_check(self.environ, 'indexing_progress', {})
         self.assertTrue(res2.status_code == 302)
@@ -140,7 +138,7 @@ class TestAppRoutes(FSTest):
         # lastly, check with is_admin
         res = app_utils.view_foursight(self.environ, True) # is_admin
         self.assertTrue(res.status_code == 200)
-        self.assertTrue('Currently logged in as admin.' in res.body)
+        self.assertTrue('Currently logged in as admin' in res.body)
 
     def test_view_foursight_check(self):
         test_check_name = 'item_counts_by_type'
@@ -153,13 +151,13 @@ class TestAppRoutes(FSTest):
 
     def test_view_foursight_history(self):
         test_check = 'test_random_nums'
-        res = app_utils.view_foursight_history(self.environ, test_check) # not admin
+        res = app_utils.view_foursight_history(self.environ, 'indexing_progress') # not admin
         self.assertTrue(res.headers == {u'Content-Type': u'text/html'})
         self.assertTrue(res.status_code == 200)
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
-        self.assertTrue('Not logged in as admin.' in res.body)
-        self.assertTrue('History for Test Random Nums (mastertest)' in res.body)
+        self.assertTrue('Not logged in as admin' in res.body)
+        self.assertTrue('History for Indexing progress (mastertest)' in res.body)
         self.assertTrue('<td>' in res.body)
         # run with bad environ
         res = app_utils.view_foursight_history('not_an_environment', test_check)
@@ -170,7 +168,7 @@ class TestAppRoutes(FSTest):
         # run with is_admin
         res = app_utils.view_foursight_history(self.environ, test_check, is_admin=True) # not admin
         self.assertTrue(res.status_code == 200)
-        self.assertTrue('Currently logged in as admin.' in res.body)
+        self.assertTrue('Currently logged in as admin' in res.body)
         # run with some limits/starts
         res = app_utils.view_foursight_history(self.environ, test_check, start=4, limit=2)
         self.assertTrue(res.status_code == 200)
@@ -199,41 +197,9 @@ class TestAppRoutes(FSTest):
         bad_history = app_utils.get_foursight_history(self.conn, 'not_a_real_check', 0, 3)
         self.assertTrue(bad_history == [])
 
-    def test_load_foursight_result(self):
-        test_check = 'test_random_nums'
-        check = utils.init_check_res(self.conn, test_check)
-        check_res = check.get_latest_result()
-        test_uuid = check_res['uuid']
-        resp = app_utils.load_foursight_result(self.environ, test_check, test_uuid)
-        self.assertTrue(resp.status_code == 200)
-        self.assertTrue(resp.body.get('status') == 'success')
-        self.assertTrue(resp.body.get('data') == check_res)
-        # bad check
-        resp = app_utils.load_foursight_result(self.environ, 'not_a_valid_check', test_uuid)
-        self.assertTrue(resp.status_code == 400)
-        self.assertTrue(resp.body.get('status') == 'error')
-        self.assertTrue(resp.body.get('description') == 'Not a valid check or action.')
-
-    def test_run_foursight_checks(self):
-        res = app_utils.run_foursight_checks(self.environ, 'valid_test_checks')
-        self.assertTrue(res.status_code == 200)
-        self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'check_group']))
-        self.assertTrue(res.body['environment'] == self.environ)
-        self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'valid_test_checks')
-
-    def test_get_foursight_checks(self):
-        res = app_utils.get_foursight_checks(self.environ, 'valid_test_checks')
-        self.assertTrue(res.status_code == 200)
-        self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'check_group']))
-        self.assertTrue(res.body['environment'] == self.environ)
-        self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(res.body['check_group'] == 'valid_test_checks')
-        self.assertTrue(isinstance(res.body['checks'], list) and len(res.body['checks']) > 0)
-
-    def test_get_environment(self):
+    def test_run_get_environment(self):
         environments = app_utils.init_environments()
-        env_resp = app_utils.get_environment(self.environ)
+        env_resp = app_utils.run_get_environment(self.environ)
         self.assertTrue(env_resp.status_code == 200)
         body = env_resp.body
         self.assertTrue(body.get('environment') == self.environ)
@@ -244,7 +210,7 @@ class TestAppRoutes(FSTest):
         this_env = environments.get(self.environ)
         self.assertTrue(this_env == details)
         # bad environment
-        resp2 = app_utils.get_environment('not_an_environment')
+        resp2 = app_utils.run_get_environment('not_an_environment')
         self.assertTrue(resp2.status_code == 400)
         self.assertTrue(resp2.body['status'] == 'error')
         self.assertTrue('Invalid environment provided' in resp2.body['description'])
@@ -252,7 +218,7 @@ class TestAppRoutes(FSTest):
     def test_put_environment(self):
         # this one is interesting... will be tested by putting a clone of
         # mastertest into itself. actual fxn run is run_put_environment
-        get_res = app_utils.get_environment(self.environ)
+        get_res = app_utils.run_get_environment(self.environ)
         env_data = get_res.body.get('details')
         # make sure the environ we have is legit
         self.assertTrue(env_data and 'fourfront' in env_data and 'es' in env_data and 'ff_env' in env_data)
@@ -268,23 +234,21 @@ class TestAppRoutes(FSTest):
         self.assertTrue(bad_res.body.get('body') == {'key1': 'res1'})
         self.assertTrue(bad_res.body.get('description') == 'Environment creation failed')
         # make sure they match after run_put_environment
-        get_res2 = app_utils.get_environment(self.environ)
+        get_res2 = app_utils.run_get_environment(self.environ)
         self.assertTrue(get_res.body == get_res2.body)
 
-    def test_get_check(self):
+    def test_run_get_check(self):
         test_check = 'indexing_progress'
-        res = app_utils.get_check(self.environ, test_check)
+        res = app_utils.run_get_check(self.environ, test_check)
         self.assertTrue(res.status_code == 200)
-        self.assertTrue(set(res.body.keys()) == set(['status', 'environment', 'checks', 'checks_found']))
-        self.assertTrue(res.body['environment'] == self.environ)
+        self.assertTrue(set(res.body.keys()) == set(['status', 'data']))
         self.assertTrue(res.body['status'] == 'success')
-        self.assertTrue(isinstance(res.body['checks'], dict) and res.body['checks']['name'] == test_check)
-        self.assertTrue(res.body['checks_found'] == test_check)
+        self.assertTrue(isinstance(res.body['data'], dict) and res.body['data']['name'] == test_check)
         # bad response
-        res = app_utils.get_check(self.environ, 'not_a_real_check')
+        res = app_utils.run_get_check(self.environ, 'not_a_real_check')
         self.assertTrue(res.status_code == 400)
         self.assertTrue(res.body['status'] == 'error')
-        self.assertTrue(res.body['description'] == 'Could not get results for: not_a_real_check. Maybe no such check result exists?')
+        self.assertTrue(res.body['description'] == 'Not a valid check or action.')
 
     def test_put_check(self):
         # actually tests run_put_check, which holds all functionality
@@ -372,12 +336,6 @@ class TestAppUtils(FSTest):
         # bad environment
         bad_envs = app_utils.init_environments('not_an_environment')
         self.assertTrue(bad_envs == {})
-
-    def test_list_environments(self):
-        env_list = app_utils.list_environments()
-        # assume we have at least one environments
-        self.assertTrue(isinstance(env_list, list))
-        self.assertTrue(self.environ in env_list)
 
     def test_init_response(self):
         # a good reponse
@@ -477,7 +435,11 @@ class TestCheckRunner(FSTest):
         test_success = False
         while retries < 3 and not test_success:
             # need to manually add things to the queue
-            check_vals = check_utils.fetch_check_group('valid_test_checks')
+            check_vals = [
+                ['test_checks/add_random_test_nums', {'primary': True}, ['tt3'], 'tt1'],
+                ['test_checks/add_random_test_nums', {'primary': True}, [], 'tt2'],
+                ['test_checks/add_random_test_nums', {'primary': True}, ['tt2'], 'tt3']
+            ]
             utils.send_sqs_messages(self.queue, self.environ, check_vals)
             app_utils.run_check_runner({'sqs_url': self.queue.url})
             finished_count = 0 # since queue attrs are approximate
@@ -504,9 +466,13 @@ class TestCheckRunner(FSTest):
         # first, assure we have the right queue and runner names
         self.assertTrue(utils.QUEUE_NAME == 'foursight-test-check_queue')
         self.assertTrue(utils.RUNNER_NAME == 'foursight-dev-check_runner')
+        # find the checks we will be using
+        use_schedule = 'ten_min_checks'
+        check_schedule = check_utils.get_check_schedule(use_schedule)
+        use_checks = [cs[0].split('/')[1] for env in check_schedule for cs in check_schedule[env]]
         # get a reference point for check results
-        prior_res = check_utils.get_check_group_results(self.connection, 'all_checks', use_latest=True)
-        run_input = app_utils.queue_check_group(self.environ, 'all_checks')
+        prior_res = check_utils.get_check_results(self.connection, checks=use_checks, use_latest=True)
+        run_input = app_utils.queue_scheduled_checks(self.environ, 'ten_min_checks')
         self.assertTrue(utils.QUEUE_NAME in run_input.get('sqs_url'))
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
@@ -519,7 +485,7 @@ class TestCheckRunner(FSTest):
                 finished_count += 1
         # queue should be empty. check results
         time.sleep(1)
-        post_res = check_utils.get_check_group_results(self.connection, 'all_checks', use_latest=True)
+        post_res = check_utils.get_check_results(self.connection, checks=use_checks, use_latest=True)
         # compare the runtimes to ensure checks have run
         res_compare = {}
         for check_res in post_res:
@@ -644,23 +610,21 @@ class TestActionResult(FSTest):
 
 class TestCheckUtils(FSTest):
     environ = 'mastertest' # hopefully this is up
-    conn = app_utils.init_connection(environ)
+    connection = app_utils.init_connection(environ)
 
     def test_get_check_strings(self):
         # do this for every check
         all_check_strs = check_utils.get_check_strings()
         for check_str in all_check_strs:
             get_check = check_str.split('/')[1]
-            chalice_resp = app_utils.get_check(self.environ, get_check)
+            chalice_resp = app_utils.run_get_check(self.environ, get_check)
             body = chalice_resp.body
             if body.get('status') == 'success':
                 self.assertTrue(chalice_resp.status_code == 200)
-                self.assertTrue(body.get('checks_found') == get_check)
-                self.assertTrue(body.get('checks', {}).get('name') == get_check)
-                self.assertTrue(body.get('checks', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
-                self.assertTrue('uuid' in body.get('checks', {}))
+                self.assertTrue(body.get('data', {}).get('name') == get_check)
+                self.assertTrue(body.get('data', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
             elif body.get('status') == 'error':
-                error_msg = "Could not get results for: " + get_check + ". Maybe no such check result exists?"
+                error_msg = "Not a valid check or action."
                 self.assertTrue(body.get('description') == error_msg)
         # test a specific check
         one_check_str = check_utils.get_check_strings('indexing_progress')
@@ -669,6 +633,62 @@ class TestCheckUtils(FSTest):
         # test a specific check that doesn't exist
         bad_check_str = check_utils.get_check_strings('not_a_real_check')
         self.assertTrue(bad_check_str is None)
+
+    def test_validate_check_setup(self):
+        self.assertTrue(check_utils.validate_check_setup(check_utils.CHECK_SETUP) == check_utils.CHECK_SETUP)
+        # make sure modules were added
+        for check in check_utils.CHECK_SETUP.values():
+            self.assertTrue('module' in check)
+        # do a while bunch of validation failure cases
+        bad_setup = {'not_a_check': {}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('does not have a proper check function defined' in str(exc.exception))
+        bad_setup = {'indexing_progress': []}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must be a dictionary' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': {}, 'group': {}, 'blah': {}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have the required keys' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': {}, 'group': {}, 'schedule': []}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have a string value for field' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': []}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have a dictionary value for field' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have a list of "display" environments' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': []}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have a dictionary value' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'not_an_env': []}}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('is not an existing environment' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': []}}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have a dictionary value' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {}}}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have a value for field "id"' in str(exc.exception))
+        # this one will work -- display provided
+        okay_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {}, 'display': ['data']}}
+        okay_validated = check_utils.validate_check_setup(okay_setup)
+        self.assertTrue(okay_validated['indexing_progress'].get('module') == 'system_checks')
+        # this one adds kwargs and id to setup
+        okay_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {'id': ''}}}}}
+        okay_validated = check_utils.validate_check_setup(okay_setup)
+        self.assertTrue({'id', 'kwargs', 'dependencies'} <= set(okay_validated['indexing_progress']['schedule']['fake_sched']['all'].keys()))
+
 
     def test_get_action_strings(self):
         all_action_strings = check_utils.get_action_strings()
@@ -682,25 +702,28 @@ class TestCheckUtils(FSTest):
         bad_act_str = check_utils.get_check_strings('not_a_real_action')
         self.assertTrue(bad_act_str is None)
 
-    def test_fetch_check_group(self):
-        all_checks = check_utils.fetch_check_group('all')
-        self.assertTrue(isinstance(all_checks, list) and len(all_checks) > 0)
-        tm_checks = check_utils.fetch_check_group('ten_min_checks')
-        # get list of check strings from lists of check info
-        tm_checks_strs = [chk_str[0] for chk_str in tm_checks]
-        all_check_strs = [chk_str[0] for chk_str in all_checks]
-        self.assertTrue(set(tm_checks_strs) <= set(all_check_strs))
-        # make sure there are not duplicate check check names
-        self.assertTrue(len(all_check_strs) == len(set(all_check_strs)))
-        # non-existant check group
-        bad_checks = check_utils.fetch_check_group('not_a_check_group')
-        self.assertTrue(bad_checks is None)
+    def test_get_schedule_names(self):
+        schedules = check_utils.get_schedule_names()
+        self.assertTrue(isinstance(schedules, list))
+        self.assertTrue(len(schedules) > 0)
 
-    def test_get_check_group_results(self):
+    def test_get_check_title_from_setup(self):
+        title = check_utils.get_check_title_from_setup('indexing_progress')
+        self.assertTrue(title == check_utils.CHECK_SETUP['indexing_progress']['title'])
+
+    def test_get_check_schedule(self):
+        schedule = check_utils.get_check_schedule('morning_checks')
+        self.assertTrue(len(schedule.keys()) > 0)
+        for env in schedule:
+            self.assertTrue(isinstance(schedule[env], list))
+            for check_info in schedule[env]:
+                assert len(check_info) == 4
+
+    def test_get_check_results(self):
         # dict to compare uuids
         uuid_compares = {}
         # will get primary results by default
-        all_res_primary = check_utils.get_check_group_results(self.conn, 'all')
+        all_res_primary = check_utils.get_check_results(self.connection)
         for check_res in all_res_primary:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
@@ -708,7 +731,7 @@ class TestCheckUtils(FSTest):
             self.assertTrue('uuid' in check_res)
             uuid_compares[check_res['name']] = check_res['uuid']
         # compare to latest results (which should be the same or newer)
-        all_res_latest = check_utils.get_check_group_results(self.conn, 'all', use_latest=True)
+        all_res_latest = check_utils.get_check_results(self.connection, use_latest=True)
         for check_res in all_res_latest:
             self.assertTrue(isinstance(check_res, dict))
             self.assertTrue('name' in check_res)
@@ -716,19 +739,27 @@ class TestCheckUtils(FSTest):
             self.assertTrue('uuid' in check_res)
             if check_res['name'] in uuid_compares:
                 self.assertTrue(check_res['uuid'] >= uuid_compares[check_res['name']])
-        # non-existant check group
-        bad_res = check_utils.get_check_group_results(self.conn, 'not_a_check_group')
-        assert(bad_res == [])
-        # bad check group. will skip all malformed checks
-        test_res = check_utils.get_check_group_results(self.conn, 'malformed_test_checks')
-        assert(len(test_res) == 0)
+        # get a specific check
+        one_res = check_utils.get_check_results(self.connection, checks=['indexing_progress'])
+        self.assertTrue(len(one_res) == 1)
+        self.assertTrue(one_res[0]['name'] == 'indexing_progress')
+        # bad check name
+        test_res = check_utils.get_check_results(self.connection, checks=['not_a_real_check'])
+        self.assertTrue(len(test_res) == 0)
+
+    def test_get_grouped_check_results(self):
+        grouped_results = check_utils.get_grouped_check_results(self.connection)
+        for group in grouped_results:
+            self.assertTrue('_name' in group)
+            self.assertTrue(isinstance(group['_statuses'], dict))
+            self.assertTrue(len(group.keys()) > 2)
 
     def test_run_check_or_action(self):
         test_uuid = datetime.datetime.utcnow().isoformat()
-        check = utils.init_check_res(self.conn, 'test_random_nums')
+        check = utils.init_check_res(self.connection, 'test_random_nums')
         # with a check (primary is True)
         test_info = ['test_checks/test_random_nums', {'primary': True, 'uuid': test_uuid}, [], 'xxx']
-        check_res = check_utils.run_check_or_action(self.conn, test_info[0], test_info[1])
+        check_res = check_utils.run_check_or_action(self.connection, test_info[0], test_info[1])
         self.assertTrue(isinstance(check_res, dict))
         self.assertTrue('name' in check_res)
         self.assertTrue('status' in check_res)
@@ -743,12 +774,11 @@ class TestCheckUtils(FSTest):
         latest_res = check.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == primary_uuid)
         # with a check and no primary=True flag
-        check_res = check_utils.run_check_or_action(self.conn, test_info[0], {})
+        check_res = check_utils.run_check_or_action(self.connection, test_info[0], {})
         latest_uuid = check_res.get('uuid')
         self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
         check_res.get('kwargs').pop('runtime_seconds')
         self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid})
-        time.sleep(5)
         # latest res will be more recent than primary res now
         latest_res = check.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == latest_uuid)
@@ -756,9 +786,9 @@ class TestCheckUtils(FSTest):
         self.assertTrue(primary_uuid < latest_uuid)
 
         # with an action
-        action = utils.init_action_res(self.conn, 'add_random_test_nums')
+        action = utils.init_action_res(self.connection, 'add_random_test_nums')
         test_info_2 = ['test_checks/add_random_test_nums', {'primary': True, 'uuid': test_uuid, 'called_by': latest_uuid}, [] ,'xxx']
-        action_res = check_utils.run_check_or_action(self.conn, test_info_2[0], test_info_2[1])
+        action_res = check_utils.run_check_or_action(self.connection, test_info_2[0], test_info_2[1])
         self.assertTrue(isinstance(action_res, dict))
         self.assertTrue('name' in action_res)
         self.assertTrue('status' in action_res)
@@ -784,87 +814,30 @@ class TestCheckUtils(FSTest):
             ['test_checks/test_function_unused', {}, [], 'xx1']
         ]
         for bad_check_info in bad_check_group:
-            check_res = check_utils.run_check_or_action(self.conn, bad_check_info[0], bad_check_info[1])
+            check_res = check_utils.run_check_or_action(self.connection, bad_check_info[0], bad_check_info[1])
             self.assertFalse(isinstance(check_res, dict))
             self.assertTrue('ERROR' in check_res)
 
     def test_run_check_exception(self):
-        check_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_check_error', {})
+        check_res = check_utils.run_check_or_action(self.connection, 'test_checks/test_check_error', {})
         self.assertTrue(check_res['status'] == 'ERROR')
         # this output is a list
         self.assertTrue('by zero' in ''.join(check_res['full_output']))
         self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
 
     def test_run_action_no_called_by(self):
-        action_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_action_error', {})
+        action_res = check_utils.run_check_or_action(self.connection, 'test_checks/test_action_error', {})
         self.assertTrue(action_res['status'] == 'FAIL')
         # this output is a list
         self.assertTrue('Action is missing called_by in its kwargs' in ''.join(action_res['output']))
         self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
 
     def test_run_action_exception(self):
-        action_res = check_utils.run_check_or_action(self.conn, 'test_checks/test_action_error', {'called_by': None})
+        action_res = check_utils.run_check_or_action(self.connection, 'test_checks/test_action_error', {'called_by': None})
         self.assertTrue(action_res['status'] == 'FAIL')
         # this output is a list
         self.assertTrue('by zero' in ''.join(action_res['output']))
         self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
-
-class TestCheckGroup(FSTest):
-    def test_check_groups(self):
-        # make sure check groups are dicts
-        self.assertTrue(isinstance(check_groups.CHECK_GROUPS, dict))
-        self.assertTrue(isinstance(check_groups.TEST_CHECK_GROUPS, dict))
-        # ensure check groups look good
-        dependency_ids = []
-        used_check_mods = []
-        for key, val in check_groups.CHECK_GROUPS.items():
-            self.assertTrue('_checks' in key)
-            self.assertTrue(isinstance(val, list))
-            within_group_dep_ids = []
-            used_dep_ids = []
-            for check_info in val:
-                self.assertTrue(len(check_info) == 4)
-                self.assertTrue(isinstance(check_info[0], utils.basestring))
-                self.assertTrue(len(check_info[0].split('/')) == 2)
-                # make sure each entry is a real check with decorator
-                [mod, name] = [st.strip() for st in check_info[0].split('/')]
-                check_mod = check_utils.__dict__.get(mod)
-                self.assertTrue(check_mod is not None)
-                method = check_mod.__dict__.get(name)
-                self.assertTrue(method is not None)
-                self.assertTrue(utils.check_method_deco(method, utils.CHECK_DECO))
-                used_check_mods.append(mod)
-                self.assertTrue(isinstance(check_info[1], dict))
-                self.assertTrue(isinstance(check_info[2], list))
-                used_dep_ids.extend(check_info[2])
-                self.assertTrue(isinstance(check_info[3], utils.basestring))
-                within_group_dep_ids.append(check_info[3])
-            dependency_ids.extend(within_group_dep_ids)
-            # ensure all ids within a group are unique
-            within_group_unique = list(set(within_group_dep_ids))
-            self.assertTrue(len(within_group_unique) == len(within_group_dep_ids))
-            # ensure all dep ids used in this group belong to the group
-            self.assertTrue(set(used_dep_ids).issubset(set(within_group_dep_ids)))
-        # ensure all dependency ids are unique
-        dependency_ids_unique = list(set(dependency_ids))
-        self.assertTrue(len(dependency_ids_unique) == len(dependency_ids))
-        # ensure all the used check modules are added to CHECK_MODULES
-        for mod in used_check_mods:
-            self.assertTrue(mod in check_groups.CHECK_MODULES)
-
-        # for TEST_CHECK_GROUPS
-        for key, val in check_groups.TEST_CHECK_GROUPS.items():
-            self.assertTrue('_checks' in key)
-            self.assertTrue(isinstance(val, list))
-            for check_info in val:
-                if 'malformed' in key:
-                    self.assertTrue(len(check_info) != 3)
-                else:
-                    self.assertTrue(len(check_info) == 4)
-                    self.assertTrue(isinstance(check_info[0], utils.basestring))
-                    self.assertTrue(isinstance(check_info[1], dict))
-                    self.assertTrue(isinstance(check_info[2], list))
-                    self.assertTrue(isinstance(check_info[3], utils.basestring))
 
 
 class TestUtils(FSTest):
@@ -891,6 +864,7 @@ class TestUtils(FSTest):
     def test_check_timeout(self):
         self.assertTrue(isinstance(utils.CHECK_TIMEOUT, int))
 
+
     def test_check_times_out(self):
         # set to one second, which is slower than test check
         utils.CHECK_TIMEOUT = 1
@@ -899,6 +873,11 @@ class TestUtils(FSTest):
         self.assertTrue('-RUN-> TIMEOUT' in str(exc.exception))
         utils.CHECK_TIMEOUT = 280
 
+    def test_list_environments(self):
+        env_list = utils.list_environments()
+        # assume we have at least one environments
+        self.assertTrue(isinstance(env_list, list))
+        self.assertTrue(self.environ in env_list)
 
     def test_check_function_deco_default_kwargs(self):
         # test to see if the check_function decorator correctly overrides

@@ -35,7 +35,8 @@
                     <tr class="row active">
                         <th scope="col">status</th>
                         {% for kwarg in history_kwargs %}
-                            <th scope="col">{{kwarg}}</th>
+                            {% set this_kwarg = kwarg + ' (UTC)' if kwarg == 'uuid' else kwarg %}
+                            <th scope="col">{{this_kwarg}}</th>
                         {% endfor %}
                         <th colspan="2" scope="col"></th>
                     </tr>
@@ -67,7 +68,7 @@
                             {% endif %}
                             {% if 'uuid' in entry[1] %}
                                 <td>
-                                    <a target="_blank" href={{"/api/load/" + env + "/" + check + "/" + entry[1]['uuid']}}>JSON</a>
+                                    <a target="_blank" href={{"/api/checks/" + env + "/" + check + "/" + entry[1]['uuid']}}>JSON</a>
                                 </td>
                             {% else %}
                                 <td>Error</td>

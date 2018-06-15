@@ -31,6 +31,14 @@ except NameError:
     basestring = str
 
 
+def list_environments():
+    """
+    Lists all environments in the foursight-envs s3. Returns a list of names
+    """
+    s3_connection = S3Connection('foursight-envs')
+    return s3_connection.list_all_keys()
+
+
 def init_check_res(connection, name, init_uuid=None):
     """
     Initialize a CheckResult object, which holds all information for a
@@ -194,6 +202,18 @@ class BadCheckOrAction(Exception):
         # default error message if none provided
         if message is None:
             message = "Check or action function seems to be malformed."
+        super().__init__(message)
+
+
+class BadCheckSetup(Exception):
+    """
+    Generic exception for an issue with a check setup.
+    __init__ takes some string error message
+    """
+    def __init__(self, message=None):
+        # default error message if none provided
+        if message is None:
+            message = "Malformed check setup found."
         super().__init__(message)
 
 

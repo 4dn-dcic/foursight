@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import (
+from ..utils import (
     check_function,
     init_check_res,
     action_function,
@@ -137,7 +137,7 @@ def biorxiv_is_now_published(connection, **kwargs):
         chkdesc = "No Biorxivs to replace\n" + chkdesc
 
     check.status = chkstatus
-    check.description = chkdesc
+    check.summary = check.description = chkdesc
     check.brief_output = fndcnt
     check.full_output = fulloutput
     return check
@@ -167,9 +167,9 @@ def mcool_not_registered_with_higlass(connection, **kwargs):
 
     if not file_to_be_reg:
         check.status = "PASS"
-        check.description = "All mcool files with files on s3 appear to already be registered"
+        check.summary = check.description = "All mcool files with files on s3 appear to be registered"
     else:
-        check.description = "%s files found not registered with higlass" % str(len(file_to_be_reg))
+        check.summary = check.description = "%s files found not registered with higlass" % str(len(file_to_be_reg))
         check.full_output = file_to_be_reg
         check.action_message = "Will attempt to patch higlass_uid for %s files." % str(len(file_to_be_reg))
         check.allow_action = True  # allows the action to be run
@@ -246,13 +246,14 @@ def item_counts_by_type(connection, **kwargs):
     # set fields, store result
     if not item_counts:
         check.status = 'FAIL'
-        check.description = 'Error on fourfront health page.'
+        check.summary = check.description = 'Error on fourfront health page'
     elif warn_item_counts:
         check.status = 'WARN'
-        check.description = 'DB and ES counts are not equal.'
+        check.summary = check.description = 'DB and ES item counts are not equal'
         check.brief_output = warn_item_counts
     else:
         check.status = 'PASS'
+        check.summary = check.description = 'DB and ES item counts are equal'
     check.full_output = item_counts
     return check
 
@@ -286,53 +287,44 @@ def change_in_item_counts(connection, **kwargs):
                 diff_counts[index] = diff_DB
     for index in prior_unique:
         diff_counts[index] = -1 * prior[index]['DB']
-    check.full_output = diff_counts
+    check.brief_output = diff_counts
+
+    # now do a metadata search to make sure they match
+    date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H\:%M')
+    search_query = ''.join(['search/?type=Item&frame=object&q=date_created:>=', date_str])
+    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    # add deleted items
+    search_query += '&status=deleted'
+    search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env))
+    search_output = []
+    for res in search_resp:
+        search_output.append({
+            'uuid': res.get('uuid'),
+            '@id': res.get('@id'),
+            'date_created': res.get('date_created'),
+            'status': res.get('status')
+        })
+    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&q=date_created:>=', date_str])
+    check.full_output = search_output
+
+    # total created items from diff counts (exclude any negative counts)
+    total_counts = sum([diff_counts[coll] for coll in diff_counts if diff_counts[coll] >= 0])
     # see if we have negative counts
     negative_counts = any([diff_counts[coll] < 0 for coll in diff_counts])
     if negative_counts:
         check.status = 'FAIL'
-        check.description = ('DB counts have changed in past day. Positive '
-                             'numbers represent an increase in counts. '
+        check.summary = 'One or more item counts has decreased in the past day'
+        check.description = ('Positive numbers represent an increase in counts. '
                              'Some counts have decreased!')
-    elif diff_counts:
+    elif total_counts != len(search_output):
         check.status = 'WARN'
-        check.description = 'DB counts have changed in past day. Positive numbers represent an increase in counts.'
+        check.summary = 'Change in DB counts does not match search result for new items'
+        check.description = ('Positive numbers represent an increase in counts. '
+                             'The counts result does not match search results.')
     else:
         check.status = 'PASS'
-        check.description = 'DB counts have not changed in the past day.'
-    return check
-
-
-@check_function(item_type='Item')
-def items_created_in_the_past_day(connection, **kwargs):
-    item_type = kwargs.get('item_type')
-    init_uuid = kwargs.get('uuid')
-    check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=init_uuid)
-    full_output = check.full_output if check.full_output else {}
-    # date string of approx. one day ago in form YYYY-MM-DD
-    date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-    search_query = ''.join(['search/?type=', item_type, '&limit=all&frame=object&q=date_created:>=', date_str])
-    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-    item_output = []
-    for res in search_resp:
-        item_output.append({
-            'uuid': res.get('uuid'),
-            '@id': res.get('@id'),
-            'date_created': res.get('date_created')
-        })
-    if item_output:
-        full_output[item_type] = item_output
-    check.full_output = full_output
-    if full_output:
-        check.status = 'WARN'
-        check.description = 'Items have been created in the past day.'
-        # create a ff_link
-        check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&limit=all&q=date_created:>=', date_str])
-        # test admin output
-        check.admin_output = check.ff_link
-    else:
-        check.status = 'PASS'
-        check.description = 'No items have been created in the past day.'
+        check.summary = 'There are %s new items in the past day' % total_counts
+        check.description = check.summary + '. Positive numbers represent an increase in counts.'
     return check
 
 
@@ -359,6 +351,7 @@ def identify_files_without_filesize(connection, **kwargs):
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
+        check.summary = 'File metadata found without file_size'
         check.description = "One or more files that are released/released to project/uploaded don't have file_size."
         check.action_message = "Will attempt to patch file_size for %s files." % str(len(problem_files))
         check.allow_action = True # allows the action to be run

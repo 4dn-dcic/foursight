@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import (
+from ..utils import (
     check_function,
     init_check_res,
     action_function,
