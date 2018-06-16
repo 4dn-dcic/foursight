@@ -711,7 +711,7 @@ def run_check_runner(runner_input):
         # if no messages recieved in 20 seconds of long polling, terminate
         return
     check_list = json.loads(body)
-    if not isinstance(check_list, list) or len(check_list) != 6:
+    if not isinstance(check_list, list) or len(check_list) != 5:
         # if not a valid check str, remove the item from the SQS
         delete_message_and_propogate(runner_input, receipt)
         return

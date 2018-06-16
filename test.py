@@ -426,7 +426,7 @@ class TestCheckRunner(FSTest):
         Run with a check_group with dependencies
         """
         # the check we will test with
-        check = run_result.CheckResult(self.connection.s3_connection, 'add_random_test_nums')
+        check = run_result.CheckResult(self.connection.s3_connection, 'test_random_nums')
         prior_res = check.get_latest_result()
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
@@ -436,8 +436,8 @@ class TestCheckRunner(FSTest):
         while retries < 3 and not test_success:
             # need to manually add things to the queue
             check_vals = [
-                ['test_checks/add_random_test_nums', {'primary': True}, []],
-                ['test_checks/add_random_test_nums_2', {'primary': True}, ['add_random_test_nums']]
+                ['test_checks/test_random_nums', {'primary': True}, []],
+                ['test_checks/test_random_nums_2', {'primary': True}, ['test_random_nums']]
             ]
             utils.send_sqs_messages(self.queue, self.environ, check_vals)
             app_utils.run_check_runner({'sqs_url': self.queue.url})
