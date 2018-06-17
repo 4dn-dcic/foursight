@@ -14,6 +14,7 @@ import json
 import datetime
 import boto3
 import time
+from botocore.exceptions import QueueDoesNotExist
 
 
 @check_function()
@@ -396,7 +397,10 @@ def clean_up_travis_queues(connection, **kwargs):
     num_deleted = 0
     for queue in queues:
         if 'travis-job' in queue.url:
-            creation = queue.attributes['CreatedTimestamp']
+            try:
+                creation = queue.attributes['CreatedTimestamp']
+            except QueueDoesNotExist:
+                continue
             if isinstance(creation, basestring):
                 creation = float(creation)
             dt_creation = datetime.datetime.utcfromtimestamp(creation)
