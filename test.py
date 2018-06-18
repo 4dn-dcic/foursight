@@ -17,6 +17,9 @@ from chalicelib import (
 from dcicutils import s3_utils, ff_utils
 from dateutil import tz
 
+# set the stage info for tests
+app.set_stage('test')
+
 
 class FSTest(unittest.TestCase):
     def setUp(self):
@@ -417,7 +420,7 @@ class TestCheckRunner(FSTest):
     environ = 'mastertest'
     connection = app_utils.init_connection(environ)
     # set up a queue for test checks
-    stage_info = utils.get_stage_info(test=True)
+    stage_info = utils.get_stage_info()
     queue = utils.get_sqs_queue()
 
     def test_run_check_runner(self):
@@ -872,11 +875,10 @@ class TestUtils(FSTest):
         return check
 
     def test_get_stage_info(self):
+        # after using app.set_stage('test')
         info = utils.get_stage_info()
         self.assertTrue({'stage', 'runner_name', 'queue_name'} <= set(info.keys()))
         self.assertTrue(info['stage'] == 'dev')
-        test_info = utils.get_stage_info(test=True)
-        self.assertTrue(test_info['stage'] == 'dev')
         self.assertTrue('test' in test_info['queue_name'])
 
     def test_check_timeout(self):

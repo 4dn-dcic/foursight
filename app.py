@@ -239,8 +239,8 @@ def check_runner(event, context):
 
 def set_stage(stage):
     from deploy import CONFIG_BASE
-    if stage not in CONFIG_BASE['stages']:
-        print('ERROR! Input stage is not valid. Must be one of: %s' % str(list(CONFIG_BASE['stages'].keys())))
+    if stage != 'test' or stage not in CONFIG_BASE['stages']:
+        print('ERROR! Input stage is not valid. Must be one of: %s' % str(list(CONFIG_BASE['stages'].keys()).extend('test')))
     os.environ['chalice_stage'] = stage
 
 

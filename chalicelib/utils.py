@@ -27,7 +27,7 @@ except NameError:
     basestring = str
 
 
-def get_stage_info(test=False):
+def get_stage_info():
     """
     Returns a dictionary with stage info and queue/check runner names that
     depend on that. If test=True, use the test runner_name
@@ -35,10 +35,10 @@ def get_stage_info(test=False):
     # set environmental variables in .chalice/config.json
     stage = os.environ.get('chalice_stage', 'dev') # default to dev
     runner_name = '-'.join(['foursight', stage, 'check_runner'])
-    # queue name can be used for testing
-    if not test:
-        queue_name = '-'.join(['foursight', stage, 'check_queue'])
-    else:
+    queue_name = '-'.join(['foursight', stage, 'check_queue'])
+    # when testing, use dev stage with test queue
+    if stage == 'test':
+        stage = 'dev'
         queue_name = 'foursight-test-check_queue'
     return {'stage': stage, 'queue_name': queue_name, 'runner_name': runner_name}
 
