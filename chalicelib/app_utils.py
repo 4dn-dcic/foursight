@@ -658,7 +658,6 @@ def queue_scheduled_checks(sched_environ, schedule_name):
     Run with schedule_name = None to skip adding the check group to the queue
     and just initiate the check runners.
     """
-    import pdb; pdb.set_trace()
     queue = get_sqs_queue()
     if schedule_name is not None:
         if sched_environ != 'all' and sched_environ not in list_environments():
