@@ -568,6 +568,7 @@ def run_put_environment(environ, env_data):
     Abstraction of the functionality of put_environment without the current_request
     to allow for testing.
     """
+    import pdb; pdb.set_trace()
     proc_environ = environ.split('-')[-1] if environ.startswith('fourfront-') else environ
     response = None
     if isinstance(env_data, dict) and {'fourfront', 'es'} <= set(env_data):

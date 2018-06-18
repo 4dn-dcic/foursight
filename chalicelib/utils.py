@@ -34,12 +34,12 @@ def get_stage_info():
     """
     # set environmental variables in .chalice/config.json
     stage = os.environ.get('chalice_stage', 'dev') # default to dev
-    runner_name = '-'.join(['foursight', stage, 'check_runner'])
     queue_name = '-'.join(['foursight', stage, 'check_queue'])
     # when testing, use dev stage with test queue
     if stage == 'test':
         stage = 'dev'
         queue_name = 'foursight-test-check_queue'
+    runner_name = '-'.join(['foursight', stage, 'check_runner'])
     return {'stage': stage, 'queue_name': queue_name, 'runner_name': runner_name}
 
 
