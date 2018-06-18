@@ -879,7 +879,8 @@ class TestUtils(FSTest):
         info = utils.get_stage_info()
         self.assertTrue({'stage', 'runner_name', 'queue_name'} <= set(info.keys()))
         self.assertTrue(info['stage'] == 'dev')
-        self.assertTrue('test' in test_info['queue_name'])
+        self.assertTrue('dev' in info['runner_name'])
+        self.assertTrue('test' in info['queue_name'])
 
     def test_check_timeout(self):
         self.assertTrue(isinstance(utils.CHECK_TIMEOUT, int))
