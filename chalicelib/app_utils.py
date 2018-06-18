@@ -25,9 +25,7 @@ from .check_utils import (
     init_check_or_action_res
 )
 from .utils import (
-    STAGE,
-    QUEUE_NAME,
-    RUNNER_NAME,
+    get_stage_info,
     basestring,
     list_environments,
     recover_message_and_propogate,
@@ -52,6 +50,7 @@ def init_environments(env='all'):
     Returns a dictionary keyed by environment name with value of a sub-dict
     with the fields needed to initiate a connection.
     """
+    stage = get_stage_info()['stage']
     s3_connection = S3Connection('foursight-envs')
     env_keys = s3_connection.list_all_keys()
     environments = {}
@@ -68,7 +67,7 @@ def init_environments(env='all'):
                 'fourfront': env_res['fourfront'],
                 'es': env_res['es'],
                 'ff_env': env_res.get('ff_env', ''.join(['fourfront-', env_key])),
-                'bucket': ''.join(['foursight-', STAGE, '-', env_key])
+                'bucket': ''.join(['foursight-', stage, '-', env_key])
             }
             environments[env_key] = env_entry
     return environments
@@ -308,7 +307,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
     html_resp.body = template.render(
         envs=total_envs,
-        stage=STAGE,
+        stage=get_stage_info()['stage'],
         load_time = get_load_time(),
         is_admin=is_admin,
         domain=domain,
@@ -347,7 +346,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
     html_resp.body = template.render(
         envs=total_envs,
-        stage=STAGE,
+        stage=get_stage_info()['stage'],
         load_time = get_load_time(),
         is_admin=is_admin,
         domain=domain,
@@ -452,7 +451,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, do
         res_limit=limit,
         res_actual=len(history),
         page_title=page_title,
-        stage=STAGE,
+        stage=get_stage_info()['stage'],
         is_admin=is_admin,
         domain=domain,
         running_checks=running_checks,
@@ -582,7 +581,8 @@ def run_put_environment(environ, env_data):
         }
         s3_connection = S3Connection('foursight-envs')
         s3_connection.put_object(proc_environ, json.dumps(env_entry))
-        s3_bucket = ''.join(['foursight-', STAGE, '-', proc_environ])
+        stage = get_stage_info()['stage']
+        s3_bucket = ''.join(['foursight-', stage, '-', proc_environ])
         bucket_res = s3_connection.create_bucket(s3_bucket)
         if not bucket_res:
             response = Response(
@@ -658,6 +658,7 @@ def queue_scheduled_checks(sched_environ, schedule_name):
     Run with schedule_name = None to skip adding the check group to the queue
     and just initiate the check runners.
     """
+    import pdb; pdb.set_trace()
     queue = get_sqs_queue()
     if schedule_name is not None:
         if sched_environ != 'all' and sched_environ not in list_environments():
