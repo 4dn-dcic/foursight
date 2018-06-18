@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <ul class="top-level-list">
+        {% for env in envs %}
+        <li>
+            <h4 style="color:#666">
+                <span>{{'Environment: ' + env['environment']}}</span>
+            </h4>
+            <ul>
+                {% for title in env['checks'] %}
+                <li>
+                    {{check_result(env['checks'][title], title, env['environment'], is_admin)}}
+                </li>
+                {% endfor %}
+            </ul>
+        </li>
+        <hr>
+        {% endfor %}
+    </ul>
+{% endblock %}

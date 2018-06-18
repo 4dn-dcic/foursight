@@ -1,0 +1,82 @@
+{
+  "resources": [
+    {
+      "name": "check_runner_role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::643366669028:role/foursight-prod-check_runner",
+      "role_name": "foursight-prod-check_runner"
+    },
+    {
+      "name": "check_runner",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-check_runner"
+    },
+    {
+      "name": "ten_min_checks_role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::643366669028:role/foursight-prod-ten_min_checks",
+      "role_name": "foursight-prod-ten_min_checks"
+    },
+    {
+      "name": "ten_min_checks",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-ten_min_checks"
+    },
+    {
+      "name": "ten_min_checks-event",
+      "resource_type": "cloudwatch_event",
+      "rule_name": "foursight-prod-ten_min_checks-event"
+    },
+    {
+      "name": "thirty_min_checks_role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::643366669028:role/foursight-prod-thirty_min_checks",
+      "role_name": "foursight-prod-thirty_min_checks"
+    },
+    {
+      "name": "thirty_min_checks",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-thirty_min_checks"
+    },
+    {
+      "name": "thirty_min_checks-event",
+      "resource_type": "cloudwatch_event",
+      "rule_name": "foursight-prod-thirty_min_checks-event"
+    },
+    {
+      "name": "morning_checks_role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::643366669028:role/foursight-prod-morning_checks",
+      "role_name": "foursight-prod-morning_checks"
+    },
+    {
+      "name": "morning_checks",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-morning_checks"
+    },
+    {
+      "name": "morning_checks-event",
+      "resource_type": "cloudwatch_event",
+      "rule_name": "foursight-prod-morning_checks-event"
+    },
+    {
+      "name": "api_handler_role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::643366669028:role/foursight-prod-api_handler",
+      "role_name": "foursight-prod-api_handler"
+    },
+    {
+      "name": "api_handler",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod"
+    },
+    {
+      "name": "rest_api",
+      "resource_type": "rest_api",
+      "rest_api_id": "we0v248yi4",
+      "rest_api_url": "https://we0v248yi4.execute-api.us-east-1.amazonaws.com/api/"
+    }
+  ],
+  "schema_version": "2.0",
+  "backend": "api"
+}

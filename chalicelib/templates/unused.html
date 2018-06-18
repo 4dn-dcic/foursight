@@ -9,7 +9,7 @@
     function load_check(uuid){
         console.log('meh!');
         var domain = $("#fs_domain").data("domain");
-        var get_url = "https://" + domain + "/api/load/{{env | safe}}/{{check | safe}}/" + uuid;
+        var get_url = "https://" + domain + "/api/checks/{{env | safe}}/{{check | safe}}/" + uuid;
         $.ajax({
             type: "GET",
             url: get_url,

@@ -1,0 +1,184 @@
+{
+    "item_counts_by_type": {
+        "title": "Item counts by type",
+        "group": "Metadata checks",
+        "schedule": {
+            "ten_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "indexing_progress": {
+        "title": "Indexing progress",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "ten_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": ["item_counts_by_type"]
+                }
+            }
+        }
+    },
+    "elastic_beanstalk_health": {
+        "title": "Elastic Beanstalk health",
+        "group": "System checks",
+        "schedule": {
+            "ten_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            },
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "status_of_elasticsearch_indices": {
+        "title": "Status of elasticsearch indices",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "indexing_records": {
+        "title": "Indexing records",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "experiment_set_reporting_data": {
+        "title": "Release updates data collection",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "data_release_updates": {
+        "title": "Data release updates",
+        "group": "Metadata checks",
+        "schedule": {},
+        "display": ["data"]
+    },
+    "staging_deployment": {
+        "title": "Staging deployment",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["staging"]
+    },
+    "fourfront_performance_metrics": {
+        "title": "Fourfront performance metrics",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": ["elastic_beanstalk_health"]
+                }
+            }
+        }
+    },
+    "change_in_item_counts": {
+        "title": "Change in item counts",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "identify_files_without_filesize": {
+        "title": "Files without filesize",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "mcool_not_registered_with_higlass": {
+        "title": "mcool files not registered with higlass",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "secondary_queue_deduplication": {
+        "title": "Secondary queue deduplication",
+        "group": "System checks",
+        "schedule": {
+            "ten_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "biorxiv_is_now_published": {
+        "title": "biorxiv is now published",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "clean_up_travis_queues": {
+        "title": "Clean up Travis queues",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    }
+}

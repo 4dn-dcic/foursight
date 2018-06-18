@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals
-from .utils import (
+from ..utils import (
     check_function,
     init_check_res,
     action_function,
@@ -44,6 +44,19 @@ def test_random_nums(connection, **kwargs):
     check.description = 'A test check'
     # sleep for 2 secs because this is used to test timing out
     time.sleep(2)
+    return check
+
+
+# same as above
+@check_function()
+def test_random_nums_2(connection, **kwargs):
+    check = init_check_res(connection, 'test_random_nums_2')
+    check.status = 'IGNORE'
+    output = []
+    for i in range(random.randint(1,20)):
+        output.append(random.randint(1,100))
+    check.full_output = output
+    check.description = 'A test check as well'
     return check
 
 
