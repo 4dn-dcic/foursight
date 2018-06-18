@@ -13,6 +13,8 @@ import json
 import datetime
 import boto3
 import time
+import elasticsearch
+import curator
 
 
 @check_function()
@@ -400,3 +402,106 @@ def clean_up_travis_queues(connection, **kwargs):
 
     check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted
     return check
+
+
+def get_index_list(client, name, days_old=0, timestring='%Y.%m.%d', ilo=None):
+
+    if ilo is None:
+        ilo = curator.IndexList(client)
+
+    ilo.filter_by_regex(kind='prefix', value=name)
+    ilo.filter_by_age(source='name', direction='older', timestring=timestring, unit='days',
+                      unit_count=days_old)
+    return ilo
+
+
+def create_es_client(es_url, use_aws_auth=False):
+    from elasticsearch import Elasticsearch, RequestsHttpConnection
+    from aws_requests_auth.boto_utils import BotoAWSRequestsAuth
+
+    if isinstance(es_url, (list, tuple)):
+        addresses = es_url
+    else:
+        addresses = [es_url,]
+
+    es_options = {'retry_on_timeout': True,
+                  'maxsize': 50  # parallellism...
+                 }
+    if use_aws_auth:
+        host = addresses[0].split('//')
+        host = host[-1].split(":")
+        auth = BotoAWSRequestsAuth(aws_host=host[0].rstrip('/'),
+                                   aws_region='us-east-1',
+                                   aws_service='es')
+        es_options['connection_class'] = RequestsHttpConnection
+        es_options['http_auth'] = auth
+
+    return Elasticsearch(addresses, **es_options)
+
+
+def create_snapshot_repo(client, s3_bucket, repo_name='backup'):
+    snapshot_body = {'type': 's3',
+                     'settings': {
+                         'bucket': s3_bucket,
+                         'region': 'us-east-1',
+                         'role_arn': 'arn:aws:iam::643366669028:role/S3Roll'
+                     }
+                    }
+    res = client.snapshot.create_repository(repository=repo_name, body=snapshot_body)
+
+
+@check_function()
+def manage_old_filebeat_logs(connection, **kwargs):
+    check = init_check_res(connection, 'manage_old_filebeat_logs')
+    check.status = "WARNING"
+    check.description = "not able to get data from ES"
+
+    # configure this thing
+    start_backup = 14
+    trim_backup = 30
+    timestring = '%Y.%m.%d'
+
+    log_index = 'filebeat-'
+    snapshot = 'backup-'
+    today = datetime.datetime.today().strftime(timestring)
+
+    # run the check
+    client = create_es_client(connection.ff_es, True)
+    create_snapshot_repo(client, 'foursight-runs', snapshot[:-1])
+
+    # amazon es auto backups first 14 days, so we only need backup after that
+    ilo = get_index_list(client, log_index, start_backup, timestring)
+
+    import pdb; pdb.set_trace()
+    if len(ilo.indices) > 0:
+        try:
+            new_snapshot = curator.Snapshot(ilo, repository=snapshot[:-1], name='%s%s' % (snapshot, today))
+            print(new_snapshot.do_dry_run())
+            new_snapshot.do_action()
+            check.full_output = "Snapshot taken for %s indicies" % len(ilo.indices)
+        except curator.exceptions.FailedExecution as e:
+            # snapshot already exists
+            if "Invalid snapshot name" in str(e):
+                check.full_output = "Snapshot alread exists with same name for %s indicies. So skipping \n" % len(ilo.indices)
+            else:
+                raise(e)
+
+    # now trim further to only be indexes 30-days or older and delete
+    ilo = get_index_list(client, log_index, trim_backup, timestring, ilo=ilo)
+
+    if len(ilo.indices) > 0:
+        cleanupIndicies = curator.DeleteIndices(ilo)
+        print(cleanupIndicies.do_dry_run())
+        cleanupIndices.do_action()
+        check.full_output += "\n Cleaned up %s old indicies" % len(ilo.indices)
+
+    check.status = "PASS"
+    check.description = 'performed auto-backup to repository %s' % snapshot[:-1]
+    return check
+
+'''
+import app
+app.set_timeout(0)
+connection = app.init_connection('mastertest')
+app.run_check_or_action(connection, 'system_checks/manage_old_filebeat_logs', {'called_by':None})
+'''
