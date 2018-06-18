@@ -6,8 +6,7 @@
             "ten_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "10_min_item_counts"
+                    "dependencies": []
                 }
             }
         }
@@ -19,8 +18,7 @@
             "ten_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": ["10_min_item_counts"],
-                    "id": "10_min_indexing_progress"
+                    "dependencies": ["item_counts_by_type"]
                 }
             }
         }
@@ -32,15 +30,13 @@
             "ten_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "10_min_eb_health"
+                    "dependencies": []
                 }
             },
             "morning_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_eb_health"
+                    "dependencies": []
                 }
             }
         }
@@ -52,8 +48,7 @@
             "thirty_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "30_min_es_indices_status"
+                    "dependencies": []
                 }
             }
         }
@@ -65,8 +60,7 @@
             "thirty_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "30_min_indexing_records"
+                    "dependencies": []
                 }
             }
         }
@@ -78,8 +72,7 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_exp_set_reporting"
+                    "dependencies": []
                 }
             }
         }
@@ -103,8 +96,7 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": ["morning_eb_health"],
-                    "id": "morning_ff_performance_metrics"
+                    "dependencies": ["elastic_beanstalk_health"]
                 }
             }
         }
@@ -116,8 +108,7 @@
             "morning_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_item_counts_change"
+                    "dependencies": []
                 }
             }
         }
@@ -129,13 +120,11 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_files_wo_filesize"
+                    "dependencies": []
                 },
                 "webdev": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_files_wo_filesize"
+                    "dependencies": []
                 }
             }
         }
@@ -147,13 +136,11 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_mcool_files_higlass"
+                    "dependencies": []
                 },
                 "webdev": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_mcool_files_higlass"
+                    "dependencies": []
                 }
             }
         }
@@ -162,11 +149,10 @@
         "title": "Secondary queue deduplication",
         "group": "System checks",
         "schedule": {
-            "morning_checks": {
+            "ten_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_secondary_dedup"
+                    "dependencies": []
                 }
             }
         }
@@ -178,8 +164,7 @@
             "morning_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_biorxiv_published"
+                    "dependencies": []
                 }
             }
         }
@@ -204,8 +189,7 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_clean_travis_queues"
+                    "dependencies": []
                 }
             }
         }

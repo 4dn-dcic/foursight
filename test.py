@@ -426,7 +426,7 @@ class TestCheckRunner(FSTest):
         Run with a check_group with dependencies
         """
         # the check we will test with
-        check = run_result.CheckResult(self.connection.s3_connection, 'add_random_test_nums')
+        check = run_result.CheckResult(self.connection.s3_connection, 'test_random_nums')
         prior_res = check.get_latest_result()
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
@@ -436,9 +436,8 @@ class TestCheckRunner(FSTest):
         while retries < 3 and not test_success:
             # need to manually add things to the queue
             check_vals = [
-                ['test_checks/add_random_test_nums', {'primary': True}, ['tt3'], 'tt1'],
-                ['test_checks/add_random_test_nums', {'primary': True}, [], 'tt2'],
-                ['test_checks/add_random_test_nums', {'primary': True}, ['tt2'], 'tt3']
+                ['test_checks/test_random_nums', {'primary': True}, []],
+                ['test_checks/test_random_nums_2', {'primary': True}, ['test_random_nums']]
             ]
             utils.send_sqs_messages(self.queue, self.environ, check_vals)
             app_utils.run_check_runner({'sqs_url': self.queue.url})
@@ -457,7 +456,7 @@ class TestCheckRunner(FSTest):
             if prior_res['uuid'] < post_res['uuid']:
                 test_success = True
                 self.assertTrue('_run_info' in post_res['kwargs'])
-                self.assertTrue({'run_id', 'dep_id', 'receipt', 'sqs_url'} <= set(post_res['kwargs']['_run_info'].keys()))
+                self.assertTrue({'run_id', 'receipt', 'sqs_url'} <= set(post_res['kwargs']['_run_info'].keys()))
             else:
                 retries += 1
         self.assertTrue(test_success)
@@ -502,12 +501,12 @@ class TestCheckRunner(FSTest):
         self.assertTrue(bad_sqs_attrs.get('ApproximateNumberOfMessages') == bad_sqs_attrs.get('ApproximateNumberOfMessagesNotVisible') == 'ERROR')
 
     def test_record_and_collect_run_info(self):
-        test_run_uuid = 'test_run_uuid'
-        test_dep_id = 'xxxxx'
-        resp = run_result.record_run_info(test_run_uuid, test_dep_id, 'PASS')
+        check = utils.init_check_res(self.connection, 'not_a_real_check')
+        check.kwargs['_run_info'] = {'run_id': 'test_run_uuid'}
+        resp = check.record_run_info()
         self.assertTrue(resp is not None)
-        found_ids = utils.collect_run_info(test_run_uuid)
-        self.assertTrue(set([''.join([test_run_uuid, '/', test_dep_id])]) == found_ids)
+        found_ids = utils.collect_run_info('test_run_uuid')
+        self.assertTrue(set(['test_run_uuid/not_a_real_check']) <= found_ids)
 
 
 class TestCheckResult(FSTest):
@@ -676,18 +675,26 @@ class TestCheckUtils(FSTest):
         with self.assertRaises(utils.BadCheckSetup) as exc:
             check_utils.validate_check_setup(bad_setup)
         self.assertTrue('must have a dictionary value' in str(exc.exception))
-        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {}}}}}
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {'kwargs': []}}}}}
         with self.assertRaises(utils.BadCheckSetup) as exc:
             check_utils.validate_check_setup(bad_setup)
-        self.assertTrue('must have a value for field "id"' in str(exc.exception))
+        self.assertTrue('must have a dictionary value' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {'dependencies': {}}}}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('must have a list value' in str(exc.exception))
+        bad_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {'dependencies': ['not_a_real_check']}}}}}
+        with self.assertRaises(utils.BadCheckSetup) as exc:
+            check_utils.validate_check_setup(bad_setup)
+        self.assertTrue('is not a valid check name that shares the same schedule' in str(exc.exception))
         # this one will work -- display provided
         okay_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {}, 'display': ['data']}}
         okay_validated = check_utils.validate_check_setup(okay_setup)
         self.assertTrue(okay_validated['indexing_progress'].get('module') == 'system_checks')
         # this one adds kwargs and id to setup
-        okay_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {'id': ''}}}}}
+        okay_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {}}}}}
         okay_validated = check_utils.validate_check_setup(okay_setup)
-        self.assertTrue({'id', 'kwargs', 'dependencies'} <= set(okay_validated['indexing_progress']['schedule']['fake_sched']['all'].keys()))
+        self.assertTrue({'kwargs', 'dependencies'} <= set(okay_validated['indexing_progress']['schedule']['fake_sched']['all'].keys()))
 
 
     def test_get_action_strings(self):
@@ -717,7 +724,13 @@ class TestCheckUtils(FSTest):
         for env in schedule:
             self.assertTrue(isinstance(schedule[env], list))
             for check_info in schedule[env]:
-                assert len(check_info) == 4
+                assert len(check_info) == 3
+
+    def test_get_checks_within_schedule(self):
+        checks_in_sched = check_utils.get_checks_within_schedule('morning_checks')
+        self.assertTrue(len(checks_in_sched) > 0)
+        checks_in_sched = check_utils.get_checks_within_schedule('not_a_real_schedule')
+        self.assertTrue(len(checks_in_sched) == 0)
 
     def test_get_check_results(self):
         # dict to compare uuids

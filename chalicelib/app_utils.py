@@ -711,12 +711,13 @@ def run_check_runner(runner_input):
         # if no messages recieved in 20 seconds of long polling, terminate
         return
     check_list = json.loads(body)
-    if not isinstance(check_list, list) or len(check_list) != 6:
+    if not isinstance(check_list, list) or len(check_list) != 5:
         # if not a valid check str, remove the item from the SQS
         delete_message_and_propogate(runner_input, receipt)
         return
-    [run_env, run_uuid, check_name, check_kwargs, check_deps, dep_id] = check_list
+    [run_env, run_uuid, check_name, check_kwargs, check_deps] = check_list
     # find information from s3 about completed checks in this run
+    # actual id stored in s3 has key: <run_uuid>/<check_name>
     if check_deps and isinstance(check_deps, list):
         already_run = collect_run_info(run_uuid)
         deps_w_uuid = ['/'.join([run_uuid, dep]) for dep in check_deps]
@@ -730,8 +731,7 @@ def run_check_runner(runner_input):
         # add the run uuid as the uuid to kwargs so that checks will coordinate
         if 'uuid' not in check_kwargs:
             check_kwargs['uuid'] = run_uuid
-        check_kwargs['_run_info'] = {'run_id': run_uuid, 'dep_id': dep_id,
-                                     'receipt': receipt, 'sqs_url': sqs_url}
+        check_kwargs['_run_info'] = {'run_id': run_uuid, 'receipt': receipt, 'sqs_url': sqs_url}
         run_result = run_check_or_action(connection, check_name, check_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
         print('-RUN-> Finished: %s' % (check_name))

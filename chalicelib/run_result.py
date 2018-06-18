@@ -126,6 +126,19 @@ class RunResult(object):
         return all_results
 
 
+    def record_run_info(self):
+        """
+        Add a record of the completed check to the foursight-runs bucket with name
+        equal to the dependency id. The object itself is only the status of the run.
+        Returns True on success, False otherwise
+        """
+        run_id = self.kwargs['_run_info']['run_id']
+        s3_connection = S3Connection('foursight-runs')
+        record_key = '/'.join([run_id, self.name])
+        resp = s3_connection.put_object(record_key, json.dumps(self.status))
+        return resp is not None
+
+
     def get_result_history(self, start, limit):
         """
         Used to get the uuid, status, and kwargs for a specific check.
@@ -261,8 +274,8 @@ class CheckResult(RunResult):
         if 'primary' not in self.kwargs:
             self.kwargs['primary'] = False
         # if this was triggered from the check_runner, store record of the run
-        if '_run_info' in self.kwargs and {'run_id', 'dep_id'} <= set(self.kwargs['_run_info'].keys()):
-            record_run_info(self.kwargs['_run_info']['run_id'], self.kwargs['_run_info']['dep_id'], self.status)
+        if '_run_info' in self.kwargs and 'run_id' in self.kwargs['_run_info']:
+            self.record_run_info()
         formatted = self.format_result(self.kwargs['uuid'])
         is_primary = self.kwargs.get('primary', False) == True
         # if do_not_store is set, just return result without storing in s3
@@ -305,8 +318,8 @@ class ActionResult(RunResult):
         if 'uuid' not in self.kwargs:
             self.kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
         # if this was triggered from the check_runner, store record of the run
-        if '_run_info' in self.kwargs and {'run_id', 'dep_id'} <= set(self.kwargs['_run_info'].keys()):
-            record_run_info(self.kwargs['_run_info']['run_id'], self.kwargs['_run_info']['dep_id'], self.status)
+        if '_run_info' in self.kwargs and 'run_id' in self.kwargs['_run_info']:
+            self.record_run_info()
         formatted = self.format_result(self.kwargs['uuid'])
         # if do_not_store is set, just return result without storing in s3
         if self.kwargs.get('do_not_store', False) == True:
@@ -326,15 +339,3 @@ def get_closest(items, pivot):
     See: S.O. 32237862
     """
     return min(items, key=lambda x: abs(x[1] - pivot))
-
-
-def record_run_info(run_id, dep_id, check_status):
-    """
-    Add a record of the completed check to the foursight-runs bucket with name
-    equal to the dependency id. The object itself is only the status of the run.
-    Returns True on success, False otherwise
-    """
-    s3_connection = S3Connection('foursight-runs')
-    record_key = '/'.join([run_id, dep_id])
-    resp = s3_connection.put_object(record_key, json.dumps(check_status))
-    return resp is not None

@@ -1,6 +1,6 @@
 # Foursight Checks #
 
-Checks are the fundamental unit of work done in Foursight. They contain the entirety of code needed to make some observation or do some work and then take care of setting the result fields and storing the result. As mentioned in the [getting started](./getting_started.md) documentation, checks are written in files called check modules and are grouped together to run as check groups. This document contains information on writing checks, as well as best practices for running them.
+Checks are the fundamental unit of work done in Foursight. They contain the entirety of code needed to make some observation or do some work and then take care of setting the result fields and storing the result. As mentioned in the [getting started](./getting_started.md) documentation, checks are written in files called check modules and organized in the check setup. This document contains information on writing checks, as well as best practices for running them.
 
 It is assumed that you've already read the getting started documentation. If not, head over and check that out before continuing. If you are interested in tips on the check development process, [go here](./development_tips.md).
 
@@ -19,7 +19,7 @@ The check result (i.e. the output of running `init_check_res`) has a number of i
 ```
 check = init_check_res(connection, 'my_check_name')
 check.status = 'PASS'
-check.description = 'Test descritpion'
+check.summary = 'Test summary'
 check.<other_attr> = <value>
 ...
 return check
@@ -37,13 +37,12 @@ Here is a list of attributes that you will routinely use, with brief description
 * **allow_action**: boolean value of whether or not the linked action can be run. Defaults to False. See the [action docs](./actions.md) for more information.
 
 Lastly, there are a number of attributes that are used internally. These do not usually need to be manually set, but can be.
-* **kwargs**: these are set to the value of the key word parameters used by the check, which is a combination of default arguments and any overriding arguments (defined in the check group or a manual call to run the check).
+* **kwargs**: these are set to the value of the key word parameters used by the check, which is a combination of default arguments and any overriding arguments (defined in the check setup or a manual call to run the check).
 * **s3_connection**: is set automatically when you use `init_check_res`.
 * **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
-* **title**: generated automatically from the name attribute unless it is set manually.
 
 ## Our example check
-Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
+Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/checks/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
 
 ```
 @check_function()
@@ -65,7 +64,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     return check
 ```
 
-Okay, now we are ready to use the ff_utils module to connect to Fourfront. Next we need to get a search result from Fourfront and use those results within our check. The big idea is that we will iterate through the search results and see which items have a `date_created` value of less than a day ago. I'm going to go ahead and add a lot to the check and describe it afterwards.
+Okay, now we are ready to use the `ff_utils` module to connect to Fourfront. Next we need to get a search result from Fourfront and use those results within our check. The big idea is that we will iterate through the search results and see which items have a `date_created` value of less than a day ago. I'm going to go ahead and add a lot to the check and describe it afterwards.
 
 ```
 @check_function()
@@ -103,6 +102,24 @@ There are a couple funky things happening in the check above. First, the `search
 
 This check is fully functional as written above, but it has a couple limitations. For example, it only operates on the `item_type` Item, which is the most generalized type of item and may cause a timeout in the lambda running this function if the resulting search result is very large. In the next section, we will use default check arguments and the check_group to further break down the check into different runs for different item types.
 
+## Check setup
+Let's start by configuring our check setup (in `check_setup.json`) so that our check runs on all environment every morning. It will be part of the `morning_checks` schedule. It is assumed that you've already read the basics of the check setup in the [getting started](./getting_started.md#adding-checks-to-check_setup) documentation, so we will start with the following.
+
+```
+{
+    "items_created_in_the_past_day": {
+        "title": "Items created in the past day",
+        "group": "My example checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {}
+                }
+            }
+        }
+    }
+```
+
 ## Check arguments
 A key word arguments (kwargs) object can be passed into your checks for internal use a couple ways. The first is through the `check_function` decorator. Any kwargs used in it's declaration will be available in the check. For example, the `item_type` variable in the check above would be better set as a default kwarg for the check as-so:
 
@@ -112,33 +129,72 @@ def items_created_in_the_past_day(connection, **kwargs):
     ...
 ```
 
-These kwargs defined in the check function can be overwritten by those defined in the check group. So, if we wanted to run the `items_created_in_the_past_day` check in a check group with `item_type = Experiment` we could add the following check info to a check group:
+These kwargs defined in the check function can be overwritten by those defined in the check setup. Note in the check setup above, the empty `kwargs` section means that the default key word arguments will be used when running this check. So if we wanted to run the `items_created_in_the_past_day` check with `item_type = Experiment` we could add the following key word argument to the check setup:
 
 ```
-['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependency_id']
+{
+    "items_created_in_the_past_day": {
+        "title": "Items created in the past day",
+        "group": "My example checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"item_type": "Experiment"}
+                }
+            }
+        }
+    }
 ```
 
-This will cause the `item_type` to be overwritten in the check code. If you wanted to use the default `item_type` kwarg, you would just leave an empty dictionary for the check in the check group:
+This will cause the `item_type` to be overwritten in the check code. If you wanted to use the default `item_type` kwarg, you would just leave an empty dictionary under `kwargs`. Using this system, it is very easy to specify different kwargs for different schedules and environments. In the example below, we use the default kwargs for the `data` environment and some unique kwargs for the `webdev` environment.
 
 ```
-['wrangler_checks/items_created_in_the_past_day', {}, [], 'dependency_id']
+{
+    "items_created_in_the_past_day": {
+        "title": "Items created in the past day",
+        "group": "My example checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {}
+                },
+                "webdev": {
+                    "kwargs": {"item_type": "Experiment"}
+                }
+            }
+        }
+    }
 ```
 
 Lastly, arguments that are not defined in the default kwargs through the `check_function` decorator can also be added to the dictionary:
 
 ```
-['wrangler_checks/items_created_in_the_past_day', {'another_arg': 'another_val'}, [], 'dependency_id']
+{
+    "items_created_in_the_past_day": {
+        "title": "Items created in the past day",
+        "group": "My example checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {
+                        "item_type": "Experiment",
+                        "another_arg": "another_val"
+                    }
+                }
+            }
+        }
+    }
 ```
 
-This would execute the `items_created_in_the_past_day` check with the default kwarg `item_type=Item` and the provided `another_arg=another_val` kwarg. This system allows checks to be with different parameters in check groups.
+This would execute the `items_created_in_the_past_day` check with the default kwarg `item_type=Item` and the provided `another_arg=another_val` kwarg. This system allows checks to have multiple schedules with different parameters.
 
-Default kwargs are very important to set if they are required for a check, since there are instances in which your check can be run outside of a check group. In such a case, it may break if those arguments are not provided. Really, this is up to the user to design his or her checks in a robust way.
+Using default kwargs can be important if they are required for a check's functionality. When run programmatically or from outside of a schedule these defaults may be used for the check. In such a case, the check may break if those arguments are not provided. It is up to the user to design his or her checks in a robust way.
 
 ### The 'uuid' key word argument
 You should not have to set it directly, but the `uuid` key word argument is very important, as it controls where the check is stored in S3. It is a string formatted timestamp of when the check was run. It will be automatically set when running checks through the `queue_check_group` utility.
 
 ### The 'primary' key word argument
-The Foursight UI will automatically display the latest run check that was run with the `primary` key word argument set to `True`. In most cases, this argument should be set when defining the key word arguments in the entry of a check group; in some cases, you may want to set it during test. Omitting this argument or setting its value to `False` will still cause the check to store its record in AWS S3 and overwrite the `latest` result for that check, but that result will not be shown on the UI.
+The Foursight UI will automatically display the latest run check that was run with the `primary` key word argument set to `True`. In most cases, this argument should be set when defining the key word arguments in `check_setup.json`; in some cases, you may want to set it during testing. Omitting this argument or setting its value to `False` will still cause the check to store its record in AWS S3 and overwrite the `latest` result for that check, but that result will not be shown on the UI.
 
 ## Handling exceptions in checks
 Foursight will automatically catch any exceptions when running check code and automatically log the traceback of the exception to the `full_output` field. In such a case, the status of the check will be set to `ERROR` and the kwargs it was run with will be stored. All of this data is made available from the UI to facilitate debugging of the checks. For this reason, it is usually not necessary to write general try/except blocks in your check unless you are handling specific exceptions relevant to your code.
@@ -166,16 +222,6 @@ check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=in
 Then, we just need to add the logic to use the `full_output` from previous results if available:
 ```
 full_output = check.full_output if check.full_output else {}
-```
-
-Now our `full_output` results will be keyed correctly! The final step is to create a check group that coordinates the runs of these two checks. It is the default behavior that all checks in the same check group are given the same uuid. What this means is if you put multiple instances of a check in any one check group, you can always use this uuid trick to append results. In fact, if you use the same check multiple times and DON'T use the uuid argument in `init_check_res`, then the results will overwrite each other and the last instance of the check run will be the saved one.
-
-Here is a check group that would work with our example:
-```
-'wrangler_test_checks': [
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'dependency_id_1'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependency_id_2']
-]
 ```
 
 ## Accessing previous/other check results
@@ -223,77 +269,32 @@ def change_in_item_counts(connection, **kwargs):
 This check would compare the latest result and the result run closest to 24 hours ago from the current time for `counts_check`. After any comparison is done, the fields of `check` would be set and finally we return `check`.
 
 ## Running checks from the UI
-On the Foursight UI, users with administrator privileges can run individual checks directly, outside of the scope of a check group. When this is done, the user can input values for all defined check kwargs within its `check_function()` decorator (hence the importance of those default arguments). The check will run with the these kwargs that are specified.
+On the Foursight UI, users with administrator privileges can run individual checks directly, outside of the scope of the defined schedules. When this is done, the user can input values for all defined check kwargs within its `check_function()` decorator (hence the importance of those default arguments). The check will run with the these kwargs that are specified.
 
-## Check groups
-As we have seen in the previous section, kwargs can be set individually for each check in the check group, allowing a high level of flexibility with what can be done even with a single check. There are a couple more important points to mention about check groups.
+## Check setup
+As we have seen in the previous section, kwargs can be set individually for each check in the schedule, allowing a high level of flexibility with what can be done even with a single check. There are a couple more important points to mention about check setup.
 
-### Quick reference to important check groups requirements
-* **All** check modules and check groups need to be declared/defined within check_groups.py.
-* `CHECK_MODULES` is a list of the names of files with checks defined within them (without the ".py").
-* `CHECK_GROUPS` is a dictionary keyed by the name of the check group. Check group names should always end in `_checks`.
-* Check groups are lists of check entries that define parameters for the individual checks to run with. The first entry is the check module and check name (separated by a '/'), the second element is a dictionary of kwargs to pass to the check, the third element is a list of dependency IDs that must be finished for the check to run, and the final element is the string dependency ID of the check entry itself.
-* All checks within the same check group will automatically have the same `uuid` key word argument available to them (see: Appending check results, above).
+### Quick reference to important check setup requirements
+* The check setup is determined by the content of `check_setup.json`.
+* The entry for each check in the check setup must have the exact string name of the check function.
+* Each check must only appear in the check setup once.
+* All checks within the same schedule will automatically have the same `uuid` key word argument available to them.
+* Dependencies can be set for a check by using the `dependencies` field within the schedule. This should be a list of string check names within the schedule that must be finished before the check will run.
 
-### Passing kwargs to checks
-First, check groups containing the same check multiple times will overwrite the same output rather than writing an output for each check. Take the following check group, within the overall CHECK_GROUPS object:
-
-```
-'wrangler_test_checks': [
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'dependency_id_1'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, [], 'dependency_id_2'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'}, [], 'dependency_id_3']
-]
-```
-
-This check group calls our example check three times, each with a different `item_type`. The expected outcome of running this check group should be one result that has information for all three types rather than multiple results that overwrite each other. Internally, this is done by setting the `uuid` key word argument internally whenever a check group is run with multiple occurrences of the same check.
-
-This functionality also allows check groups to be dynamically made. Consider the following check group, which would run a check for each of the item types in the list below.
+### Dependencies
+Using the running example from above, the following setup would require `item_counts_by_type` (not defined here) to run before `items_created_in_the_past_day`. This depends on `item_counts_by_type` also using the same `morning_checks` schedule.
 
 ```
-item_types = ['Biosample', 'Biosource', 'Experiment', 'File']
-wrangler_test_checks = []
-for idx, item_type in enumerate(item_types):
-    wrangler_test_checks.append(
-        ['wrangler_checks/items_created_in_the_past_day', {'item_type': item_type}, [], 'dependency_id_' + str(idx)]
-    )
+{
+    "items_created_in_the_past_day": {
+        "title": "Items created in the past day",
+        "group": "My example checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "dependencies": ["item_counts_by_type"]
+                }
+            }
+        }
+    }
 ```
-
-**Important:** if you want a check in a check group to be displayed as the latest result on the UI, you must add the `primary=True` key word argument to your check group. This should generally be set for scheduled checks, since you want their results to be displayed on the UI. For example:
-
-```
-'shown_on_the_ui_checks':
-    ['wrangler_checks/items_created_in_the_past_day', {'primary': True}, [], 'wt1']
-```
-
-### Dependencies in check groups
-The last item in an entry within a check group is the dependency id, which is a string that allows other checks coordinate the order in which they run. Effectively, it allows you to ensure that some checks are run before others. This is important if you have a check that depends on the most up-to-date output of another check. To add a dependency to a check entry, add the dependency id of another check *within* the check group. For example, consider the following:
-
-```
-'wrangler_test_checks': [
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Biosample'}, [], 'wt1'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'Experiment'}, ['wt1'], 'wt2'],
-    ['wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'}, ['wt2'], 'wt3']
-]
-```
-
-There are three dependency ids, `wt1`, `wt2`, and `wt3` that correspond to running the check for `item_type = Biosample`, `Experiment`, and `File`, respectively. We would set up the dependency IDs above if we want to guarantee that the check for `Biosample` runs first, followed by the check for `Experiment`, and lastly `File`. As seen from "Appending check results" section above, the check group as written will concatenate results from these three runs.
-
-Another common example of specifying dependencies is below. Let's say we have a check named `uses_other_results` that needs to have the most up-to-date results from two other checks: `makes_other_results_1` and `makes_other_results_2`. Using unique dependency IDs for each entry in the check group, it could be set up like:
-
-```
-'example_dependent_checks: [
-    ['wrangler_checks/makes_other_results_1', {}, [], 'example_id1'],
-    ['wrangler_checks/makes_other_results_2', {}, [], 'example_id2'],
-    ['wrangler_checks/uses_other_results', {}, ['example_id1', 'example_id2'], 'example_id3']
-]'
-```
-
-### Implementing your check groups
-All that you need to do to get your check group up and running is build it within the chalicelib/check_groups.py file. In the same file, make sure to add the string module name (without the `.py`) to the `CHECK_MODULES` list at the top of the file. That's all you need to do! Your check group can now be run using the following endpoint:
-
-```
-https://foursight.4dnucleome.org/api/run/<environment>/<my_check_group>
-```
-
-You can get the latest results for checks defined in your check group by running the GET command or visiting that same endpoint in your browser (you must be logged in as 4DN admin to run check groups outside of the schedule). Check groups can be run collectively from the Foursight UI with administrator privileges, as well.
