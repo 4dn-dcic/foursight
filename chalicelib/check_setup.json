@@ -192,5 +192,17 @@
                 }
             }
         }
+    },
+    "manage_old_filebeat_logs": {
+        "title": "Manage old filebeat logs",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
