@@ -173,11 +173,10 @@
         "title": "WorkflowRun linked to deleted Files",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks": {
+            "ten_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": [],
-                    "id": "morning_wfr_w_bad_file_links"
+                    "dependencies": []
                 }
             }
         }
