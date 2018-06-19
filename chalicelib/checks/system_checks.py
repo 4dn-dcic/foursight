@@ -6,7 +6,11 @@ from ..utils import (
     init_action_res,
     basestring
 )
-from dcicutils import ff_utils
+from dcicutils import (
+    ff_utils,
+    es_utils
+)
+
 import requests
 import sys
 import json
@@ -392,6 +396,7 @@ def clean_up_travis_queues(connection, **kwargs):
     if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
         return check
+    sqs_client = boto3.client('sqs')
     sqs = boto3.resource('sqs')
     queues = sqs.queues.all()
     num_deleted = 0
@@ -399,7 +404,7 @@ def clean_up_travis_queues(connection, **kwargs):
         if 'travis-job' in queue.url:
             try:
                 creation = queue.attributes['CreatedTimestamp']
-            except sqs.exceptions.QueueDoesNotExist:
+            except sqs_client.exceptions.QueueDoesNotExist:
                 continue
             if isinstance(creation, basestring):
                 creation = float(creation)
@@ -411,4 +416,55 @@ def clean_up_travis_queues(connection, **kwargs):
                 num_deleted += 1
     check.summary = 'Cleaned up %s old indexing queues' % num_deleted
     check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted
+    return check
+
+
+@check_function()
+def manage_old_filebeat_logs(connection, **kwargs):
+    import curator
+    check = init_check_res(connection, 'manage_old_filebeat_logs')
+    check.status = "WARNING"
+    check.description = "not able to get data from ES"
+
+    # configure this thing
+    start_backup = 14
+    trim_backup = 30
+    timestring = '%Y.%m.%d'
+
+    log_index = 'filebeat-'
+    #TODO: this probably needs to change when namespacing is implemented
+    snapshot = 'backup-%s-' % connection.ff_env
+    today = datetime.datetime.today().strftime(timestring)
+
+    # run the check
+    client = es_utils.create_es_client(connection.ff_es, True)
+    # store backups in foursight s3, cause I know we have access to this..
+    # maybe this should change?
+    es_utils.create_snapshot_repo(client, snapshot[:-1], 'foursight-runs')
+
+    # amazon es auto backups first 14 days, so we only need backup after that
+    ilo = es_utils.get_index_list(client, log_index, start_backup, timestring)
+
+    if len(ilo.indices) > 0:
+        try:
+            new_snapshot = curator.Snapshot(ilo, repository=snapshot[:-1], name='%s%s' % (snapshot, today))
+            new_snapshot.do_action()
+            check.full_output = "Snapshot taken for %s indices" % len(ilo.indices)
+        except curator.exceptions.FailedExecution as e:
+            # snapshot already exists
+            if "Invalid snapshot name" in str(e):
+                check.full_output = "Snapshot already exists with same name for %s indices, so skipping." % len(ilo.indices)
+            else:
+                raise(e)
+
+    # now trim further to only be indexes 30-days or older and delete
+    ilo = es_utils.get_index_list(client, log_index, trim_backup, timestring, ilo=ilo)
+
+    if len(ilo.indices) > 0:
+        cleanupIndices = curator.DeleteIndices(ilo)
+        cleanupIndices.do_action()
+        check.full_output += " Cleaned up %s old indices" % len(ilo.indices)
+
+    check.status = "PASS"
+    check.description = 'Performed auto-backup to repository %s' % snapshot[:-1]
     return check
