@@ -452,7 +452,7 @@ def manage_old_filebeat_logs(connection, **kwargs):
         except curator.exceptions.FailedExecution as e:
             # snapshot already exists
             if "Invalid snapshot name" in str(e):
-                check.full_output = "Snapshot alread exists with same name for %s indices. So skipping \n" % len(ilo.indices)
+                check.full_output = "Snapshot already exists with same name for %s indices, so skipping." % len(ilo.indices)
             else:
                 raise(e)
 
@@ -462,8 +462,8 @@ def manage_old_filebeat_logs(connection, **kwargs):
     if len(ilo.indices) > 0:
         cleanupIndices = curator.DeleteIndices(ilo)
         cleanupIndices.do_action()
-        check.full_output += "\n Cleaned up %s old indices" % len(ilo.indices)
+        check.full_output += " Cleaned up %s old indices" % len(ilo.indices)
 
     check.status = "PASS"
-    check.description = 'performed auto-backup to repository %s' % snapshot[:-1]
+    check.description = 'Performed auto-backup to repository %s' % snapshot[:-1]
     return check
