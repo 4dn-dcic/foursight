@@ -41,7 +41,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     for wfr in bad_wfrs:
         infiles = wfr.get('input_files', [])
         wfruuid = wfr.get('uuid', '')
-        delfiles = [f.get('uuid') for f in infiles if f.get('status') == 'deleted']
+        delfiles = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted']
         fulloutput[wfruuid] = delfiles
     check.description = "Live WorkflowRuns found linked to deleted Input Files"
     check.summary = "%s live workflows were found linked to deleted input files - \
