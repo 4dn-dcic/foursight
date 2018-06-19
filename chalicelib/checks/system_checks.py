@@ -420,6 +420,7 @@ def clean_up_travis_queues(connection, **kwargs):
 
 @check_function()
 def manage_old_filebeat_logs(connection, **kwargs):
+    import curator
     check = init_check_res(connection, 'manage_old_filebeat_logs')
     check.status = "WARNING"
     check.description = "not able to get data from ES"
@@ -437,7 +438,7 @@ def manage_old_filebeat_logs(connection, **kwargs):
     client = es_utils.create_es_client(connection.ff_es, True)
     # store backups in foursight s3, cause I know we have access to this..
     # maybe this should change?
-    es_utils.create_snapshot_repo(client, 'foursight-runs', snapshot[:-1])
+    es_utils.create_snapshot_repo(client, snapshot[:-1], 'foursight-runs')
 
     # amazon es auto backups first 14 days, so we only need backup after that
     ilo = es_utils.get_index_list(client, log_index, start_backup, timestring)
