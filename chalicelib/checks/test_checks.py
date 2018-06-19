@@ -47,6 +47,19 @@ def test_random_nums(connection, **kwargs):
     return check
 
 
+# same as above
+@check_function()
+def test_random_nums_2(connection, **kwargs):
+    check = init_check_res(connection, 'test_random_nums_2')
+    check.status = 'IGNORE'
+    output = []
+    for i in range(random.randint(1,20)):
+        output.append(random.randint(1,100))
+    check.full_output = output
+    check.description = 'A test check as well'
+    return check
+
+
 @action_function(offset=0)
 def add_random_test_nums(connection, **kwargs):
     action = init_action_res(connection, 'add_random_test_nums')

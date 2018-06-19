@@ -7,7 +7,8 @@ from .utils import (
     CHECK_DECO,
     ACTION_DECO,
     BadCheckSetup,
-    basestring
+    basestring,
+    list_environments
 )
 # import modules that contain the checks
 from .checks import *
@@ -26,7 +27,7 @@ if not len(setup_paths) == 1:
     raise BadCheckSetup('Exactly one check_setup.json must be present in chalicelib!')
 with open(setup_paths[0], 'r') as jfile:
     CHECK_SETUP = json.load(jfile)
-# a bit confusing, but the next two functions must be defined and run
+# a bit confusing, but the next three functions must be defined and run
 # to validate CHECK_SETUP and process it
 
 
@@ -55,6 +56,18 @@ def get_check_strings(specific_check=None):
         return list(set(all_checks))
 
 
+def get_checks_within_schedule(schedule_name):
+    """
+    Simply return a list of string check names within the given schedule
+    """
+    checks_in_schedule = []
+    for check_name, detail in CHECK_SETUP.items():
+        if not schedule_name in detail['schedule']:
+            continue
+        checks_in_schedule.append(check_name)
+    return checks_in_schedule
+
+
 def validate_check_setup(check_setup):
     """
     Go through the check_setup json that was read in and make sure everything
@@ -67,6 +80,7 @@ def validate_check_setup(check_setup):
     """
     found_checks = {}
     all_check_strings = get_check_strings()
+    all_environments = list_environments() + ['all']
     # validate all checks
     for check_string in all_check_strings:
         check_mod, check_name = check_string.split('/')
@@ -87,20 +101,37 @@ def validate_check_setup(check_setup):
                 raise BadCheckSetup('Entry for "%s" in check_setup.json must have a string value for field "%s".' % (check_name, field))
         if not isinstance(check_setup[check_name]['schedule'], dict):
             raise BadCheckSetup('Entry for "%s" in check_setup.json must have a dictionary value for field "schedule".' % check_name)
+        # make sure a display is set up if there is no schedule
+        if check_setup[check_name]['schedule'] == {} and check_setup[check_name].get('display') is None:
+            raise BadCheckSetup('Entry for "%s" in check_setup.json must have a list of "display" environments if it lacks a schedule.' % check_name)
         # now validate and add defaults to the schedule
         for sched_name, schedule in check_setup[check_name]['schedule'].items():
             if not isinstance(schedule, dict):
                 raise BadCheckSetup('Schedule "%s" for "%s" in check_setup.json must have a dictionary value.' % (sched_name, check_name))
             for env_name, env_detail in schedule.items():
+                if not env_name in all_environments:
+                    raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json is not an existing'
+                                        ' environment. Create with PUT to /environments endpoint.'
+                                        % (env_name, sched_name, check_name))
                 if not isinstance(env_detail, dict):
                     raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a dictionary value.' % (env_name, sched_name, check_name))
-                if 'id' not in env_detail:
-                    raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a value for field "id"' % (env_name, sched_name, check_name))
+                # default values
                 if not 'kwargs' in env_detail:
-                    # default value
                     env_detail['kwargs'] = {'primary': True}
+                else:
+                    if not isinstance(env_detail['kwargs'], dict):
+                        raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a dictionary value for "kwargs".' % (env_name, sched_name, check_name))
                 if not 'dependencies' in env_detail:
                     env_detail['dependencies'] = []
+                else:
+                    if not isinstance(env_detail['dependencies'], list):
+                        raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must have a list value for "dependencies".' % (env_name, sched_name, check_name))
+                    else:
+                        # confirm all dependencies are legitimate check names
+                        for dep_id in env_detail['dependencies']:
+                            if dep_id not in get_checks_within_schedule(sched_name):
+                                raise BadCheckSetup('Environment "%s" in schedule "%s" for "%s" in check_setup.json must has a dependency "%s" that is not a valid check name that shares the same schedule.' % (env_name, sched_name, check_name, dep_id))
+
         # lastly, add the check module information to each check in the setup
         check_setup[check_name]['module'] = found_checks[check_name]
     return check_setup
@@ -131,10 +162,52 @@ def get_action_strings(specific_action=None):
         return list(set(all_actions))
 
 
+def get_schedule_names():
+    """
+    Simply return a list of all valid schedule names, as defined in CHECK_SETUP
+    """
+    schedules = set()
+    for _, detail in CHECK_SETUP.items():
+        for schedule in detail.get('schedule', []):
+            schedules.add(schedule)
+    return list(schedules)
+
+
+def get_check_title_from_setup(check_name):
+    """
+    Return a title of a check from CHECK_SETUP
+    """
+    return CHECK_SETUP.get(check_name, {}).get("title", "No title")
+
+
+def get_check_schedule(schedule_name):
+    """
+    Go through CHECK_SETUP and return all the required info for to run a given
+    schedule for any environment.
+
+    Returns a dictionary keyed by environ.
+    The check running info is the standard format of:
+    [<check_mod/check_str>, <kwargs>, <dependencies>]
+    """
+    check_schedule = {}
+    for check_name, detail in CHECK_SETUP.items():
+        if not schedule_name in detail['schedule']:
+            continue
+        for env_name, env_detail in detail['schedule'][schedule_name].items():
+            check_str = '/'.join([detail['module'], check_name])
+            run_info = [check_str, env_detail['kwargs'], env_detail['dependencies']]
+            if env_name in check_schedule:
+                check_schedule[env_name].append(run_info)
+            else:
+                check_schedule[env_name] = [run_info]
+    # although not strictly necessary right now, this is a precaution
+    return copy.deepcopy(check_schedule)
+
+
 def get_check_results(connection, checks=[], use_latest=False):
     """
     Initialize check results for each desired check and get results stored
-    in s3, sorted alphabetically.
+    in s3, sorted by status and then alphabetically.
     May provide a list of string check names as `checks`; otherwise get all
     checks by default.
     By default, gets the 'primary' results. If use_latest is True, get the
@@ -152,43 +225,42 @@ def get_check_results(connection, checks=[], use_latest=False):
         # checks with no records will return None. Skip IGNORE checks
         if found and found.get('status') != 'IGNORE':
             check_results.append(found)
-    # sort them alphabetically
-    return sorted(check_results, key=lambda v: v['name'].lower())
+    # sort them by status and alphabetically by name
+    stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
+    return sorted(check_results, key=lambda v: (stat_order.index(v['status']) if v['status'] in stat_order else 9, v['name'].lower()))
 
 
-def get_schedule_names():
+def get_grouped_check_results(connection):
     """
-    Simply return a list of all valid schedule names, as defined in CHECK_SETUP
+    Return a group-centric view of the information from get_check_results for
+    given connection (i.e. fs environment).
+    Returns a list of dicts dict that contains dicts of check results
+    keyed by title and also counts of result statuses and group name.
+    All groups are returned
     """
-    schedules = set()
-    for _, detail in CHECK_SETUP.items():
-        for schedule in detail.get('schedule', []):
-            schedules.add(schedule)
-    return list(schedules)
-
-
-def get_check_schedule(schedule_name):
-    """
-    Go through CHECK_SETUP and return all the required info for to run a given
-    schedule for any environment.
-
-    Returns a dictionary keyed by schedule, with inner dicts keyed by environ.
-    The check running info is the standard format of:
-    [<check_mod/check_str>, <kwargs>, <dependencies>, <id>]
-    """
-    check_schedule = {}
-    for check_name, detail in CHECK_SETUP.items():
-        if not schedule_name in detail['schedule']:
+    grouped_results = {}
+    check_res = get_check_results(connection)
+    for res in check_res:
+        setup_info = CHECK_SETUP.get(res['name'])
+        # this should not happen, but fail gracefully
+        if not setup_info:
+            print('-VIEW-> Check %s not found in CHECK_SETUP for env %s' % (res['name'], connection.fs_env))
             continue
-        for env_name, env_detail in detail['schedule'][schedule_name].items():
-            check_str = '/'.join([detail['module'], check_name])
-            run_info = [check_str, env_detail['kwargs'], env_detail['dependencies'], env_detail['id']]
-            if env_name in check_schedule:
-                check_schedule[env_name].append(run_info)
-            else:
-                check_schedule[env_name] = [run_info]
-    # although not strictly necessary right now, this is a precaution
-    return copy.deepcopy(check_schedule)
+        # make sure this environment displays this check
+        used_envs = [env for sched in setup_info['schedule'].values() for env in sched]
+        used_envs.extend(setup_info.get('display', []))
+        if 'all' in used_envs or connection.fs_env in used_envs:
+            group = setup_info['group']
+            if group not in grouped_results:
+                grouped_results[group] = {}
+                grouped_results[group]['_name'] = group
+                grouped_results[group]['_statuses'] = {'ERROR': 0, 'FAIL': 0, 'WARN': 0, 'PASS': 0}
+            grouped_results[group][setup_info['title']] = res
+            if res['status'] in grouped_results[group]['_statuses']:
+                grouped_results[group]['_statuses'][res['status']] += 1
+    # format into a list and sort alphabetically
+    grouped_list = [group for group in grouped_results.values()]
+    return sorted(grouped_list, key=lambda v: v['_name'])
 
 
 def run_check_or_action(connection, check_str, check_kwargs):

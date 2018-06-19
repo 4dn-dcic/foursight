@@ -217,7 +217,7 @@ def get_environment_route(environ):
     Protected route
     """
     if check_authorization(app.current_request.to_dict()):
-        return get_environment(environ)
+        return run_get_environment(environ)
     else:
         return forbidden_response()
 
@@ -238,11 +238,10 @@ def check_runner(event, context):
 
 
 def set_stage(stage):
-    from chalicelib import utils
     from deploy import CONFIG_BASE
-    if stage not in CONFIG_BASE['stages']:
-        print('ERROR! Input stage is not valid. Must be one of: %s' % str(list(CONFIG_BASE['stages'].keys())))
-    utils.STAGE = stage
+    if stage != 'test' and stage not in CONFIG_BASE['stages']:
+        print('ERROR! Input stage is not valid. Must be one of: %s' % str(list(CONFIG_BASE['stages'].keys()).extend('test')))
+    os.environ['chalice_stage'] = stage
 
 
 def set_timeout(timeout):

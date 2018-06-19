@@ -74,14 +74,15 @@ def elastic_beanstalk_health(connection, **kwargs):
         full_output['instance_health'].append(inst_info)
     if full_output['color'] == 'Grey':
         check.status = 'WARN'
-        check.description = 'EB environment is updating.'
+        check.summary = check.description = 'EB environment is updating'
     elif full_output['color'] == 'Yellow':
         check.status = 'WARN'
-        check.description = 'EB environment is compromised; requests may fail.'
+        check.summary = check.description = 'EB environment is compromised; requests may fail'
     elif full_output['color'] == 'Red':
         check.status = 'FAIL'
-        check.description = 'EB environment is degraded; requests are likely to fail.'
+        check.summary = check.description = 'EB environment is degraded; requests are likely to fail'
     else:
+        check.summary = check.description = 'EB environment seems healthy'
         check.status = 'PASS'
     check.full_output = full_output
     return check
@@ -111,13 +112,16 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     # set fields, store result
     if not index_info:
         check.status = 'FAIL'
-        check.description = 'Error reading status of ES.'
+        check.summary = 'Error reading status of ES indices'
+        check.description = 'Error reading status of ES indices'
     elif warn_index_info:
         check.status = 'WARN'
+        check.summary = 'ES indices may not be healthy'
         check.description = 'One or more ES indices have health != green or status != open.'
         check.brief_output = warn_index_info
     else:
         check.status = 'PASS'
+        check.summary = 'ES indices seem healthy'
     check.full_output = index_info
     return check
 
@@ -138,16 +142,19 @@ def indexing_progress(connection, **kwargs):
     diff_unindexed = latest_unindexed - prior_unindexed
     if diff_unindexed == 0 and latest_unindexed != 0:
         check.status = 'FAIL'
+        check.summary = 'Indexing is not progressing'
         check.description = ' '.join(['Total number of unindexed items is',
             str(latest_unindexed), 'and has not changed in the past thirty minutes.',
             'The indexer may be malfunctioning.'])
     elif diff_unindexed > 0:
-        check.status = 'WARN'
+        check.status = 'PASS'
+        check.summary = 'Indexing load has increased'
         check.description = ' '.join(['Total number of unindexed items has increased by',
             str(diff_unindexed), 'in the past thirty minutes. Remaining items to index:',
             str(latest_unindexed)])
     else:
         check.status = 'PASS'
+        check.summary = 'Indexing seems healthy'
         check.description = ' '.join(['Indexing seems healthy. There are', str(latest_unindexed),
         'remaining items to index, a change of', str(diff_unindexed), 'from thirty minutes ago.'])
     return check
@@ -185,11 +192,11 @@ def indexing_records(connection, **kwargs):
     check.full_output = sort_records
     if warn_records:
         sort_warn_records = sorted(warn_records, key=lambda rec: datetime.datetime.strptime(rec['timestamp'], "%Y-%m-%dT%H:%M:%S.%f"), reverse=True)
-        check.description = 'One or more indexing runs in the past three days may require attention.'
+        check.summary = check.description = 'Indexing runs in the past three days may require attention'
         check.status = 'WARN'
         check.brief_output = sort_warn_records
     else:
-        check.description = 'Indexing runs from the past three days seem normal.'
+        check.summary = check.description = 'Indexing runs from the past three days seem normal'
         check.status = 'PASS'
     return check
 
@@ -261,10 +268,10 @@ def fourfront_performance_metrics(connection, **kwargs):
 
 @check_function()
 def secondary_queue_deduplication(connection, **kwargs):
-    from .app_utils import STAGE
+    from ..utils import get_stage_info
     check = init_check_res(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
-    if STAGE != 'prod':
+    if get_stage_info()['stage'] != 'prod':
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
@@ -367,9 +374,11 @@ def secondary_queue_deduplication(connection, **kwargs):
     }
     if failed:
         check.status = 'WARN'
+        check.summary = 'Queue deduplication encountered an error'
         check.full_output['failed'] = failed
     else:
         check.status = 'PASS'
+        check.summary = 'Removed %s duplicates from %s secondary queue' % (deduplicated, connection.ff_env)
     check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
 
     return check
@@ -381,18 +390,21 @@ def clean_up_travis_queues(connection, **kwargs):
     Clean up old sqs queues based on the name ("travis-job")
     and the creation date. Only run on data for now
     """
-    from .utils import STAGE
+    from ..utils import get_stage_info
     check = init_check_res(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
-    if connection.fs_env != 'data' or STAGE != 'prod':
-        check.description = 'This check only runs on the data environment for Foursight prod.'
+    if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
+        check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
         return check
     sqs = boto3.resource('sqs')
     queues = sqs.queues.all()
     num_deleted = 0
     for queue in queues:
         if 'travis-job' in queue.url:
-            creation = queue.attributes['CreatedTimestamp']
+            try:
+                creation = queue.attributes['CreatedTimestamp']
+            except sqs.exceptions.QueueDoesNotExist:
+                continue
             if isinstance(creation, basestring):
                 creation = float(creation)
             dt_creation = datetime.datetime.utcfromtimestamp(creation)
@@ -401,7 +413,7 @@ def clean_up_travis_queues(connection, **kwargs):
             if queue_age > datetime.timedelta(days=3):
                 queue.delete()
                 num_deleted += 1
-
+    check.summary = 'Cleaned up %s old indexing queues' % num_deleted
     check.description = 'Cleaned up all indexing queues from Travis that are 3 days old or older. %s queues deleted.' % num_deleted
     return check
 
