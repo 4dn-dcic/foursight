@@ -43,11 +43,12 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
         wfruuid = wfr.get('uuid', '')
         delfiles = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted']
         fulloutput[wfruuid] = delfiles
-    check.description = "Live WorkflowRuns found linked to deleted Input Files"
-    check.summary = "%s live workflows were found linked to deleted input files - \
-                    you can delete the workflows using the linked action" % len(bad_wfrs)
+    check.summary = "Live WorkflowRuns found linked to deleted Input Files"
+    check.description = "%s live workflows were found linked to deleted input files - \
+                         you can delete the workflows using the linked action" % len(bad_wfrs)
     check.brief_output = brief
     check.full_output = fulloutput
+    check.status = 'WARN'
     check.action_message = "Will attempt to patch %s workflow_runs with deleted inputs to status=deleted." % str(len(bad_wfrs))
     check.allow_action = True  # allows the action to be run
     return check
@@ -59,7 +60,8 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     action_logs = {'patch_failure': [], 'patch_success': []}
     # get latest results
     wfr_w_del_check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
-    for wfruid in wfr_w_del_check:
+    check_res = wfr_w_del_check.get_result_by_uuid(kwargs['called_by'])
+    for wfruid in check_res['full_output']:
         patch_data = {'status': 'deleted'}
         try:
             ff_utils.patch_metadata(patch_data, obj_id=wfruid, key=connection.ff_keys, ff_env=connection.ff_env)
