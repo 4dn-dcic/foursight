@@ -432,7 +432,8 @@ def manage_old_filebeat_logs(connection, **kwargs):
     timestring = '%Y.%m.%d'
 
     log_index = 'filebeat-'
-    snapshot = 'backup-'
+    #TODO: this probably needs to change when namespacing is implemented
+    snapshot = 'backup-%s-' % connection.ff_env
     today = datetime.datetime.today().strftime(timestring)
 
     # run the check
