@@ -442,17 +442,15 @@ def manage_old_filebeat_logs(connection, **kwargs):
     # amazon es auto backups first 14 days, so we only need backup after that
     ilo = es_utils.get_index_list(client, log_index, start_backup, timestring)
 
-    import pdb; pdb.set_trace()
     if len(ilo.indices) > 0:
         try:
             new_snapshot = curator.Snapshot(ilo, repository=snapshot[:-1], name='%s%s' % (snapshot, today))
-            print(new_snapshot.do_dry_run())
             new_snapshot.do_action()
-            check.full_output = "Snapshot taken for %s indicies" % len(ilo.indices)
+            check.full_output = "Snapshot taken for %s indices" % len(ilo.indices)
         except curator.exceptions.FailedExecution as e:
             # snapshot already exists
             if "Invalid snapshot name" in str(e):
-                check.full_output = "Snapshot alread exists with same name for %s indicies. So skipping \n" % len(ilo.indices)
+                check.full_output = "Snapshot alread exists with same name for %s indices. So skipping \n" % len(ilo.indices)
             else:
                 raise(e)
 
@@ -460,18 +458,10 @@ def manage_old_filebeat_logs(connection, **kwargs):
     ilo = es_utils.get_index_list(client, log_index, trim_backup, timestring, ilo=ilo)
 
     if len(ilo.indices) > 0:
-        cleanupIndicies = curator.DeleteIndices(ilo)
-        print(cleanupIndicies.do_dry_run())
+        cleanupIndices = curator.DeleteIndices(ilo)
         cleanupIndices.do_action()
-        check.full_output += "\n Cleaned up %s old indicies" % len(ilo.indices)
+        check.full_output += "\n Cleaned up %s old indices" % len(ilo.indices)
 
     check.status = "PASS"
     check.description = 'performed auto-backup to repository %s' % snapshot[:-1]
     return check
-
-'''
-import app
-app.set_timeout(0)
-connection = app.init_connection('mastertest')
-app.run_check_or_action(connection, 'system_checks/manage_old_filebeat_logs', {'called_by':None})
-'''
