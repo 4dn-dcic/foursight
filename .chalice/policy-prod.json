@@ -22,6 +22,15 @@
       ],
       "Resource": "arn:aws:logs:*:*:*",
       "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "iam:AddRoleToInstanceProfile",
+        "iam:GetRole",
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::643366669028:role/S3Roll",
+      "Effect": "Allow"
     }
   ]
 }

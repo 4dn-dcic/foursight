@@ -396,6 +396,7 @@ def clean_up_travis_queues(connection, **kwargs):
     if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
         return check
+    sqs_client = boto3.client('sqs')
     sqs = boto3.resource('sqs')
     queues = sqs.queues.all()
     num_deleted = 0
@@ -403,7 +404,7 @@ def clean_up_travis_queues(connection, **kwargs):
         if 'travis-job' in queue.url:
             try:
                 creation = queue.attributes['CreatedTimestamp']
-            except sqs.exceptions.QueueDoesNotExist:
+            except sqs_client.exceptions.QueueDoesNotExist:
                 continue
             if isinstance(creation, basestring):
                 creation = float(creation)
