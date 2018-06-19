@@ -17,6 +17,9 @@ from chalicelib import (
 from dcicutils import s3_utils, ff_utils
 from dateutil import tz
 
+# set the stage info for tests
+app.set_stage('test')
+
 
 class FSTest(unittest.TestCase):
     def setUp(self):
@@ -417,7 +420,7 @@ class TestCheckRunner(FSTest):
     environ = 'mastertest'
     connection = app_utils.init_connection(environ)
     # set up a queue for test checks
-    utils.QUEUE_NAME = 'foursight-test-check_queue'
+    stage_info = utils.get_stage_info()
     queue = utils.get_sqs_queue()
 
     def test_run_check_runner(self):
@@ -463,8 +466,8 @@ class TestCheckRunner(FSTest):
 
     def test_queue_check_group(self):
         # first, assure we have the right queue and runner names
-        self.assertTrue(utils.QUEUE_NAME == 'foursight-test-check_queue')
-        self.assertTrue(utils.RUNNER_NAME == 'foursight-dev-check_runner')
+        self.assertTrue(self.stage_info['queue_name'] == 'foursight-test-check_queue')
+        self.assertTrue(self.stage_info['runner_name'] == 'foursight-dev-check_runner')
         # find the checks we will be using
         use_schedule = 'ten_min_checks'
         check_schedule = check_utils.get_check_schedule(use_schedule)
@@ -472,7 +475,7 @@ class TestCheckRunner(FSTest):
         # get a reference point for check results
         prior_res = check_utils.get_check_results(self.connection, checks=use_checks, use_latest=True)
         run_input = app_utils.queue_scheduled_checks(self.environ, 'ten_min_checks')
-        self.assertTrue(utils.QUEUE_NAME in run_input.get('sqs_url'))
+        self.assertTrue(self.stage_info['queue_name'] in run_input.get('sqs_url'))
         finished_count = 0 # since queue attrs are approximate
         # wait for queue to empty
         while finished_count < 3:
@@ -871,12 +874,16 @@ class TestUtils(FSTest):
         check = utils.init_check_res(connection, 'not_a_check')
         return check
 
-    def test_stage(self):
-        self.assertTrue(utils.STAGE == 'dev')
+    def test_get_stage_info(self):
+        # after using app.set_stage('test')
+        info = utils.get_stage_info()
+        self.assertTrue({'stage', 'runner_name', 'queue_name'} <= set(info.keys()))
+        self.assertTrue(info['stage'] == 'dev')
+        self.assertTrue('dev' in info['runner_name'])
+        self.assertTrue('test' in info['queue_name'])
 
     def test_check_timeout(self):
         self.assertTrue(isinstance(utils.CHECK_TIMEOUT, int))
-
 
     def test_check_times_out(self):
         # set to one second, which is slower than test check

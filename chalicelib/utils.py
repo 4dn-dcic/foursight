@@ -15,10 +15,6 @@ from functools import wraps, partial
 from .run_result import CheckResult, ActionResult
 from .s3_connection import S3Connection
 
-# set environmental variables in .chalice/config.json
-STAGE = os.environ.get('chalice_stage', 'dev') # default to dev
-QUEUE_NAME = '-'.join(['foursight', STAGE, 'check_queue'])
-RUNNER_NAME = '-'.join(['foursight', STAGE, 'check_runner'])
 CHECK_DECO = 'check_function'
 ACTION_DECO = 'action_function'
 CHECK_TIMEOUT = 280  # in seconds. set to less than lambda limit (300 s)
@@ -29,6 +25,22 @@ try:
     basestring = basestring
 except NameError:
     basestring = str
+
+
+def get_stage_info():
+    """
+    Returns a dictionary with stage info and queue/check runner names that
+    depend on that. If test=True, use the test runner_name
+    """
+    # set environmental variables in .chalice/config.json
+    stage = os.environ.get('chalice_stage', 'dev') # default to dev
+    queue_name = '-'.join(['foursight', stage, 'check_queue'])
+    # when testing, use dev stage with test queue
+    if stage == 'test':
+        stage = 'dev'
+        queue_name = 'foursight-test-check_queue'
+    runner_name = '-'.join(['foursight', stage, 'check_runner'])
+    return {'stage': stage, 'queue_name': queue_name, 'runner_name': runner_name}
 
 
 def list_environments():
@@ -290,13 +302,13 @@ def invoke_check_runner(runner_input):
     # try/except while async invokes are problematics
     try:
         response = client.invoke(
-            FunctionName=RUNNER_NAME,
+            FunctionName=get_stage_info()['runner_name'],
             InvocationType='Event',
             Payload=json.dumps(runner_input)
         )
     except:
         response = client.invoke(
-            FunctionName=RUNNER_NAME,
+            FunctionName=get_stage_info()['runner_name'],
             Payload=json.dumps(runner_input)
         )
     return response
@@ -342,14 +354,15 @@ def recover_message_and_propogate(runner_input, receipt):
 
 def get_sqs_queue():
     """
-    Returns boto3 sqs resource with QueueName=QUEUE_NAME
+    Returns boto3 sqs resource
     """
+    queue_name = get_stage_info()['queue_name']
     sqs = boto3.resource('sqs')
     try:
-        queue = sqs.get_queue_by_name(QueueName=QUEUE_NAME)
+        queue = sqs.get_queue_by_name(QueueName=queue_name)
     except:
         queue = sqs.create_queue(
-            QueueName=QUEUE_NAME,
+            QueueName=queue_name,
             Attributes={
                 'VisibilityTimeout': '300',
                 'MessageRetentionPeriod': '3600'

@@ -264,10 +264,10 @@ def fourfront_performance_metrics(connection, **kwargs):
 
 @check_function()
 def secondary_queue_deduplication(connection, **kwargs):
-    from ..utils import STAGE
+    from ..utils import get_stage_info
     check = init_check_res(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
-    if STAGE != 'prod':
+    if get_stage_info()['stage'] != 'prod':
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
@@ -386,10 +386,10 @@ def clean_up_travis_queues(connection, **kwargs):
     Clean up old sqs queues based on the name ("travis-job")
     and the creation date. Only run on data for now
     """
-    from ..utils import STAGE
+    from ..utils import get_stage_info
     check = init_check_res(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
-    if connection.fs_env != 'data' or STAGE != 'prod':
+    if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
         return check
     sqs = boto3.resource('sqs')
