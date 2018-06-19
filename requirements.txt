@@ -5,7 +5,7 @@ PyJWT==1.5.3
 Jinja2==2.9.6
 MarkupSafe==1.0
 dcicutils>=0.3.0
-elasticsearch==5.3.*
+elasticsearch>=5.3.0,<6.0.0
 elasticsearch-curator==5.*
 aws_requests_auth
 -e git+git://github.com/4dn-dcic/chalice.git#egg=chalice
