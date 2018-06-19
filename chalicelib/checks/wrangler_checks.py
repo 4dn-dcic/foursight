@@ -23,6 +23,15 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     # run the check
     search_query = 'search/?type=WorkflowRun&status!=deleted&input_files.value.status=deleted&limit=all'
     bad_wfrs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+
+    if kwargs.get('cmp_to_last', False):
+        # filter out wfr uuids from last run if so desired
+        prevchk = check.get_latest_result()
+        if prevchk:
+            prev_wfrs = prevchk.get('full_output', [])
+            filtered = [b.get('uuid') for b in bad_wfrs if b.get('uuid') not in prev_wfrs]
+            bad_wfrs = filtered
+
     if not bad_wfrs:
         check.summmary = check.description = "No live WorkflowRuns linked to deleted input Files"
         return check
@@ -40,7 +49,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     check.brief_output = brief
     check.full_output = fulloutput
     check.action_message = "Will attempt to patch %s workflow_runs with deleted inputs to status=deleted." % str(len(bad_wfrs))
-    check.allow_action = False  # allows the action to be run
+    check.allow_action = True  # allows the action to be run
     return check
 
 
