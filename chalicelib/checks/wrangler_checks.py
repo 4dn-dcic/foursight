@@ -14,7 +14,7 @@ import time
 import boto3
 
 
-@check_function()
+@check_function(cmp_to_last=None)
 def workflow_run_has_deleted_input_file(connection, **kwargs):
     check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
     chkstatus = ''
