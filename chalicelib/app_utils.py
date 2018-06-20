@@ -594,9 +594,6 @@ def run_put_environment(environ, env_data):
                 status_code = 500
             )
         else:
-            # run some checks on the new env
-            for sched in get_schedule_names():
-                queue_scheduled_checks(environ, sched)
             response = Response(
                 body = {
                     'status': 'success',

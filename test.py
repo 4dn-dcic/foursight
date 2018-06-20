@@ -455,6 +455,7 @@ class TestCheckRunner(FSTest):
             utils.send_sqs_messages(self.queue, self.environ, check_vals)
             app_utils.run_check_runner({'sqs_url': self.queue.url})
             finished_count = 0 # since queue attrs are approximate
+            error_count = 0
             # wait for queue to empty
             while finished_count < 3:
                 time.sleep(1)
@@ -463,7 +464,12 @@ class TestCheckRunner(FSTest):
                 invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
                 if vis_messages == 0 and invis_messages == 0:
                     finished_count += 1
-            time.sleep(1)
+                else:
+                    error_count += 1
+                if error_count > 33:  # test should fail
+                    print('Could not find an empty foursight-test-queue.')
+                    self.assertTrue(False)
+            time.sleep(4)
             # look at output
             post_res = check.get_latest_result()
             if prior_res['uuid'] < post_res['uuid']:
