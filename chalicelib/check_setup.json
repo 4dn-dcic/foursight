@@ -169,6 +169,18 @@
             }
         }
     },
+    "workflow_run_has_deleted_input_file": {
+        "title": "WorkflowRun linked to deleted Files",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "clean_up_travis_queues": {
         "title": "Clean up Travis queues",
         "group": "System checks",
