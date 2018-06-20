@@ -5,6 +5,7 @@ import datetime
 import json
 import os
 import time
+import boto3
 import app
 from chalicelib import (
     app_utils,
@@ -19,6 +20,15 @@ from dateutil import tz
 
 # set the stage info for tests
 app.set_stage('test')
+# purge the test queue
+test_client = boto3.client('sqs')
+queue_url = utils.get_sqs_queue().url
+try:
+    test_client.purge_queue(
+        QueueUrl=queue_url
+    )
+except test_client.exceptions.PurgeQueueInProgress:
+    print('Cannot purge test queue; purge already in progress')
 
 
 class FSTest(unittest.TestCase):
