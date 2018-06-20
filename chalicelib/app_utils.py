@@ -594,6 +594,10 @@ def run_put_environment(environ, env_data):
                 status_code = 500
             )
         else:
+            # if not testing, queue all checks to update/populate new env
+            if 'test' not in get_stage_info()['queue_name']:
+                for sched in get_schedule_names():
+                    queue_scheduled_checks(environ, sched)
             response = Response(
                 body = {
                     'status': 'success',

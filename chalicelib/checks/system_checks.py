@@ -291,7 +291,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
     print('STARTING COUNT: %s' % starting_count)
-    time_limit = 270 # 4.5 minutes
+    time_limit = 240 # 4 minutes
     t0 = time.time()
     sent = 0
     deleted = 0
@@ -301,8 +301,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     elapsed = round(time.time() - t0, 2)
     failed = []
     seen_uuids = {}
-    # 2 conditions for the check finishing: we hit the max dedup count OR
-    # we hit 4 and a half minutes
+    # 2 conditions for the check finishing: hit the max dedup count OR 4 minutes
     while (replaced + deduplicated) < starting_count and elapsed < time_limit:
         to_send = []
         to_delete = []
@@ -355,8 +354,18 @@ def secondary_queue_deduplication(connection, **kwargs):
                 our_id, aws_id = success['Id'], success['MessageId']
                 msg_uuid = uuid_coordination[our_id]
                 seen_uuids[msg_uuid] = aws_id
-            failed.extend(res.get('Failed', []))
+            # undo deduplication if errors are detected
+            res_failed = res.get('Failed', [])
+            failed.extend(res_failed)
+            for failure in res_failed:
+                fail_id = failure['Id']
+                msg_uuid = uuid_coordination[fail_id]
+                if msg_uuid in seen_uuids:
+                    del seen_uuids[msg_uuid]
             sent += len(to_send)
+            if res_failed:
+                # skip deletion to be safe
+                continue
         if to_delete:
             res = client.delete_message_batch(
                 QueueUrl=queue_url,
