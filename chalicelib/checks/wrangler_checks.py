@@ -141,12 +141,14 @@ def biorxiv_is_now_published(connection, **kwargs):
             fndcnt += 1
             fulloutput[buuid] = ['PMID:' + id for id in ids]
 
-    if not chkstatus:
-        chkstatus = 'PASS'
     if fndcnt != 0:
         chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
+        if not chkstatus:
+            chkstatus = 'WARN'
     else:
         chkdesc = "No Biorxivs to replace\n" + chkdesc
+        if not chkstatus:
+            chkstatus = 'PASS'
 
     check.status = chkstatus
     check.summary = check.description = chkdesc
