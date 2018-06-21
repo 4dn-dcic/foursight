@@ -432,7 +432,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, do
         connection = None
     if connection:
         history = get_foursight_history(connection, check, start, limit)
-        history_kwargs = list(set(chain.from_iterable([l[1] for l in history])))
+        history_kwargs = list(set(chain.from_iterable([l[2] for l in history])))
     else:
         history, history_kwargs = [], []
     template = jin_env.get_template('history.html')
@@ -444,7 +444,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, do
     html_resp.body = template.render(
         env=environ,
         check=check,
-        load_time = get_load_time(),
+        load_time=get_load_time(),
         history=history,
         history_kwargs=history_kwargs,
         res_start=start,

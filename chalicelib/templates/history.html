@@ -34,6 +34,7 @@
                 <thead>
                     <tr class="row active">
                         <th scope="col">status</th>
+                        <th scope="col">summary</th>
                         {% for kwarg in history_kwargs %}
                             {% set this_kwarg = kwarg + ' (UTC)' if kwarg == 'uuid' else kwarg %}
                             <th scope="col">{{this_kwarg}}</th>
@@ -57,18 +58,19 @@
                         {% endif %}
                         <tr class="{{'row ' + rowstat}}">
                             <td>{{entry[0]}}</td>
+                            <td>{{entry[1]}}</td>
                             {% for kw in history_kwargs %}
-                                <td>{{entry[1].get(kw)}}</td>
+                                <td>{{entry[2].get(kw)}}</td>
                             {% endfor %}
-                            {# boolean in entry[2] saying if it's a check or not #}
-                            {% if entry[2] == True %}
+                            {# boolean in entry[3] saying if it's a check or not #}
+                            {% if entry[3] == True %}
                                 <td>
-                                    <a target="_blank" href={{"/api/view/" + env + "/" + check + "/" + entry[1]['uuid']}}>Result</a>
+                                    <a target="_blank" href={{"/api/view/" + env + "/" + check + "/" + entry[2]['uuid']}}>Result</a>
                                 </td>
                             {% endif %}
-                            {% if 'uuid' in entry[1] %}
+                            {% if 'uuid' in entry[2] %}
                                 <td>
-                                    <a target="_blank" href={{"/api/checks/" + env + "/" + check + "/" + entry[1]['uuid']}}>JSON</a>
+                                    <a target="_blank" href={{"/api/checks/" + env + "/" + check + "/" + entry[2]['uuid']}}>JSON</a>
                                 </td>
                             {% else %}
                                 <td>Error</td>

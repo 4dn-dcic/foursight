@@ -154,17 +154,18 @@ class RunResult(object):
         results = []
         for n in range(len(all_keys)):
             s3_res = self.get_s3_object(all_keys[n])
-            # order: status <str>, kwargs <dict>, is check? (boolean)
+            # order: status <str>, summary <str>, kwargs <dict>, is check? (boolean)
             # it's a check if it has 'full_output' and 'brief_output'
             # handle records that might be malformed
             res_val = [
                 s3_res.get('status', 'Not found'),
+                s3_res.get('summary', ''),
                 s3_res.get('kwargs', {}),
                 'full_output' in s3_res and 'brief_output' in s3_res
             ]
             # kwargs to remove from the history results. these will not be displayed
             for remove_key in ['_run_info']:
-                res_val[1].pop(remove_key, None)
+                res_val[2].pop(remove_key, None)
             results.append(res_val)
         return results
 
