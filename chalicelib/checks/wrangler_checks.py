@@ -334,7 +334,7 @@ def change_in_item_counts(connection, **kwargs):
         check.status = 'WARN'
         check.summary = 'Change in DB counts does not match search result for new items'
         check.description = ('Positive numbers represent an increase in counts. '
-                             'The counts result does not match search results.')
+                             'The change in counts does not match search result for new items.')
     else:
         check.status = 'PASS'
         check.summary = 'There are %s new items in the past day' % total_counts
