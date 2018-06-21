@@ -159,7 +159,7 @@ class RunResult(object):
             # handle records that might be malformed
             res_val = [
                 s3_res.get('status', 'Not found'),
-                s3_res.get('summary', ''),
+                s3_res.get('summary', None),
                 s3_res.get('kwargs', {}),
                 'full_output' in s3_res and 'brief_output' in s3_res
             ]
