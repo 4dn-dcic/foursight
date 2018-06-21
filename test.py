@@ -192,17 +192,19 @@ class TestAppRoutes(FSTest):
         test_check = 'test_random_nums'
         history = app_utils.get_foursight_history(self.conn, test_check, 0, 3)
         self.assertTrue(isinstance(history, list))
-        self.assertTrue(len(history[0]) == 3)
+        self.assertTrue(len(history[0]) == 4)
         self.assertTrue(isinstance(history[0][0], utils.basestring))
-        self.assertTrue(isinstance(history[0][1], dict))
-        self.assertTrue('uuid' in history[0][1])
-        self.assertTrue('primary' in history[0][1])
-        first_uuid_1 = history[0][1]['uuid']
-        second_uuid_1 = history[1][1]['uuid']
+        self.assertTrue(isinstance(history[0][1], utils.basestring) or history[0][1] is None)
+        self.assertTrue(isinstance(history[0][2], dict))
+        self.assertTrue('uuid' in history[0][2])
+        self.assertTrue('primary' in history[0][2])
+        self.assertTrue(history[0][3] is True)
+        first_uuid_1 = history[0][2]['uuid']
+        second_uuid_1 = history[1][2]['uuid']
         self.assertTrue(len(history) == 3)
         # different start and limit
         history = app_utils.get_foursight_history(self.conn, test_check, 1, 4)
-        first_uuid_2 = history[0][1]['uuid']
+        first_uuid_2 = history[0][2]['uuid']
         self.assertTrue(first_uuid_1 != first_uuid_2)
         self.assertTrue(second_uuid_1 == first_uuid_2)
         self.assertTrue(len(history) == 4)
