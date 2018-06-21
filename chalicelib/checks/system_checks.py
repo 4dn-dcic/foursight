@@ -296,6 +296,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     sent = 0
     deleted = 0
     deduplicated = 0
+    dedup_uuids = set()
     replaced = 0
     done = False
     elapsed = round(time.time() - t0, 2)
@@ -327,6 +328,7 @@ def secondary_queue_deduplication(connection, **kwargs):
             to_delete.append(to_process)
             if msg_uuid in seen_uuids and to_process['Id'] != seen_uuids[msg_uuid]:
                 deduplicated += 1
+                dedup_uuids.add(msg_uuid)
             else:
                 # don't increment replaced count if we've seen the item before
                 if not msg_uuid in seen_uuids:
@@ -379,7 +381,8 @@ def secondary_queue_deduplication(connection, **kwargs):
         'uuids_covered': len(seen_uuids),
         'deduplicated': deduplicated,
         'replaced': replaced,
-        'time': elapsed
+        'time': elapsed,
+        'uuids_deduplicated': list(dedup_uuids)
     }
     if failed:
         check.status = 'WARN'
