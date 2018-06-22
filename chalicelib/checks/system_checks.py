@@ -284,13 +284,10 @@ def secondary_queue_deduplication(connection, **kwargs):
     # get approx number of messages
     attrs = client.get_queue_attributes(
         QueueUrl=queue_url,
-        AttributeNames=[
-            'ApproximateNumberOfMessages'
-        ]
+        AttributeNames=['ApproximateNumberOfMessages']
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    print('STARTING COUNT: %s' % starting_count)
     time_limit = 240 # 4 minutes
     t0 = time.time()
     sent = 0
@@ -302,16 +299,23 @@ def secondary_queue_deduplication(connection, **kwargs):
     elapsed = round(time.time() - t0, 2)
     failed = []
     seen_uuids = set()
-    # 2 conditions for the check finishing: hit the max dedup count OR 4 minutes
-    while (replaced + deduplicated) < starting_count and elapsed < time_limit:
+    exit_reason = 'out of time'
+    while elapsed < time_limit:
+        if (replaced + deduplicated) >= starting_count:
+            exit_reason = 'starting uuids fully covered'
+            break
         send_uuids = set()
         to_send = []
         to_delete = []
         recieved = client.receive_message(
             QueueUrl=queue_url,
-            MaxNumberOfMessages=10  # batch size for all sqs ops
+            MaxNumberOfMessages=10,  # batch size for all sqs ops
+            WaitTimeSeconds=4  # 4 seconds of long polling
         )
         batch = recieved.get("Messages", [])
+        if not batch:  # if no messages received from long polling, exit
+            exit_reason = 'no messages left'
+            break
         for i in range(len(batch)):
             try:
                 msg_body = json.loads(batch[i]['Body'])
@@ -327,9 +331,10 @@ def secondary_queue_deduplication(connection, **kwargs):
             to_delete.append(to_process)
             if msg_uuid in seen_uuids and 'Deduplicated' not in msg_body.get('fs_detail', ''):
                 deduplicated += 1
+                print(msg_uuid)
             else:
                 # don't increment replaced count if we've seen the item before
-                if not msg_uuid in seen_uuids:
+                if msg_uuid not in seen_uuids:
                     replaced += 1
                 time.sleep(0.001)  # slight sleep for time-based Id
                 # add foursight uuid stamp
@@ -351,10 +356,10 @@ def secondary_queue_deduplication(connection, **kwargs):
             failed.extend(res_failed)
             if res_failed:
                 # handle conservatively on error and don't delete
-                for uuid in send_uuid:
-                    if uuid in seen_uuid:
-                        print('ERR --> %s' % uuid)
+                for uuid in send_uuids:
+                    if uuid in seen_uuids:
                         seen_uuids.remove(uuid)
+                        replaced -= 1
                 continue
             sent += len(to_send)
         if to_delete:
@@ -371,7 +376,8 @@ def secondary_queue_deduplication(connection, **kwargs):
         'deduplicated': deduplicated,
         'replaced': replaced,
         'time': elapsed,
-        'problem_messages': problem_items
+        'problem_messages': problem_msgs,
+        'exit_reason': exit_reason
     }
     if failed:
         check.status = 'WARN'
