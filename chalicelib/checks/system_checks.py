@@ -284,90 +284,83 @@ def secondary_queue_deduplication(connection, **kwargs):
     # get approx number of messages
     attrs = client.get_queue_attributes(
         QueueUrl=queue_url,
-        AttributeNames=[
-            'ApproximateNumberOfMessages'
-        ]
+        AttributeNames=['ApproximateNumberOfMessages']
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    print('STARTING COUNT: %s' % starting_count)
     time_limit = 240 # 4 minutes
     t0 = time.time()
     sent = 0
     deleted = 0
     deduplicated = 0
-    dedup_uuids = set()
+    problem_msgs = []
     replaced = 0
     done = False
     elapsed = round(time.time() - t0, 2)
     failed = []
-    seen_uuids = {}
-    # 2 conditions for the check finishing: hit the max dedup count OR 4 minutes
-    while (replaced + deduplicated) < starting_count and elapsed < time_limit:
+    seen_uuids = set()
+    exit_reason = 'out of time'
+    while elapsed < time_limit:
+        if (replaced + deduplicated) >= starting_count:
+            exit_reason = 'starting uuids fully covered'
+            break
+        send_uuids = set()
         to_send = []
         to_delete = []
-        uuid_coordination = {}  # aws returns its own id, must coordinate
         recieved = client.receive_message(
             QueueUrl=queue_url,
-            MaxNumberOfMessages=10  # batch size for all sqs ops
+            MaxNumberOfMessages=10,  # batch size for all sqs ops
+            WaitTimeSeconds=4  # 4 seconds of long polling
         )
         batch = recieved.get("Messages", [])
+        if not batch:  # if no messages received from long polling, exit
+            exit_reason = 'no messages left'
+            break
         for i in range(len(batch)):
-            string_mode = False  # old form of uuids
             try:
                 msg_body = json.loads(batch[i]['Body'])
-                msg_uuid = msg_body['uuid']
             except json.JSONDecodeError:
-                msg_body = msg_uuid = batch[i]['Body']
-                string_mode = True
+                problem_msgs.append(batch[i]['Body'])
+                continue
+            msg_uuid = msg_body['uuid']
             to_process = {
                 'Id': batch[i]['MessageId'],
                 'ReceiptHandle': batch[i]['ReceiptHandle']
             }
             # every item gets deleted; original uuids get re-sent
             to_delete.append(to_process)
-            if msg_uuid in seen_uuids and to_process['Id'] != seen_uuids[msg_uuid]:
+            if msg_uuid in seen_uuids and 'Deduplicated' not in msg_body.get('fs_detail', ''):
                 deduplicated += 1
-                dedup_uuids.add(msg_uuid)
             else:
                 # don't increment replaced count if we've seen the item before
-                if not msg_uuid in seen_uuids:
+                if msg_uuid not in seen_uuids:
                     replaced += 1
-                # create a record of what Id was associated with this uuid and
-                # then put item back on the queue by sending + deleting old
-                time.sleep(0.001)  # needed to for new_id
-                new_id = str(int(time.time() * 1000000))
-                uuid_coordination[new_id] = msg_uuid
-                seen_uuids[msg_uuid] = new_id  # will be replaced with aws id
+                time.sleep(0.001)  # slight sleep for time-based Id
                 # add foursight uuid stamp
-                if not string_mode:
-                    msg_body['detail'] = 'Deduplicated by foursight: %s' % kwargs['uuid']
+                msg_body['fs_detail'] = 'Deduplicated: %s' % kwargs['uuid']
                 send_info = {
-                    'Id': new_id,
-                    'MessageBody': msg_body if string_mode else json.dumps(msg_body)
+                    'Id': str(int(time.time() * 1000000)),
+                    'MessageBody': json.dumps(msg_body)
                 }
                 to_send.append(send_info)
+                seen_uuids.add(msg_uuid)
+                send_uuids.add(msg_uuid)
         if to_send:
             res = client.send_message_batch(
                 QueueUrl=queue_url,
                 Entries=to_send
             )
-            for success in res.get('Successful', []):
-                our_id, aws_id = success['Id'], success['MessageId']
-                msg_uuid = uuid_coordination[our_id]
-                seen_uuids[msg_uuid] = aws_id
             # undo deduplication if errors are detected
             res_failed = res.get('Failed', [])
             failed.extend(res_failed)
-            for failure in res_failed:
-                fail_id = failure['Id']
-                msg_uuid = uuid_coordination[fail_id]
-                if msg_uuid in seen_uuids:
-                    del seen_uuids[msg_uuid]
-            sent += len(to_send)
             if res_failed:
-                # skip deletion to be safe
+                # handle conservatively on error and don't delete
+                for uuid in send_uuids:
+                    if uuid in seen_uuids:
+                        seen_uuids.remove(uuid)
+                        replaced -= 1
                 continue
+            sent += len(to_send)
         if to_delete:
             res = client.delete_message_batch(
                 QueueUrl=queue_url,
@@ -382,7 +375,8 @@ def secondary_queue_deduplication(connection, **kwargs):
         'deduplicated': deduplicated,
         'replaced': replaced,
         'time': elapsed,
-        'uuids_deduplicated': list(dedup_uuids)
+        'problem_messages': problem_msgs,
+        'exit_reason': exit_reason
     }
     if failed:
         check.status = 'WARN'
