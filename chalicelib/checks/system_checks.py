@@ -331,7 +331,6 @@ def secondary_queue_deduplication(connection, **kwargs):
             to_delete.append(to_process)
             if msg_uuid in seen_uuids and 'Deduplicated' not in msg_body.get('fs_detail', ''):
                 deduplicated += 1
-                print(msg_uuid)
             else:
                 # don't increment replaced count if we've seen the item before
                 if msg_uuid not in seen_uuids:
