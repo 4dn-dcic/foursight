@@ -160,6 +160,8 @@ def biorxiv_is_now_published(connection, **kwargs):
 @check_function(confirm_on_higlass=False, filetype='all')
 def files_not_registered_with_higlass(connection, **kwargs):
     """
+    Used to check registration of files on higlass and also register them
+    through the patch_file_higlass_uid action.
     If confirm_on_higlass is True, check each file by making a request to the
     higlass server. Otherwise, just look to see if a higlass_uid is present in
     the metadata.
@@ -171,17 +173,18 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.description = "not able to get data from fourfront"
     # keep track of mcool, bg, and bw files separately
     valid_types = ['mcool', 'bg', 'bw']
-    file_to_be_reg = {}
+    files_to_be_reg = {}
     not_found_upload_key = []
     not_found_s3 = []
     if kwargs['filetype'] != 'all' and kwargs['filetype'] not in valid_types:
         check.description = check.summary = "Filetype must be one of: %s" % (valid_types + ['all'])
+        return check
     reg_filetypes = valid_types if kwargs['filetype'] == 'all' else [kwargs['filetype']]
     check.action = "patch_file_higlass_uid"
     higlass_key = connection.ff_s3.get_higlass_key()
     # run the check
     for ftype in reg_filetypes:
-        file_to_be_reg[ftype] = []
+        files_to_be_reg[ftype] = []
         search_query = 'search/?file_format=%s&type=FileProcessed'
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for procfile in possibly_reg:
@@ -218,13 +221,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
                     hg_res = requests.get(higlass_get)
                     # what should I check from the response?
                     if hg_res.status_code >= 400:
-                        file_to_be_reg[ftype].append(file_info)
+                        files_to_be_reg[ftype].append(file_info)
             else:
-                file_to_be_reg[ftype].append(file_info)
+                files_to_be_reg[ftype].append(file_info)
 
-    check.full_output = {'files not registered': files_to_be_reg,
-                         'files without upload key': not_found_upload_key,
-                         'files not found on s3': not_found_s3}
+    check.full_output = {'files_not_registered': files_to_be_reg,
+                         'files_without_upload_key': not_found_upload_key,
+                         'files_not_found_on_s3': not_found_s3}
     if not_found_upload_key:
         check.status = "FAIL"
         check.summary = check.description = "Error getting upload_key from files"
@@ -236,9 +239,9 @@ def files_not_registered_with_higlass(connection, **kwargs):
         check.summary = 'All files are registered with higlass'
         check.description = check.summary + '. Run with confirm_on_higlass=True to check against the higlass server'
 
-    if file_to_be_reg:
+    if files_to_be_reg:
         if check.status != 'FAIL': check.status = 'WARN'
-        file_count = sum([len(file_to_be_reg[ft]) for ft in file_to_be_reg])
+        file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
         if check.summary:
             check.summary += '. %s files ready for registration' % file_count
             check.description += '. %s files ready for registration' % file_count
@@ -265,8 +268,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     authentication = (higlass_key['key'], higlass_key['secret'])
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
-    check_output = higlass_check_result.get('full_output', {})
-    for ftype, hits in check_output.items():
+    to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
+    for ftype, hits in to_be_registered.items():
         for hit in hits:
             payload = {"filepath": connection.ff_s3.outfile_bucket + "/" + hit['upload_key']}
             if ftype == 'mcool':
