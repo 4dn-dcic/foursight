@@ -185,7 +185,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     # run the check
     for ftype in reg_filetypes:
         files_to_be_reg[ftype] = []
-        search_query = 'search/?file_format=%s&type=FileProcessed'
+        search_query = 'search/?file_format=%s&type=FileProcessed' % ftype
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for procfile in possibly_reg:
             file_info = {
@@ -222,6 +222,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
                     # what should I check from the response?
                     if hg_res.status_code >= 400:
                         files_to_be_reg[ftype].append(file_info)
+                    elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
+                        files_to_be_reg[ftype].append(file_info)
             else:
                 files_to_be_reg[ftype].append(file_info)
 
@@ -236,19 +238,12 @@ def files_not_registered_with_higlass(connection, **kwargs):
         check.summary = check.description = "Not all files are uploaded"
     else:
         check.status = 'PASS'
-        check.summary = 'All files are registered with higlass'
-        check.description = check.summary + '. Run with confirm_on_higlass=True to check against the higlass server'
-
-    if files_to_be_reg:
-        if check.status != 'FAIL': check.status = 'WARN'
-        file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
-        if check.summary:
-            check.summary += '. %s files ready for registration' % file_count
-            check.description += '. %s files ready for registration' % file_count
-        else:
-            check.summary = check.description = '%s files ready for registration' % file_count
-        check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
-        check.allow_action = True  # allows the action to be run
+        check.summary = check.description = 'All files are registered with higlass'
+    file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
+    check.summary += '. %s files ready for registration' % file_count
+    check.description += '. %s files ready for registration. Run with confirm_on_higlass=True to check against the higlass server' % file_count
+    check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
+    check.allow_action = True  # allows the action to be run
     return check
 
 
