@@ -234,14 +234,17 @@ def files_not_registered_with_higlass(connection, **kwargs):
         check.status = "FAIL"
         check.summary = check.description = "Error getting upload_key from files"
     elif not_found_s3:
-        check.status = 'WARN'
+        check.status = 'PASS'
         check.summary = check.description = "Not all files are uploaded"
     else:
         check.status = 'PASS'
-        check.summary = check.description = 'All files are registered with higlass'
     file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
-    check.summary += '. %s files ready for registration' % file_count
-    check.description += '. %s files ready for registration. Run with confirm_on_higlass=True to check against the higlass server' % file_count
+    if check.summary:
+        check.summary += '. %s files ready for registration' % file_count
+        check.description += '. %s files ready for registration. Run with confirm_on_higlass=True to check against the higlass server' % file_count
+    else:
+        check.summary = '%s files ready for registration' % file_count
+        check.description = check.summary + '. Run with confirm_on_higlass=True to check against the higlass server'
     check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
     check.allow_action = True  # allows the action to be run
     return check
