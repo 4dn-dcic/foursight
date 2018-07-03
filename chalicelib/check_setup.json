@@ -129,8 +129,8 @@
             }
         }
     },
-    "mcool_not_registered_with_higlass": {
-        "title": "mcool files not registered with higlass",
+    "files_not_registered_with_higlass": {
+        "title": "Files not registered with higlass",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
