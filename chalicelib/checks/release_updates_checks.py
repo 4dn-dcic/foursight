@@ -321,8 +321,8 @@ def experiment_set_reporting_data(connection, **kwargs):
     exp_sets = {}
     search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
     set_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=20)
-    # run a second search for status=deleted
-    set_hits_del = ff_utils.search_metadata(search_query + '&status=deleted',
+    # run a second search for status=deleted and status=replaced
+    set_hits_del = ff_utils.search_metadata(search_query + '&status=deleted&status=replaced',
                                             ff_env=connection.ff_env, page_limit=20)
     set_hits.extend(set_hits_del)
     for hit in set_hits:

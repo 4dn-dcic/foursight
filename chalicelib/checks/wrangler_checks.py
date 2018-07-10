@@ -381,8 +381,8 @@ def change_in_item_counts(connection, **kwargs):
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H\:%M')
     search_query = ''.join(['search/?type=Item&frame=object&q=date_created:>=', date_str])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-    # add deleted items
-    search_query += '&status=deleted'
+    # add deleted/replaced items
+    search_query += '&status=deleted&status=replaced'
     search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env))
     search_output = []
     for res in search_resp:
