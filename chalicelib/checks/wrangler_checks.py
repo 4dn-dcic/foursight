@@ -398,3 +398,31 @@ def patch_file_size(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def biosource_cell_line_value(connection, **kwargs):
+    check = init_check_res(connection, 'biosource_cell_line_value')
+
+    cell_line_types = ["primary cell", "primary cell line", "immortalized cell line",
+                       "in vitro differentiated cells", "induced pluripotent stem cell line",
+                       "stem cell", "stem cell derived cell line"]
+    biosources = ff_utils.search_metadata('search/?type=Biosource', ff_env=connection.ff_env, page_limit=200)
+    missing = []
+    for biosource in biosources:
+        if biosource.get('biosource_type') and biosource.get('biosource_type') in cell_line_types:
+            if not biosource.get('cell_line'):
+                missing.append({'uuid': biosource['uuid'],
+                                '@id': biosource['@id'],
+                                'biosource_type': biosource.get('biosource_type'),
+                                'error': 'Missing cell_line metadata'})
+                # detail = 'In Biosource {}'.format(value['@id']) + \
+                #      ' - Missing Required cell_line field value for biosource type  ' + \
+                #      '{}'.format(bstype)
+    check.full_output = missing
+    if missing:
+        check.status = 'WARN'
+        check.summary = 'Cell line biosources found missing cell_line metadata'
+    else:
+        check.status = 'PASS'
+    return check

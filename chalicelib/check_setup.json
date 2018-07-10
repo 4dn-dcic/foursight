@@ -113,6 +113,12 @@
             }
         }
     },
+    "biosource_cell_line_value": {
+        "title": "Cell line biosamples without cell_line metadata",
+        "group": "Metadata checks",
+        "schedule": {},
+        "display": ["mastertest"]
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
