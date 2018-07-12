@@ -6,7 +6,8 @@
         "s3:*",
         "elasticbeanstalk:*",
         "lambda:*",
-        "sqs:*"
+        "sqs:*",
+        "es:*"
       ],
       "Resource": [
         "*"
