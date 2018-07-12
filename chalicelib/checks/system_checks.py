@@ -92,13 +92,8 @@ def elastic_beanstalk_health(connection, **kwargs):
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
-    status_location = ''.join([connection.ff_es, '_cat/indices?v'])
-    resp = requests.get(status_location, timeout=20)
-    if resp.status_code >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to %s (status %s).' % (status_location, resp.status_code)
-        return check
-    indices = resp.text.split('\n')
+    client = es_utils.create_es_client(connection.ff_es, True)
+    indices = client.cat.indices().split('\n')
     split_indices = [ind.split() for ind in indices]
     headers = split_indices.pop(0)
     index_info = {} # for full output
