@@ -93,7 +93,7 @@ def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
     client = es_utils.create_es_client(connection.ff_es, True)
-    indices = client.cat.indices().split('\n')
+    indices = client.cat.indices(v=True).split('\n')
     split_indices = [ind.split() for ind in indices]
     headers = split_indices.pop(0)
     index_info = {} # for full output
