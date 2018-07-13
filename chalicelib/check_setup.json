@@ -198,7 +198,15 @@
         "group": "Elasticsearch checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
