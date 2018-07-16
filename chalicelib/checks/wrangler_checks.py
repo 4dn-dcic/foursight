@@ -425,4 +425,41 @@ def biosource_cell_line_value(connection, **kwargs):
         check.summary = 'Cell line biosources found missing cell_line metadata'
     else:
         check.status = 'PASS'
+        check.summary = 'No cell line biosources are missing cell_line metadata'
     return check
+
+
+@check_function()
+def external_expsets_without_pub(connection, **kwargs):
+    check = init_check_res(connection, 'external_expsets_without_pub')
+
+    ext = ff_utils.search_metadata('search/?award.project=External&type=ExperimentSet',
+                                   ff_env=connection.ff_env, page_limit=200)
+    no_pub = []
+    for expset in ext:
+        if not expset.get('publications_of_set') and not expset.get('produced_in_pub'):
+            # add to Output
+            no_pub.append({'uuid': expset['uuid'],
+                           '@id': expset['@id'],
+                           'error': 'Missing attribution to a publication'})
+    if no_pub:
+        check.status = 'WARN'
+        check.summary = 'External experiment sets found without associated publication'
+        check.description = '{} external experiment sets are missing attribution to a publication.'.format(len(no_pub))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No external experiment sets are missing publication'
+        check.description = '0 external experiment sets are missing attribution to a publication.'
+    check.full_output = no_pub
+    # check.brief_output =
+    return check
+
+
+# @check_function()
+# def proc_files_without_contributing_labs(connection, **kwargs):
+#     check = init_check_res(connection, 'proc_files_without_contributing_labs')
+#     pfile_search = ('search/?lab.display_title=4DN+DCIC+Lab%2C+HMS'
+#                     '&status%21=to+be+uploaded+by+workflow&type=FileProcessed')
+#     pfiles = ff_utils.search_metadata(pfile_search, ff_env=connection.ff_env)
+#     pfile_dict = {pf['@id']: [c_lab['@id'] for c_lab in pf['contributing_labs'] if
+#                               pf.get('contributing_labs')] for pf in pfiles}
