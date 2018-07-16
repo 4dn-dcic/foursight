@@ -125,6 +125,12 @@
         "schedule": {},
         "display": ["mastertest"]
     },
+    "expset_opfsets_unique_titles": {
+        "title": "Experiment Sets with missing or duplicated titles for sets of other processed files",
+        "group": "Metadata checks",
+        "schedule": {},
+        "display": ["mastertest"]
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",

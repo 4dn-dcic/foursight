@@ -455,6 +455,42 @@ def external_expsets_without_pub(connection, **kwargs):
     return check
 
 
+@check_function()
+def expset_opfsets_unique_titles(connection, **kwargs):
+    check = init_check_res(connection, 'expset_opfsets_unique_titles')
+
+    opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value',
+                                           ff_env=connection.ff_env, page_limit=100)
+    errors = []
+    for expset in opf_expsets:
+        e = []
+        fileset_names = [fileset.get('title') for fileset in expset['other_processed_files']]
+        if None in fileset_names:
+            e.append('Missing title')
+        if len(list(set(fileset_names))) != len(fileset_names):
+            e.append('Duplicate title')
+        if e:
+            info = {'uuid': expset['uuid'],
+                    '@id': expset['@id'],
+                    'errors': []}
+            if 'Missing title' in e:
+                info['errors'] += ['ExperimentSet {} has an other_processed_files collection with a missing title.'.format(expset['accession'])]
+            if 'Duplicate title' in e:
+                info['errors'] += ['ExperimentSet {} has 2+ other_processed_files collections with duplicated titles.'.format(expset['accession'])]
+            errors.append(info)
+
+    if errors:
+        check.status = 'WARN'
+        check.summary = 'Experiment Sets found with duplicate or missing titles for sets of other_processed_files'
+        check.description = '{} Experiment Sets have other_processed_files collections with missing or duplicate titles.'.format(len(errors))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No experiments with duplicate or missing titles for sets of other_processed_files'
+        check.description = '0 Experiment Sets have other_processed_files collections with missing or duplicate titles.'
+    check.full_output = errors
+    return check
+
+
 # @check_function()
 # def proc_files_without_contributing_labs(connection, **kwargs):
 #     check = init_check_res(connection, 'proc_files_without_contributing_labs')
