@@ -119,6 +119,12 @@
         "schedule": {},
         "display": ["mastertest"]
     },
+    "external_expsets_without_pub": {
+        "title": "External experiment sets without a publication",
+        "group": "Metadata checks",
+        "schedule": {},
+        "display": ["mastertest"]
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
