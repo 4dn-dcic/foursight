@@ -491,6 +491,18 @@ def expset_opfsets_unique_titles(connection, **kwargs):
     return check
 
 
+@check_function()
+def expset_opf_unique_files_in_experiments(connection, **kwargs):
+    check = init_check_res(connection, 'expset_opf_unique_files_in_experiments')
+
+    opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value',
+                                           ff_env=connection.ff_env, page_limit=100)
+    for expset in opf_expsets:
+        fileset_names = [fileset.get('title') for fileset in expset['other_processed_files']]
+        for expt in expset.get('experiments_in_set'):
+            if expt.get('other_processed_files'):
+                fileset_names += [fset.get('title') for fset in expt['other_processed_files']]
+
 # @check_function()
 # def proc_files_without_contributing_labs(connection, **kwargs):
 #     check = init_check_res(connection, 'proc_files_without_contributing_labs')
