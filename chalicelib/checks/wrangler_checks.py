@@ -534,6 +534,7 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
         check.summary = 'No issues found with other_processed_files of experiments'
         check.description = ('0 Experiments found to be missing titles for sets of other_processed_files,'
                              ' or have non-unique filenames in other_processed_files')
+    check.full_output = errors
     return check
 
 # @check_function()
