@@ -494,14 +494,47 @@ def expset_opfsets_unique_titles(connection, **kwargs):
 @check_function()
 def expset_opf_unique_files_in_experiments(connection, **kwargs):
     check = init_check_res(connection, 'expset_opf_unique_files_in_experiments')
-
+    # look for missing titles in experiments
+    # look for titles that are shared between experiment and experimentset
+    # look for files that are present in more than one set with same title
     opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value',
                                            ff_env=connection.ff_env, page_limit=100)
+    errors = []
     for expset in opf_expsets:
-        fileset_names = [fileset.get('title') for fileset in expset['other_processed_files']]
-        for expt in expset.get('experiments_in_set'):
-            if expt.get('other_processed_files'):
-                fileset_names += [fset.get('title') for fset in expt['other_processed_files']]
+        expset_titles = {fileset.get('title'): fileset.get('files') for fileset in expset['other_processed_files'] if fileset.get('title')}
+        # missing = []
+        if not expset.get('experiments_in_set'):
+            continue
+        for expt in (exp for exp in expset.get('experiments_in_set') if exp.get('other_processed_files')):
+            e = []
+                # look for missing names
+                # look for duplicate names
+                # if duplicate names, look for duplicate file names
+            for opf_set in expt['other_processed_files']:
+                if not opf_set.get('title'):
+                    e.append('Experiment {} in Experiment Set {} has an other_processed_files set \
+                             missing a title.'.format(exp['accession'], expset['accession']))
+                elif opf_set.get('title') in expset_titles.keys() and opf_set.get('files'):
+                    for opf_file in opf_set['files']:
+                        if opf_file in expset_titles[opf_set['title']]:
+                            e.append('Experiment {} other_processed_files collection with title "{}" has file {} which \
+                                     is also present in parent ExperimentSet {} other_processed_files collection of the \
+                                     same name.'.format(expt['accession'], opf_set['title'], opf_file, expset['accession']))
+            if e:
+                errors.append({'uuid': expt['uuid'],
+                               '@id': expt['@id'],
+                               'error_details': e})
+    if errors:
+        check.status = 'WARN'
+        check.summary = '{} experiments found with issues in other_processed_files'.format(len(errors))
+        check.description = ('{} Experiments found that are either missing titles for sets of other_processed_files,'.format(len(errors)) +
+                             ' or have non-uniquefilenames in other_processed_files')
+    else:
+        check.status = 'PASS'
+        check.summary = 'No issues found with other_processed_files of experiments'
+        check.description = ('0 Experiments found to be missing titles for sets of other_processed_files,'
+                             ' or have non-unique filenames in other_processed_files')
+    return check
 
 # @check_function()
 # def proc_files_without_contributing_labs(connection, **kwargs):
