@@ -156,7 +156,7 @@
             "thirty_min_checks": {
                 "all": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
+                    "dependencies": ["expset_opfsets_unique_titles"]
                 }
             }
         }
