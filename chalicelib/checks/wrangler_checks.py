@@ -425,6 +425,7 @@ def biosource_cell_line_value(connection, **kwargs):
                 #      ' - Missing Required cell_line field value for biosource type  ' + \
                 #      '{}'.format(bstype)
     check.full_output = missing
+    check.brief_output = [item['uuid'] for item in missing]
     if missing:
         check.status = 'WARN'
         check.summary = 'Cell line biosources found missing cell_line metadata'
@@ -459,7 +460,7 @@ def external_expsets_without_pub(connection, **kwargs):
         check.summary = 'No external experiment sets are missing publication'
         check.description = '0 external experiment sets are missing attribution to a publication.'
     check.full_output = no_pub
-    # check.brief_output =
+    check.brief_output = [item['uuid'] for item in no_pub]
     return check
 
 
@@ -477,7 +478,7 @@ def expset_opfsets_unique_titles(connection, **kwargs):
     for expset in opf_expsets:
         e = []
         fileset_names = [fileset.get('title') for fileset in expset['other_processed_files']]
-        if None in fileset_names:
+        if None in fileset_names or '' in fileset_names:
             e.append('Missing title')
         if len(list(set(fileset_names))) != len(fileset_names):
             e.append('Duplicate title')
@@ -500,6 +501,8 @@ def expset_opfsets_unique_titles(connection, **kwargs):
         check.summary = 'No experiments with duplicate or missing titles for sets of other_processed_files'
         check.description = '0 Experiment Sets have other_processed_files collections with missing or duplicate titles.'
     check.full_output = errors
+    check.brief_output = {'missing title': [item['uuid'] for item in errors if 'missing' in ''.join(item['errors'])],
+                          'duplicate title': [item['uuid'] for item in errors if 'duplicated' in ''.join(item['errors'])]}
     return check
 
 
@@ -525,7 +528,7 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
                 # look for missing names
                 if not opf_set.get('title'):
                     e.append('Experiment {} in Experiment Set {} has an other_processed_files set '
-                             'missing a title.'.format(exp['accession'], expset['accession']))
+                             'missing a title.'.format(expt['accession'], expset['accession']))
                 # look for duplicate names
                 elif opf_set.get('title') in expset_titles.keys() and opf_set.get('files'):
                     for opf_file in opf_set['files']:
@@ -542,13 +545,15 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
         check.status = 'WARN'
         check.summary = '{} experiments found with issues in other_processed_files'.format(len(errors))
         check.description = ('{} Experiments found that are either missing titles for sets of other_processed_files,'
-                             ' or have non-uniquefilenames in other_processed_files'.format(len(errors))
+                             ' or have non-uniquefilenames in other_processed_files'.format(len(errors)))
     else:
         check.status = 'PASS'
         check.summary = 'No issues found with other_processed_files of experiments'
         check.description = ('0 Experiments found to be missing titles for sets of other_processed_files,'
                              ' or have non-unique filenames in other_processed_files')
     check.full_output = errors
+    check.brief_output = {'missing title': [item['uuid'] for item in errors if 'missing' in ''.join(item['error_details'])],
+                          'duplicate title': [item['uuid'] for item in errors if 'also present in parent' in ''.join(item['error_details'])]}
     return check
 
 # @check_function()
