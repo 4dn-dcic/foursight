@@ -114,7 +114,7 @@
         }
     },
     "biosource_cell_line_value": {
-        "title": "Cell line biosamples without cell_line metadata",
+        "title": "Cell line biosources without cell_line metadata",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
