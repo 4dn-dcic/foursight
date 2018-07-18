@@ -117,25 +117,25 @@
         "title": "Cell line biosamples without cell_line metadata",
         "group": "Metadata checks",
         "schedule": {},
-        "display": ["mastertest"]
+        "display": ["mastertest", "hotseat"]
     },
     "external_expsets_without_pub": {
         "title": "External experiment sets without a publication",
         "group": "Metadata checks",
         "schedule": {},
-        "display": ["mastertest"]
+        "display": ["mastertest", "hotseat"]
     },
     "expset_opfsets_unique_titles": {
         "title": "Experiment Sets with missing or duplicated titles for sets of other processed files",
         "group": "Metadata checks",
         "schedule": {},
-        "display": ["mastertest"]
+        "display": ["mastertest", "hotseat"]
     },
     "expset_opf_unique_files_in_experiments": {
         "title": "Other_processed_files collections with non-unique files",
         "group": "Metadata checks",
         "schedule": {},
-        "display": ["mastertest"]
+        "display": ["mastertest", "hotseat"]
     },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
