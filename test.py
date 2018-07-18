@@ -647,6 +647,8 @@ class TestCheckUtils(FSTest):
             body = chalice_resp.body
             if body.get('status') == 'success':
                 self.assertTrue(chalice_resp.status_code == 200)
+                if body.get('data') is None:  # check not run yet
+                    continue
                 self.assertTrue(body.get('data', {}).get('name') == get_check)
                 self.assertTrue(body.get('data', {}).get('status') in ['PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'])
             elif body.get('status') == 'error':

@@ -157,46 +157,106 @@ def biorxiv_is_now_published(connection, **kwargs):
     return check
 
 
-@check_function()
-def mcool_not_registered_with_higlass(connection, **kwargs):
-    check = init_check_res(connection, 'mcool_not_registered_with_higlass')
+@check_function(confirm_on_higlass=False, filetype='all')
+def files_not_registered_with_higlass(connection, **kwargs):
+    """
+    Used to check registration of files on higlass and also register them
+    through the patch_file_higlass_uid action.
+    If confirm_on_higlass is True, check each file by making a request to the
+    higlass server. Otherwise, just look to see if a higlass_uid is present in
+    the metadata.
+    The filetype arg allows you to specify which filetypes to operate on.
+    Must be one of: 'all', 'mcool', 'bg', or 'bw'
+    """
+    check = init_check_res(connection, 'files_not_registered_with_higlass')
     check.status = "FAIL"
     check.description = "not able to get data from fourfront"
+    # keep track of mcool, bg, and bw files separately
+    valid_types = ['mcool', 'bg', 'bw']
+    files_to_be_reg = {}
+    not_found_upload_key = []
+    not_found_s3 = []
+    if kwargs['filetype'] != 'all' and kwargs['filetype'] not in valid_types:
+        check.description = check.summary = "Filetype must be one of: %s" % (valid_types + ['all'])
+        return check
+    reg_filetypes = valid_types if kwargs['filetype'] == 'all' else [kwargs['filetype']]
     check.action = "patch_file_higlass_uid"
-
+    higlass_key = connection.ff_s3.get_higlass_key()
     # run the check
-    search_query = 'search/?file_format=mcool&type=FileProcessed&limit=all'
-    not_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-    file_to_be_reg = []
-    for procfile in not_reg:
-        if procfile.get('higlass_uid'):
-            # if we already registered with higlass continue
-            print(procfile.get('accession') + " already registered")
-            continue
-        if connection.ff_s3.does_key_exist(procfile['upload_key']):
-            print(procfile.get('accession') + " to be registered ")
-            file_to_be_reg.append(procfile)
-        else:
-            print(procfile.get('accession') + " no file on s3")
+    for ftype in reg_filetypes:
+        files_to_be_reg[ftype] = []
+        search_query = 'search/?file_format=%s&type=FileProcessed' % ftype
+        possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        for procfile in possibly_reg:
+            file_info = {
+                'accession': procfile['accession'],
+                'uuid': procfile['uuid'],
+                'file_format': procfile['file_format'],
+                'higlass_uid': procfile.get('higlass_uid')
+            }
+            # bg files use an bw file from extra files to register
+            # mcool and bw files use themselves
+            if ftype == 'bg':
+                for extra in procfile.get('extra_files', []):
+                    if extra['file_format'] == 'bw' and 'upload_key' in extra:
+                        file_info['upload_key'] = extra['upload_key']
+                        break
+                if 'upload_key' not in file_info:
+                    not_found_upload_key.append(file_info)
+                    continue
+            else:
+                if 'upload_key' in procfile:
+                    file_info['upload_key'] = procfile['upload_key']
+                else:
+                    not_found_upload_key.append(file_info['accession'])
+                    continue
+            # make sure file exists on s3
+            if not connection.ff_s3.does_key_exist(file_info['upload_key']):
+                not_found_s3.append(file_info)
+                continue
+            # check for higlass_uid and, if confirm_on_higlass is True, check higlass.4dnucleome.org
+            if file_info.get('higlass_uid'):
+                if kwargs['confirm_on_higlass'] is True:
+                    higlass_get = higlass_key['server'] + '/api/v1/tileset_info/?d=%s' % file_info['higlass_uid']
+                    hg_res = requests.get(higlass_get)
+                    # what should I check from the response?
+                    if hg_res.status_code >= 400:
+                        files_to_be_reg[ftype].append(file_info)
+                    elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
+                        files_to_be_reg[ftype].append(file_info)
+            else:
+                files_to_be_reg[ftype].append(file_info)
 
-    if not file_to_be_reg:
-        check.status = "PASS"
-        check.summary = check.description = "All mcool files with files on s3 appear to be registered"
+    check.full_output = {'files_not_registered': files_to_be_reg,
+                         'files_without_upload_key': not_found_upload_key,
+                         'files_not_found_on_s3': not_found_s3}
+    if not_found_upload_key:
+        check.status = "FAIL"
+        check.summary = check.description = "Error getting upload_key from files"
+    elif not_found_s3:
+        check.status = 'PASS'
+        check.summary = check.description = "Not all files are uploaded"
     else:
-        check.summary = check.description = "%s files found not registered with higlass" % str(len(file_to_be_reg))
-        check.full_output = file_to_be_reg
-        check.action_message = "Will attempt to patch higlass_uid for %s files." % str(len(file_to_be_reg))
-        check.allow_action = True  # allows the action to be run
-
+        check.status = 'PASS'
+    file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
+    if check.summary:
+        check.summary += '. %s files ready for registration' % file_count
+        check.description += '. %s files ready for registration. Run with confirm_on_higlass=True to check against the higlass server' % file_count
+    else:
+        check.summary = '%s files ready for registration' % file_count
+        check.description = check.summary + '. Run with confirm_on_higlass=True to check against the higlass server'
+    check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
+    check.allow_action = True  # allows the action to be run
     return check
 
 
 @action_function()
 def patch_file_higlass_uid(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_higlass_uid')
-    action_logs = {'patch_failure': [], 'patch_success': []}
+    action_logs = {'patch_failure': [], 'patch_success': [],
+                   'registration_failure': [], 'registration_success': 0}
     # get latest results
-    higlass_check = init_check_res(connection, 'mcool_not_registered_with_higlass')
+    higlass_check = init_check_res(connection, 'files_not_registered_with_higlass')
     if kwargs.get('called_by', None):
         higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
     else:
@@ -206,23 +266,37 @@ def patch_file_higlass_uid(connection, **kwargs):
     authentication = (higlass_key['key'], higlass_key['secret'])
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
-
-    for hit in higlass_check_result.get('full_output', []):
-        payload = {"filepath": connection.ff_s3.outfile_bucket + "/" + hit['upload_key'],
-                   "filetype": "cooler", "datatype": "matrix"}
-        res = requests.post(higlass_key['server'] + '/api/v1/link_tile/',
-                            data=json.dumps(payload), auth=authentication,
-                            headers=headers)
-        if res.status_code == 201:
-            # update the metadata file as well
-            patch_data = {'higlass_uid': res.json()['uuid']}
-            try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
-            except Exception as e:
-                acc_and_error = '\n'.join([hit['accession'], str(e)])
-                action_logs['patch_failure'].append(acc_and_error)
+    to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
+    for ftype, hits in to_be_registered.items():
+        for hit in hits:
+            payload = {"filepath": connection.ff_s3.outfile_bucket + "/" + hit['upload_key']}
+            if ftype == 'mcool':
+                payload['filetype'] = 'cooler'
+                payload['datatype'] = 'matrix'
+            elif ftype in ['bg', 'bw']:
+                payload['filetype'] = 'bigwig'
+                payload['datatype'] = 'vector'
+            # register with previous higlass_uid if already there
+            if 'higlass_uid' in hit:
+                payload['uuid'] = hit['higlass_uid']
+            res = requests.post(higlass_key['server'] + '/api/v1/link_tile/',
+                                data=json.dumps(payload), auth=authentication,
+                                headers=headers)
+            # update the metadata file as well, if uid wasn't already present or changed
+            if res.status_code == 201:
+                action_logs['registration_success'] += 1
+                res_uuid = res.json()['uuid']
+                if 'higlass_uid' not in hit or hit['higlass_uid'] != res_uuid:
+                    patch_data = {'higlass_uid': res_uuid}
+                    try:
+                        ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
+                    except Exception as e:
+                        acc_and_error = '\n'.join([hit['accession'], str(e)])
+                        action_logs['patch_failure'].append(acc_and_error)
+                    else:
+                        action_logs['patch_success'].append(hit['accession'])
             else:
-                action_logs['patch_success'].append(hit['accession'])
+                action_logs['registration_failure'].append(hit['accession'])
     action.status = 'DONE'
     action.output = action_logs
     return action
@@ -307,8 +381,8 @@ def change_in_item_counts(connection, **kwargs):
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H\:%M')
     search_query = ''.join(['search/?type=Item&frame=object&q=date_created:>=', date_str])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-    # add deleted items
-    search_query += '&status=deleted'
+    # add deleted/replaced items
+    search_query += '&status=deleted&status=replaced'
     search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env))
     search_output = []
     for res in search_resp:

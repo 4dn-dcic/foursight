@@ -92,13 +92,8 @@ def elastic_beanstalk_health(connection, **kwargs):
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = init_check_res(connection, 'status_of_elasticsearch_indices')
     ### the check
-    status_location = ''.join([connection.ff_es, '_cat/indices?v'])
-    resp = requests.get(status_location, timeout=20)
-    if resp.status_code >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to %s (status %s).' % (status_location, resp.status_code)
-        return check
-    indices = resp.text.split('\n')
+    client = es_utils.create_es_client(connection.ff_es, True)
+    indices = client.cat.indices(v=True).split('\n')
     split_indices = [ind.split() for ind in indices]
     headers = split_indices.pop(0)
     index_info = {} # for full output
@@ -163,15 +158,11 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = init_check_res(connection, 'indexing_records')
-    record_location = ''.join([connection.ff_es, 'indexing/indexing/_search?q=_exists_:indexing_status&size=1000&sort=uuid:desc'])
-    es_resp = requests.get(record_location, timeout=20)
-    if es_resp.status_code >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to %s (status %s).' % (record_location, es_resp.status_code)
-        return check
-    # 3 day timedelta
+    client = es_utils.create_es_client(connection.ff_es, True)
+    res = client.search(index='indexing', doc_type='indexing', sort='uuid:desc', size=1000,
+                        body={'query': {'query_string': {'query': '_exists_:indexing_status'}}})
     delta_days = datetime.timedelta(days=3)
-    all_records = es_resp.json().get('hits', {}).get('hits', [])
+    all_records = res.get('hits', {}).get('hits', [])
     recent_records = []
     warn_records = []
     for rec in all_records:

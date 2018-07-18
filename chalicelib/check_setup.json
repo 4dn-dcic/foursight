@@ -177,8 +177,8 @@
             }
         }
     },
-    "mcool_not_registered_with_higlass": {
-        "title": "mcool files not registered with higlass",
+    "files_not_registered_with_higlass": {
+        "title": "Files not registered with higlass",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
@@ -246,7 +246,15 @@
         "group": "Elasticsearch checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
