@@ -632,12 +632,3 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     check.brief_output = {'missing title': [item['uuid'] for item in errors if 'missing' in ''.join(item['error_details'])],
                           'duplicate title': [item['uuid'] for item in errors if 'also present in parent' in ''.join(item['error_details'])]}
     return check
-
-# @check_function()
-# def proc_files_without_contributing_labs(connection, **kwargs):
-#     check = init_check_res(connection, 'proc_files_without_contributing_labs')
-#     pfile_search = ('search/?lab.display_title=4DN+DCIC+Lab%2C+HMS'
-#                     '&status%21=to+be+uploaded+by+workflow&type=FileProcessed')
-#     pfiles = ff_utils.search_metadata(pfile_search, ff_env=connection.ff_env)
-#     pfile_dict = {pf['@id']: [c_lab['@id'] for c_lab in pf['contributing_labs'] if
-#                               pf.get('contributing_labs')] for pf in pfiles}
