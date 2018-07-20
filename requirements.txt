@@ -1,8 +1,6 @@
-boto3>=1.7.24
-botocore<1.11.0,>=1.10.40
-requests==2.18.4
+dcicutils>=0.4.0
+requests==2.19.1
 PyJWT==1.5.3
 Jinja2==2.9.6
 MarkupSafe==1.0
-dcicutils>=0.3.2
 -e git+git://github.com/4dn-dcic/chalice.git#egg=chalice
