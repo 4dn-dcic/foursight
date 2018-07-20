@@ -67,7 +67,7 @@ def external_expsets_without_pub(connection, **kwargs):
             no_pub.append({'uuid': expset['uuid'],
                            '@id': expset['@id'],
                            'description': expset.get('description'),
-                           'lab': expset['lab'].get('display_title'),
+                           'lab': expset.get('lab'),
                            'error': 'Missing attribution to a publication'})
     if no_pub:
         check.status = 'WARN'
