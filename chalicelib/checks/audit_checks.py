@@ -90,8 +90,8 @@ def expset_opfsets_unique_titles(connection, **kwargs):
     '''
     check = init_check_res(connection, 'expset_opfsets_unique_titles')
 
-    opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value',
-                                           ff_env=connection.ff_env, page_limit=25)
+    opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value&frame=object',
+                                           ff_env=connection.ff_env, page_limit=50)
     errors = []
     for expset in opf_expsets:
         e = []
