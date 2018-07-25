@@ -34,13 +34,11 @@ def ten_min_checks(event):
     queue_scheduled_checks('all', 'ten_min_checks')
 
 
-# run every 30 mins
 @app.schedule(foursight_cron_by_schedule[STAGE]['thirty_min_checks'])
 def thirty_min_checks(event):
     queue_scheduled_checks('all','thirty_min_checks')
 
 
-# run every day at 11 am UTC
 @app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks'])
 def morning_checks(event):
     queue_scheduled_checks('all', 'morning_checks')
