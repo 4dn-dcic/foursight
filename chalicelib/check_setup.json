@@ -113,6 +113,54 @@
             }
         }
     },
+    "biosource_cell_line_value": {
+        "title": "Cell line biosources without cell_line metadata",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "external_expsets_without_pub": {
+        "title": "External experiment sets without a publication",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "expset_opfsets_unique_titles": {
+        "title": "Experiment Sets with missing or duplicated titles for sets of other processed files",
+        "group": "Audit checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "expset_opf_unique_files_in_experiments": {
+        "title": "Other_processed_files collections with non-unique files",
+        "group": "Audit checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": ["expset_opfsets_unique_titles"]
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
