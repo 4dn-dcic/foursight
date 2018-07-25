@@ -8,26 +8,43 @@ from chalicelib.app_utils import *
 
 app = Chalice(app_name='foursight')
 app.debug = True
+STAGE = os.environ['chalice_stage']
 
 ######### SCHEDULED FXNS #########
 
+# this dictionary defines the CRON schedules for the dev and prod foursight
+# stagger them to reduce the load on Fourfront. Times are UTC
+# info: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+# TODO: remove hardcoding of stage
+foursight_cron_by_schedule = {
+    'prod': {
+        'ten_min_checks': Cron('0/10', '*', '*', '*', '?', '*'),
+        'thirty_min_checks': Cron('0/30', '*', '*', '*', '?', '*'),
+        'morning_checks': Cron('0', '10', '*', '*', '?', '*')
+    },
+    'dev': {
+        'ten_min_checks': Cron('5/10', '*', '*', '*', '?', '*'),
+        'thirty_min_checks': Cron('15/30', '*', '*', '*', '?', '*'),
+        'morning_checks': Cron('30', '10', '*', '*', '?', '*')
+    }
+}
 
-# run every 10 mins
-@app.schedule(Rate(10, unit=Rate.MINUTES))
+@app.schedule(foursight_cron_by_schedule[STAGE]['ten_min_checks'])
 def ten_min_checks(event):
     queue_scheduled_checks('all', 'ten_min_checks')
 
 
 # run every 30 mins
-@app.schedule(Rate(30, unit=Rate.MINUTES))
+@app.schedule(foursight_cron_by_schedule[STAGE]['thirty_min_checks'])
 def thirty_min_checks(event):
     queue_scheduled_checks('all','thirty_min_checks')
 
 
 # run every day at 11 am UTC
-@app.schedule(Cron(0, 11, '*', '*', '?', '*'))
+@app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks'])
 def morning_checks(event):
     queue_scheduled_checks('all', 'morning_checks')
+
 
 ######### END SCHEDULED FXNS #########
 
