@@ -8,7 +8,7 @@ from chalicelib.app_utils import *
 
 app = Chalice(app_name='foursight')
 app.debug = True
-STAGE = os.environ['chalice_stage']
+STAGE = os.environ.get('chalice_stage', 'dev')
 
 ######### SCHEDULED FXNS #########
 
