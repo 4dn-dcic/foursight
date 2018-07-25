@@ -420,6 +420,12 @@ def clean_up_travis_queues(connection, **kwargs):
 def manage_old_filebeat_logs(connection, **kwargs):
     import curator
     check = init_check_res(connection, 'manage_old_filebeat_logs')
+
+    # temporary -- disable this check
+    check.status = 'PASS'
+    check.description = 'Not currently running this check'
+    return check
+
     check.status = "WARNING"
     check.description = "not able to get data from ES"
 
