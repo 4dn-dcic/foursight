@@ -285,8 +285,9 @@ def secondary_queue_deduplication(connection, **kwargs):
     deleted = 0
     deduplicated = 0
     total_msgs = 0
-    problem_msgs = []
     replaced = 0
+    repeat_replaced = 0
+    problem_msgs = []
     done = False
     elapsed = round(time.time() - t0, 2)
     failed = []
@@ -294,7 +295,8 @@ def secondary_queue_deduplication(connection, **kwargs):
     exit_reason = 'out of time'
     dedup_msg = 'Deduplicated: %s' % kwargs['uuid']
     while elapsed < time_limit:
-        if (replaced + deduplicated) >= starting_count:
+        # end if we are spinning our wheels replacing the same uuids
+        if (replaced + repeat_replaced) >= starting_count:
             exit_reason = 'starting uuids fully covered'
             break
         send_uuids = set()
@@ -323,13 +325,15 @@ def secondary_queue_deduplication(connection, **kwargs):
             }
             # every item gets deleted; original uuids get re-sent
             to_delete.append(to_process)
-            if msg_uuid in seen_uuids and dedup_msg not in msg_body.get('fs_detail', ''):
+            if msg_uuid in seen_uuids and msg_body.get('fs_detail', '') != dedup_msg:
                 deduplicated += 1
             else:
                 # don't increment replaced count if we've seen the item before
                 if msg_uuid not in seen_uuids:
                     replaced += 1
-                time.sleep(0.001)  # slight sleep for time-based Id
+                else:
+                    repeat_replaced += 1
+                time.sleep(0.0001)  # slight sleep for time-based Id
                 # add foursight uuid stamp
                 msg_body['fs_detail'] = dedup_msg
                 send_info = {
@@ -369,14 +373,19 @@ def secondary_queue_deduplication(connection, **kwargs):
         'uuids_covered': len(seen_uuids),
         'deduplicated': deduplicated,
         'replaced': replaced,
+        'repeat_replaced': repeat_replaced,
         'time': elapsed,
         'problem_messages': problem_msgs,
         'exit_reason': exit_reason
     }
-    check.admin_output = list(seen_uuids)
+    # these are some standard things about the result that should always be true
+    if replaced != len(seen_uuids) or (deduplicated + replaced + repeat_replaced) != total_msgs:
+        check.status = 'FAIL'
+        check.summary = 'Message totals do not add up. Report to Carl'
     if failed:
-        check.status = 'WARN'
-        check.summary = 'Queue deduplication encountered an error'
+        if check.status != 'FAIL':
+            check.status = 'WARN'
+            check.summary = 'Queue deduplication encountered an error'
         check.full_output['failed'] = failed
     else:
         check.status = 'PASS'
