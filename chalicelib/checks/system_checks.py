@@ -284,6 +284,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     sent = 0
     deleted = 0
     deduplicated = 0
+    total_msgs = 0
     problem_msgs = []
     replaced = 0
     done = False
@@ -291,6 +292,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     failed = []
     seen_uuids = set()
     exit_reason = 'out of time'
+    dedup_msg = 'Deduplicated: %s' % kwargs['uuid']
     while elapsed < time_limit:
         if (replaced + deduplicated) >= starting_count:
             exit_reason = 'starting uuids fully covered'
@@ -313,6 +315,7 @@ def secondary_queue_deduplication(connection, **kwargs):
             except json.JSONDecodeError:
                 problem_msgs.append(batch[i]['Body'])
                 continue
+            total_msgs += 1
             msg_uuid = msg_body['uuid']
             to_process = {
                 'Id': batch[i]['MessageId'],
@@ -320,7 +323,7 @@ def secondary_queue_deduplication(connection, **kwargs):
             }
             # every item gets deleted; original uuids get re-sent
             to_delete.append(to_process)
-            if msg_uuid in seen_uuids and 'Deduplicated' not in msg_body.get('fs_detail', ''):
+            if msg_uuid in seen_uuids and dedup_msg not in msg_body.get('fs_detail', ''):
                 deduplicated += 1
             else:
                 # don't increment replaced count if we've seen the item before
@@ -328,7 +331,7 @@ def secondary_queue_deduplication(connection, **kwargs):
                     replaced += 1
                 time.sleep(0.001)  # slight sleep for time-based Id
                 # add foursight uuid stamp
-                msg_body['fs_detail'] = 'Deduplicated: %s' % kwargs['uuid']
+                msg_body['fs_detail'] = dedup_msg
                 send_info = {
                     'Id': str(int(time.time() * 1000000)),
                     'MessageBody': json.dumps(msg_body)
@@ -362,6 +365,7 @@ def secondary_queue_deduplication(connection, **kwargs):
         elapsed = round(time.time() - t0, 2)
 
     check.full_output = {
+        'total_messages_covered': total_msgs,
         'uuids_covered': len(seen_uuids),
         'deduplicated': deduplicated,
         'replaced': replaced,
@@ -369,6 +373,7 @@ def secondary_queue_deduplication(connection, **kwargs):
         'problem_messages': problem_msgs,
         'exit_reason': exit_reason
     }
+    check.admin_output = list(seen_uuids)
     if failed:
         check.status = 'WARN'
         check.summary = 'Queue deduplication encountered an error'
