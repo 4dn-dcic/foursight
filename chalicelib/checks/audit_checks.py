@@ -173,3 +173,60 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     check.brief_output = {'missing title': [item['uuid'] for item in errors if 'missing' in ''.join(item['error_details'])],
                           'duplicate title': [item['uuid'] for item in errors if 'also present in parent' in ''.join(item['error_details'])]}
     return check
+
+
+@check_function()
+def repsets_have_bio_reps(connection, **kwargs):
+    check = init_check_res(connection, 'repsets_have_bio_reps')
+
+    results = ff_utils.search_metadata('search/?type=ExperimentSetReplicate&frame=object',
+                                       ff_env=connection.ff_env, page_limit=50)
+
+    audits = {'single_experiment': [], 'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
+    by_exp = {}
+    for result in results: # maybe also create dict by experiment
+        rep_dict = {}
+        exp_audits = []
+        if result.get('replicate_exps'):
+            rep_dict = {}
+            for exp in result['replicate_exps']:
+                if exp['bio_rep_no'] in rep_dict.keys():
+                    rep_dict[exp['bio_rep_no']].append(exp['tec_rep_no'])
+                else:
+                    rep_dict[exp['bio_rep_no']] = [exp['tec_rep_no']]
+        if rep_dict:
+        # check if only 1 experiment present in set
+            if len(result['replicate_exps']) == 1:
+                audits['single_experiment'].append('{} contains only 1 experiment'.format(result['@id']))
+                exp_audits.append('single experiment')
+            # check for technical replicates only
+            elif len(rep_dict.keys()) == 1:
+                audits['single_biorep'].append('{} contains only a single biological replicate'.format(result['@id']))
+                exp_audits.append('single bio replicate')
+            # check if bio rep numbers not in sequence
+        elif sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
+                audits['biorep_nums'].append('Biological replicate numbers of {} are not in sequence:'
+                                             ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
+                exp_audits.append('bio replicate numbers not in sequence')
+        # check if tech rep numbers not in sequence
+            else:
+                for key, val in rep_dict.items():
+                    if sorted(val) != list(range(min(val), max(val) + 1)):
+                        audits['techrep_nums'].append('Technical replicates of Bio Rep {} in {} are not in '
+                                                      'sequence {}'.format(key, result['@id'], str(sorted(val))))
+                        exp_audits.append('tech replicates of bio replicate {}'
+                                          ' not in sequence'.format(key))
+        if exp_audits:
+            by_exp[result['@id']] = exp_audits
+
+    if by_exp:
+        check.status = 'WARN'
+        check.summary = 'Replicate experiment sets found with replicate number issues'
+        check.description = '{} replicate experiment sets found with replicate number issues'.format(len(by_exp.keys()))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No replicate experiment sets found with replicate number issues'
+        check.description = '0 replicate experiment sets found with replicate number issues'
+    check.full_output = audits
+    check.brief_output = by_exp
+    return check

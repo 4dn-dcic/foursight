@@ -161,6 +161,18 @@
             }
         }
     },
+    "repsets_have_bio_reps": {
+        "title": "Replicate experiment sets with replicate number issues",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
