@@ -475,8 +475,8 @@ def patch_file_size(connection, **kwargs):
 
 
 @check_function(
-    add_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title=No%20value',
-    remove_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title!=No%20value',
+    add_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title=No%20value&frame=object',
+    remove_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title!=No%20value&frame=object',
     header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
 )
 def prepare_static_headers(connection, **kwargs):
