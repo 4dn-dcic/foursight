@@ -204,7 +204,7 @@ def repsets_have_bio_reps(connection, **kwargs):
                 audits['single_biorep'].append('{} contains only a single biological replicate'.format(result['@id']))
                 exp_audits.append('single bio replicate')
             # check if bio rep numbers not in sequence
-        elif sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
+            elif sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
                 audits['biorep_nums'].append('Biological replicate numbers of {} are not in sequence:'
                                              ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
                 exp_audits.append('bio replicate numbers not in sequence')
