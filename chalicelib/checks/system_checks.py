@@ -284,15 +284,19 @@ def secondary_queue_deduplication(connection, **kwargs):
     sent = 0
     deleted = 0
     deduplicated = 0
-    problem_msgs = []
+    total_msgs = 0
     replaced = 0
+    repeat_replaced = 0
+    problem_msgs = []
     done = False
     elapsed = round(time.time() - t0, 2)
     failed = []
     seen_uuids = set()
     exit_reason = 'out of time'
+    dedup_msg = 'Deduplicated: %s' % kwargs['uuid']
     while elapsed < time_limit:
-        if (replaced + deduplicated) >= starting_count:
+        # end if we are spinning our wheels replacing the same uuids
+        if (replaced + repeat_replaced) >= starting_count:
             exit_reason = 'starting uuids fully covered'
             break
         send_uuids = set()
@@ -313,6 +317,7 @@ def secondary_queue_deduplication(connection, **kwargs):
             except json.JSONDecodeError:
                 problem_msgs.append(batch[i]['Body'])
                 continue
+            total_msgs += 1
             msg_uuid = msg_body['uuid']
             to_process = {
                 'Id': batch[i]['MessageId'],
@@ -320,15 +325,17 @@ def secondary_queue_deduplication(connection, **kwargs):
             }
             # every item gets deleted; original uuids get re-sent
             to_delete.append(to_process)
-            if msg_uuid in seen_uuids and 'Deduplicated' not in msg_body.get('fs_detail', ''):
+            if msg_uuid in seen_uuids and msg_body.get('fs_detail', '') != dedup_msg:
                 deduplicated += 1
             else:
                 # don't increment replaced count if we've seen the item before
                 if msg_uuid not in seen_uuids:
                     replaced += 1
-                time.sleep(0.001)  # slight sleep for time-based Id
+                else:
+                    repeat_replaced += 1
+                time.sleep(0.0001)  # slight sleep for time-based Id
                 # add foursight uuid stamp
-                msg_body['fs_detail'] = 'Deduplicated: %s' % kwargs['uuid']
+                msg_body['fs_detail'] = dedup_msg
                 send_info = {
                     'Id': str(int(time.time() * 1000000)),
                     'MessageBody': json.dumps(msg_body)
@@ -362,16 +369,23 @@ def secondary_queue_deduplication(connection, **kwargs):
         elapsed = round(time.time() - t0, 2)
 
     check.full_output = {
+        'total_messages_covered': total_msgs,
         'uuids_covered': len(seen_uuids),
         'deduplicated': deduplicated,
         'replaced': replaced,
+        'repeat_replaced': repeat_replaced,
         'time': elapsed,
         'problem_messages': problem_msgs,
         'exit_reason': exit_reason
     }
+    # these are some standard things about the result that should always be true
+    if replaced != len(seen_uuids) or (deduplicated + replaced + repeat_replaced) != total_msgs:
+        check.status = 'FAIL'
+        check.summary = 'Message totals do not add up. Report to Carl'
     if failed:
-        check.status = 'WARN'
-        check.summary = 'Queue deduplication encountered an error'
+        if check.status != 'FAIL':
+            check.status = 'WARN'
+            check.summary = 'Queue deduplication encountered an error'
         check.full_output['failed'] = failed
     else:
         check.status = 'PASS'
@@ -418,50 +432,56 @@ def clean_up_travis_queues(connection, **kwargs):
 
 @check_function()
 def manage_old_filebeat_logs(connection, **kwargs):
-    import curator
+    # import curator
     check = init_check_res(connection, 'manage_old_filebeat_logs')
-    check.status = "WARNING"
-    check.description = "not able to get data from ES"
 
-    # configure this thing
-    start_backup = 14
-    trim_backup = 30
-    timestring = '%Y.%m.%d'
-
-    log_index = 'filebeat-'
-    #TODO: this probably needs to change when namespacing is implemented
-    snapshot = 'backup-%s-' % connection.ff_env
-    today = datetime.datetime.today().strftime(timestring)
-
-    # run the check
-    client = es_utils.create_es_client(connection.ff_es, True)
-    # store backups in foursight s3, cause I know we have access to this..
-    # maybe this should change?
-    es_utils.create_snapshot_repo(client, snapshot[:-1], 'foursight-runs')
-
-    # amazon es auto backups first 14 days, so we only need backup after that
-    ilo = es_utils.get_index_list(client, log_index, start_backup, timestring)
-
-    if len(ilo.indices) > 0:
-        try:
-            new_snapshot = curator.Snapshot(ilo, repository=snapshot[:-1], name='%s%s' % (snapshot, today))
-            new_snapshot.do_action()
-            check.full_output = "Snapshot taken for %s indices" % len(ilo.indices)
-        except curator.exceptions.FailedExecution as e:
-            # snapshot already exists
-            if "Invalid snapshot name" in str(e):
-                check.full_output = "Snapshot already exists with same name for %s indices, so skipping." % len(ilo.indices)
-            else:
-                raise(e)
-
-    # now trim further to only be indexes 30-days or older and delete
-    ilo = es_utils.get_index_list(client, log_index, trim_backup, timestring, ilo=ilo)
-
-    if len(ilo.indices) > 0:
-        cleanupIndices = curator.DeleteIndices(ilo)
-        cleanupIndices.do_action()
-        check.full_output += " Cleaned up %s old indices" % len(ilo.indices)
-
-    check.status = "PASS"
-    check.description = 'Performed auto-backup to repository %s' % snapshot[:-1]
+    # temporary -- disable this check
+    check.status = 'PASS'
+    check.description = 'Not currently running this check'
     return check
+
+    # check.status = "WARNING"
+    # check.description = "not able to get data from ES"
+    #
+    # # configure this thing
+    # start_backup = 14
+    # trim_backup = 30
+    # timestring = '%Y.%m.%d'
+    #
+    # log_index = 'filebeat-'
+    # #TODO: this probably needs to change when namespacing is implemented
+    # snapshot = 'backup-%s-' % connection.ff_env
+    # today = datetime.datetime.today().strftime(timestring)
+    #
+    # # run the check
+    # client = es_utils.create_es_client(connection.ff_es, True)
+    # # store backups in foursight s3, cause I know we have access to this..
+    # # maybe this should change?
+    # es_utils.create_snapshot_repo(client, snapshot[:-1], 'foursight-runs')
+    #
+    # # amazon es auto backups first 14 days, so we only need backup after that
+    # ilo = es_utils.get_index_list(client, log_index, start_backup, timestring)
+    #
+    # if len(ilo.indices) > 0:
+    #     try:
+    #         new_snapshot = curator.Snapshot(ilo, repository=snapshot[:-1], name='%s%s' % (snapshot, today))
+    #         new_snapshot.do_action()
+    #         check.full_output = "Snapshot taken for %s indices" % len(ilo.indices)
+    #     except curator.exceptions.FailedExecution as e:
+    #         # snapshot already exists
+    #         if "Invalid snapshot name" in str(e):
+    #             check.full_output = "Snapshot already exists with same name for %s indices, so skipping." % len(ilo.indices)
+    #         else:
+    #             raise(e)
+    #
+    # # now trim further to only be indexes 30-days or older and delete
+    # ilo = es_utils.get_index_list(client, log_index, trim_backup, timestring, ilo=ilo)
+    #
+    # if len(ilo.indices) > 0:
+    #     cleanupIndices = curator.DeleteIndices(ilo)
+    #     cleanupIndices.do_action()
+    #     check.full_output += " Cleaned up %s old indices" % len(ilo.indices)
+    #
+    # check.status = "PASS"
+    # check.description = 'Performed auto-backup to repository %s' % snapshot[:-1]
+    # return check

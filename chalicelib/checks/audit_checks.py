@@ -71,11 +71,11 @@ def external_expsets_without_pub(connection, **kwargs):
                            'error': 'Missing attribution to a publication'})
     if no_pub:
         check.status = 'WARN'
-        check.summary = 'External experiment sets found without associated publication'
+        check.summary = 'External experiment sets found without associated publication. Searched %s' % len(ext)
         check.description = '{} external experiment sets are missing attribution to a publication.'.format(len(no_pub))
     else:
         check.status = 'PASS'
-        check.summary = 'No external experiment sets are missing publication'
+        check.summary = 'No external experiment sets are missing publication. Searched %s' % len(ext)
         check.description = '0 external experiment sets are missing attribution to a publication.'
     check.full_output = no_pub
     check.brief_output = [item['uuid'] for item in no_pub]
