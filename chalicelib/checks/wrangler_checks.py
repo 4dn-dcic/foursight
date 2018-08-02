@@ -472,3 +472,68 @@ def patch_file_size(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function(
+    add_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title=No%20value',
+    remove_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title!=No%20value',
+    header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
+)
+def prepare_static_headers(connection, **kwargs):
+    check = init_check_res(connection, 'prepare_static_headers')
+    # first ensure it's a good static_section
+    header_res = ff_utils.get_metadata(kwargs['header_at_id'], key=connection.ff_keys, ff_env=connection.ff_env)
+    if not header_res.get('uuid'):
+        check.status = 'FAIL'
+        check.summary = 'Could not find the given static section'
+        check.full_output = header_res
+        return check
+
+    check.full_output = {'static_section': kwargs['header_at_id'], 'to_add': {}, 'to_remove': {}}
+    search_res_add = ff_utils.search_metadata(kwargs['add_search'], key=connection.ff_keys, ff_env=connection.ff_env)
+    # add entries keyed by item uuid with value of the static headers
+    for search_res in search_res_add:
+        curr_headers = search_res.get('static_headers', [])
+        if kwargs['header_at_id'] not in curr_headers:
+            curr_headers.append(kwargs['header_at_id'])
+            check.full_output['to_add'][search_res['@id']] = curr_headers
+
+    search_res_remove = ff_utils.search_metadata(kwargs['remove_search'], key=connection.ff_keys, ff_env=connection.ff_env)
+    for search_res in search_res_remove:
+        curr_headers = search_res.get('static_headers', [])
+        if kwargs['header_at_id'] in curr_headers:
+            curr_headers.remove(kwargs['header_at_id'])
+            check.full_output['to_remove'][search_res['@id']] = curr_headers
+
+    if check.full_output['to_add'] or check.full_output['to_remove']:
+        check.summary = 'Ready to add and/or remove static header'
+        check.description = 'Ready to add and/or remove static header: %s' % kwargs['header_at_id']
+        check.allow_action = True
+        check.action_message = 'Will add static header to %s items and remove it from %s items' % (check.full_output['to_add'], check.full_output['to_remove'])
+    else:
+        check.summary = 'Static header is all set'
+    return check
+
+
+@action_function()
+def patch_static_headers(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers')
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    # get latest results from prepare_static_headers
+    headers_check = init_check_res(connection, 'prepare_static_headers')
+    headers_check_result = headers_check.get_result_by_uuid(kwargs['called_by'])
+    # the dictionaries can be combined
+    total_patches = headers_check_result['full_output']['to_add']
+    total_patches.update(headers_check_result['full_output']['to_remove'])
+    for item, headers in total_patches.items():
+        patch_data = {'static_headers': headers}
+        try:
+            ff_utils.patch_metadata(patch_data, obj_id=item, key=connection.ff_keys, ff_env=connection.ff_env)
+        except Exception as e:
+            patch_error = '\n'.join([item, str(e)])
+            action_logs['patch_failure'].append(patch_error)
+        else:
+            action_logs['patch_success'].append(item)
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
