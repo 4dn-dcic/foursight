@@ -482,30 +482,38 @@ def patch_file_size(connection, **kwargs):
 def prepare_static_headers(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers')
     # this GET will fail if the static header does not exist
-    header_res = ff_utils.get_metadata(kwargs['header_at_id'], key=connection.ff_keys, ff_env=connection.ff_env)
+    header_res = ff_utils.get_metadata(kwargs['header_at_id'],
+                                       key=connection.ff_keys, ff_env=connection.ff_env)
     check.action = 'patch_static_headers'
     check.full_output = {'static_section': kwargs['header_at_id'], 'to_add': {}, 'to_remove': {}}
-    search_res_add = ff_utils.search_metadata(kwargs['add_search'], key=connection.ff_keys, ff_env=connection.ff_env)
-    # add entries keyed by item uuid with value of the static headers
-    for search_res in search_res_add:
-        curr_headers = search_res.get('static_headers', [])
-        if kwargs['header_at_id'] not in curr_headers:
-            curr_headers.append(kwargs['header_at_id'])
-            check.full_output['to_add'][search_res['@id']] = curr_headers
 
-    search_res_remove = ff_utils.search_metadata(kwargs['remove_search'], key=connection.ff_keys, ff_env=connection.ff_env)
-    for search_res in search_res_remove:
-        curr_headers = search_res.get('static_headers', [])
-        if kwargs['header_at_id'] in curr_headers:
-            curr_headers.remove(kwargs['header_at_id'])
-            check.full_output['to_remove'][search_res['@id']] = curr_headers
+    # add entries keyed by item uuid with value of the static headers
+    if kwargs['add_search']:
+        search_res_add = ff_utils.search_metadata(kwargs['add_search'],
+                                                  key=connection.ff_keys,
+                                                  ff_env=connection.ff_env)
+        for search_res in search_res_add:
+            curr_headers = search_res.get('static_headers', [])
+            if kwargs['header_at_id'] not in curr_headers:
+                curr_headers.append(kwargs['header_at_id'])
+                check.full_output['to_add'][search_res['@id']] = curr_headers
+
+    if kwargs['remove_search']:
+        search_res_remove = ff_utils.search_metadata(kwargs['remove_search'],
+                                                     key=connection.ff_keys,
+                                                     ff_env=connection.ff_env)
+        for search_res in search_res_remove:
+            curr_headers = search_res.get('static_headers', [])
+            if kwargs['header_at_id'] in curr_headers:
+                curr_headers.remove(kwargs['header_at_id'])
+                check.full_output['to_remove'][search_res['@id']] = curr_headers
 
     check.status = 'PASS'
     if check.full_output['to_add'] or check.full_output['to_remove']:
         check.summary = 'Ready to add and/or remove static header'
         check.description = 'Ready to add and/or remove static header: %s' % kwargs['header_at_id']
         check.allow_action = True
-        check.action_message = 'Will add static header to %s items and remove it from %s items' % (check.full_output['to_add'], check.full_output['to_remove'])
+        check.action_message = 'Will add static header to %s items and remove it from %s items' % (len(check.full_output['to_add']), len(check.full_output['to_remove']))
     else:
         check.summary = 'Static header is all set'
     return check
