@@ -173,6 +173,18 @@
             }
         }
     },
+    "tier1_metadata_present": {
+        "title": "Tier 1 Biosamples with Missing Metadata",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",

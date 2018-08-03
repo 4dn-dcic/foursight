@@ -230,3 +230,34 @@ def repsets_have_bio_reps(connection, **kwargs):
     check.full_output = audits
     check.brief_output = by_exp
     return check
+
+
+@check_function()
+def tier1_metadata_present(connection, **kwargs):
+    check = init_check_res(connection, 'tier1_metadata_present')
+
+    results = ff_utils.search_metadata('search/?biosource.cell_line_tier=Tier+1&type=Biosample',
+                                       ff_env=connection.ff_env)
+    missing = {'cell_culture_details': [], 'culture_start_date': [],
+               'culture_duration': [], 'morphology_image': []}
+    for result in results:
+        if len(result.get('biosource')) != 1:
+            continue
+        elif not result.get('cell_culture_details'):
+            missing['cell_culture_details'].append(result['@id'])
+        else:
+            for item in ['culture_start_date', 'culture_duration', 'morphology_image']:
+                if not result['cell_culture_details'].get(item):
+                    missing[item].append(result['@id'])
+    flagged = list(set([bs for val in missing.values() for bs in val]))
+    if flagged:
+        check.status = 'WARN'
+        check.summary = 'Tier 1 biosamples found missing required metadata'
+        check.description = '{} tier 1 biosamples found missing required metadata'.format(len(flagged))
+    else:
+        check.status = 'PASS'
+        check.summary = 'All Tier 1 biosamples have required metadata'
+        check.description = '0 tier 1 biosamples found missing required metadata'
+    check.full_output = missing
+    check.brief_output = flagged
+    return check 
