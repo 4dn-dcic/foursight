@@ -481,14 +481,9 @@ def patch_file_size(connection, **kwargs):
 )
 def prepare_static_headers(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers')
-    # first ensure it's a good static_section
+    # this GET will fail if the static header does not exist
     header_res = ff_utils.get_metadata(kwargs['header_at_id'], key=connection.ff_keys, ff_env=connection.ff_env)
-    if not header_res.get('uuid'):
-        check.status = 'FAIL'
-        check.summary = 'Could not find the given static section'
-        check.full_output = header_res
-        return check
-
+    check.action = 'patch_static_headers'
     check.full_output = {'static_section': kwargs['header_at_id'], 'to_add': {}, 'to_remove': {}}
     search_res_add = ff_utils.search_metadata(kwargs['add_search'], key=connection.ff_keys, ff_env=connection.ff_env)
     # add entries keyed by item uuid with value of the static headers
