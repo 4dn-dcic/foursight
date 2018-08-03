@@ -494,6 +494,9 @@ def prepare_static_headers(connection, **kwargs):
                                                   ff_env=connection.ff_env)
         for search_res in search_res_add:
             curr_headers = search_res.get('static_headers', [])
+            # handle case where frame != object
+            if isinstance(curr_headers[0], dict):
+                curr_headers = [obj['@id'] for obj in curr_headers]
             if kwargs['header_at_id'] not in curr_headers:
                 curr_headers.append(kwargs['header_at_id'])
                 check.full_output['to_add'][search_res['@id']] = curr_headers
@@ -504,6 +507,9 @@ def prepare_static_headers(connection, **kwargs):
                                                      ff_env=connection.ff_env)
         for search_res in search_res_remove:
             curr_headers = search_res.get('static_headers', [])
+            # handle case where frame != object
+            if isinstance(curr_headers[0], dict):
+                curr_headers = [obj['@id'] for obj in curr_headers]
             if kwargs['header_at_id'] in curr_headers:
                 curr_headers.remove(kwargs['header_at_id'])
                 check.full_output['to_remove'][search_res['@id']] = curr_headers
