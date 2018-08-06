@@ -275,7 +275,7 @@ def exp_has_raw_files(connection, **kwargs):
     exps = list(set([exp['@id'] for fastq in bad_status for exp in fastq.get('experiments') if fastq.get('experiments')]))
     missing_files = []
     for expt in exps:
-        response = ff_utils.search_metadata(expt, ff_env=connection.ff_env)
+        result = ff_utils.get_metadata(expt, ff_env=connection.ff_env)
         raw_files = False
         if result.get('files'):
             for fastq in result.get('files'):
@@ -283,7 +283,7 @@ def exp_has_raw_files(connection, **kwargs):
                     raw_files = True
                     break
         if not raw_files:
-            missing_files.append(expt['@id'])
+            missing_files.append(expt)
     if missing_files:
         check.status = 'WARN'
         check.summary = 'Experiments missing raw files found'
