@@ -185,6 +185,18 @@
             }
         }
     },
+    "exp_has_raw_files": {
+        "title": "Experiments missing raw files",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
