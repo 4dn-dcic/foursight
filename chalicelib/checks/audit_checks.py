@@ -332,7 +332,7 @@ def page_children_routes(connection, **kwargs):
     check = init_check_res(connection, 'page_children_routes')
 
     page_search = 'search/?type=Page&format=json&children.name%21=No+value'
-    results = ff.search_metadata(page_search, ff_env="data")
+    results = ff_utils.search_metadata(page_search, ff_env=connection.ff_env)
     problem_routes = {}
     for result in results:
         bad_children = [child['name'] for child in result['children'] if
