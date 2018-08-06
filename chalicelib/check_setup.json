@@ -197,6 +197,18 @@
             }
         }
     },
+    "paired_end_info_consistent": {
+        "title": "Fastq files with inconsistent paired end information",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
