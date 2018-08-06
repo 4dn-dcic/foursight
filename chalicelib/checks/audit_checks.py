@@ -303,8 +303,8 @@ def paired_end_info_consistent(connection, **kwargs):
     search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
     search2 = 'search/?type=FileFastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
 
-    results1 = ff.search_metadata(search1 + '&frame=object', ff_env="data")
-    results2 = ff.search_metadata(search2 + '&frame=object', ff_env="data")
+    results1 = ff_utils.search_metadata(search1 + '&frame=object', ff_env=connection.ff_env)
+    results2 = ff_utils.search_metadata(search2 + '&frame=object', ff_env=connection.ff_env)
     # for result1 in results1:
 
     results = {'paired with file missing paired_end number':
@@ -312,10 +312,10 @@ def paired_end_info_consistent(connection, **kwargs):
                'file with paired_end number missing "paired with" related_file':
                [result2['@id'] for result2 in results2]}
 
-    if results:
+    if [val for val in results.values() if val]:
         check.status = 'WARN'
         check.summary = 'Inconsistencies found in FileFastq paired end info'
-        check.description = ('{} files found with a "paired with" related_file but missing a paired_end number;'
+        check.description = ('{} files found with a "paired with" related_file but missing a paired_end number; '
                              '{} files found with a paired_end number but missing related_file info'
                              ''.format(len(results['paired with file missing paired_end number']),
                                        len(results['file with paired_end number missing "paired with" related_file'])))
