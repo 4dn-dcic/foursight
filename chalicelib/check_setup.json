@@ -296,5 +296,17 @@
                 }
             }
         }
+    },
+    "prepare_static_headers": {
+        "title": "Prepare static headers",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
