@@ -325,3 +325,29 @@ def paired_end_info_consistent(connection, **kwargs):
         check.description = 'All paired end fastq files have both paired end number and "paired with" related_file'
     check.full_output = results
     return check
+
+
+@check_function()
+def page_children_routes(connection, **kwargs):
+    check = init_check_res(connection, 'page_children_routes')
+
+    page_search = 'search/?type=Page&format=json&children.name%21=No+value'
+    results = ff.search_metadata(page_search, ff_env="data")
+    problem_routes = {}
+    for result in results:
+        bad_children = [child['name'] for child in result['children'] if
+                        child['name'] != result['name'] + '/' + child['name'].split('/')[-1]]
+        if bad_children:
+            problem_routes[result['name']] = bad_children
+
+    if problem_routes:
+        check.status = 'WARN'
+        check.summary = 'Pages with bad routes found'
+        check.description = ('{} child pages whose route is not a direct sub-route of parent'
+                             ''.format(sum([len(val) for val in problem_routes.values()])))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No pages with bad routes'
+        check.description = 'All routes of child pages are a direct sub-route of parent page'
+    check.full_output = problem_routes
+    return check
