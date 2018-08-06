@@ -294,3 +294,34 @@ def exp_has_raw_files(connection, **kwargs):
         check.description = '0 sequencing experiments are missing raw files'
     check.full_output = missing_files
     return check
+
+
+@check_function()
+def paired_end_info_consistent(connection, **kwargs):
+    check = init_check_res(connection, 'paired_end_info_consistent')
+
+    search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
+    search2 = 'search/?type=FileFastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
+
+    results1 = ff.search_metadata(search1 + '&frame=object', ff_env="data")
+    results2 = ff.search_metadata(search2 + '&frame=object', ff_env="data")
+    # for result1 in results1:
+
+    results = {'paired with file missing paired_end number':
+               [result1['@id'] for result1 in results1],
+               'file with paired_end number missing "paired with" related_file':
+               [result2['@id'] for result2 in results2]}
+
+    if results:
+        check.status = 'WARN'
+        check.summary = 'Inconsistencies found in FileFastq paired end info'
+        check.description = ('{} files found with a "paired with" related_file but missing a paired_end number;'
+                             '{} files found with a paired_end number but missing related_file info'
+                             ''.format(len(results['paired with file missing paired_end number']),
+                                       len(results['file with paired_end number missing "paired with" related_file'])))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No inconsistencies in FileFastq paired end info'
+        check.description = 'All paired end fastq files have both paired end number and "paired with" related_file'
+    check.full_output = results
+    return check
