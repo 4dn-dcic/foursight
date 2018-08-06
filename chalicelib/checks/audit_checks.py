@@ -260,4 +260,37 @@ def tier1_metadata_present(connection, **kwargs):
         check.description = '0 tier 1 biosamples found missing required metadata'
     check.full_output = missing
     check.brief_output = flagged
-    return check 
+    return check
+
+
+@check_function()
+def exp_has_raw_files(connection, **kwargs):
+    check = init_check_res(connection, 'exp_has_raw_files')
+
+    no_files = ff_utils.search_metadata('search/?type=Experiment&%40type%21=ExperimentMic&files.uuid=No+value',
+                                        ff_env=connection.ff_env)
+    bad_status = ff_utils.search_metadata('search/?status=uploading&status=archived&status=deleted&type=FileFastq&experiments.uuid%21=No+value',
+                                          ff_env=connection.ff_env)
+    bad_status_ids = [item['@id'] for item in bad_status]
+    exps = list(set([exp['@id'] for fastq in bad_status for exp in fastq.get('experiments') if fastq.get('experiments')]))
+    missing_files = []
+    for expt in exps:
+        response = ff_utils.search_metadata(expt, ff_env=connection.ff_env)
+        raw_files = False
+        if result.get('files'):
+            for fastq in result.get('files'):
+                if fastq['@id'] not in bad_status_ids:
+                    raw_files = True
+                    break
+        if not raw_files:
+            missing_files.append(expt['@id'])
+    if missing_files:
+        check.status = 'WARN'
+        check.summary = 'Experiments missing raw files found'
+        check.description = '{} sequencing experiments are missing raw files'.format(len(missing_files))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No experiments missing raw files'
+        check.description = '0 sequencing experiments are missing raw files'
+    check.full_output = missing_files
+    return check
