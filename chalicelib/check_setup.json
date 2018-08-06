@@ -209,6 +209,18 @@
             }
         }
     },
+    "page_children_routes": {
+        "title": "Pages with bad routes",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
