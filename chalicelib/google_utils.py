@@ -18,7 +18,7 @@ DEFAULT_GOOGLE_API_CONFIG = {
 }
 
 
-class _GoogleServiceAPIBase:
+class _NestedGoogleServiceAPI:
     '''Used as common base class for nested classes of GoogleAPISyncer.'''
     def __init__(self, syncer_instance):
         self.owner = syncer_instance
@@ -103,7 +103,7 @@ class GoogleAPISyncer:
         self.docs       = GoogleAPISyncer.DocsAPI(self)
 
 
-    class AnalyticsAPI(_GoogleServiceAPIBase):
+    class AnalyticsAPI(_NestedGoogleServiceAPI):
         '''
         Interface for accessing Google Analytics data using our Google API Syncer credentials.
 
@@ -112,7 +112,7 @@ class GoogleAPISyncer:
         '''
 
         def __init__(self, syncer_instance):
-            _GoogleServiceAPIBase.__init__(self, syncer_instance)
+            _NestedGoogleServiceAPI.__init__(self, syncer_instance)
             self.view_id = self.owner.extra_config.get('analytics_view_id', DEFAULT_GOOGLE_API_CONFIG['analytics_view_id'])
             self._api = build('analyticsreporting', 'v4', credentials=self.owner.credentials)
 
@@ -178,7 +178,7 @@ class GoogleAPISyncer:
             return report_request_json
 
 
-    class SheetsAPI(_GoogleServiceAPIBase):
+    class SheetsAPI(_NestedGoogleServiceAPI):
         '''
         Use this sub-class to help query, read, edit, and analyze spreadsheet data, which will be returned in form of multi-dimensional JSON array.
 
@@ -187,7 +187,7 @@ class GoogleAPISyncer:
         pass
 
 
-    class DocsAPI(_GoogleServiceAPIBase):
+    class DocsAPI(_NestedGoogleServiceAPI):
         '''
         Use this sub-class to help query, read, and edit Google Doc data.
 
