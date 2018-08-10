@@ -12,7 +12,13 @@ from dcicutils import (
 
 
 DEFAULT_GOOGLE_API_CONFIG = {
-    "scopes" : ['https://www.googleapis.com/auth/analytics.readonly'],
+    "scopes" : [                                                # Descriptions from: https://developers.google.com/identity/protocols/googlescopes
+        'https://www.googleapis.com/auth/analytics.readonly',   # View your Google Analytics data
+        'https://www.googleapis.com/auth/drive',                # View and manage the files in your Google Drive
+        'https://www.googleapis.com/auth/drive.file',           # View and manage Google Drive files and folders that you have opened or created with this app
+        'https://www.googleapis.com/auth/spreadsheets'          # View and manage your spreadsheets in Google Drive
+
+    ],
     "analytics_view_id" : '132680007',
     "analytics_page_size" : 10000
 }
@@ -30,6 +36,8 @@ class GoogleAPISyncer:
     '''
     Handles authentication and common requests against Google APIs using `fourfront-ec2-account` (a service_account).
     If no access keys are provided, initiates a connection to production.
+
+    Interfaces with Google services using Google API version 4 ('v4').
 
     For testing against localhost, please provide a `ff_access_keys` dictionary with server=localhost:8000 and key & secret from there as well.
 
