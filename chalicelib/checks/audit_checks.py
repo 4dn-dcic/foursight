@@ -217,7 +217,7 @@ def repsets_have_bio_reps(connection, **kwargs):
                         exp_audits.append('tech replicates of bio replicate {}'
                                           ' not in sequence'.format(key))
         if exp_audits:
-            by_exp[result['@id']] = exp_audits
+            by_exp[result['@id']] = '; '.join(exp_audits)
 
     if by_exp:
         check.status = 'WARN'
@@ -227,8 +227,8 @@ def repsets_have_bio_reps(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No replicate experiment sets found with replicate number issues'
         check.description = '0 replicate experiment sets found with replicate number issues'
-    check.full_output = audits
-    check.brief_output = by_exp
+    check.full_output = by_exp
+    check.brief_output = list(by_exp.keys())
     return check
 
 
@@ -238,28 +238,29 @@ def tier1_metadata_present(connection, **kwargs):
 
     results = ff_utils.search_metadata('search/?biosource.cell_line_tier=Tier+1&type=Biosample',
                                        ff_env=connection.ff_env)
-    missing = {'cell_culture_details': [], 'culture_start_date': [],
-               'culture_duration': [], 'morphology_image': []}
+    missing = {}
+    msg_dict = {'culture_start_date': 'Tier 1 Biosample missing Culture Start Date',
+                'culture_duration': 'Tier 1 Biosample missing Culture Duration',
+                'morphology_image': 'Tier 1 Biosample missing Morphology Image'}
     for result in results:
         if len(result.get('biosource')) != 1:
             continue
         elif not result.get('cell_culture_details'):
-            missing['cell_culture_details'].append(result['@id'])
+            missing[result['@id']] = 'Tier 1 Biosample missing Cell Culture Details'
         else:
-            for item in ['culture_start_date', 'culture_duration', 'morphology_image']:
-                if not result['cell_culture_details'].get(item):
-                    missing[item].append(result['@id'])
-    flagged = list(set([bs for val in missing.values() for bs in val]))
-    if flagged:
+            messages = [val for key, val in msg_dict.items() if not result['cell_culture_details'].get(key)]
+            if messages:
+                missing[result['@id']] = '; '.join(messages)
+    if missing:
         check.status = 'WARN'
         check.summary = 'Tier 1 biosamples found missing required metadata'
-        check.description = '{} tier 1 biosamples found missing required metadata'.format(len(flagged))
+        check.description = '{} tier 1 biosamples found missing required metadata'.format(len(missing.keys()))
     else:
         check.status = 'PASS'
         check.summary = 'All Tier 1 biosamples have required metadata'
         check.description = '0 tier 1 biosamples found missing required metadata'
     check.full_output = missing
-    check.brief_output = flagged
+    check.brief_output = list(missing.keys())
     return check
 
 
@@ -273,7 +274,7 @@ def exp_has_raw_files(connection, **kwargs):
                                           ff_env=connection.ff_env)
     bad_status_ids = [item['@id'] for item in bad_status]
     exps = list(set([exp['@id'] for fastq in bad_status for exp in fastq.get('experiments') if fastq.get('experiments')]))
-    missing_files = []
+    missing_files = [e['@id'] for e in no_files]
     for expt in exps:
         result = ff_utils.get_metadata(expt, ff_env=connection.ff_env)
         raw_files = False
@@ -292,8 +293,92 @@ def exp_has_raw_files(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No experiments missing raw files'
         check.description = '0 sequencing experiments are missing raw files'
+    check.action = 'patch_badges_raw_files'
+    check.allow_action = True
     check.full_output = missing_files
     return check
+
+
+def compare_badges(obj_ids, item_type, badge, ffenv):
+    search_url = 'search/?type={}&badges.badge.uuid={}'.format(item_type, badge)
+    has_badge = ff_utils.search_metadata(search_url + '&frame=object', ff_env=ffenv)
+    needs_badge = []
+    badge_ok = []
+    remove_badge = {}
+    for item in has_badge:
+        if item['@id'] in obj_ids:
+            # handle differences in badge messages
+            badge_ok.append(item['@id'])
+        else:
+            keep = [badge_dict for badge_dict in item['badges'] if badge not in badge_dict['badge']]
+            remove_badge[item['@id']] = keep
+    for other_item in obj_ids:
+        if other_item not in badge_ok:
+            needs_badge.append(other_item)
+    return needs_badge, remove_badge
+
+
+def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_msg=False):
+    search_url = 'search/?type={}&badges.badge.uuid={}'.format(item_type, badge)
+    has_badge = ff.search_metadata(search_url + '&frame=object', ff_env=ffenv)
+    needs_badge = []
+    badge_edit = {}
+    badge_ok = []
+    remove_badge = {}
+    for item in has_badge:
+        if item['@id'] in obj_id_dict.keys():
+            # print('yes')
+            # handle differences in badge messages
+            for a_badge in item['badges']:
+                if a_badge['badge'].endswith(badge + '/'):
+                    if not compare_msg or a_badge['message'] == obj_id_dict[item['@id']]:
+                        badge_ok.append(item['@id'])
+                    elif compare_msg:
+                        a_badge['message'] = obj_id_dict[item['@id']]
+                        badge_edit[item['@id']] = item['badges']
+        else:
+            this_badge = [a_badge for a_badge in item['badges'] if a_badge['badge'] == badge][0]
+            item['badges'].remove(badge)
+            remove_badge[item['@id']] = item['badges']
+    for other_item in obj_id_dict.keys():
+        if other_item not in badge_ok:
+            needs_badge.append(other_item)
+    return needs_badge, remove_badge, badge_edit
+
+
+@action_function()
+def patch_badges_raw_files(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_raw_files')
+
+    raw_check = init_check_res(connection, 'exp_has_raw_files')
+    raw_check_result = raw_check.get_result_by_uuid(kwargs['called_by'])
+
+    to_add, to_remove = compare_badges(raw_check_result.get('full_output'), 'Experiment',
+                                       '6e9c9d95-7e4a-4930-9971-7e26c946adba', ffenv=connection.ff_env)
+    patches = {'add_badge_success': [], 'add_badge_failure': [],
+               'remove_badge_success': [], 'remove_badge_failure': []}
+    for item in to_add:
+        add_result = ff_utils.get_metadata(item + '?frame=object', ff_env=connection.ff_env)
+        badges = add_result['badges'] if add_result.get('badges') else []
+        badges.append({'badge': '6e9c9d95-7e4a-4930-9971-7e26c946adba', 'message': 'Raw files absent'})
+        if [b['badge'] for b in badges].count('6e9c9d95-7e4a-4930-9971-7e26c946adba') > 1:
+            # print an error message?
+            break
+        response = ff_utils.patch_metadata({"badges": badges}, item[1:], ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['add_badge_success'].append(item)
+        else:
+            patches['add_badge_failure'].append(item)
+    for itemid, val in to_remove.items():
+        response = ff_utils.patch_metadata({"badges": val}, itemid, ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['remove_badge_success'].append(itemid)
+        else:
+            patches['remove_badge_failure'].append(itemid)
+    action.output = patches
+    action.status = 'DONE'
+    action.description = 'Patching badges for experiments missing raw files'
+    return action
 
 
 @check_function()
@@ -311,7 +396,7 @@ def paired_end_info_consistent(connection, **kwargs):
                [result1['@id'] for result1 in results1],
                'file with paired_end number missing "paired with" related_file':
                [result2['@id'] for result2 in results2]}
-
+    results_rev = {item: key for key, val in results for item in val}
     if [val for val in results.values() if val]:
         check.status = 'WARN'
         check.summary = 'Inconsistencies found in FileFastq paired end info'
@@ -323,7 +408,8 @@ def paired_end_info_consistent(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No inconsistencies in FileFastq paired end info'
         check.description = 'All paired end fastq files have both paired end number and "paired with" related_file'
-    check.full_output = results
+    check.full_output = results_rev
+    check.brief_output = results
     return check
 
 
