@@ -139,9 +139,11 @@ class GoogleAPISyncer:
                     pageSize=self.owner.extra_config.get('analytics_page_size', DEFAULT_GOOGLE_API_CONFIG['analytics_page_size'])
                 )
 
-            return self._api.reports().batchGet(body={
-                "reportRequests" : [ process_report_request_type(r, **kwargs) for r in report_requests ]
-            }).execute()
+            formatted_report_requests = [ process_report_request_type(r, **kwargs) for r in report_requests ]
+
+            result = self._api.reports().batchGet(body={ "reportRequests" : formatted_report_requests }).execute()
+            result['requests'] = formatted_report_requests
+            return result
 
 
         def sessions_by_country(self, start_date='2daysAgo', end_date='yesterday', execute=True):
@@ -159,16 +161,49 @@ class GoogleAPISyncer:
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'metrics': [
-                    {'expression': 'ga:productDetailViews'}
+                    { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' }
                 ],
                 'dimensions': [
-                    {'name': 'ga:productName'},
-                    {'name': 'ga:productCategoryLevel2'}
+                    { 'name': 'ga:productName' },
+                    { 'name': 'ga:productSku' },
+                    { 'name': 'ga:productCategoryLevel2' },
+                    { 'name': 'ga:productBrand' }
                 ],
+                "orderBys" : [{ 'fieldName' : 'ga:productDetailViews', 'sortOrder' : 'descending' }],
                 'dimensionFilterClauses' : [
                     {
                         "filters" : [
                             { "dimensionName" : "ga:productCategoryLevel1", "expressions" : ["File"], "operator" : "EXACT" }
+                        ]
+                    }
+                ]
+            }
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+
+        def detail_views_by_experiment_set(self, start_date='2daysAgo', end_date='yesterday', execute=True):
+            report_request_json = {
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
+                'metrics': [
+                    { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' }
+                ],
+                'dimensions': [
+                    { 'name': 'ga:productName' },
+                    { 'name': 'ga:productSku' },
+                    { 'name': 'ga:productCategoryLevel2' },
+                    { 'name': 'ga:productBrand' }
+                ],
+                "orderBys" : [{ 'fieldName' : 'ga:productDetailViews', 'sortOrder' : 'descending' }],
+                'dimensionFilterClauses' : [
+                    {
+                        "filters" : [
+                            { "dimensionName" : "ga:productCategoryLevel1", "expressions" : ["ExperimentSet"], "operator" : "EXACT" }
                         ]
                     }
                 ]
