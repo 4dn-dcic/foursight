@@ -13,8 +13,17 @@ from dcicutils import (
 
 DEFAULT_GOOGLE_API_CONFIG = {
     "scopes" : ['https://www.googleapis.com/auth/analytics.readonly'],
-    "analytics_view_id" : '132680007'
+    "analytics_view_id" : '132680007',
+    "analytics_page_size" : 10000
 }
+
+
+class _GoogleServiceAPIBase:
+    '''Used as common base class for nested classes of GoogleAPISyncer.'''
+    def __init__(self, syncer_instance):
+        self.owner = syncer_instance
+        if not self.owner.credentials:
+            raise Exception("No Google API credentials set.")
 
 
 class GoogleAPISyncer:
@@ -73,9 +82,11 @@ class GoogleAPISyncer:
         if not GoogleAPISyncer.validate_api_key_format(self._api_key):
             raise Exception("Google API Key is in invalid format.")
 
-
-        self.oauth_scopes = extra_config.get('scopes', DEFAULT_GOOGLE_API_CONFIG['scopes'])
-        self.credentials = Credentials.from_service_account_info(self._api_key, scopes=self.oauth_scopes)
+        self.extra_config = extra_config
+        self.credentials = Credentials.from_service_account_info(
+            self._api_key,
+            scopes=self.extra_config.get('scopes', DEFAULT_GOOGLE_API_CONFIG['scopes'])
+        )
 
         if ff_access_keys is None:
             ff_access_keys = self._s3Utils.get_access_keys()
@@ -87,19 +98,22 @@ class GoogleAPISyncer:
         }
 
         # Init sub-class objects
-        self.analytics  = GoogleAPISyncer.AnalyticsAPI(self, extra_config)
-        #self.sheets     = GoogleAPISyncer.SheetsAPI(self, extra_config)
-        #self.docs       = GoogleAPISyncer.DocsAPI(self, extra_config)
+        self.analytics  = GoogleAPISyncer.AnalyticsAPI(self)
+        self.sheets     = GoogleAPISyncer.SheetsAPI(self)
+        self.docs       = GoogleAPISyncer.DocsAPI(self)
 
 
-    class AnalyticsAPI:
-        '''Interface for accessing Google Analytics data using our Google API Syncer credentials'''
+    class AnalyticsAPI(_GoogleServiceAPIBase):
+        '''
+        Interface for accessing Google Analytics data using our Google API Syncer credentials.
 
-        def __init__(self, syncer_instance, extra_config=DEFAULT_GOOGLE_API_CONFIG):
-            self.owner = syncer_instance
-            self.view_id = extra_config.get('analytics_view_id', DEFAULT_GOOGLE_API_CONFIG['analytics_view_id'])
-            if not self.owner.credentials:
-                raise Exception("No Google API credentials set.")
+        Relevant Documentation:
+        https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
+        '''
+
+        def __init__(self, syncer_instance):
+            _GoogleServiceAPIBase.__init__(self, syncer_instance)
+            self.view_id = self.owner.extra_config.get('analytics_view_id', DEFAULT_GOOGLE_API_CONFIG['analytics_view_id'])
             self._api = build('analyticsreporting', 'v4', credentials=self.owner.credentials)
 
 
@@ -109,6 +123,8 @@ class GoogleAPISyncer:
             Accepts either a list of reportRequests (according to Google Analytics API Docs) and returns their results,
             or a list of strings which reference AnalyticsAPI methods (aside from this one).
 
+            See: https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#ReportRequest
+
             Arguments:
                 report_requests - A list of reportRequests.
             '''
@@ -116,7 +132,12 @@ class GoogleAPISyncer:
             def process_report_request_type(report_request, **kwargs):
                 if isinstance(report_request, str): # Convert string to dict by executing AnalyticsAPI[report_request](**kwargs)
                     report_request = getattr(self, report_request)(execute=False, **kwargs)
-                return dict(report_request, viewId=self.view_id)
+
+                return dict(
+                    report_request,
+                    viewId=self.view_id,
+                    pageSize=self.owner.extra_config.get('analytics_page_size', DEFAULT_GOOGLE_API_CONFIG['analytics_page_size'])
+                )
 
             return self._api.reports().batchGet(body={
                 "reportRequests" : [ process_report_request_type(r, **kwargs) for r in report_requests ]
@@ -144,17 +165,20 @@ class GoogleAPISyncer:
                     {'name': 'ga:productName'},
                     {'name': 'ga:productCategoryLevel2'}
                 ],
-                # TODO: Filter by `productCategoryLevel1 == File``
-                #'dimensionFilters' : [
-                #    {}
-                #]
+                'dimensionFilterClauses' : [
+                    {
+                        "filters" : [
+                            { "dimensionName" : "ga:productCategoryLevel1", "expressions" : ["File"], "operator" : "EXACT" }
+                        ]
+                    }
+                ]
             }
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
 
 
-    class SheetsAPI:
+    class SheetsAPI(_GoogleServiceAPIBase):
         '''
         Use this sub-class to help query, read, edit, and analyze spreadsheet data, which will be returned in form of multi-dimensional JSON array.
 
@@ -163,7 +187,7 @@ class GoogleAPISyncer:
         pass
 
 
-    class DocsAPI:
+    class DocsAPI(_GoogleServiceAPIBase):
         '''
         Use this sub-class to help query, read, and edit Google Doc data.
 
