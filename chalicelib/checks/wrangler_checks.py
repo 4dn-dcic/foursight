@@ -277,7 +277,8 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
             # register with previous higlass_uid if already there
-            if 'higlass_uid' in hit:
+            # don't want a falsey value for hit['higlass_uid']
+            if 'higlass_uid' in hit and hit['higlass_uid']:
                 payload['uuid'] = hit['higlass_uid']
             res = requests.post(higlass_key['server'] + '/api/v1/link_tile/',
                                 data=json.dumps(payload), auth=authentication,
