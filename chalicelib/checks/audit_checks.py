@@ -35,8 +35,8 @@ def compare_badges(obj_ids, item_type, badge, ffenv):
 
 def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_msg=False):
     search_url = 'search/?type={}&badges.badge.uuid={}'.format(item_type, badge)
-    has_badge = ff.search_metadata(search_url + '&frame=object', ff_env=ffenv)
-    needs_badge = []
+    has_badge = ff_utils.search_metadata(search_url + '&frame=object', ff_env=ffenv)
+    needs_badge = {}
     badge_edit = {}
     badge_ok = []
     remove_badge = {}
@@ -54,10 +54,10 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_ms
             this_badge = [a_badge for a_badge in item['badges'] if a_badge['badge'] == badge][0]
             item['badges'].remove(badge)
             remove_badge[item['@id']] = item['badges']
-    for other_item in obj_id_dict.keys():
-        if other_item not in badge_ok:
-            needs_badge.append(other_item)
-    return needs_badge, remove_badge, badge_edit
+    for key, val in obj_id_dict.items():
+        if key not in badge_ok:
+            needs_badge[key] = val
+    return needs_badge, remove_badge, badge_edit, badge_ok
 
 
 @check_function()
@@ -407,6 +407,11 @@ def paired_end_info_consistent(connection, **kwargs):
                'file with paired_end number missing "paired with" related_file':
                [result2['@id'] for result2 in results2]}
     results_rev = {item: key for key, val in results.items() for item in val}
+
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(results_rev, 'FileFastq',
+                                                                 'b990f2e8-f791-4247-a189-ca69b2a0bb42',
+                                                                 connection.ff_env, compare_msg=True)
+
     if [val for val in results.values() if val]:
         check.status = 'WARN'
         check.summary = 'Inconsistencies found in FileFastq paired end info'
@@ -418,7 +423,10 @@ def paired_end_info_consistent(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No inconsistencies in FileFastq paired end info'
         check.description = 'All paired end fastq files have both paired end number and "paired with" related_file'
-    check.full_output = results_rev
+    check.full_output = {'New fastq files with inconsistent paired end info': to_add,
+                         'Old fastq files with inconsistent paired end info': ok,
+                         'Fastq files with paired end info now consistent': to_remove,
+                         'Fastq files with paired end badge that needs editing': to_edit}
     check.brief_output = results
     return check
 
