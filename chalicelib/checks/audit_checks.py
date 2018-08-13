@@ -51,11 +51,11 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_ms
                         a_badge['message'] = obj_id_dict[item['@id']]
                         badge_edit[item['@id']] = item['badges']
         else:
-            this_badge = [a_badge for a_badge in item['badges'] if a_badge['badge'] == badge][0]
-            item['badges'].remove(badge)
+            this_badge = [a_badge for a_badge in item['badges'] if badge in a_badge['badge']][0]
+            item['badges'].remove(this_badge)
             remove_badge[item['@id']] = item['badges']
     for key, val in obj_id_dict.items():
-        if key not in badge_ok:
+        if key not in badge_ok + list(badge_edit.keys()):
             needs_badge[key] = val
     return needs_badge, remove_badge, badge_edit, badge_ok
 
@@ -429,6 +429,49 @@ def paired_end_info_consistent(connection, **kwargs):
                          'Fastq files with paired end badge that needs editing': to_edit}
     check.brief_output = results
     return check
+
+
+@action_function()
+def patch_badges_paired_end_consistency(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_paired_end_consistency')
+
+    pe_check = init_check_res(connection, 'paired_end_info_consistent')
+    pe_check_result = pe_check.get_result_by_uuid(kwargs['called_by'])
+
+    # should values in dictionary depend on what's in check result?
+    patches = {'add_badge_success': [], 'add_badge_failure': [],
+               'edit_badge_success': [], 'edit_badge_failure': [],
+               'remove_badge_success': [], 'remove_badge_failure': []}
+
+    for add_key, add_val in pe_check_result['full_output']['New fastq files with inconsistent paired end info'].items():
+        add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
+        badges = add_result['badges'] if add_result.get('badges') else []
+        badges.append({'badge': 'b990f2e8-f791-4247-a189-ca69b2a0bb42', 'message': add_val})
+        if [b['badge'] for b in badges].count('b990f2e8-f791-4247-a189-ca69b2a0bb42') > 1:
+            # print an error message?
+            break
+        response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['add_badge_success'].append(add_key)
+        else:
+            patches['add_badge_failure'].append(add_key)
+    for remove_key, remove_val in pe_check_result['full_output']['Fastq files with paired end info now consistent'].items():
+        # delete field if no badges?
+        response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['remove_badge_success'].append(remove_key)
+        else:
+            patches['remove_badge_failure'].append(remove_key)
+    for edit_key, edit_val in pe_check_result['full_output']['Fastq files with paired end badge that needs editing'].items():
+        response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['edit_badge_success'].append(edit_key)
+        else:
+            patches['edit_badge_failure'].append(edit_key)
+    action.output = patches
+    action.status = 'DONE'
+    action.description = 'Patching badges for paired end fastq files'
+    return action
 
 
 @check_function()
