@@ -351,6 +351,10 @@ def tier1_metadata_present(connection, **kwargs):
             messages = [val for key, val in msg_dict.items() if not result['cell_culture_details'].get(key)]
             if messages:
                 missing[result['@id']] = '; '.join(messages)
+
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(missing, 'Biosample', 'tier1metadatamissing',
+                                                                 connection.ff_env, compare_msg=True)
+    check.action = 'patch_badges_tier1_metadata'
     if missing:
         check.status = 'WARN'
         check.summary = 'Tier 1 biosamples found missing required metadata'
@@ -359,9 +363,60 @@ def tier1_metadata_present(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'All Tier 1 biosamples have required metadata'
         check.description = '0 tier 1 biosamples found missing required metadata'
-    check.full_output = missing
+    check.full_output = {'New tier1 biosamples missing required metadata': to_add,
+                         'Old tier1 biosamples missing required metadata': ok,
+                         'Tier1 biosamples no longer missing required metadata': to_remove,
+                         'Biosamples with a tier1_metadata_missing badge that needs editing': to_edit}
     check.brief_output = list(missing.keys())
+    if to_add or to_remove or to_edit:
+        check.allow_action = True
     return check
+
+
+@action_function()
+def patch_badges_tier1_metadata(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_tier1_metadata')
+
+    tier1_check = init_check_res(connection, 'tier1_metadata_present')
+    tier1_check_result = tier1_check.get_result_by_uuid(kwargs['called_by'])
+
+    # should values in dictionary depend on what's in check result?
+    patches = {'add_badge_success': [], 'add_badge_failure': [],
+               'edit_badge_success': [], 'edit_badge_failure': [],
+               'remove_badge_success': [], 'remove_badge_failure': []}
+
+    for add_key, add_val in tier1_check_result['full_output']['New tier1 biosamples missing required metadata'].items():
+        add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
+        badges = add_result['badges'] if add_result.get('badges') else []
+        badges.append({'badge': '/badges/tier1metadatamissing/', 'message': add_val})
+        if [b['badge'] for b in badges].count('/badges/tier1metadatamissing/') > 1:
+            # print an error message?
+            break
+        response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['add_badge_success'].append(add_key)
+        else:
+            patches['add_badge_failure'].append(add_key)
+    for remove_key, remove_val in tier1_check_result['full_output']['Tier1 biosamples no longer missing required metadata'].items():
+        # delete field if no badges?
+        if remove_val:
+            response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+        else:
+            response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['remove_badge_success'].append(remove_key)
+        else:
+            patches['remove_badge_failure'].append(remove_key)
+    for edit_key, edit_val in tier1_check_result['full_output']['Biosamples with a tier1_metadata_missing badge that needs editing'].items():
+        response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['edit_badge_success'].append(edit_key)
+        else:
+            patches['edit_badge_failure'].append(edit_key)
+    action.output = patches
+    action.status = 'DONE'
+    action.description = 'Patching badges for missing tier1 metadata'
+    return action
 
 
 @check_function()
