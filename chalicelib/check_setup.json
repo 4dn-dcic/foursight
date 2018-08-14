@@ -202,7 +202,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "mastertest": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
