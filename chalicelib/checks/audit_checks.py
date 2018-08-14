@@ -15,7 +15,7 @@ import boto3
 
 
 def compare_badges(obj_ids, item_type, badge, ffenv):
-    search_url = 'search/?type={}&badges.badge.uuid={}'.format(item_type, badge)
+    search_url = 'search/?type={}&badges.badge.@id={}'.format(item_type, badge)
     has_badge = ff_utils.search_metadata(search_url + '&frame=object', ff_env=ffenv)
     needs_badge = []
     badge_ok = []
@@ -34,7 +34,7 @@ def compare_badges(obj_ids, item_type, badge, ffenv):
 
 
 def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_msg=False):
-    search_url = 'search/?type={}&badges.badge.uuid={}'.format(item_type, badge)
+    search_url = 'search/?type={}&badges.badge.@id={}'.format(item_type, '/badges/' + badge + '/')
     has_badge = ff_utils.search_metadata(search_url + '&frame=object', ff_env=ffenv)
     needs_badge = {}
     badge_edit = {}
@@ -244,26 +244,29 @@ def repsets_have_bio_reps(connection, **kwargs):
         # check if only 1 experiment present in set
             if len(result['replicate_exps']) == 1:
                 audits['single_experiment'].append('{} contains only 1 experiment'.format(result['@id']))
-                exp_audits.append('single experiment')
+                exp_audits.append('Replicate set contains only a single experiment')
             # check for technical replicates only
             elif len(rep_dict.keys()) == 1:
                 audits['single_biorep'].append('{} contains only a single biological replicate'.format(result['@id']))
-                exp_audits.append('single bio replicate')
+                exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
             elif sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
                 audits['biorep_nums'].append('Biological replicate numbers of {} are not in sequence:'
                                              ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
-                exp_audits.append('bio replicate numbers not in sequence')
+                exp_audits.append('Biological replicate numbers are not in sequence')
         # check if tech rep numbers not in sequence
             else:
                 for key, val in rep_dict.items():
                     if sorted(val) != list(range(min(val), max(val) + 1)):
                         audits['techrep_nums'].append('Technical replicates of Bio Rep {} in {} are not in '
                                                       'sequence {}'.format(key, result['@id'], str(sorted(val))))
-                        exp_audits.append('tech replicates of bio replicate {}'
-                                          ' not in sequence'.format(key))
+                        exp_audits.append('Technical replicate numbers of biological replicate {}'
+                                          ' are not in sequence'.format(key))
         if exp_audits:
             by_exp[result['@id']] = '; '.join(exp_audits)
+
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
+                                                                 'replicatenumbers', connection.ff_env, compare_msg=True)
 
     if by_exp:
         check.status = 'WARN'
@@ -273,9 +276,58 @@ def repsets_have_bio_reps(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No replicate experiment sets found with replicate number issues'
         check.description = '0 replicate experiment sets found with replicate number issues'
-    check.full_output = by_exp
-    check.brief_output = list(by_exp.keys())
+    check.full_output = {'New replicate sets with replicate number issues': to_add,
+                         'Old replicate sets with replicate number issues': ok,
+                         'Replicate sets that no longer have replicate number issues': to_remove,
+                         'Replicate sets with a replicate_numbers badge that needs editing': to_edit}
+    check.brief_output = audits
     return check
+
+
+@action_function()
+def patch_badges_replicates(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_replicates')
+
+    rep_check = init_check_res(connection, 'repsets_have_bio_reps')
+    rep_check_result = rep_check.get_result_by_uuid(kwargs['called_by'])
+
+    # should values in dictionary depend on what's in check result?
+    patches = {'add_badge_success': [], 'add_badge_failure': [],
+               'edit_badge_success': [], 'edit_badge_failure': [],
+               'remove_badge_success': [], 'remove_badge_failure': []}
+
+    for add_key, add_val in rep_check_result['full_output']['New replicate sets with replicate number issues'].items():
+        add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
+        badges = add_result['badges'] if add_result.get('badges') else []
+        badges.append({'badge': '/badges/replicatenumbers/', 'message': add_val})
+        if [b['badge'] for b in badges].count('/badges/replicatenumbers/') > 1:
+            # print an error message?
+            break
+        response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['add_badge_success'].append(add_key)
+        else:
+            patches['add_badge_failure'].append(add_key)
+    for remove_key, remove_val in rep_check_result['full_output']['Replicate sets that no longer have replicate number issues'].items():
+        # delete field if no badges?
+        if remove_val:
+            response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+        else:
+            response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['remove_badge_success'].append(remove_key)
+        else:
+            patches['remove_badge_failure'].append(remove_key)
+    for edit_key, edit_val in rep_check_result['full_output']['Replicate sets with a replicate_numbers badge that needs editing'].items():
+        response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
+        if response['status'] == 'success':
+            patches['edit_badge_success'].append(edit_key)
+        else:
+            patches['edit_badge_failure'].append(edit_key)
+    action.output = patches
+    action.status = 'DONE'
+    action.description = 'Patching badges for replicate numbers'
+    return action
 
 
 @check_function()
