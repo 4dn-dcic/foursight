@@ -515,13 +515,14 @@ def prepare_static_headers(connection, **kwargs):
                 curr_headers.remove(kwargs['header_at_id'])
                 check.full_output['to_remove'][search_res['@id']] = curr_headers
 
-    check.status = 'PASS'
     if check.full_output['to_add'] or check.full_output['to_remove']:
+        check.status = 'WARN'
         check.summary = 'Ready to add and/or remove static header'
         check.description = 'Ready to add and/or remove static header: %s' % kwargs['header_at_id']
         check.allow_action = True
         check.action_message = 'Will add static header to %s items and remove it from %s items' % (len(check.full_output['to_add']), len(check.full_output['to_remove']))
     else:
+        check.status = 'PASS'
         check.summary = 'Static header is all set'
     return check
 
