@@ -272,7 +272,6 @@ def repsets_have_bio_reps(connection, **kwargs):
         check.status = 'WARN'
         check.summary = 'Replicate experiment sets found with replicate number issues'
         check.description = '{} replicate experiment sets found with replicate number issues'.format(len(by_exp.keys()))
-        check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'No replicate experiment sets found with replicate number issues'
@@ -282,6 +281,8 @@ def repsets_have_bio_reps(connection, **kwargs):
                          'Replicate sets that no longer have replicate number issues': to_remove,
                          'Replicate sets with a replicate_numbers badge that needs editing': to_edit}
     check.brief_output = audits
+    if to_add or to_remove or to_edit:
+        check.allow_action = True
     return check
 
 
@@ -388,8 +389,7 @@ def exp_has_raw_files(connection, **kwargs):
             missing_files.append(expt)
 
     to_add, to_remove, ok = compare_badges(missing_files, 'Experiment',
-                                           '6e9c9d95-7e4a-4930-9971-7e26c946adba',
-                                           connection.ff_env)
+                                           'norawfiles', connection.ff_env)
 
     if missing_files:
         check.status = 'WARN'
@@ -423,8 +423,8 @@ def patch_badges_raw_files(connection, **kwargs):
     for item in raw_check_result['full_output']['Experiments newly missing raw files']:
         add_result = ff_utils.get_metadata(item + '?frame=object', ff_env=connection.ff_env)
         badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': '6e9c9d95-7e4a-4930-9971-7e26c946adba', 'message': 'Raw files absent'})
-        if [b['badge'] for b in badges].count('6e9c9d95-7e4a-4930-9971-7e26c946adba') > 1:
+        badges.append({'badge': '/badges/norawfiles/', 'message': 'Raw files absent'})
+        if [b['badge'] for b in badges].count('/badges/norawfiles/') > 1:
             # print an error message?
             break
         response = ff_utils.patch_metadata({"badges": badges}, item[1:], ff_env=connection.ff_env)
@@ -433,7 +433,10 @@ def patch_badges_raw_files(connection, **kwargs):
         else:
             patches['add_badge_failure'].append(item)
     for itemid, val in raw_check_result['full_output']['Experiments no longer missing raw files'].items():
-        response = ff_utils.patch_metadata({"badges": val}, itemid, ff_env=connection.ff_env)
+        if val:
+            response = ff_utils.patch_metadata({"badges": val}, itemid, ff_env=connection.ff_env)
+        else:
+            response = ff_utils.patch_metadata({}, itemid + '?delete_fields=badges', ff_env=connection.ff_env)
         if response['status'] == 'success':
             patches['remove_badge_success'].append(itemid)
         else:
@@ -462,7 +465,7 @@ def paired_end_info_consistent(connection, **kwargs):
     results_rev = {item: key for key, val in results.items() for item in val}
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(results_rev, 'FileFastq',
-                                                                 'b990f2e8-f791-4247-a189-ca69b2a0bb42',
+                                                                 'pairedendsconsistent',
                                                                  connection.ff_env, compare_msg=True)
 
     if [val for val in results.values() if val]:
@@ -502,8 +505,8 @@ def patch_badges_paired_end_consistency(connection, **kwargs):
     for add_key, add_val in pe_check_result['full_output']['New fastq files with inconsistent paired end info'].items():
         add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
         badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': 'b990f2e8-f791-4247-a189-ca69b2a0bb42', 'message': add_val})
-        if [b['badge'] for b in badges].count('b990f2e8-f791-4247-a189-ca69b2a0bb42') > 1:
+        badges.append({'badge': '/badges/pairedendsconsistent/', 'message': add_val})
+        if [b['badge'] for b in badges].count('/badges/pairedendsconsistent') > 1:
             # print an error message?
             break
         response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
@@ -513,7 +516,10 @@ def patch_badges_paired_end_consistency(connection, **kwargs):
             patches['add_badge_failure'].append(add_key)
     for remove_key, remove_val in pe_check_result['full_output']['Fastq files with paired end info now consistent'].items():
         # delete field if no badges?
-        response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+        if remove_val:
+            response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+        else:
+            response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
         if response['status'] == 'success':
             patches['remove_badge_success'].append(remove_key)
         else:
