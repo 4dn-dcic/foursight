@@ -267,11 +267,12 @@ def repsets_have_bio_reps(connection, **kwargs):
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
                                                                  'replicatenumbers', connection.ff_env, compare_msg=True)
-
+    check.action = 'patch_badges_replicates'
     if by_exp:
         check.status = 'WARN'
         check.summary = 'Replicate experiment sets found with replicate number issues'
         check.description = '{} replicate experiment sets found with replicate number issues'.format(len(by_exp.keys()))
+        check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'No replicate experiment sets found with replicate number issues'
