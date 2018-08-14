@@ -428,6 +428,9 @@ def paired_end_info_consistent(connection, **kwargs):
                          'Fastq files with paired end info now consistent': to_remove,
                          'Fastq files with paired end badge that needs editing': to_edit}
     check.brief_output = results
+    check.action = 'patch_badges_paired_end_consistency'
+    if to_add or to_remove or to_edit:
+        check.allow_action = True
     return check
 
 
