@@ -6,16 +6,16 @@ from ..utils import (
     init_action_res
 )
 from dcicutils import ff_utils
-import requests
-import sys
-import json
-import datetime
-import time
-import boto3
+# import requests
+# import sys
+# import json
+# import datetime
+# import time
+# import boto3
 
 
 def compare_badges(obj_ids, item_type, badge, ffenv):
-    search_url = 'search/?type={}&badges.badge.@id={}'.format(item_type, badge)
+    search_url = 'search/?type={}&badges.badge.@id=/badges/{}/'.format(item_type, badge)
     has_badge = ff_utils.search_metadata(search_url + '&frame=object', ff_env=ffenv)
     needs_badge = []
     badge_ok = []
@@ -33,8 +33,8 @@ def compare_badges(obj_ids, item_type, badge, ffenv):
     return needs_badge, remove_badge, badge_ok
 
 
-def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_msg=False):
-    search_url = 'search/?type={}&badges.badge.@id={}'.format(item_type, '/badges/' + badge + '/')
+def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv):
+    search_url = 'search/?type={}&badges.badge.@id=/badges/{}/'.format(item_type, badge)
     has_badge = ff_utils.search_metadata(search_url + '&frame=object', ff_env=ffenv)
     needs_badge = {}
     badge_edit = {}
@@ -45,9 +45,9 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_ms
             # handle differences in badge messages
             for a_badge in item['badges']:
                 if a_badge['badge'].endswith(badge + '/'):
-                    if not compare_msg or a_badge['message'] == obj_id_dict[item['@id']]:
+                    if a_badge['message'] == obj_id_dict[item['@id']]:
                         badge_ok.append(item['@id'])
-                    elif compare_msg:
+                    else:
                         a_badge['message'] = obj_id_dict[item['@id']]
                         badge_edit[item['@id']] = item['badges']
         else:
@@ -58,6 +58,50 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv, compare_ms
         if key not in badge_ok + list(badge_edit.keys()):
             needs_badge[key] = val
     return needs_badge, remove_badge, badge_edit, badge_ok
+
+
+def patch_badges(full_output, badge_name, output_keys, ffenv, single_message=''):
+    patches = {'add_badge_success': [], 'add_badge_failure': [],
+               # 'edit_badge_success': [], 'edit_badge_failure': [],
+               'remove_badge_success': [], 'remove_badge_failure': []}
+    badge_id = '/badges/' + badge_name + '/'
+    if isinstance(full_output[output_keys[0]], list):
+        add_list = full_output[output_keys[0]]
+    elif isinstance(full_output[output_keys[0]], dict):
+        patches['edit_badge_success'] = []
+        patches['edit_badge_failure'] = []
+        add_list = full_output[output_keys[0]].keys()
+    for add_key in add_list:
+        add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=ffenv)
+        badges = add_result['badges'] if add_result.get('badges') else []
+        badges.append({'badge': badge_id, 'message': single_message if single_message else full_output[output_keys[0]][add_key]})
+        if [b['badge'] for b in badges].count(badge_id) > 1:
+            # print an error message?
+            patches['add_badge_failure'].append('{} already has badge'.format(add_key))
+            break
+        response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=ffenv)
+        if response['status'] == 'success':
+            patches['add_badge_success'].append(add_key)
+        else:
+            patches['add_badge_failure'].append(add_key)
+    for remove_key, remove_val in full_output[output_keys[1]].items():
+        # delete field if no badges?
+        if remove_val:
+            response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=ffenv)
+        else:
+            response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=ffenv)
+        if response['status'] == 'success':
+            patches['remove_badge_success'].append(remove_key)
+        else:
+            patches['remove_badge_failure'].append(remove_key)
+    if len(output_keys) > 2:
+        for edit_key, edit_val in full_output[output_keys[2]].items():
+            response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=ffenv)
+            if response['status'] == 'success':
+                patches['edit_badge_success'].append(edit_key)
+            else:
+                patches['edit_badge_failure'].append(edit_key)
+    return patches
 
 
 @check_function()
@@ -266,7 +310,7 @@ def repsets_have_bio_reps(connection, **kwargs):
             by_exp[result['@id']] = '; '.join(exp_audits)
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
-                                                                 'replicatenumbers', connection.ff_env, compare_msg=True)
+                                                                 'replicatenumbers', connection.ff_env)
     check.action = 'patch_badges_replicates'
     if by_exp:
         check.status = 'WARN'
@@ -293,40 +337,43 @@ def patch_badges_replicates(connection, **kwargs):
     rep_check = init_check_res(connection, 'repsets_have_bio_reps')
     rep_check_result = rep_check.get_result_by_uuid(kwargs['called_by'])
 
+    rep_keys = ['New replicate sets with replicate number issues',
+                'Replicate sets that no longer have replicate number issues',
+                'Replicate sets with a replicate_numbers badge that needs editing']
     # should values in dictionary depend on what's in check result?
-    patches = {'add_badge_success': [], 'add_badge_failure': [],
-               'edit_badge_success': [], 'edit_badge_failure': [],
-               'remove_badge_success': [], 'remove_badge_failure': []}
-
-    for add_key, add_val in rep_check_result['full_output']['New replicate sets with replicate number issues'].items():
-        add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
-        badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': '/badges/replicatenumbers/', 'message': add_val})
-        if [b['badge'] for b in badges].count('/badges/replicatenumbers/') > 1:
-            # print an error message?
-            break
-        response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['add_badge_success'].append(add_key)
-        else:
-            patches['add_badge_failure'].append(add_key)
-    for remove_key, remove_val in rep_check_result['full_output']['Replicate sets that no longer have replicate number issues'].items():
-        # delete field if no badges?
-        if remove_val:
-            response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
-        else:
-            response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['remove_badge_success'].append(remove_key)
-        else:
-            patches['remove_badge_failure'].append(remove_key)
-    for edit_key, edit_val in rep_check_result['full_output']['Replicate sets with a replicate_numbers badge that needs editing'].items():
-        response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['edit_badge_success'].append(edit_key)
-        else:
-            patches['edit_badge_failure'].append(edit_key)
-    action.output = patches
+    # patches = {'add_badge_success': [], 'add_badge_failure': [],
+    #            'edit_badge_success': [], 'edit_badge_failure': [],
+    #            'remove_badge_success': [], 'remove_badge_failure': []}
+    #
+    # for add_key, add_val in rep_check_result['full_output']['New replicate sets with replicate number issues'].items():
+    #     add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
+    #     badges = add_result['badges'] if add_result.get('badges') else []
+    #     badges.append({'badge': '/badges/replicatenumbers/', 'message': add_val})
+    #     if [b['badge'] for b in badges].count('/badges/replicatenumbers/') > 1:
+    #         # print an error message?
+    #         break
+    #     response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['add_badge_success'].append(add_key)
+    #     else:
+    #         patches['add_badge_failure'].append(add_key)
+    # for remove_key, remove_val in rep_check_result['full_output']['Replicate sets that no longer have replicate number issues'].items():
+    #     # delete field if no badges?
+    #     if remove_val:
+    #         response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+    #     else:
+    #         response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['remove_badge_success'].append(remove_key)
+    #     else:
+    #         patches['remove_badge_failure'].append(remove_key)
+    # for edit_key, edit_val in rep_check_result['full_output']['Replicate sets with a replicate_numbers badge that needs editing'].items():
+    #     response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['edit_badge_success'].append(edit_key)
+    #     else:
+    #         patches['edit_badge_failure'].append(edit_key)
+    action.output = patch_badges(rep_check_result['full_output'], 'replicatenumbers', rep_keys, connection.ff_env)
     action.status = 'DONE'
     action.description = 'Patching badges for replicate numbers'
     return action
@@ -352,8 +399,9 @@ def tier1_metadata_present(connection, **kwargs):
             if messages:
                 missing[result['@id']] = '; '.join(messages)
 
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(missing, 'Biosample', 'tier1metadatamissing',
-                                                                 connection.ff_env, compare_msg=True)
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(missing, 'Biosample',
+                                                                 'tier1metadatamissing',
+                                                                 connection.ff_env)
     check.action = 'patch_badges_tier1_metadata'
     if missing:
         check.status = 'WARN'
@@ -380,40 +428,43 @@ def patch_badges_tier1_metadata(connection, **kwargs):
     tier1_check = init_check_res(connection, 'tier1_metadata_present')
     tier1_check_result = tier1_check.get_result_by_uuid(kwargs['called_by'])
 
+    tier1keys = ['New tier1 biosamples missing required metadata',
+                 'Tier1 biosamples no longer missing required metadata',
+                 'Biosamples with a tier1_metadata_missing badge that needs editing']
     # should values in dictionary depend on what's in check result?
-    patches = {'add_badge_success': [], 'add_badge_failure': [],
-               'edit_badge_success': [], 'edit_badge_failure': [],
-               'remove_badge_success': [], 'remove_badge_failure': []}
-
-    for add_key, add_val in tier1_check_result['full_output']['New tier1 biosamples missing required metadata'].items():
-        add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
-        badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': '/badges/tier1metadatamissing/', 'message': add_val})
-        if [b['badge'] for b in badges].count('/badges/tier1metadatamissing/') > 1:
-            # print an error message?
-            break
-        response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['add_badge_success'].append(add_key)
-        else:
-            patches['add_badge_failure'].append(add_key)
-    for remove_key, remove_val in tier1_check_result['full_output']['Tier1 biosamples no longer missing required metadata'].items():
-        # delete field if no badges?
-        if remove_val:
-            response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
-        else:
-            response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['remove_badge_success'].append(remove_key)
-        else:
-            patches['remove_badge_failure'].append(remove_key)
-    for edit_key, edit_val in tier1_check_result['full_output']['Biosamples with a tier1_metadata_missing badge that needs editing'].items():
-        response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['edit_badge_success'].append(edit_key)
-        else:
-            patches['edit_badge_failure'].append(edit_key)
-    action.output = patches
+    # patches = {'add_badge_success': [], 'add_badge_failure': [],
+    #            'edit_badge_success': [], 'edit_badge_failure': [],
+    #            'remove_badge_success': [], 'remove_badge_failure': []}
+    #
+    # for add_key, add_val in tier1_check_result['full_output']['New tier1 biosamples missing required metadata'].items():
+    #     add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
+    #     badges = add_result['badges'] if add_result.get('badges') else []
+    #     badges.append({'badge': '/badges/tier1metadatamissing/', 'message': add_val})
+    #     if [b['badge'] for b in badges].count('/badges/tier1metadatamissing/') > 1:
+    #         # print an error message?
+    #         break
+    #     response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['add_badge_success'].append(add_key)
+    #     else:
+    #         patches['add_badge_failure'].append(add_key)
+    # for remove_key, remove_val in tier1_check_result['full_output']['Tier1 biosamples no longer missing required metadata'].items():
+    #     # delete field if no badges?
+    #     if remove_val:
+    #         response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+    #     else:
+    #         response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['remove_badge_success'].append(remove_key)
+    #     else:
+    #         patches['remove_badge_failure'].append(remove_key)
+    # for edit_key, edit_val in tier1_check_result['full_output']['Biosamples with a tier1_metadata_missing badge that needs editing'].items():
+    #     response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['edit_badge_success'].append(edit_key)
+    #     else:
+    #         patches['edit_badge_failure'].append(edit_key)
+    action.output = patch_badges(tier1_check_result['full_output'], 'tier1metadatamissing', tier1keys, connection.ff_env)
     action.status = 'DONE'
     action.description = 'Patching badges for missing tier1 metadata'
     return action
@@ -473,30 +524,32 @@ def patch_badges_raw_files(connection, **kwargs):
     raw_check = init_check_res(connection, 'exp_has_raw_files')
     raw_check_result = raw_check.get_result_by_uuid(kwargs['called_by'])
 
-    patches = {'add_badge_success': [], 'add_badge_failure': [],
-               'remove_badge_success': [], 'remove_badge_failure': []}
-    for item in raw_check_result['full_output']['Experiments newly missing raw files']:
-        add_result = ff_utils.get_metadata(item + '?frame=object', ff_env=connection.ff_env)
-        badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': '/badges/norawfiles/', 'message': 'Raw files absent'})
-        if [b['badge'] for b in badges].count('/badges/norawfiles/') > 1:
-            # print an error message?
-            break
-        response = ff_utils.patch_metadata({"badges": badges}, item[1:], ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['add_badge_success'].append(item)
-        else:
-            patches['add_badge_failure'].append(item)
-    for itemid, val in raw_check_result['full_output']['Experiments no longer missing raw files'].items():
-        if val:
-            response = ff_utils.patch_metadata({"badges": val}, itemid, ff_env=connection.ff_env)
-        else:
-            response = ff_utils.patch_metadata({}, itemid + '?delete_fields=badges', ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['remove_badge_success'].append(itemid)
-        else:
-            patches['remove_badge_failure'].append(itemid)
-    action.output = patches
+    raw_keys = ['Experiments newly missing raw files', 'Experiments no longer missing raw files']
+    # patches = {'add_badge_success': [], 'add_badge_failure': [],
+    #            'remove_badge_success': [], 'remove_badge_failure': []}
+    # for item in raw_check_result['full_output']['Experiments newly missing raw files']:
+    #     add_result = ff_utils.get_metadata(item + '?frame=object', ff_env=connection.ff_env)
+    #     badges = add_result['badges'] if add_result.get('badges') else []
+    #     badges.append({'badge': '/badges/norawfiles/', 'message': 'Raw files absent'})
+    #     if [b['badge'] for b in badges].count('/badges/norawfiles/') > 1:
+    #         # print an error message?
+    #         break
+    #     response = ff_utils.patch_metadata({"badges": badges}, item[1:], ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['add_badge_success'].append(item)
+    #     else:
+    #         patches['add_badge_failure'].append(item)
+    # for itemid, val in raw_check_result['full_output']['Experiments no longer missing raw files'].items():
+    #     if val:
+    #         response = ff_utils.patch_metadata({"badges": val}, itemid, ff_env=connection.ff_env)
+    #     else:
+    #         response = ff_utils.patch_metadata({}, itemid + '?delete_fields=badges', ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['remove_badge_success'].append(itemid)
+    #     else:
+    #         patches['remove_badge_failure'].append(itemid)
+    action.output = patch_badges(raw_check_result['full_output'], 'norawfiles', raw_keys,
+                                 connection.ff_env, single_message='Raw files missing')
     action.status = 'DONE'
     action.description = 'Patching badges for experiments missing raw files'
     return action
@@ -521,7 +574,7 @@ def paired_end_info_consistent(connection, **kwargs):
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(results_rev, 'FileFastq',
                                                                  'pairedendsconsistent',
-                                                                 connection.ff_env, compare_msg=True)
+                                                                 connection.ff_env)
 
     if [val for val in results.values() if val]:
         check.status = 'WARN'
@@ -552,40 +605,43 @@ def patch_badges_paired_end_consistency(connection, **kwargs):
     pe_check = init_check_res(connection, 'paired_end_info_consistent')
     pe_check_result = pe_check.get_result_by_uuid(kwargs['called_by'])
 
+    pe_keys = ['New fastq files with inconsistent paired end info',
+               'Fastq files with paired end info now consistent',
+               'Fastq files with paired end badge that needs editing']
     # should values in dictionary depend on what's in check result?
-    patches = {'add_badge_success': [], 'add_badge_failure': [],
-               'edit_badge_success': [], 'edit_badge_failure': [],
-               'remove_badge_success': [], 'remove_badge_failure': []}
-
-    for add_key, add_val in pe_check_result['full_output']['New fastq files with inconsistent paired end info'].items():
-        add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
-        badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': '/badges/pairedendsconsistent/', 'message': add_val})
-        if [b['badge'] for b in badges].count('/badges/pairedendsconsistent') > 1:
-            # print an error message?
-            break
-        response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['add_badge_success'].append(add_key)
-        else:
-            patches['add_badge_failure'].append(add_key)
-    for remove_key, remove_val in pe_check_result['full_output']['Fastq files with paired end info now consistent'].items():
-        # delete field if no badges?
-        if remove_val:
-            response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
-        else:
-            response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['remove_badge_success'].append(remove_key)
-        else:
-            patches['remove_badge_failure'].append(remove_key)
-    for edit_key, edit_val in pe_check_result['full_output']['Fastq files with paired end badge that needs editing'].items():
-        response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
-        if response['status'] == 'success':
-            patches['edit_badge_success'].append(edit_key)
-        else:
-            patches['edit_badge_failure'].append(edit_key)
-    action.output = patches
+    # patches = {'add_badge_success': [], 'add_badge_failure': [],
+    #            'edit_badge_success': [], 'edit_badge_failure': [],
+    #            'remove_badge_success': [], 'remove_badge_failure': []}
+    #
+    # for add_key, add_val in pe_check_result['full_output']['New fastq files with inconsistent paired end info'].items():
+    #     add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=connection.ff_env)
+    #     badges = add_result['badges'] if add_result.get('badges') else []
+    #     badges.append({'badge': '/badges/pairedendsconsistent/', 'message': add_val})
+    #     if [b['badge'] for b in badges].count('/badges/pairedendsconsistent') > 1:
+    #         # print an error message?
+    #         break
+    #     response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['add_badge_success'].append(add_key)
+    #     else:
+    #         patches['add_badge_failure'].append(add_key)
+    # for remove_key, remove_val in pe_check_result['full_output']['Fastq files with paired end info now consistent'].items():
+    #     # delete field if no badges?
+    #     if remove_val:
+    #         response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=connection.ff_env)
+    #     else:
+    #         response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['remove_badge_success'].append(remove_key)
+    #     else:
+    #         patches['remove_badge_failure'].append(remove_key)
+    # for edit_key, edit_val in pe_check_result['full_output']['Fastq files with paired end badge that needs editing'].items():
+    #     response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=connection.ff_env)
+    #     if response['status'] == 'success':
+    #         patches['edit_badge_success'].append(edit_key)
+    #     else:
+    #         patches['edit_badge_failure'].append(edit_key)
+    action.output = patch_badges(pe_check_result['full_output'], 'pairedendsconsistent', pe_keys, connection.ff_env)
     action.status = 'DONE'
     action.description = 'Patching badges for paired end fastq files'
     return action
