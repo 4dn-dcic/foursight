@@ -277,7 +277,8 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
             # register with previous higlass_uid if already there
-            if 'higlass_uid' in hit:
+            # don't want a falsey value for hit['higlass_uid']
+            if 'higlass_uid' in hit and hit['higlass_uid']:
                 payload['uuid'] = hit['higlass_uid']
             res = requests.post(higlass_key['server'] + '/api/v1/link_tile/',
                                 data=json.dumps(payload), auth=authentication,
@@ -514,13 +515,14 @@ def prepare_static_headers(connection, **kwargs):
                 curr_headers.remove(kwargs['header_at_id'])
                 check.full_output['to_remove'][search_res['@id']] = curr_headers
 
-    check.status = 'PASS'
     if check.full_output['to_add'] or check.full_output['to_remove']:
+        check.status = 'WARN'
         check.summary = 'Ready to add and/or remove static header'
         check.description = 'Ready to add and/or remove static header: %s' % kwargs['header_at_id']
         check.allow_action = True
         check.action_message = 'Will add static header to %s items and remove it from %s items' % (len(check.full_output['to_add']), len(check.full_output['to_remove']))
     else:
+        check.status = 'PASS'
         check.summary = 'Static header is all set'
     return check
 
