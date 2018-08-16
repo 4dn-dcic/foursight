@@ -321,7 +321,7 @@ def repsets_have_bio_reps(connection, **kwargs):
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
                                                                  'replicatenumbers', connection.ff_env)
-    check.action = 'patch_badges_replicates'
+    check.action = 'patch_badges_for_replicate_numbers'
     if by_exp:
         check.status = 'WARN'
         check.summary = 'Replicate experiment sets found with replicate number issues'
@@ -341,8 +341,8 @@ def repsets_have_bio_reps(connection, **kwargs):
 
 
 @action_function()
-def patch_badges_replicates(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_replicates')
+def patch_badges_for_replicate_numbers(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_for_replicate_numbers')
 
     rep_check = init_check_res(connection, 'repsets_have_bio_reps')
     rep_check_result = rep_check.get_result_by_uuid(kwargs['called_by'])
@@ -381,7 +381,7 @@ def tier1_metadata_present(connection, **kwargs):
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(missing, 'Biosample',
                                                                  'tier1metadatamissing',
                                                                  connection.ff_env)
-    check.action = 'patch_badges_tier1_metadata'
+    check.action = 'patch_badges_for_tier1_metadata'
     if missing:
         check.status = 'WARN'
         check.summary = 'Tier 1 biosamples found missing required metadata'
@@ -401,8 +401,8 @@ def tier1_metadata_present(connection, **kwargs):
 
 
 @action_function()
-def patch_badges_tier1_metadata(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_tier1_metadata')
+def patch_badges_for_tier1_metadata(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_for_tier1_metadata')
 
     tier1_check = init_check_res(connection, 'tier1_metadata_present')
     tier1_check_result = tier1_check.get_result_by_uuid(kwargs['called_by'])
@@ -452,7 +452,7 @@ def exp_has_raw_files(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No experiments missing raw files'
         check.description = '0 sequencing experiments are missing raw files'
-    check.action = 'patch_badges_raw_files'
+    check.action = 'patch_badges_for_raw_files'
     check.full_output = {'Experiments newly missing raw files': to_add,
                          'Old experiments missing raw files': ok,
                          'Experiments no longer missing raw files': to_remove}
@@ -463,8 +463,8 @@ def exp_has_raw_files(connection, **kwargs):
 
 
 @action_function()
-def patch_badges_raw_files(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_raw_files')
+def patch_badges_for_raw_files(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_for_raw_files')
 
     raw_check = init_check_res(connection, 'exp_has_raw_files')
     raw_check_result = raw_check.get_result_by_uuid(kwargs['called_by'])
@@ -515,15 +515,15 @@ def paired_end_info_consistent(connection, **kwargs):
                          'Fastq files with paired end info now consistent': to_remove,
                          'Fastq files with paired end badge that needs editing': to_edit}
     check.brief_output = results
-    check.action = 'patch_badges_paired_end_consistency'
+    check.action = 'patch_badges_for_paired_end_consistency'
     if to_add or to_remove or to_edit:
         check.allow_action = True
     return check
 
 
 @action_function()
-def patch_badges_paired_end_consistency(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_paired_end_consistency')
+def patch_badges_for_paired_end_consistency(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_for_paired_end_consistency')
 
     pe_check = init_check_res(connection, 'paired_end_info_consistent')
     pe_check_result = pe_check.get_result_by_uuid(kwargs['called_by'])

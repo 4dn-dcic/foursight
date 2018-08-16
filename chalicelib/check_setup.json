@@ -169,6 +169,10 @@
                 "mastertest": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -179,6 +183,10 @@
         "schedule": {
             "morning_checks": {
                 "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -193,6 +201,10 @@
                 "mastertest": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -203,6 +215,10 @@
         "schedule": {
             "morning_checks": {
                 "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
