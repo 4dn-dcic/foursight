@@ -450,6 +450,8 @@ def exp_has_raw_files(connection, **kwargs):
     missing_files = [e['@id'] for e in no_files]
     for expt in exps:
         result = ff_utils.get_metadata(expt, ff_env=connection.ff_env)
+        if result.get('status') == 'archived':
+            continue
         raw_files = False
         if result.get('files'):
             for fastq in result.get('files'):
