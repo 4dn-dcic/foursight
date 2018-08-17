@@ -441,7 +441,7 @@ def exp_has_raw_files(connection, **kwargs):
     no_files = ff_utils.search_metadata('search/?type=Experiment&%40type%21=ExperimentMic&files.uuid=No+value',
                                         ff_env=connection.ff_env)
     # also check sequencing experiments whose files items are all uploading/archived/deleted
-    bad_status = ff_utils.search_metadata('search/?status=uploading&status=archived&status=deleted'
+    bad_status = ff_utils.search_metadata('search/?status=uploading&status=archived&status=deleted&status=upload+failed'
                                           '&type=FileFastq&experiments.uuid%21=No+value',
                                           ff_env=connection.ff_env)
     bad_status_ids = [item['@id'] for item in bad_status]
