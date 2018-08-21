@@ -173,3 +173,64 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     check.brief_output = {'missing title': [item['uuid'] for item in errors if 'missing' in ''.join(item['error_details'])],
                           'duplicate title': [item['uuid'] for item in errors if 'also present in parent' in ''.join(item['error_details'])]}
     return check
+
+
+@check_function()
+def workflow_properties(connection, **kwargs):
+    check = init_check_res(connection, 'workflow_properties')
+
+    workflows = ff_utils.search_metadata('search/?type=Workflow&category!=provenance&frame=object', ff_env=connection.ff_env)
+    bad = {'Duplicate Input Names in Workflow Step': [],
+           'Duplicate Output Names in Workflow Step': [],
+           'Duplicate Input Source Names in Workflow Step': [],
+           'Duplicate Output Target Names in Workflow Step': [],
+           'Missing meta.file_format property in Workflow Step Input': []}
+    by_wf = {}
+    for wf in workflows:
+        issues = []
+        # no duplicates in input names
+        for step in wf.get('steps'):
+            # no duplicates in input source names
+            for step_input in step.get('inputs'):
+                if step_input['meta'].get('type') in ['data file', 'reference file'] and not step_input['meta'].get('file_format'):
+                    issues.append('Missing meta.file_format property in Workflow Step {} Input {}'
+                                  ''.format(step.get('name'), step_input.get('name')))
+            input_names = [step_input.get('name') for step_input in step.get('inputs')]
+            if len(list(set(input_names))) != len(input_names):
+                # bad['Duplicate Input Names in Workflow Step'].append(wf['@id'])
+                issues.append('Duplicate Input Names in Workflow Step {}'.format(step.get('name')))
+            input_sources = [(step_input['source'].get('name'), step_input['source'].get('')) for step_input in step.get('inputs')]
+            if len(input_sources) != len(list(set(input_sources))):
+                issues.append('Duplicate Input Source Names in Workflow Step {}'.format(step.get('name')))
+            # no duplicates in output names
+            output_names = [step_output.get('name') for step_output in step_outputs]
+            # no duplicates in output source names
+            if len(list(set(output_names))) != len(output_names):
+                issues.append('Duplicate Output Names in Workflow Step {}'.format(step.get('name')))
+            targets = [(step_output['target'].get('name'), step_input['target'].get('')) for step_output in step_outputs]
+            if len(targets) != len(list(set(targets))):
+                issues.append('Duplicate Output Target Names in Workflow Step {}'.format(step.get('name')))
+        errors = ' '.join(issues)
+        if 'Duplicate Input Names' in errors:
+            bad['Duplicate Input Names in Workflow Step'].append(wf['@id'])
+        if 'Duplicate Output Names' in errors:
+            bad['Duplicate Output Names in Workflow Step'].append(wf['@id'])
+        if 'Duplicate Input Source Names' in errors:
+            bad['Duplicate Input Source Names in Workflow Step'].append(wf['@id'])
+        if 'Duplicate Output Target Names' in errors:
+            bad['Duplicate Output Target Names in Workflow Step'].append(wf['@id'])
+        if 'meta.file_format' in errors:
+            bad['Missing meta.file_format property in Workflow Step Input'].append(wf['@id'])
+        by_wf[wf['@id']] = issues
+
+    if by_wf:
+        check.status = 'WARN'
+        check.summary = 'Workflows found with duplicate item names in `steps`'
+        check.description = '{} workflows found with duplicate item names in `steps`'.format(len(by_exp.keys()))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No workflows with duplicate item names in `steps` field'
+        check.description = check.summary
+    check.brief_output = bad
+    check.full_output = by_wf
+    return check
