@@ -1012,6 +1012,11 @@ class TestUtils(FSTest):
         environments = app_utils.init_environments()
         for env in environments:
             conn = app_utils.init_connection(env)
+            if conn.fs_env == 'local':
+                # local testing environment
+                self.assertTrue(conn.ff_s3 == None)
+                self.assertTrue(conn.ff_keys == None)
+                continue
             s3_obj = s3_utils.s3Utils(env=conn.ff_env)
             self.assertTrue(s3_obj.sys_bucket is not None)
             self.assertTrue(s3_obj.outfile_bucket is not None)
