@@ -2,6 +2,8 @@
 NOTICE: THIS FILE (and google client library dependency) IS TEMPORARY AND WILL BE MOVED TO **DCICUTILS** AFTER MORE COMPLETE
 '''
 
+import inspect
+from collections import OrderedDict
 from apiclient.discovery import build
 from google.oauth2.service_account import Credentials
 from dcicutils import (
@@ -30,6 +32,14 @@ class _NestedGoogleServiceAPI:
         self.owner = syncer_instance
         if not self.owner.credentials:
             raise Exception("No Google API credentials set.")
+
+
+def report(func, disabled=False):
+    '''Decorator for AnalyticsAPI'''
+    if disabled:
+        return func
+    setattr(func, 'is_report_provider', True)
+    return func
 
 
 class GoogleAPISyncer:
@@ -119,13 +129,63 @@ class GoogleAPISyncer:
         https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
         '''
 
+        @staticmethod
+        def transform_report_result(raw_result, save_raw_values=False):
+            '''
+            Transform raw responses in result to a more usable structure.
+
+            Arguments:
+                raw_result - A dictionary containing at minimum `reports` (as delivered from) and `report_key_frames`
+            '''
+
+            def format_metric_value(row, metric_dict, metric_index):
+                '''Parses value from row into a numerical format, if necessary.'''
+                value = row['metrics'][0]["values"][metric_index]
+                type = metric_dict['type']
+                if type == 'INTEGER':
+                    value = int(value)
+                elif type in ('FLOAT', 'CURRENCY'):
+                    value = float(value)
+                elif type == 'PERCENT':
+                    value = float(value) / 100
+                return { "value" : value, "type" : type }
+
+            def report_to_json_item(report):
+                # [(0, "ga:productName"), (1, "ga:productSku"), ...]
+                dimension_keys = list(enumerate(report['columnHeader'].get('dimensions', [])))
+                # [(0, { "name": "ga:productDetailViews", "type": "INTEGER" }), (1, { "name": "ga:productListClicks", "type": "INTEGER" }), ...]
+                metric_key_definitions = list(enumerate(report['columnHeader'].get('metricHeader', []).get('metricHeaderEntries', [])))
+                return_items = []
+                for row_index, row in enumerate(report.get('data', {}).get('rows', [])):
+                    list_item = { dk : row['dimensions'][dk_index] for (dk_index, dk) in dimension_keys }
+                    list_item = dict(list_item, **{
+                        mk_dict['name'] : format_metric_value(row, mk_dict, mk_index)
+                        for (mk_index, mk_dict) in metric_key_definitions
+                    })
+                    return_items.append(list_item)
+                return return_items
+
+            parsed_reports = OrderedDict()
+
+            for idx, report_key_name in enumerate(raw_result['report_key_names']):
+                if save_raw_values:
+                    parsed_reports[report_key_name] = {
+                        "request"       : raw_result['requests'][idx],
+                        "raw_report"    : raw_result['reports'][idx],
+                        "results"       : report_to_json_item(raw_result['reports'][idx])
+                    }
+                else:
+                    parsed_reports[report_key_name] = report_to_json_item(raw_result['reports'][idx])
+
+            return parsed_reports
+
         def __init__(self, syncer_instance):
             _NestedGoogleServiceAPI.__init__(self, syncer_instance)
             self.view_id = self.owner.extra_config.get('analytics_view_id', DEFAULT_GOOGLE_API_CONFIG['analytics_view_id'])
             self._api = build('analyticsreporting', 'v4', credentials=self.owner.credentials)
 
 
-        def query_reports(self, report_requests, **kwargs):
+        def query_reports(self, report_requests=None, **kwargs):
             '''
             Run a query to Google Analytics API
             Accepts either a list of reportRequests (according to Google Analytics API Docs) and returns their results,
@@ -136,6 +196,39 @@ class GoogleAPISyncer:
             Arguments:
                 report_requests - A list of reportRequests.
             '''
+
+            if report_requests is None:
+                # Get every single report defined and marked with `@report` decorator.
+                report_requests = []
+                for method_name in GoogleAPISyncer.AnalyticsAPI.__dict__.keys():
+                    method_instance = getattr(self, method_name)
+                    if method_instance and getattr(method_instance, 'is_report_provider', False):
+                        report_requests.append(method_name)
+
+            report_key_names = None
+
+            all_reports_requested_as_strings = True
+            for r in report_requests:
+                if not isinstance(r, str):
+                    all_reports_requested_as_strings = False
+                    break
+
+            if all_reports_requested_as_strings:
+                report_key_names = report_requests
+            else:
+                # THIS DEPENDS ON CPYTHON TO WORK. PyPy or Jython = no go.
+                caller_method = None
+                try:
+                    curframe = inspect.currentframe()
+                    caller_frame = inspect.getouterframes(curframe, 2)
+                    caller_method = caller_frame[1][3]
+                except:
+                    pass
+                if isinstance(caller_method, str) and hasattr(self, caller_method):
+                    report_key_names = [caller_method]
+
+            if report_key_names is None:
+                raise Exception("Cant determine report key names.")
 
             def process_report_request_type(report_request, **kwargs):
                 if isinstance(report_request, str): # Convert string to dict by executing AnalyticsAPI[report_request](**kwargs)
@@ -149,22 +242,30 @@ class GoogleAPISyncer:
 
             formatted_report_requests = [ process_report_request_type(r, **kwargs) for r in report_requests ]
 
-            result = self._api.reports().batchGet(body={ "reportRequests" : formatted_report_requests }).execute()
-            result['requests'] = formatted_report_requests
-            return result
+            raw_result = self._api.reports().batchGet(body={ "reportRequests" : formatted_report_requests }).execute()
+            raw_result['requests'] = formatted_report_requests
+            raw_result['report_key_names'] = report_key_names
+            return GoogleAPISyncer.AnalyticsAPI.transform_report_result(raw_result)
 
 
+        @report
         def sessions_by_country(self, start_date='2daysAgo', end_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
-                'metrics': [{'expression': 'ga:sessions'}],
-                'dimensions': [{'name': 'ga:country'}]
+                'metrics': [
+                    { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:bounceRate' }
+                ],
+                'dimensions': [
+                    { 'name': 'ga:country' }
+                ]
             }
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
 
-        
+
+        @report
         def detail_views_by_file(self, start_date='2daysAgo', end_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
@@ -193,6 +294,7 @@ class GoogleAPISyncer:
             return report_request_json
 
 
+        @report
         def detail_views_by_experiment_set(self, start_date='2daysAgo', end_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
