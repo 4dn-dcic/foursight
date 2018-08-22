@@ -187,6 +187,7 @@ def workflow_properties(connection, **kwargs):
            'Missing meta.file_format property in Workflow Step Input': []}
     by_wf = {}
     for wf in workflows:
+        print(wf['@id'])
         issues = []
         # no duplicates in input names
         for step in wf.get('steps'):
@@ -199,17 +200,19 @@ def workflow_properties(connection, **kwargs):
             if len(list(set(input_names))) != len(input_names):
                 # bad['Duplicate Input Names in Workflow Step'].append(wf['@id'])
                 issues.append('Duplicate Input Names in Workflow Step {}'.format(step.get('name')))
-            input_sources = [(step_input['source'].get('name'), step_input['source'].get('')) for step_input in step.get('inputs')]
+            input_sources = [(source.get('name'), source.get('step', "GLOBAL")) for step_input in step.get('inputs') for source in step_input.get('source')]
             if len(input_sources) != len(list(set(input_sources))):
                 issues.append('Duplicate Input Source Names in Workflow Step {}'.format(step.get('name')))
             # no duplicates in output names
-            output_names = [step_output.get('name') for step_output in step_outputs]
+            output_names = [step_output.get('name') for step_output in step.get('outputs')]
             # no duplicates in output source names
             if len(list(set(output_names))) != len(output_names):
                 issues.append('Duplicate Output Names in Workflow Step {}'.format(step.get('name')))
-            targets = [(step_output['target'].get('name'), step_input['target'].get('')) for step_output in step_outputs]
+            targets = [(target.get('name'), target.get('step', 'GLOBAL')) for step_output in step.get('outputs') for target in step_output.get('target')]
             if len(targets) != len(list(set(targets))):
                 issues.append('Duplicate Output Target Names in Workflow Step {}'.format(step.get('name')))
+        if not issues:
+            continue
         errors = ' '.join(issues)
         if 'Duplicate Input Names' in errors:
             bad['Duplicate Input Names in Workflow Step'].append(wf['@id'])
@@ -225,12 +228,14 @@ def workflow_properties(connection, **kwargs):
 
     if by_wf:
         check.status = 'WARN'
-        check.summary = 'Workflows found with duplicate item names in `steps`'
-        check.description = '{} workflows found with duplicate item names in `steps`'.format(len(by_exp.keys()))
+        check.summary = 'Workflows found with issues in `steps`'
+        check.description = ('{} workflows found with duplicate item names or missing fields'
+                             ' in `steps`'.format(len(by_wf.keys())))
     else:
         check.status = 'PASS'
-        check.summary = 'No workflows with duplicate item names in `steps` field'
-        check.description = check.summary
+        check.summary = 'No workflows with issues in `steps` field'
+        check.description = ('No workflows found with duplicate item names or missing fields'
+                             ' in steps property')
     check.brief_output = bad
     check.full_output = by_wf
     return check
