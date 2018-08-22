@@ -161,6 +161,17 @@
             }
         }
     },
+    "workflow_properties": {
+        "title": "Workflows with missing or duplicate steps properties",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true}
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
