@@ -189,26 +189,35 @@ def workflow_properties(connection, **kwargs):
     for wf in workflows:
         print(wf['@id'])
         issues = []
-        # no duplicates in input names
         for step in wf.get('steps'):
-            # no duplicates in input source names
-            for step_input in step.get('inputs'):
-                if step_input['meta'].get('type') in ['data file', 'reference file'] and not step_input['meta'].get('file_format'):
+            # no duplicates in input names
+            step_inputs = step.get('inputs')
+            for step_input in step_inputs:
+                if (step_input['meta'].get('type') in ['data file', 'reference file'] and not
+                    step_input['meta'].get('file_format')):
                     issues.append('Missing meta.file_format property in Workflow Step {} Input {}'
                                   ''.format(step.get('name'), step_input.get('name')))
-            input_names = [step_input.get('name') for step_input in step.get('inputs')]
+            input_names = [step_input.get('name') for step_input in step_inputs]
             if len(list(set(input_names))) != len(input_names):
-                # bad['Duplicate Input Names in Workflow Step'].append(wf['@id'])
                 issues.append('Duplicate Input Names in Workflow Step {}'.format(step.get('name')))
-            input_sources = [(source.get('name'), source.get('step', "GLOBAL")) for step_input in step.get('inputs') for source in step_input.get('source')]
-            if len(input_sources) != len(list(set(input_sources))):
+            # no duplicates in input source names
+            sources = [(source.get('name'), source.get('step', "GLOBAL")) for
+                       step_input in step_inputs for source in step_input.get('source')]
+            if len(sources) != len(list(set(sources))):
                 issues.append('Duplicate Input Source Names in Workflow Step {}'.format(step.get('name')))
             # no duplicates in output names
-            output_names = [step_output.get('name') for step_output in step.get('outputs')]
-            # no duplicates in output source names
+            step_outputs = step.get('outputs')
+            # for step_output in step_outputs:
+            #     if (step_output['meta'].get('type') in ['data file', 'reference file'] and not
+            #         step_output['meta'].get('file_format')):
+            #         issues.append('Missing meta.file_format property in Workflow Step `{}` Output `{}`'
+            #                       ''.format(step.get('name'), step_output.get('name')))
+            output_names = [step_output.get('name') for step_output in step_outputs]
             if len(list(set(output_names))) != len(output_names):
                 issues.append('Duplicate Output Names in Workflow Step {}'.format(step.get('name')))
-            targets = [(target.get('name'), target.get('step', 'GLOBAL')) for step_output in step.get('outputs') for target in step_output.get('target')]
+            # no duplicates in output target names
+            targets = [(target.get('name'), target.get('step', 'GLOBAL')) for step_output in
+                       step_outputs for target in step_output.get('target')]
             if len(targets) != len(list(set(targets))):
                 issues.append('Duplicate Output Target Names in Workflow Step {}'.format(step.get('name')))
         if not issues:
