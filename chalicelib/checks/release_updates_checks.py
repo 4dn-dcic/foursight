@@ -6,6 +6,7 @@ from ..utils import (
     init_action_res,
     parse_datetime_to_utc
 )
+from ..google_utils import GoogleAPISyncer # This will eventually live in dcicutils module, along with ff_utils.
 from dcicutils import ff_utils
 import copy
 import itertools
@@ -540,3 +541,42 @@ def publish_data_release_updates(connection, **kwargs):
     }
     action.status = 'DONE'
     return action
+
+
+@check_function(start_date=None, end_date='yesterday')
+def google_analytics_statistics(connection, **kwargs):
+    check = init_check_res(connection, 'google_analytics_statistics')
+    
+    if connection.ff_env == 'fourfront-webprod' and connection.ff_s3 and connection.ff_keys:
+        # Re-use things we've instantiated &/or fetched already (`ff_s3`, `ff_keys`)
+        # Google API keys stored in webprod environment.
+        google = GoogleAPISyncer(s3UtilsInstance=connection.ff_s3, ff_access_keys=connection.ff_keys)
+    else:
+        # Let GoogleAPISyncer create own webprod-bound S3Utils instance to grab Google API key, but
+        # give it access keys for current non-webprod environment that foursight is running on.
+        google = GoogleAPISyncer(ff_access_keys=connection.ff_s3.get_access_keys())
+
+    check.action        = 'publish_google_analytics_statistics'
+
+    # If start_date is None, will grab last google_analytics tracking item end_date + 1 day, or (temp:) 'yesterday',
+    # or throw Exception if last end_date found was for yesterday.
+    new_tracking_item = google.analytics.create_tracking_item(do_post_request=True, start_date=start_date, end_date=end_date)
+
+    # Ok, we're done... google.analytics takes care of POSTing TrackingItem to ff_env.
+    #
+    # If need an action could set `do_post_request=False` in call to `google.analytics.create_tracking_item` and then do like:
+    #   check.full_output = { 'item' : new_tracking_item }
+    # And have action do like:
+    #   report_check = init_check_res(connection, 'google_analytics_statistics')
+    #   if report_check.full_output.get('item') is not None:
+    #       ff_utils.post_metadata(report_check.full_output['item'], ff_env=...)
+
+    # TODO: Figure out if we should return WARN or PASS
+
+    pass
+
+
+@action_function()
+def publish_google_analytics_statistics(connection, **kwargs):
+    pass
+
