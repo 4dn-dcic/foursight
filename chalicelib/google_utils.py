@@ -312,7 +312,7 @@ class GoogleAPISyncer:
             return search_response['@graph'][0]['google_analytics']['end_date']
 
 
-        def create_tracking_item(self, report_data=None, do_post_request=False):
+        def create_tracking_item(self, report_data=None, do_post_request=False, **kwargs):
             '''
             Wraps `report_data` in a TrackingItem Item.
 
@@ -322,7 +322,7 @@ class GoogleAPISyncer:
             If `report_data` is not supplied or set to None, will run query_reports() to get all reports defined as are defined in instance methods.
             '''
             if report_data is None:
-                report_data = self.query_reports()
+                report_data = self.query_reports(**kwargs)
                 # TODO:
                 #   start_date = (self.get_latest_tracking_item_end_date + timedelta(days=1)).isoformat()
                 #   if start_date == date.today().isoformat():
