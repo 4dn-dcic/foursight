@@ -317,7 +317,7 @@ class GoogleAPISyncer:
         def fill_with_tracking_items(self):
             last_tracking_item_date = self.get_latest_tracking_item_date()
             if last_tracking_item_date is None:
-                last_tracking_item_date = date.today() - timedelta(days=7)
+                last_tracking_item_date = date.today() - timedelta(days=15)
 
             # Day from which we begin to fill
             current_for_date = last_tracking_item_date + timedelta(days=1)
