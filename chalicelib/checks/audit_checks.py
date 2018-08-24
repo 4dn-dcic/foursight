@@ -288,7 +288,8 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
 def workflow_properties(connection, **kwargs):
     check = init_check_res(connection, 'workflow_properties')
 
-    workflows = ff_utils.search_metadata('search/?type=Workflow&category!=provenance&frame=object', ff_env=connection.ff_env)
+    workflows = ff_utils.search_metadata('search/?type=Workflow&category!=provenance&frame=object',
+                                         ff_env=connection.ff_env)
     bad = {'Duplicate Input Names in Workflow Step': [],
            'Duplicate Output Names in Workflow Step': [],
            'Duplicate Input Source Names in Workflow Step': [],
