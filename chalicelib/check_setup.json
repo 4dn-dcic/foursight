@@ -161,13 +161,90 @@
             }
         }
     },
+    "repsets_have_bio_reps": {
+        "title": "Replicate experiment sets with replicate number issues",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "tier1_metadata_present": {
+        "title": "Tier 1 Biosamples with Missing Metadata",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "exp_has_raw_files": {
+        "title": "Experiments missing raw files",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "paired_end_info_consistent": {
+        "title": "Fastq files with inconsistent paired end information",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "page_children_routes": {
+        "title": "Pages with bad routes",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "workflow_properties": {
         "title": "Workflows with missing or duplicate steps properties",
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
                 "all": {
-                    "kwargs": {"primary": true}
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
