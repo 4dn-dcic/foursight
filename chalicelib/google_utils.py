@@ -302,7 +302,7 @@ class GoogleAPISyncer:
             See: https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat
             '''
             search_results = ff_utils.search_metadata(
-                '/search/?type=TrackingItem&tracking_type=google_analytics&sort=-google_analytics.end_date&limit=1',
+                '/search/?type=TrackingItem&tracking_type=google_analytics&sort=-google_analytics.for_date&limit=1',
                 key=dict(self.owner.access_key, server=self.owner.server)
             )
             if len(search_results) == 0:
