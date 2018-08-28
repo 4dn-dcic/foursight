@@ -152,7 +152,7 @@ class GoogleAPISyncer:
                 type = metric_dict['type']
                 if type == 'INTEGER':
                     value = int(value)
-                elif type in ('FLOAT', 'CURRENCY'):
+                elif type in ('FLOAT', 'CURRENCY', 'TIME'):
                     value = float(value)
                 elif type == 'PERCENT':
                     value = float(value) / 100
@@ -194,6 +194,8 @@ class GoogleAPISyncer:
                 else:
                     parsed_reports[report_key_name] = report_to_json_items(raw_result['reports'][idx])
 
+            for_date = None
+
             # `start_date` and `end_date` must be same for all requests (defined in Google API docs).
             if len(raw_result['requests']) > 0:
                 common_start_date   = raw_result['requests'][0]['dateRanges'][0].get('startDate', '7daysAgo')   # Google API default
@@ -202,11 +204,14 @@ class GoogleAPISyncer:
                     common_start_date = parse_google_api_date(common_start_date)
                 if common_end_date:
                     common_end_date = parse_google_api_date(common_end_date)
+                # They should be the same
+                if common_end_date != common_start_date:
+                    raise Exception('Expected 1 day interval(s) for analytics, but startDate and endDate are different.')
+                for_date = common_end_date
 
             return { 
                 "reports"       : parsed_reports,
-                "start_date"    : common_start_date,
-                "end_date"      : common_end_date,
+                "for_date"      : for_date
             }
 
         def __init__(self, syncer_instance):
@@ -288,29 +293,52 @@ class GoogleAPISyncer:
             #   e.g. list of JSON items instead of multi-dimensional table representation
             return self.transform_report_result(raw_result)     # same as GoogleAPISyncer.AnalyticsAPI.transform_report_result(raw_result)
 
-        def get_latest_tracking_item_end_date(self):
+        def get_latest_tracking_item_date(self):
             '''
             IN PROGRESS
 
             TODO:
-            Ideally we want to return a datetime.date here instead of ISOFORMAT.
-            This is not supported until Python 3.7 though (without extra libraries). See: https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat
-            Once available we can easily get subsequent date range data with:
-            ```
-                google.analytics.query_reports(start_date=google.analytics.get_latest_tracking_item_end_date() + timedelta(days=1), end_date='yesterday')
-            ```
-
-            This would be more reliable than `.query_reports(start_date='yesterday', end_date='yesterday')`.
+            `date.fromisoformat(...)`  is not supported until Python 3.7 though (without extra libraries).
+            See: https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat
             '''
-            search_response = ff_utils.search_metadata(
-                '/search/?type=TrackingItem&tracking_type=google_analytics&sort=-google_analytics.end_date&limit=1',
+            search_results = ff_utils.search_metadata(
+                '/search/?type=TrackingItem&tracking_type=google_analytics&sort=-google_analytics.for_date&limit=1',
                 key=dict(self.owner.access_key, server=self.owner.server)
             )
-            if len(search_response.get('@graph', [])) == 0:
-                # raise Exception("No existing Google Analytics Tracking Items found.")
+            if len(search_results) == 0:
                 return None
-            return search_response['@graph'][0]['google_analytics']['end_date']
 
+            iso_date = search_results[0]['google_analytics']['for_date']
+
+            # TODO: Use date.fromisoformat() once we're on Python 3.7
+            year, month, day = iso_date.split('-', 2)
+            return date(int(year), int(month), int(day))
+
+        def fill_with_tracking_items(self):
+            last_tracking_item_date = self.get_latest_tracking_item_date()
+            if last_tracking_item_date is None:
+                last_tracking_item_date = date.today() - timedelta(days=15)
+
+            # Day from which we begin to fill
+            current_for_date = last_tracking_item_date + timedelta(days=1)
+
+            if current_for_date == date.today():
+                raise Exception("We have latest analytics data, no need to add more.")
+
+            # Last day
+            end_date = date.today() - timedelta(days=1)
+
+            counter = 0
+            while current_for_date <= end_date:
+                response = self.create_tracking_item(
+                    do_post_request=True,
+                    for_date=current_for_date.isoformat()
+                )
+                counter += 1
+                print('Created ' + str(counter) + ' TrackingItems so far.')
+                current_for_date += timedelta(days=1)
+
+            return { 'created' : counter }
 
         def create_tracking_item(self, report_data=None, do_post_request=False, **kwargs):
             '''
@@ -323,11 +351,6 @@ class GoogleAPISyncer:
             '''
             if report_data is None:
                 report_data = self.query_reports(**kwargs)
-                # TODO:
-                #   start_date = (self.get_latest_tracking_item_end_date + timedelta(days=1)).isoformat()
-                #   if start_date == date.today().isoformat():
-                #       raise Exception("Already have latest data.")
-                #   report_data = self.query_reports(start_date=start_date)
 
             # First make sure _all_ reporting methods defined on this class are included. Otherwise we might have tracking items in DB with missing data.
             for method_name in self.get_report_provider_method_names():
@@ -348,9 +371,9 @@ class GoogleAPISyncer:
                 return tracking_item
 
         @report
-        def sessions_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
+        def sessions_by_country(self, for_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
+                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
                 'metrics': [
                     { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:sessionsPerUser' },
@@ -367,9 +390,9 @@ class GoogleAPISyncer:
 
 
         @report
-        def detail_views_by_file(self, start_date='yesterday', end_date='yesterday', execute=True):
+        def detail_views_by_file(self, for_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
+                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
                 'metrics': [
                     { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
@@ -396,9 +419,9 @@ class GoogleAPISyncer:
 
 
         @report
-        def detail_views_by_experiment_set(self, start_date='yesterday', end_date='yesterday', execute=True):
+        def detail_views_by_experiment_set(self, for_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
+                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
                 'metrics': [
                     { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
