@@ -294,10 +294,11 @@ def workflow_properties(connection, **kwargs):
            'Duplicate Output Names in Workflow Step': [],
            'Duplicate Input Source Names in Workflow Step': [],
            'Duplicate Output Target Names in Workflow Step': [],
-           'Missing meta.file_format property in Workflow Step Input': []}
+           'Missing meta.file_format property in Workflow Step Input': [],
+           'Missing meta.file_format property in Workflow Step Output': []}
     by_wf = {}
     for wf in workflows:
-        print(wf['@id'])
+        # print(wf['@id'])
         issues = []
         for step in wf.get('steps'):
             # no duplicates in input names
@@ -305,7 +306,7 @@ def workflow_properties(connection, **kwargs):
             for step_input in step_inputs:
                 if (step_input['meta'].get('type') in ['data file', 'reference file'] and not
                     step_input['meta'].get('file_format')):
-                    issues.append('Missing meta.file_format property in Workflow Step {} Input {}'
+                    issues.append('Missing meta.file_format property in Workflow Step `{}` Input `{}`'
                                   ''.format(step.get('name'), step_input.get('name')))
             input_names = [step_input.get('name') for step_input in step_inputs]
             if len(list(set(input_names))) != len(input_names):
@@ -317,11 +318,11 @@ def workflow_properties(connection, **kwargs):
                 issues.append('Duplicate Input Source Names in Workflow Step {}'.format(step.get('name')))
             # no duplicates in output names
             step_outputs = step.get('outputs')
-            # for step_output in step_outputs:
-            #     if (step_output['meta'].get('type') in ['data file', 'reference file'] and not
-            #         step_output['meta'].get('file_format')):
-            #         issues.append('Missing meta.file_format property in Workflow Step `{}` Output `{}`'
-            #                       ''.format(step.get('name'), step_output.get('name')))
+            for step_output in step_outputs:
+                if (step_output['meta'].get('type') in ['data file', 'reference file'] and not
+                    step_output['meta'].get('file_format')):
+                    issues.append('Missing meta.file_format property in Workflow Step `{}` Output `{}`'
+                                  ''.format(step.get('name'), step_output.get('name')))
             output_names = [step_output.get('name') for step_output in step_outputs]
             if len(list(set(output_names))) != len(output_names):
                 issues.append('Duplicate Output Names in Workflow Step {}'.format(step.get('name')))
@@ -341,8 +342,10 @@ def workflow_properties(connection, **kwargs):
             bad['Duplicate Input Source Names in Workflow Step'].append(wf['@id'])
         if 'Duplicate Output Target Names' in errors:
             bad['Duplicate Output Target Names in Workflow Step'].append(wf['@id'])
-        if 'meta.file_format' in errors:
+        if '` Input `' in errors:
             bad['Missing meta.file_format property in Workflow Step Input'].append(wf['@id'])
+        if '` Output `' in errors:
+            bad['Missing meta.file_format property in Workflow Step Output'].append(wf['@id'])
         by_wf[wf['@id']] = issues
 
     if by_wf:
@@ -357,6 +360,7 @@ def workflow_properties(connection, **kwargs):
                              ' in steps property')
     check.brief_output = bad
     check.full_output = by_wf
+    return check
 
 
 @check_function()
