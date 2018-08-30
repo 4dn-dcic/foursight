@@ -6,12 +6,6 @@ from ..utils import (
     init_action_res
 )
 from dcicutils import ff_utils
-import requests
-import sys
-import json
-import datetime
-import time
-import boto3
 
 # generic CHECK function used to add a static headers to items of some search result
 def find_items_for_header_processing(connection, check, header, add_search=None, remove_search=None):
