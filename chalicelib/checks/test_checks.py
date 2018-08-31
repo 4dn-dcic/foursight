@@ -14,6 +14,7 @@ import random
 import time
 
 def test_function_unused():
+    """desc"""
     return
 
 
