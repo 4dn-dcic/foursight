@@ -80,14 +80,24 @@ def patch_items_with_headers(connection, action, headers_check, called_by):
     total_patches = headers_check_result['full_output']['to_add']
     total_patches.update(headers_check_result['full_output']['to_remove'])
     for item, headers in total_patches.items():
-        patch_data = {'static_headers': headers}
-        try:
-            ff_utils.patch_metadata(patch_data, obj_id=item, key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as e:
-            patch_error = '\n'.join([item, str(e)])
-            action_logs['patch_failure'].append(patch_error)
+        # if all headers are deleted, use ff_utils.delete_field
+        if headers == []:
+            try:
+                ff_utils.delete_field(item, 'static_headers', key=connection.ff_keys, ff_env=connection.ff_env)
+            except Exception as e:
+                patch_error = '\n'.join([item, str(e)])
+                action_logs['patch_failure'].append(patch_error)
+            else:
+                action_logs['patch_success'].append(item)
         else:
-            action_logs['patch_success'].append(item)
+            patch_data = {'static_headers': headers}
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=item, key=connection.ff_keys, ff_env=connection.ff_env)
+            except Exception as e:
+                patch_error = '\n'.join([item, str(e)])
+                action_logs['patch_failure'].append(patch_error)
+            else:
+                action_logs['patch_success'].append(item)
     action.status = 'DONE'
     action.output = action_logs
 
