@@ -14,12 +14,14 @@ import random
 import time
 
 def test_function_unused():
+    """desc"""
     return
 
 
 # meant to raise an error on execution by dividing by 0
 @check_function()
 def test_check_error(connection, **kwargs):
+    """decs"""
     bad_op = 10 * 1/0
     return bad_op
 
