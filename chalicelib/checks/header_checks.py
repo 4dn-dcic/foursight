@@ -133,10 +133,18 @@ def patch_static_headers(connection, **kwargs):
 
 def prepare_static_headers_inSitu_HiC(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_inSitu_HiC')
-    # check.action = 'patch_static_headers_inSitu_HiC'
+    check.action = 'patch_static_headers_inSitu_HiC'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
                                      kwargs['add_search'], kwargs['remove_search'])
     return check
+
+@action_function()
+def patch_static_headers_inSitu_HiC(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers_inSitu_HiC')
+    # get latest results from prepare_static_headers
+    headers_check = init_check_res(connection, 'prepare_static_headers_inSitu_HiC')
+    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    return action
 
 # Dilution Hi-C Experiment Sets
 
@@ -148,10 +156,18 @@ def prepare_static_headers_inSitu_HiC(connection, **kwargs):
 
 def prepare_static_headers_dilution_HiC(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_dilution_HiC')
-    # check.action = 'patch_static_headers'
+    check.action = 'patch_static_headers_dilution_HiC'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
                                      kwargs['add_search'], kwargs['remove_search'])
     return check
+
+@action_function()
+def patch_static_headers_dilution_HiC(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers_dilution_HiC')
+    # get latest results from prepare_static_headers
+    headers_check = init_check_res(connection, 'prepare_static_headers_dilution_HiC')
+    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    return action
 
 # FISH
 
@@ -163,10 +179,18 @@ def prepare_static_headers_dilution_HiC(connection, **kwargs):
 
 def prepare_static_headers_FISH(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_FISH')
-    # check.action = 'patch_static_headers'
+    check.action = 'patch_static_headers_FISH'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
                                      kwargs['add_search'], kwargs['remove_search'])
     return check
+
+@action_function()
+def patch_static_headers_FISH(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers_FISH')
+    # get latest results from prepare_static_headers
+    headers_check = init_check_res(connection, 'prepare_static_headers_FISH')
+    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    return action
 
 # SPT
 
@@ -178,10 +202,18 @@ def prepare_static_headers_FISH(connection, **kwargs):
 
 def prepare_static_headers_SPT(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_SPT')
-    # check.action = 'patch_static_headers'
+    check.action = 'patch_static_headers_SPT'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
                                      kwargs['add_search'], kwargs['remove_search'])
     return check
+
+@action_function()
+def patch_static_headers_SPT(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers_SPT')
+    # get latest results from prepare_static_headers
+    headers_check = init_check_res(connection, 'prepare_static_headers_SPT')
+    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    return action
 
 # SPRITE
 
@@ -193,7 +225,15 @@ def prepare_static_headers_SPT(connection, **kwargs):
 
 def prepare_static_headers_SPRITE(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_SPRITE')
-    # check.action = 'patch_static_headers'
+    check.action = 'patch_static_headers_SPRITE'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
                                      kwargs['add_search'], kwargs['remove_search'])
     return check
+
+@action_function()
+def patch_static_headers_SPRITE(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers_SPRITE')
+    # get latest results from prepare_static_headers
+    headers_check = init_check_res(connection, 'prepare_static_headers_SPRITE')
+    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    return action
