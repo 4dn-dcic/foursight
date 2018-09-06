@@ -354,7 +354,7 @@
         "group": "Static Headers Checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -366,7 +366,7 @@
         "group": "Static Headers Checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -378,7 +378,7 @@
         "group": "Static Headers Checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -390,7 +390,7 @@
         "group": "Static Headers Checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -402,7 +402,7 @@
         "group": "Static Headers Checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
