@@ -123,8 +123,8 @@ def patch_static_headers(connection, **kwargs):
     patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
     return action
 
-# InSitu Hi-C experiment Sets
 
+# InSitu Hi-C experiment Sets
 @check_function(
     add_search='/search/?experiments_in_set.experiment_type=in+situ+Hi-C&type=ExperimentSet&frame=object',
     remove_search='/search/?experiments_in_set.experiment_type!=in+situ+Hi-C&type=ExperimentSet&frame=object',
@@ -216,19 +216,18 @@ def patch_static_headers_SPT(connection, **kwargs):
     return action
 
 # SPRITE
-
 @check_function(
     add_search='/search/?experiments_in_set.experiment_type=DNA+SPRITE&type=ExperimentSet&frame=object',
     remove_search='/search/?experiments_in_set.experiment_type!=DNA+SPRITE&type=ExperimentSet&frame=object',
     header_at_id='/static-sections/205f35ec-92cd-4c02-bd35-b0d38dd72a90/'
 )
-
 def prepare_static_headers_SPRITE(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_SPRITE')
     check.action = 'patch_static_headers_SPRITE'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
                                      kwargs['add_search'], kwargs['remove_search'])
     return check
+
 
 @action_function()
 def patch_static_headers_SPRITE(connection, **kwargs):
