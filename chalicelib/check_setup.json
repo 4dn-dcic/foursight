@@ -357,6 +357,14 @@
                 "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -367,6 +375,14 @@
         "schedule": {
             "morning_checks": {
                 "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -381,6 +397,14 @@
                 "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -393,6 +417,14 @@
                 "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -403,6 +435,14 @@
         "schedule": {
             "morning_checks": {
                 "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
