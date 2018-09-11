@@ -361,8 +361,8 @@
             }
         }
     },
-    "prepare_static_headers_Data_Use_Guidelines": {
-        "title": "Data Use Guidelines",
+    "prepare_static_headers_data_use_guidelines": {
+        "title": "Data use guidelines",
         "group": "Static headers checks",
         "schedule": {
             "morning_checks": {

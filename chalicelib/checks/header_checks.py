@@ -130,19 +130,19 @@ def patch_static_headers(connection, **kwargs):
     remove_search='/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title!=No%20value&frame=object',
     header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
 )
-def prepare_static_headers_Data_Use_Guidelines(connection, **kwargs):
-    check = init_check_res(connection, 'prepare_static_headers_Data_Use_Guidelines')
-    check.action = 'patch_static_headers_Data_Use_Guideliness'
+def prepare_static_headers_data_use_guidelines(connection, **kwargs):
+    check = init_check_res(connection, 'prepare_static_headers_data_use_guidelines')
+    check.action = 'patch_static_headers_data_use_guidelines'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
                                      kwargs['add_search'], kwargs['remove_search'])
     return check
 
 
 @action_function()
-def patch_static_headers_Data_Use_Guidelines(connection, **kwargs):
-    action = init_action_res(connection, 'patch_static_headers_Data_Use_Guidelines')
+def patch_static_headers_data_use_guidelines(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers__data_use_guidelines')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_Data_Use_Guidelines')
+    headers_check = init_check_res(connection, 'prepare_static_headers_data_use_guidelines')
     patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
     return action
 
