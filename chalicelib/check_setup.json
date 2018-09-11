@@ -361,6 +361,18 @@
             }
         }
     },
+    "prepare_static_headers_Data_Use_Guidelines": {
+        "title": "Data Use Guidelines",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "prepare_static_headers_inSitu_HiC": {
         "title": "InSitu Hi-C",
         "group": "Static headers checks",

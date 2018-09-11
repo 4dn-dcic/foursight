@@ -124,6 +124,29 @@ def patch_static_headers(connection, **kwargs):
     return action
 
 
+# Data Use Guidelines
+@check_function(
+    add_search='/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title=No%20value&frame=object',
+    remove_search='/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title!=No%20value&frame=object',
+    header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
+)
+def prepare_static_headers_Data_Use_Guidelines(connection, **kwargs):
+    check = init_check_res(connection, 'prepare_static_headers_Data_Use_Guidelines')
+    check.action = 'patch_static_headers_Data_Use_Guideliness'
+    find_items_for_header_processing(connection, check, kwargs['header_at_id'],
+                                     kwargs['add_search'], kwargs['remove_search'])
+    return check
+
+
+@action_function()
+def patch_static_headers_Data_Use_Guidelines(connection, **kwargs):
+    action = init_action_res(connection, 'patch_static_headers_Data_Use_Guidelines')
+    # get latest results from prepare_static_headers
+    headers_check = init_check_res(connection, 'prepare_static_headers_Data_Use_Guidelines')
+    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    return action
+
+
 # InSitu Hi-C experiment Sets
 @check_function(
     add_search='/search/?experiments_in_set.experiment_type=in+situ+Hi-C&type=ExperimentSet&frame=object',
