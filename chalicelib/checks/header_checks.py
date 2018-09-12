@@ -8,7 +8,8 @@ from ..utils import (
 from dcicutils import ff_utils
 
 # generic CHECK function used to add a static headers to items of some search result
-def find_items_for_header_processing(connection, check, header, add_search=None, remove_search=None):
+def find_items_for_header_processing(connection, check, header, add_search=None,
+                                     remove_search=None, append=True):
     """
     (add_search) and remove them from others (remove_search).
     Args are:
@@ -34,7 +35,7 @@ def find_items_for_header_processing(connection, check, header, add_search=None,
             if curr_headers and isinstance(curr_headers[0], dict):
                 curr_headers = [obj['@id'] for obj in curr_headers]
             if header not in curr_headers:
-                curr_headers.append(header)
+                curr_headers = curr_headers + [header] if append else [header] + curr_headers
                 check.full_output['to_add'][search_res['@id']] = curr_headers
 
     if remove_search:
@@ -134,7 +135,7 @@ def prepare_static_headers_data_use_guidelines(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_data_use_guidelines')
     check.action = 'patch_static_headers_data_use_guidelines'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
-                                     kwargs['add_search'], kwargs['remove_search'])
+                                     kwargs['add_search'], kwargs['remove_search'], append=False)
     return check
 
 
