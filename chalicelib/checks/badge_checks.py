@@ -8,6 +8,13 @@ from ..utils import (
 from dcicutils import ff_utils
 
 
+class RankedBadge:
+    def __init__(self, level, badge_id, to_compare=[]):
+        self.level = level
+        self.badge_id = badge_id
+        self.to_compare = to_compare
+
+
 def compare_badges(obj_ids, item_type, badge, ffenv):
     '''
     Compares items that should have a given badge to items that do have the given badge.
@@ -135,49 +142,43 @@ def good_biosamples(connection, **kwargs):
     tiered = ('search/?biosource.cell_line_tier=Tier+1&biosource.cell_line_tier=Tier+2'
               '&type=Biosample&cell_culture_details.culture_harvest_date%21=No+value')
     results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
-    gold = []
-    silver = []
-    bronze = []
+    bs_badges = [
+        RankedBadge("Gold", badgename),
+        RankedBadge("Silver", badgename),
+        RankedBadge("Bronze", badgename)
+    ]
     for result in results:
         bcc = result['cell_culture_details']
         if result['biosource'][0].get('cell_line_tier') == 'Tier 1' and bcc.get('culture_duration'):
             if bcc.get('karyotype') and bcc.get('follows_sop') == 'Yes':
-                gold.append(result['@id'])
+                bs_badges[0].to_compare.append(result['@id'])
             elif bcc.get('follows_sop') == 'Yes' or bcc.get('protocols_additional'):
-                silver.append(result['@id'])
+                bs_badges[1].to_compare.append(result['@id'])
             else:
-                bronze.append(result['@id']
+                bs_badges[2].to_compare.append(result['@id']
         else:
-            bronze.append(result['@id'])
+            bs_badges[2].to_compare.append(result['@id'])
+
     output = {}
-
-    gold_add, gold_remove, gold_ok = compare_badges(gold, 'biosample', gold_badge, connection.ff_env)
-    silver_add, silver_remove, silver_ok = compare_badges(silver, 'biosample', silver_badge, connection.ff_env)
-    bronze_add, bronze_remove, bronze_ok = compare_badges(bronze, 'biosample', bronze_badge, connection.ff_env)
-
-    if gold_add + silver_add + bronze_add + gold_remove + silver_remove + bronze_remove:
+    patch = False
+    for badge in bs_badges:
+        to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
+        if to_add or to_remove:
+            patch = True
+        output['{} Biosamples'.format(badge.level)] = {
+            "Need badge": to_add,
+            "Need badge removed": to_remove,
+            "Badge OK": ok
+        }
+    # silver_add, silver_remove, silver_ok = compare_badges(silver, 'biosample', silver_badge, connection.ff_env)
+    # bronze_add, bronze_remove, bronze_ok = compare_badges(bronze, 'biosample', bronze_badge, connection.ff_env)
+    if not patch:
         check.status = 'PASS'
         check.summary = 'All good biosamples have proper badges'
     else:
         check.status = 'WARN'
         check.summary = 'Some biosample badges need patching'
-        check.full_output = {
-            "Gold Biosamples": {
-                "Biosamples that need badge": gold_add,
-                "Biosamples that need badge removed": gold_remove,
-                "Biosamples with proper badge": gold_ok
-            },
-            "Silver Biosamples": {
-                "Biosamples that need badge": silver_add,
-                "Biosamples that need badge removed": silver_remove,
-                "Biosamples with proper badge": silver_ok
-            },
-            "Bronze Biosamples": {
-                "Biosamples that need badge": bronze_add,
-                "Biosamples that need badge removed": bronze_remove,
-                "Biosamples with proper badge": bronze_ok
-            }
-        }
+        check.full_output = output
     return check
 
 
