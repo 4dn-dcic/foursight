@@ -141,7 +141,7 @@ def prepare_static_headers_data_use_guidelines(connection, **kwargs):
 
 @action_function()
 def patch_static_headers_data_use_guidelines(connection, **kwargs):
-    action = init_action_res(connection, 'patch_static_headers__data_use_guidelines')
+    action = init_action_res(connection, 'patch_static_headers_data_use_guidelines')
     # get latest results from prepare_static_headers
     headers_check = init_check_res(connection, 'prepare_static_headers_data_use_guidelines')
     patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
