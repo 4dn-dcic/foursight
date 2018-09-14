@@ -352,14 +352,8 @@
     "prepare_static_headers": {
         "title": "Prepare static headers",
         "group": "Static headers checks",
-        "schedule": {
-            "morning_checks": {
-                "all": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
+        "schedule": {},
+        "display": ["data", "staging", "hotseat"]
     },
     "prepare_static_headers_data_use_guidelines": {
         "title": "Data use guidelines",
