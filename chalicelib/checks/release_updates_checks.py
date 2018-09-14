@@ -192,7 +192,7 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'summary': 'Released replicate experiments from a %s replicate set have been archived.' % exp_type,
                 'summary_plural': 'Released replicate experiments from *NUM* %s replicate sets have been archived.' % exp_type,
             },
-            'released/replaced : {
+            'released/replaced': {
                 'severity': 1,
                 'priority': 1,
                 'summary': 'Released replicate experiments from a %s replicate set have been replaced.' % exp_type,
