@@ -113,7 +113,7 @@ def prepare_static_headers(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers')
     check.action = 'patch_static_headers'
     find_items_for_header_processing(connection, check, kwargs['header_at_id'],
-                                     kwargs['add_search'], kwargs['remove_search'])
+                                     kwargs['add_search'], kwargs['remove_search'], append=kwargs['append'])
     return check
 
 
