@@ -65,7 +65,7 @@ def find_item_title(item_id):
     if item_id == 'UNKNOWN_ID':
         return None
     item_obj = ff_utils.get_metadata(item_id, ff_env='data', add_on='frame=object')
-    return replacing.get('display_title')
+    return item_obj.get('display_title')
 
 
 def find_replacing_item(item_id):
