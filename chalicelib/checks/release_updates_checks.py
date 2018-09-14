@@ -57,6 +57,31 @@ def add_to_report(exp_set, exp_sets):
     exp_sets[exp_set['accession']] = exp_set_res
 
 
+def find_item_title(item_id):
+    """
+    Data is always used for release updates, so hardcode here (dirty hack)
+    Return display title of given item, None if item can't be found
+    """
+    if item_id == 'UNKNOWN_ID':
+        return None
+    item_obj = ff_utils.get_metadata(item_id, ff_env='data', add_on='frame=object')
+    return replacing.get('display_title')
+
+
+def find_replacing_item(item_id):
+    """
+    Data is always used for release updates, so hardcode here (dirty hack)
+    Return the @id of replacing item, None if item can't be found
+    """
+    if item_id == 'UNKNOWN_ID':
+        return None
+    # need to get accession manually from replaced item
+    replaced = ff_utils.get_metadata(item_id, ff_env='data', add_on='frame=object')
+    replaced_accession = replaced['accession']
+    replacing = ff_utils.get_metadata(replaced_accession, ff_env='data', add_on='frame=object')
+    return replacing.get('@id')
+
+
 def calculate_report_from_change(path, prev, curr, add_ons):
     exp_type = add_ons.get('exp_type', 'UNKNOWN_TYPE')
     file_type = add_ons.get('file_type', 'UNKNOWN_TYPE')
@@ -128,16 +153,30 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'summary_plural': '*NUM* new %s replicate sets have been released.' % exp_type,
             },
             'archived/released' : {
-                'severity': 0,
+                'severity': 3,
                 'priority': 0,
-                'summary': 'New %s replicate set has been released.' % exp_type,
-                'summary_plural': '*NUM* new %s replicate sets have been released.' % exp_type,
+                'summary': 'New %s replicate set has changed from archived to released.' % exp_type,
+                'summary_plural': '*NUM* new %s replicate sets have changed from archived to released.' % exp_type,
+            },
+            'replaced/released' : {
+                'severity': 3,
+                'priority': 0,
+                'summary': 'New %s replicate set has changed from replaced to released.' % exp_type,
+                'summary_plural': '*NUM* new %s replicate sets have changed from replaced to released.' % exp_type,
             },
             'released/archived' : {
                 'severity': 1,
                 'priority': 1,
                 'summary': 'Released %s replicate set has been archived.' % exp_type,
                 'summary_plural': '*NUM* released %s replicate sets have been archived.' % exp_type,
+            },
+            'released/replaced' : {
+                'severity': 1,
+                'priority': 1,
+                'summary': 'Released %s replicate set has been replaced.' % exp_type,
+                'summary_plural': '*NUM* released %s replicate sets have been replaced.' % exp_type,
+                'secondary_id': find_replacing_item(set_id),
+                'add_on': 'Replaced by'
             },
             'released/*': {
                 'severity': 3,
@@ -153,6 +192,14 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'summary': 'Released replicate experiments from a %s replicate set have been archived.' % exp_type,
                 'summary_plural': 'Released replicate experiments from *NUM* %s replicate sets have been archived.' % exp_type,
             },
+            'released/replaced : {
+                'severity': 1,
+                'priority': 1,
+                'summary': 'Released replicate experiments from a %s replicate set have been replaced.' % exp_type,
+                'summary_plural': 'Released replicate experiments from *NUM* %s replicate sets have been replaced.' % exp_type,
+                'secondary_id': find_replacing_item(item_id),
+                'add_on': '%s replaced by' % find_item_title(item_id)
+            },
             'released/*': {
                 'severity': 3,
                 'priority': 2,
@@ -166,6 +213,14 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 8,
                 'summary': 'Released processed files from a %s replicate set have been archived.' % exp_type,
                 'summary_plural': 'Released processed files from *NUM* %s replicate sets have been archived.' % exp_type,
+            },
+            'released/replaced': {
+                'severity': 1,
+                'priority': 8,
+                'summary': 'Released processed files from a %s replicate set have been replaced.' % exp_type,
+                'summary_plural': 'Released processed files from *NUM* %s replicate sets have been replaced.' % exp_type,
+                'secondary_id': find_replacing_item(item_id),
+                'add_on': '%s replaced by' % find_item_title(item_id)
             },
             'released/*': {
                 'severity': 3,
@@ -181,6 +236,14 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'summary': 'Released processed files from a %s replicate set have been archived.' % exp_type,
                 'summary_plural': 'Released processed files from *NUM* %s replicate sets have been archived.' % exp_type,
             },
+            'released/replaced': {
+                'severity': 1,
+                'priority': 8,
+                'summary': 'Released processed files from a %s replicate set have been replaced.' % exp_type,
+                'summary_plural': 'Released processed files from *NUM* %s replicate sets have been replaced.' % exp_type,
+                'secondary_id': find_replacing_item(item_id),
+                'add_on': '%s replaced by' % find_item_title(item_id)
+            },
             'released/*': {
                 'severity': 3,
                 'priority': 9,
@@ -194,6 +257,14 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 8,
                 'summary': 'Released raw files from a %s replicate set have been archived.' % exp_type,
                 'summary_plural': 'Released raw files from *NUM* %s replicate sets have been archived.' % exp_type,
+            },
+            'released/replaced': {
+                'severity': 1,
+                'priority': 8,
+                'summary': 'Released raw files from a %s replicate set have been replaced.' % exp_type,
+                'summary_plural': 'Released raw files from *NUM* %s replicate sets have been replaced.' % exp_type,
+                'secondary_id': find_replacing_item(item_id),
+                'add_on': '%s replaced by' % find_item_title(item_id)
             },
             'released/*': {
                 'severity': 3,
@@ -221,8 +292,13 @@ def calculate_report_from_change(path, prev, curr, add_ons):
         if level_1:
             level_2 = level_1.get('/'.join([prev_key, curr_key]))
             if level_2:
-                level_2['items'] = [item_id]
+                secondary_id = level_2.get('secondary_id')
+                level_2['items'] = [{'secondary_id': secondary_id if secondary_id else item_id,
+                                     'additional_info': level_2.get('add_info', '')}]
                 level_2['set_@id'] = set_id
+                # delete additional info, which is included in 'items' array
+                if 'add_info' in level_2:
+                    del level_2['add_info']
                 return level_2
     # no report found
     return None
@@ -412,23 +488,15 @@ def data_release_updates(connection, **kwargs):
     ### THIS DIFFERENTIATES PUBLIC VS PUBLIC + INTERNAL RELEASE UPDATES
     if kwargs['is_internal'] == True:
         # effectively consider released and released_to_project the same
-        # same with archived and archived_to_project and replaced
         released_statuses = ['released', 'released to project']
         add_ons['equivalents'] = {
             'status': {
                 'released to project': 'released',
-                'archived_to_project': 'archived',
-                'replaced': 'archived'
+                'archived_to_project': 'archived'
             }
         }
     else:
-        # only consider archived and replaced the same
         released_statuses = ['released']
-        add_ons['equivalents'] = {
-            'status': {
-                'replaced': 'archived'
-            }
-        }
 
     ### CREATE REPORTS... assuming experiment sets will NOT be deleted from DB
     for exp_set in end_output:
