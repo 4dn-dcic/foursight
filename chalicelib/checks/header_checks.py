@@ -106,7 +106,8 @@ def patch_items_with_headers(connection, action, headers_check, called_by):
 @check_function(
     add_search='',
     remove_search='',
-    header_at_id=''
+    header_at_id='',
+    append=True
 )
 def prepare_static_headers(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers')
