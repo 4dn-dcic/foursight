@@ -13,6 +13,9 @@ import datetime
 
 #### HELPER FUNCTIONS ####
 
+# cache results from requests to FF
+ITEM_CACHE = {'titles': {}, 'replacing': {}}
+
 def extract_info(res, fields):
     return {field: res[field] for field in fields if field in res}
 
@@ -60,26 +63,39 @@ def add_to_report(exp_set, exp_sets):
 def find_item_title(item_id):
     """
     Data is always used for release updates, so hardcode here (dirty hack)
+    Use cache to improve performance
     Return display title of given item, None if item can't be found
     """
     if item_id == 'UNKNOWN_ID':
         return None
+    if item_id in ITEM_CACHE['titles']:
+        return ITEM_CACHE['titles'][item_id]
     item_obj = ff_utils.get_metadata(item_id, ff_env='data', add_on='frame=object')
-    return item_obj.get('display_title')
+    title = item_obj.get('display_title')
+    ITEM_CACHE['titles'][item_id] = title
+    return title
 
 
 def find_replacing_item(item_id):
     """
     Data is always used for release updates, so hardcode here (dirty hack)
+    Use cache to improve performance
     Return the @id of replacing item, None if item can't be found
     """
     if item_id == 'UNKNOWN_ID':
         return None
-    # need to get accession manually from replaced item
+    if item_id in ITEM_CACHE['replacing']:
+        return ITEM_CACHE['replacing'][item_id]
+    # need to get accession manually from replaced item to find the replacing item
     replaced = ff_utils.get_metadata(item_id, ff_env='data', add_on='frame=object')
     replaced_accession = replaced['accession']
     replacing = ff_utils.get_metadata(replaced_accession, ff_env='data', add_on='frame=object')
-    return replacing.get('@id')
+    if not replacing.get('alternate_accessions'):  # see if it is actually a replacing item
+        replacing = None
+    else:
+        replacing = replacing.get('@id')
+    ITEM_CACHE['replacing'][item_id] = replacing
+    return replacing
 
 
 def calculate_report_from_change(path, prev, curr, add_ons):
@@ -94,6 +110,18 @@ def calculate_report_from_change(path, prev, curr, add_ons):
     field = path.split('.')[-1]
     # these dictionaries define the reports
     # *NUM* is replaced by the number of reports
+    # to save time, calculate conditional functions within report_info here
+    # calculate info for REPLACED items
+    if curr in significants[field] and curr == 'replaced':
+        replacing_secondary_id = find_replacing_item(item_id)
+        if item_id == set_id:  # we are on an exp set
+            replacing_add_info = 'Replaced by'
+        else:
+            replacing_add_info = '%s replaced by' % find_item_title(item_id)
+    else:
+        replacing_secondary_id = None
+        replacing_add_info = ''
+
     report_info_w_released_exp_set = {
         'experiments_in_set.status': {
             '*/released' : {
@@ -175,8 +203,8 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 1,
                 'summary': 'Released %s replicate set has been replaced.' % exp_type,
                 'summary_plural': '*NUM* released %s replicate sets have been replaced.' % exp_type,
-                'secondary_id': find_replacing_item(set_id),
-                'add_on': 'Replaced by'
+                'secondary_id': replacing_secondary_id,
+                'add_info': replacing_add_info
             },
             'released/*': {
                 'severity': 3,
@@ -197,8 +225,8 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 1,
                 'summary': 'Released replicate experiments from a %s replicate set have been replaced.' % exp_type,
                 'summary_plural': 'Released replicate experiments from *NUM* %s replicate sets have been replaced.' % exp_type,
-                'secondary_id': find_replacing_item(item_id),
-                'add_on': '%s replaced by' % find_item_title(item_id)
+                'secondary_id': replacing_secondary_id,
+                'add_info': replacing_add_info
             },
             'released/*': {
                 'severity': 3,
@@ -219,8 +247,8 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 8,
                 'summary': 'Released processed files from a %s replicate set have been replaced.' % exp_type,
                 'summary_plural': 'Released processed files from *NUM* %s replicate sets have been replaced.' % exp_type,
-                'secondary_id': find_replacing_item(item_id),
-                'add_on': '%s replaced by' % find_item_title(item_id)
+                'secondary_id': replacing_secondary_id,
+                'add_info': replacing_add_info
             },
             'released/*': {
                 'severity': 3,
@@ -241,8 +269,8 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 8,
                 'summary': 'Released processed files from a %s replicate set have been replaced.' % exp_type,
                 'summary_plural': 'Released processed files from *NUM* %s replicate sets have been replaced.' % exp_type,
-                'secondary_id': find_replacing_item(item_id),
-                'add_on': '%s replaced by' % find_item_title(item_id)
+                'secondary_id': replacing_secondary_id,
+                'add_info': replacing_add_info
             },
             'released/*': {
                 'severity': 3,
@@ -263,8 +291,8 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 'priority': 8,
                 'summary': 'Released raw files from a %s replicate set have been replaced.' % exp_type,
                 'summary_plural': 'Released raw files from *NUM* %s replicate sets have been replaced.' % exp_type,
-                'secondary_id': find_replacing_item(item_id),
-                'add_on': '%s replaced by' % find_item_title(item_id)
+                'secondary_id': replacing_secondary_id,
+                'add_info': replacing_add_info
             },
             'released/*': {
                 'severity': 3,
@@ -296,7 +324,9 @@ def calculate_report_from_change(path, prev, curr, add_ons):
                 level_2['items'] = [{'secondary_id': secondary_id if secondary_id else item_id,
                                      'additional_info': level_2.get('add_info', '')}]
                 level_2['set_@id'] = set_id
-                # delete additional info, which is included in 'items' array
+                # clean up unneeded fields
+                if 'secondary_id' in level_2:
+                    del level_2['secondary_id']
                 if 'add_info' in level_2:
                     del level_2['add_info']
                 return level_2
@@ -482,7 +512,7 @@ def data_release_updates(connection, **kwargs):
     children_fields = ['experiments_in_set', 'files', 'processed_files']  # possible linkTo fields
     add_ons = {}
     add_ons['significants'] = {
-        'status': ['released', 'archived']
+        'status': ['released', 'archived', 'replaced']
     }
 
     ### THIS DIFFERENTIATES PUBLIC VS PUBLIC + INTERNAL RELEASE UPDATES
