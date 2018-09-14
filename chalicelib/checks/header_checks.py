@@ -104,9 +104,9 @@ def patch_items_with_headers(connection, action, headers_check, called_by):
 
 
 @check_function(
-    add_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title=No%20value&frame=object',
-    remove_search='/search/?type=ExperimentSetReplicate&award.project=4DN&publications_of_set.display_title!=No%20value&frame=object',
-    header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
+    add_search='',
+    remove_search='',
+    header_at_id=''
 )
 def prepare_static_headers(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers')
