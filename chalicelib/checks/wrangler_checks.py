@@ -202,6 +202,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
                     if extra['file_format'] == 'bw' and 'upload_key' in extra:
                         file_info['upload_key'] = extra['upload_key']
                         break
+                if 'upload_key' not in file_info:  # bw file not found
+                    continue
             else:
                 if 'upload_key' in procfile:
                     file_info['upload_key'] = procfile['upload_key']
