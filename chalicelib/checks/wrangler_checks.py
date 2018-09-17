@@ -195,14 +195,14 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'higlass_uid': procfile.get('higlass_uid')
             }
             # bg files use an bw file from extra files to register
+            # don't FAIL if the bg is missing the bw, however
             # mcool and bw files use themselves
             if ftype == 'bg':
                 for extra in procfile.get('extra_files', []):
                     if extra['file_format'] == 'bw' and 'upload_key' in extra:
                         file_info['upload_key'] = extra['upload_key']
                         break
-                if 'upload_key' not in file_info:
-                    not_found_upload_key.append(file_info)
+                if 'upload_key' not in file_info:  # bw file not found
                     continue
             else:
                 if 'upload_key' in procfile:
