@@ -182,6 +182,15 @@ def good_biosamples(connection, **kwargs):
     return check
 
 
+#@action_function()
+def patch_ranked_biosample_badges(connection, **kwargs):
+    action = init_action_res(connection, 'patch_ranked_biosample_badges')
+
+    bs_check = init_check_res(connection, 'good_biosamples')
+    bs_check_result = bs_check.get_result_by_uuid(kwargs['called_by'])
+
+
+
 @check_function()
 def repsets_have_bio_reps(connection, **kwargs):
     check = init_check_res(connection, 'repsets_have_bio_reps')
