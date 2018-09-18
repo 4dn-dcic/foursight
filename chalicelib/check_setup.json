@@ -461,7 +461,7 @@
             }
         }
     },
-    "prepare_static_headers_MARGI: {
+    "prepare_static_headers_MARGI": {
         "title": "MARGI",
         "group": "Static headers checks",
         "schedule": {
