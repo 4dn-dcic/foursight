@@ -352,6 +352,12 @@
     "prepare_static_headers": {
         "title": "Prepare static headers",
         "group": "Static headers checks",
+        "schedule": {},
+        "display": ["data", "staging", "hotseat"]
+    },
+    "prepare_static_headers_data_use_guidelines": {
+        "title": "Data use guidelines",
+        "group": "Static headers checks",
         "schedule": {
             "morning_checks": {
                 "all": {
