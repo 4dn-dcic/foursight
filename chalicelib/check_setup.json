@@ -460,5 +460,25 @@
                 }
             }
         }
+    },
+    "prepare_static_headers_MARGI: {
+        "title": "MARGI",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
