@@ -262,9 +262,9 @@ def patch_static_headers_SPRITE(connection, **kwargs):
 @check_function()
 def prepare_static_headers_MARGI(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_MARGI')
-    add_search='/search/?experiments_in_set.experiment_type=MARGI&type=ExperimentSet&frame=object',
-    remove_search='/search/?experiments_in_set.experiment_type!=MARGI&type=ExperimentSet&frame=object',
-    header_at_id='/static-sections/0c2ba23e-b256-47ce-a37c-0f1282471789/',
+    add_search='/search/?experiments_in_set.experiment_type=MARGI&type=ExperimentSet&frame=object'
+    remove_search='/search/?experiments_in_set.experiment_type!=MARGI&type=ExperimentSet&frame=object'
+    header_at_id='/static-sections/0c2ba23e-b256-47ce-a37c-0f1282471789/'
     check.action = 'patch_static_headers_MARGI'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search)
