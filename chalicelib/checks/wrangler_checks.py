@@ -473,3 +473,36 @@ def patch_file_size(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def check_help_page_urls(connection, **kwargs):
+    check = init_check_res(connection, 'check_help_page_urls')
+
+    server = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)['server']
+    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body',
+                                       ff_env=connection.ff_env)
+    sections_w_broken_links = {}
+    for result in results:
+        broken_links = []
+        urls = re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', content)
+        for url in urls:
+            if url.startswith('/'):
+                # fill in appropriate url
+                url = server + url
+            request = requests.get(url)
+            if request.status_code not in [200, 412]:
+                broken_links.append((url, request.status_code))
+        if broken_links:
+            sections_w_broken_links[result['@id']] = broken_links
+    if sections_w_broken_links:
+        check.status = 'WARN'
+        check.summary = 'Broken links found'
+        check.description = ('{} static sections currently have broken links.'
+                             ''.format(len(sections_w_broken_links.keys())))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No broken links found'
+        check.description = check.summary
+    check.full_output = sections_w_broken_links
+    return check
