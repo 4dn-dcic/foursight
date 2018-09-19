@@ -6,6 +6,7 @@ from ..utils import (
     init_action_res
 )
 from dcicutils import ff_utils
+import re
 import requests
 import sys
 import json
