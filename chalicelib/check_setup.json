@@ -307,7 +307,7 @@
     },
     "check_help_page_urls": {
         "title": "Static Section URL check",
-        "group": "Metadata checks",
+        "group": "Audit checks",
         "schedule": {
             "morning_checks": {
                 "all": {
