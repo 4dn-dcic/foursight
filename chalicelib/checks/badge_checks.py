@@ -15,6 +15,13 @@ class RankedBadge:
         self.to_compare = to_compare
 
 
+def get_badges(item_type):
+    if item_type == 'biosample':
+        return (RankedBadge('Gold', '/badges/gold-biosample/'),
+                RankedBadge('Silver', '/badges/silver-biosample/'),
+                RankedBadge('Bronze', '/badges/bronze-biosample'))
+
+
 def compare_badges(obj_ids, item_type, badge, ffenv):
     '''
     Compares items that should have a given badge to items that do have the given badge.
@@ -71,7 +78,7 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv):
     return needs_badge, remove_badge, badge_edit, badge_ok
 
 
-def patch_badges(full_output, badge_name, output_keys, ffenv, single_message=''):
+def patch_badges(full_output, badge_name, output_keys, ffenv, message=True, single_message=''):
     '''
     General function for patching badges.
     For badges with single message choice:
@@ -95,7 +102,10 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, single_message='')
     for add_key in add_list:
         add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=ffenv)
         badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': badge_id, 'message': single_message if single_message else full_output[output_keys[0]][add_key]})
+        if message:
+            badges.append({'badge': badge_id, 'message': single_message if single_message else full_output[output_keys[0]][add_key]})
+        else:
+            badges.append({'badge': badge_id})
         if [b['badge'] for b in badges].count(badge_id) > 1:
             # print an error message?
             patches['add_badge_failure'].append('{} already has badge'.format(add_key))
@@ -142,26 +152,23 @@ def good_biosamples(connection, **kwargs):
     tiered = ('search/?biosource.cell_line_tier=Tier+1&biosource.cell_line_tier=Tier+2'
               '&type=Biosample&cell_culture_details.culture_harvest_date%21=No+value')
     results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
-    bs_badges = [
-        RankedBadge("Gold", badgename),
-        RankedBadge("Silver", badgename),
-        RankedBadge("Bronze", badgename)
-    ]
+    gold, silver, bronze = get_badges('biosample')
+
     for result in results:
         bcc = result['cell_culture_details']
         if result['biosource'][0].get('cell_line_tier') == 'Tier 1' and bcc.get('culture_duration'):
             if bcc.get('karyotype') and bcc.get('follows_sop') == 'Yes':
-                bs_badges[0].to_compare.append(result['@id'])
+                gold.to_compare.append(result['@id'])
             elif bcc.get('follows_sop') == 'Yes' or bcc.get('protocols_additional'):
-                bs_badges[1].to_compare.append(result['@id'])
+                silver.to_compare.append(result['@id'])
             else:
-                bs_badges[2].to_compare.append(result['@id']
+                bronze.to_compare.append(result['@id']
         else:
-            bs_badges[2].to_compare.append(result['@id'])
+            bronze.to_compare.append(result['@id'])
 
     output = {}
     patch = False
-    for badge in bs_badges:
+    for badge in [gold, silver, bronze]:
         to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
         if to_add or to_remove:
             patch = True
@@ -188,7 +195,24 @@ def patch_ranked_biosample_badges(connection, **kwargs):
 
     bs_check = init_check_res(connection, 'good_biosamples')
     bs_check_result = bs_check.get_result_by_uuid(kwargs['called_by'])
-
+    # gold, silver, bronze = get_badges('biosample')
+    rank_keys = ["Need badge", "Need badge removed"]
+    output = {}
+    failures = False
+    for key in bs_check_result['full_output'].keys():
+        badgename = '-'.join(key.lower()[:-1].split())
+        patches = patch_badges(bs_check_result['full_output'][key], badgename,
+                                   rank_keys, message=False, connection.ff_env)
+        output[key] = patches
+        if patches['add_badge_failure'] or patches['remove_badge_failure']:
+            failures = True
+    if failures:
+        action.status = 'FAIL'
+        action.description = 'Some items failed to patch. See below for details.'
+    else:
+        action.status = 'DONE'
+        action.description = 'Patching ranked badges successful for biosamples'
+    return action
 
 
 @check_function()
