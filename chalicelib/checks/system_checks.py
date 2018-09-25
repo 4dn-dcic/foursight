@@ -8,7 +8,8 @@ from ..utils import (
 )
 from dcicutils import (
     ff_utils,
-    es_utils
+    es_utils,
+    beanstalk_utils
 )
 
 import requests
@@ -485,3 +486,28 @@ def manage_old_filebeat_logs(connection, **kwargs):
     # check.status = "PASS"
     # check.description = 'Performed auto-backup to repository %s' % snapshot[:-1]
     # return check
+
+
+@check_function()
+def snapshot_rds(connection, **kwargs):
+    from ..utils import get_stage_info
+    check = init_check_res(connection, 'snapshot_rds')
+    if get_stage_info()['stage'] != 'prod':
+        check.summary = check.description = 'This check only runs on Foursight prod'
+        return check
+    rds_name = 'fourfront-webprod' if 'webprod' in connection.ff_env else connection.ff_env\
+    # snapshot ID can only have letters, numbers, and hyphens
+    snap_time = datetime.datetime.strptime(kwargs['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%dT%H-%M-%S")
+    snapshot_name = 'foursight-snapshot-%s-%s' % (rds_name, snap_time)
+    res = beanstalk_utils.create_db_snapshot(rds_name, snapshot_name)
+    if res == 'Deleting':
+        check.status = 'FAIL'
+        check.summary = check.description = 'Something went wrong during snaphot creation.'
+    else:
+        check.status = 'PASS'
+        # there is a datetime in the response that must be str formatted
+        res['DBSnapshot']['InstanceCreateTime'] = str(res['DBSnapshot']['InstanceCreateTime'])
+        check.full_output = res
+        check.summary = 'Snapshot successfully created'
+        check.description = 'Snapshot succesfully created with name: %s' % snapshot_name
+    return check
