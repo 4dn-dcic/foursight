@@ -46,6 +46,11 @@ def morning_checks(event):
     queue_scheduled_checks('all', 'morning_checks')
 
 
+@app.schedule(foursight_cron_by_schedule[STAGE]['monthly_checks'])
+def monthly_checks(event):
+    queue_scheduled_checks('all', 'monthly_checks')
+
+
 ######### END SCHEDULED FXNS #########
 
 @app.route('/callback')
