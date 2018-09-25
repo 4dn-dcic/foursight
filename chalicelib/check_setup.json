@@ -486,5 +486,25 @@
                 }
             }
         }
+    },
+    "snapshot_rds": {
+        "title": "Snapshot RDS",
+        "group": "System checks",
+        "schedule": {
+            "monthly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
