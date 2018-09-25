@@ -181,13 +181,13 @@ def good_biosamples(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'All good biosamples have proper badges'
         check.description = '0 biosamples need badge patching'
-        check.allow_action = True
     else:
         check.status = 'WARN'
         check.summary = 'Some biosamples need badge patching'
         check.description = '{} biosample need badge patching'.format(
             sum([len(output[key]['Need badge']) + len(output[key]['Need badge removed'].keys()) for key in output.keys()]))
         check.full_output = output
+        check.allow_action = True
     return check
 
 
