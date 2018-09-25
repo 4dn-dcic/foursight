@@ -153,8 +153,7 @@ def good_biosamples(connection, **kwargs):
               '&type=Biosample&cell_culture_details.culture_harvest_date%21=No+value')
     results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
     gold, silver, bronze = get_badges('biosample')
-    # print(gold.level)
-    # bronze.to_compare.append('five')
+
     for result in results:
         bcc = result['cell_culture_details']
         if result['biosource'][0].get('cell_line_tier') == 'Tier 1' and bcc.get('culture_duration'):
@@ -166,13 +165,9 @@ def good_biosamples(connection, **kwargs):
                 bronze.to_compare.append(result['@id'])
         else:
             bronze.to_compare.append(result['@id'])
-    # print(gold.to_compare)
-    # print(silver.to_compare)
-    # print(bronze.to_compare)
     output = {}
     patch = False
     for badge in [gold, silver, bronze]:
-        # to_add, to_remove, ok = [], {}, []
         to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
         if to_add or to_remove:
             patch = True
@@ -181,8 +176,6 @@ def good_biosamples(connection, **kwargs):
             "Need badge removed": to_remove,
             "Badge OK": ok
         }
-    # silver_add, silver_remove, silver_ok = compare_badges(silver, 'biosample', silver_badge, connection.ff_env)
-    # bronze_add, bronze_remove, bronze_ok = compare_badges(bronze, 'biosample', bronze_badge, connection.ff_env)
     check.action = 'patch_ranked_biosample_badges'
     if not patch:
         check.status = 'PASS'
@@ -204,7 +197,6 @@ def patch_ranked_biosample_badges(connection, **kwargs):
 
     bs_check = init_check_res(connection, 'good_biosamples')
     bs_check_result = bs_check.get_result_by_uuid(kwargs['called_by'])
-    # gold, silver, bronze = get_badges('biosample')
     rank_keys = ["Need badge", "Need badge removed"]
     output = {}
     failures = False
