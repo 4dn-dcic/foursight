@@ -9,17 +9,18 @@ from dcicutils import ff_utils
 
 
 class RankedBadge:
-    def __init__(self, level, badge_id, to_compare=[]):
+    def __init__(self, level, badge_id):
         self.level = level
         self.badge_id = badge_id
-        self.to_compare = to_compare
+        self.to_compare = []
 
 
 def get_badges(item_type):
     if item_type == 'biosample':
-        return (RankedBadge('Gold', '/badges/gold-biosample/'),
-                RankedBadge('Silver', '/badges/silver-biosample/'),
-                RankedBadge('Bronze', '/badges/bronze-biosample'))
+        gold = RankedBadge('Gold', 'gold-biosample')
+        silver = RankedBadge('Silver', 'silver-biosample')
+        bronze = RankedBadge('Bronze', 'bronze-biosample')
+        return gold, silver, bronze
 
 
 def compare_badges(obj_ids, item_type, badge, ffenv):
@@ -144,16 +145,16 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, message=True, sing
     return patches
 
 
-#@check_function()
+@check_function()
 def good_biosamples(connection, **kwargs):
-
     check = init_check_res(connection, 'good_biosamples')
 
     tiered = ('search/?biosource.cell_line_tier=Tier+1&biosource.cell_line_tier=Tier+2'
               '&type=Biosample&cell_culture_details.culture_harvest_date%21=No+value')
     results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
     gold, silver, bronze = get_badges('biosample')
-
+    # print(gold.level)
+    # bronze.to_compare.append('five')
     for result in results:
         bcc = result['cell_culture_details']
         if result['biosource'][0].get('cell_line_tier') == 'Tier 1' and bcc.get('culture_duration'):
@@ -162,13 +163,16 @@ def good_biosamples(connection, **kwargs):
             elif bcc.get('follows_sop') == 'Yes' or bcc.get('protocols_additional'):
                 silver.to_compare.append(result['@id'])
             else:
-                bronze.to_compare.append(result['@id']
+                bronze.to_compare.append(result['@id'])
         else:
             bronze.to_compare.append(result['@id'])
-
+    # print(gold.to_compare)
+    # print(silver.to_compare)
+    # print(bronze.to_compare)
     output = {}
     patch = False
     for badge in [gold, silver, bronze]:
+        # to_add, to_remove, ok = [], {}, []
         to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
         if to_add or to_remove:
             patch = True
@@ -179,17 +183,22 @@ def good_biosamples(connection, **kwargs):
         }
     # silver_add, silver_remove, silver_ok = compare_badges(silver, 'biosample', silver_badge, connection.ff_env)
     # bronze_add, bronze_remove, bronze_ok = compare_badges(bronze, 'biosample', bronze_badge, connection.ff_env)
+    check.action = 'patch_ranked_biosample_badges'
     if not patch:
         check.status = 'PASS'
         check.summary = 'All good biosamples have proper badges'
+        check.description = '0 biosamples need badge patching'
+        check.allow_action = True
     else:
         check.status = 'WARN'
-        check.summary = 'Some biosample badges need patching'
+        check.summary = 'Some biosamples need badge patching'
+        check.description = '{} biosample need badge patching'.format(
+            sum([len(output[key]['Need badge']) + len(output[key]['Need badge removed'].keys()) for key in output.keys()]))
         check.full_output = output
     return check
 
 
-#@action_function()
+@action_function()
 def patch_ranked_biosample_badges(connection, **kwargs):
     action = init_action_res(connection, 'patch_ranked_biosample_badges')
 
@@ -200,12 +209,14 @@ def patch_ranked_biosample_badges(connection, **kwargs):
     output = {}
     failures = False
     for key in bs_check_result['full_output'].keys():
-        badgename = '-'.join(key.lower()[:-1].split())
+        badgename = '/badges/{}/'.format('-'.join(key.lower()[:-1].split()))
+        print(badgename)
         patches = patch_badges(bs_check_result['full_output'][key], badgename,
-                                   rank_keys, message=False, connection.ff_env)
+                                   rank_keys, connection.ff_env, message=False)
         output[key] = patches
         if patches['add_badge_failure'] or patches['remove_badge_failure']:
             failures = True
+    action.output = output
     if failures:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
