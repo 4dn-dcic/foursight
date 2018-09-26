@@ -145,6 +145,49 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, message=True, sing
     return patches
 
 
+# general function for consolidating badge lists for multiple badges?
+def consolidate_badge_output(output, output_keys, badges):
+    items = []
+    for key in output_keys:
+        items = items + output[key]['Need badge'] + list(output[key]['Need badge removed'].keys())
+    if len(items) == len(list(set(items))):
+        return output
+    multiple = [item for item in list(set(items)) if items.count(item) > 1]
+    for item in multiple:
+        levels = []
+        for i in range(len(output_keys)):
+            if item in output[output_keys[i]]['Need badge']:
+                levels.append('add')
+            elif item in output[output_keys[i]]['Need badge removed']:
+                levels.append('remove')
+            else:
+                levels.append('ok')
+        if 'remove' not in levels or (len(list(set(levels))) == len(levels) and levels[-1] == 'add'):
+            continue
+        add = 0
+        remove = []
+        for i in range(len(levels)):
+            if levels[i] == 'add':
+                if add:
+                    levels[i] = 'ok'
+                else:
+                    add = i + 1
+                    continue
+            if levels[i] == 'remove':
+                if add:
+                    output[output_keys[i]]['Need badge removed'][item].append(badges[add - 1])
+                for j in remove:
+                    if badges[j] in output[output_keys[i]]['Need badge removed'][item]:
+                        output[output_keys[i]]['Need badge removed'][item].remove(badges[j])
+                remove.append(i)
+    # check for badges present in multiple levels
+    # if all levels are add, do nothing? or keep only top level?
+    # if all levels are remove, edit dicts sequentially
+    # if add is in final level, do nothing
+    # if an add is before a remove, add added badge to remove dict
+    return output
+
+
 @check_function()
 def good_biosamples(connection, **kwargs):
     check = init_check_res(connection, 'good_biosamples')
