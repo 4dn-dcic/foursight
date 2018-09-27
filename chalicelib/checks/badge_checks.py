@@ -81,7 +81,7 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv):
 
 def reformat_and_patch_single(full_output, badge_name, output_keys, ffenv, message=True, single_message=''):
     '''
-    General function for patching badges.
+    Reorganize check output and performs patches for a single badge.
     For badges with single message choice:
     - single_message kwarg should be assigned a string to be used for the badge message;
     - full_output[output_keys[0]] should be a list of item @ids;
@@ -90,17 +90,20 @@ def reformat_and_patch_single(full_output, badge_name, output_keys, ffenv, messa
     - single_message kwarg should not be used, but left as empty string.
     - full_output[output_keys[0]] should be a list of item @ids and message to patch into badge.
     - badges can also be edited to change the message.
+
+    full_output    : full_output from check - dict
+    badge_name     : badgename for patching - str - not full @ids. ex. 'tier1metadatamissing'
+    output_keys    : upper-level keys of check output - list of strings
+    message        : boolean - whether badge has an accompanying message - default True
+    single_message : str - message that goes with badge - if multiple messages,
+                     this should be left as empty string (default)
     '''
-    # patches = {'add_badge_success': [], 'add_badge_failure': [],
-    #            'remove_badge_success': [], 'remove_badge_failure': []}
     to_patch = {'Add': {}}
     already = []
     badge_id = '/badges/' + badge_name + '/'
     if isinstance(full_output[output_keys[0]], list):
         add_list = full_output[output_keys[0]]
     elif isinstance(full_output[output_keys[0]], dict):
-        # patches['edit_badge_success'] = []
-        # patches['edit_badge_failure'] = []
         add_list = full_output[output_keys[0]].keys()
     for add_key in add_list:
         add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=ffenv)
@@ -110,67 +113,42 @@ def reformat_and_patch_single(full_output, badge_name, output_keys, ffenv, messa
         else:
             badges.append({'badge': badge_id})
         if [b['badge'] for b in badges].count(badge_id) > 1:
-            # print an error message?
             already.append('{} already has badge'.format(add_key))
             continue
         to_patch['Add'][add_key] = badges
-        # try:
-        #     response = ff_utils.patch_metadata({"badges": badges}, add_key[1:], ff_env=ffenv)
-        #     if response['status'] == 'success':
-        #         patches['add_badge_success'].append(add_key)
-        #     else:
-        #         patches['add_badge_failure'].append(add_key)
-        # except Exception:
-        #     patches['add_badge_failure'].append(add_key)
     to_patch['Remove'] = full_output[output_keys[1]]
-    # for remove_key, remove_val in full_output[output_keys[1]].items():
-        # delete field if no badges?
-        # try:
-        #     if remove_val:
-        #         response = ff_utils.patch_metadata({"badges": remove_val}, remove_key, ff_env=ffenv)
-        #     else:
-        #         response = ff_utils.patch_metadata({}, remove_key + '?delete_fields=badges', ff_env=ffenv)
-        #     if response['status'] == 'success':
-        #         patches['remove_badge_success'].append(remove_key)
-        #     else:
-        #         patches['remove_badge_failure'].append(remove_key)
-        # except Exception:
-        #     patches['remove_badge_failure'].append(remove_key)
-        # to_patch[remove_key] = remove_val
     if len(output_keys) > 2:
         to_patch['Edit'] = full_output[output_keys[2]]
-        # for edit_key, edit_val in full_output[output_keys[2]].items():
-        #     # try:
-        #     #     response = ff_utils.patch_metadata({"badges": edit_val}, edit_key, ff_env=ffenv)
-        #     #     if response['status'] == 'success':
-        #     #         patches['edit_badge_success'].append(edit_key)
-        #     #     else:
-        #     #         patches['edit_badge_failure'].append(edit_key)
-        #     # except Exception:
-        #     #     patches['edit_badge_failure'].append(edit_key)
-        #     to_patch[edit]
     return patch_badges(to_patch, already, ffenv)
 
 
 def reformat_and_patch_multiple(output, output_keys, badges, ffenv):
+    '''
+    Reorganize check output and performs patches for multiple badges.
+    Works to ensure that a 'remove' patch after an 'add' patch doesn't remove
+    the newly added badge - instead combines all badges to be added and removed
+    into a single patch.
+
+    output      : full_output from check
+    output_keys : upper-level keys of check output
+                  ex. ['Gold Biosample', 'Silver Biosample', 'Bronze Biosample']
+    badges      : badgenames for patching - not full @ids
+                  ex. ['gold-biosample', 'silver-biosample', 'bronze-biosample']
+    '''
     new_dict = {}
     for key in output_keys:
         for at_id in output[key]['Need badge']:
-            #print(item, item in new_dict.keys())
             if at_id in new_dict.keys() and not new_dict[at_id]['Add']:
                 new_dict[at_id]['Add'] = key
             elif at_id not in new_dict.keys():
                 new_dict[at_id] = {'Add': key, 'Remove': [], 'Get': True}
-            #print(new_dict)
         for at_id, val in output[key]['Need badge removed'].items():
-            #print(at_id, at_id in new_dict.keys())
             if at_id in new_dict.keys() and val:
                 new = [v for v in val if v not in new_dict[at_id]['Remove']]
                 new_dict[at_id]['Remove'] += new
             elif at_id not in new_dict.keys():
                 new_dict[at_id] = {'Add': '', 'Remove': val}
             new_dict[at_id]['Get'] = False
-            #print(new_dict)
     print(new_dict)
     patches_dict = {'Add': {}, 'Remove': {}, 'Both': {}}
     has_badge_already = []
@@ -178,25 +156,30 @@ def reformat_and_patch_multiple(output, output_keys, badges, ffenv):
         if new_dict[item]['Add']:
             badge_id = '/badges/' + badges[output_keys.index(new_dict[item]['Add'])] + '/'
             if not new_dict[item]['Get']:
-            # combine
                 patches_dict['Both'][item] = new_dict[item]['Remove'] + [{'badge': badge_id}]
             else:
                 add_result = ff_utils.get_metadata(item + '?frame=object', ff_env=ffenv)
                 badges = add_result['badges'] if add_result.get('badges') else []
-                # badges.append({'badge': badge_id})
                 if badge_id in [b['badge'] for b in badges]:
-                # print an error message?
                     has_badge_already.append('{} already has badge'.format(item))
                 else:
                     badges.append({'badge': badge_id})
                     patches_dict['Add'][item] = badges
         else:
             patches_dict['Remove'][item] = new_dict[item]['Remove']
-            # get_metadata etc
     return patch_badges(patches_dict, has_badge_already, ffenv)
 
 
 def patch_badges(patch_dict, already_list, ffenv):
+    '''
+    Function for patching badges to items returned in check output.
+
+    patch_dict : dict - keys should be item @ids, values should be list of dicts
+                 to patch for badges
+    already_list : list of items that check output indicated should have badges
+                   added, but already had the badge. Meant to avoid duplicate
+                   badges if an action fails halfway through and needs to be rerun.
+    '''
     patches = {
         'Add badge success': [],
         'Add badge failure': [],
@@ -230,66 +213,11 @@ def patch_badges(patch_dict, already_list, ffenv):
     return patches
 
 
-# # general function for consolidating badge lists for multiple badges?
-# def consolidate_badge_output(output, output_keys, badges):
-#     items = []
-#     for key in output_keys:
-#         items = items + output[key]['Need badge'] + list(output[key]['Need badge removed'].keys())
-#     if len(items) == len(list(set(items))):
-#         return output
-#     multiple = [item for item in list(set(items)) if items.count(item) > 1]
-#     for item in multiple:
-#         adds = [key for key in output_keys if item in output[key]['Need badge']]
-#         # removes = [key for key in output_keys if item in output[key]['Need badge removed'].keys()]
-#         removes = {key: output[key]['Need badge removed'][item] for key in output_keys if item in output[key]['Need badge removed'].keys()}
-#         combined_badges = []
-#         if removes:
-#             combined_badges = list(set([b_dict for val in removes.values() for b_dict in val]))
-#             for b_dict in combined_badges:
-#                 if b_dict['badge'] in removes.keys():
-#                     combined_badges.remove(b_dict)
-#
-#         badges = []
-#         for key in output_keys:
-#             pass
-#         # levels = []
-#         # for i in range(len(output_keys)):
-#         #     if item in output[output_keys[i]]['Need badge']:
-#         #         levels.append('add')
-#         #     elif item in output[output_keys[i]]['Need badge removed']:
-#         #         levels.append('remove')
-#         #     else:
-#         #         levels.append('ok')
-#         # if 'remove' not in levels or (len(list(set(levels))) == len(levels) and levels[-1] == 'add'):
-#         #     continue
-#         # add = 0
-#         # remove = []
-#         # for i in range(len(levels)):
-#         #     if levels[i] == 'add':
-#         #         if add:
-#         #             levels[i] = 'ok'
-#         #         else:
-#         #             add = i + 1
-#         #             continue
-#         #     if levels[i] == 'remove':
-#         #         if add:
-#         #             output[output_keys[i]]['Need badge removed'][item].append(badges[add - 1])
-#         #         for j in remove:
-#         #             if badges[j] in output[output_keys[i]]['Need badge removed'][item]:
-#         #                 output[output_keys[i]]['Need badge removed'][item].remove(badges[j])
-#         #         remove.append(i)
-#     # check for badges present in multiple levels
-#     # if all levels are add, do nothing? or keep only top level?
-#     # if all levels are remove, edit dicts sequentially
-#     # if add is in final level, do nothing
-#     # if an add is before a remove, add added badge to remove dict
-#     return output
-
-
 @check_function()
 def good_biosamples(connection, **kwargs):
     check = init_check_res(connection, 'good_biosamples')
 
+    # needs to be tiered cell line and have harvest date to get any ranked badge
     tiered = ('search/?biosource.cell_line_tier=Tier+1&biosource.cell_line_tier=Tier+2'
               '&type=Biosample&cell_culture_details.culture_harvest_date%21=No+value')
     results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
@@ -297,6 +225,7 @@ def good_biosamples(connection, **kwargs):
 
     for result in results:
         bcc = result['cell_culture_details']
+        # go through results and categorize into gold, silver, bronze
         if (result['biosource'][0].get('cell_line_tier') == 'Tier 1' and bcc.get('culture_duration') and
             bcc.get('morphology_image') and bcc['morphology_image'].get('attachment')):
             if bcc.get('karyotype') and bcc.get('follows_sop') == 'Yes':
@@ -310,9 +239,8 @@ def good_biosamples(connection, **kwargs):
     output = {}
     patch = False
     for badge in [gold, silver, bronze]:
+        # for each badge type, compare to items that already have badge
         to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
-        # for item in to_add: check it isn't in previous to_add(s)
-        # for item in to_remove: check if it's in previous to_add(s) or to_remove(s)
         if to_add or to_remove:
             patch = True
         output['{} Biosamples'.format(badge.level)] = {
@@ -320,8 +248,8 @@ def good_biosamples(connection, **kwargs):
             "Need badge removed": to_remove,
             "Badge OK": ok
         }
-    check.full_output = output
-    check.brief_output = {
+    check.full_output = output  # dict of items that either need to be patched or have badge and don't need patch
+    check.brief_output = {  # dict containing list of items that qualify for each badge
         "Gold Biosamples": gold.to_compare,
         "Silver Biosamples": silver.to_compare,
         "Bronze Biosamples": bronze.to_compare
@@ -347,17 +275,6 @@ def patch_ranked_biosample_badges(connection, **kwargs):
 
     bs_check = init_check_res(connection, 'good_biosamples')
     bs_check_result = bs_check.get_result_by_uuid(kwargs['called_by'])
-    #rank_keys = ["Need badge", "Need badge removed"]
-    # output = {}
-    # failures = False
-    # for key in bs_check_result['full_output'].keys():
-    #     badgename = '/badges/{}/'.format('-'.join(key.lower()[:-1].split()))
-    #     print(badgename)
-    #     patches = patch_badges(bs_check_result['full_output'][key], badgename,
-    #                                rank_keys, connection.ff_env, message=False)
-    #     output[key] = patches
-    #     if patches['add_badge_failure'] or patches['remove_badge_failure']:
-    #         failures = True
     outputkeys = ['Gold Biosamples', 'Silver Biosamples', 'Bronze Biosamples']
     bs_badges = ['gold-biosample', 'silver-biosample', 'bronze-biosample']
     action.output = reformat_and_patch_multiple(
@@ -378,7 +295,6 @@ def repsets_have_bio_reps(connection, **kwargs):
 
     results = ff_utils.search_metadata('search/?type=ExperimentSetReplicate&frame=object',
                                        ff_env=connection.ff_env, page_limit=50)
-
     audits = {'single_experiment': [], 'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
     by_exp = {}
     for result in results:
