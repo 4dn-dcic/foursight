@@ -145,6 +145,47 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, message=True, sing
     return patches
 
 
+def new_function_argghhh(output, output_keys, badges, ffenv):
+    new_dict = {}
+    for key in output_keys:
+        for at_id in output[key]['Need badge']:
+            #print(item, item in new_dict.keys())
+            if at_id in new_dict.keys() and not new_dict[at_id]['Add']:
+                new_dict[at_id]['Add'] = key
+            elif at_id not in new_dict.keys():
+                new_dict[at_id] = {'Add': key, 'Remove': [], 'Get': True}
+            #print(new_dict)
+        for at_id, val in output[key]['Need badge removed'].items():
+            #print(at_id, at_id in new_dict.keys())
+            if at_id in new_dict.keys() and val:
+                new = [v for v in val if v not in new_dict[at_id]['Remove']]
+                new_dict[at_id]['Remove'] += new
+            elif at_id not in new_dict.keys():
+                new_dict[at_id] = {'Add': '', 'Remove': val}
+            new_dict[at_id]['Get'] = False
+            #print(new_dict)
+    print(new_dict)
+    patches_dict = {}
+    has_badge_already = []
+    for item in new_dict.keys():
+        if new_dict[item]['Add']:
+            badge_id = '/badges/' + badges[output_keys.index(new_dict[item]['Add'])] + '/'
+            if not new_dict[item]['Get']:
+            # combine
+                patches_dict[item] = new_dict[item]['Remove'] + [{'badge': badge_id}]
+            else:
+                add_result = ff_utils.get_metadata(item + '?frame=object', ff_env=ffenv)
+                badges = add_result['badges'] if add_result.get('badges') else []
+                # badges.append({'badge': badge_id})
+                if badge_id in [b['badge'] for b in badges]:
+                # print an error message?
+                    patches['add_badge_failure'].append('{} already has badge'.format(add_key))
+                else:
+                    badges.append({'badge': badge_id})
+            # get_metadata etc
+    return patches_dict
+
+
 # general function for consolidating badge lists for multiple badges?
 def consolidate_badge_output(output, output_keys, badges):
     items = []
@@ -154,32 +195,45 @@ def consolidate_badge_output(output, output_keys, badges):
         return output
     multiple = [item for item in list(set(items)) if items.count(item) > 1]
     for item in multiple:
-        levels = []
-        for i in range(len(output_keys)):
-            if item in output[output_keys[i]]['Need badge']:
-                levels.append('add')
-            elif item in output[output_keys[i]]['Need badge removed']:
-                levels.append('remove')
-            else:
-                levels.append('ok')
-        if 'remove' not in levels or (len(list(set(levels))) == len(levels) and levels[-1] == 'add'):
-            continue
-        add = 0
-        remove = []
-        for i in range(len(levels)):
-            if levels[i] == 'add':
-                if add:
-                    levels[i] = 'ok'
-                else:
-                    add = i + 1
-                    continue
-            if levels[i] == 'remove':
-                if add:
-                    output[output_keys[i]]['Need badge removed'][item].append(badges[add - 1])
-                for j in remove:
-                    if badges[j] in output[output_keys[i]]['Need badge removed'][item]:
-                        output[output_keys[i]]['Need badge removed'][item].remove(badges[j])
-                remove.append(i)
+        adds = [key for key in output_keys if item in output[key]['Need badge']]
+        # removes = [key for key in output_keys if item in output[key]['Need badge removed'].keys()]
+        removes = {key: output[key]['Need badge removed'][item] for key in output_keys if item in output[key]['Need badge removed'].keys()}
+        combined_badges = []
+        if removes:
+            combined_badges = list(set([b_dict for val in removes.values() for b_dict in val]))
+            for b_dict in combined_badges:
+                if b_dict['badge'] in removes.keys():
+                    combined_badges.remove(b_dict)
+
+        badges = []
+        for key in output_keys:
+            pass
+        # levels = []
+        # for i in range(len(output_keys)):
+        #     if item in output[output_keys[i]]['Need badge']:
+        #         levels.append('add')
+        #     elif item in output[output_keys[i]]['Need badge removed']:
+        #         levels.append('remove')
+        #     else:
+        #         levels.append('ok')
+        # if 'remove' not in levels or (len(list(set(levels))) == len(levels) and levels[-1] == 'add'):
+        #     continue
+        # add = 0
+        # remove = []
+        # for i in range(len(levels)):
+        #     if levels[i] == 'add':
+        #         if add:
+        #             levels[i] = 'ok'
+        #         else:
+        #             add = i + 1
+        #             continue
+        #     if levels[i] == 'remove':
+        #         if add:
+        #             output[output_keys[i]]['Need badge removed'][item].append(badges[add - 1])
+        #         for j in remove:
+        #             if badges[j] in output[output_keys[i]]['Need badge removed'][item]:
+        #                 output[output_keys[i]]['Need badge removed'][item].remove(badges[j])
+        #         remove.append(i)
     # check for badges present in multiple levels
     # if all levels are add, do nothing? or keep only top level?
     # if all levels are remove, edit dicts sequentially
@@ -212,6 +266,10 @@ def good_biosamples(connection, **kwargs):
     patch = False
     for badge in [gold, silver, bronze]:
         to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
+        if badge == silver or badge == bronze:
+            pass
+        # for item in to_add: check it isn't in previous to_add(s)
+        # for item in to_remove: check if it's in previous to_add(s) or to_remove(s)
         if to_add or to_remove:
             patch = True
         output['{} Biosamples'.format(badge.level)] = {
