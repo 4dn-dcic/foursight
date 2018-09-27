@@ -79,7 +79,7 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv):
     return needs_badge, remove_badge, badge_edit, badge_ok
 
 
-def reformat_badge_output_single(full_output, badge_name, output_keys, ffenv, message=True, single_message=''):
+def reformat_and_patch_single(full_output, badge_name, output_keys, ffenv, message=True, single_message=''):
     '''
     General function for patching badges.
     For badges with single message choice:
@@ -149,10 +149,10 @@ def reformat_badge_output_single(full_output, badge_name, output_keys, ffenv, me
         #     # except Exception:
         #     #     patches['edit_badge_failure'].append(edit_key)
         #     to_patch[edit]
-    return to_patch
+    return patch_badges(to_patch, already, ffenv)
 
 
-def reformat_badge_output_multiple(output, output_keys, badges, ffenv):
+def reformat_and_patch_multiple(output, output_keys, badges, ffenv):
     new_dict = {}
     for key in output_keys:
         for at_id in output[key]['Need badge']:
@@ -193,7 +193,7 @@ def reformat_badge_output_multiple(output, output_keys, badges, ffenv):
         else:
             patches_dict['Remove'][item] = new_dict[item]['Remove']
             # get_metadata etc
-    return patches_dict, has_badge_already
+    return patch_badges(patches_dict, has_badge_already, ffenv)
 
 
 def patch_badges(patch_dict, already_list, ffenv):
@@ -307,8 +307,6 @@ def good_biosamples(connection, **kwargs):
     patch = False
     for badge in [gold, silver, bronze]:
         to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
-        if badge == silver or badge == bronze:
-            pass
         # for item in to_add: check it isn't in previous to_add(s)
         # for item in to_remove: check if it's in previous to_add(s) or to_remove(s)
         if to_add or to_remove:
@@ -352,9 +350,9 @@ def patch_ranked_biosample_badges(connection, **kwargs):
     #         failures = True
     outputkeys = ['Gold Biosamples', 'Silver Biosamples', 'Bronze Biosamples']
     bs_badges = ['gold-biosample', 'silver-biosample', 'bronze-biosample']
-    reformatted, already = reformat_badge_output_multiple(
-        bs_check_result['full_output'], outputkeys, bs_badges, connection.ff_env)
-    action.output = patch_badges(reformatted, already, connection.ff_env)
+    action.output = reformat_and_patch_multiple(
+        bs_check_result['full_output'], outputkeys, bs_badges, connection.ff_env
+    )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -439,8 +437,9 @@ def patch_badges_for_replicate_numbers(connection, **kwargs):
     rep_keys = ['New replicate sets with replicate number issues',
                 'Replicate sets that no longer have replicate number issues',
                 'Replicate sets with a replicate_numbers badge that needs editing']
-
-    action.output = patch_badges(rep_check_result['full_output'], 'replicatenumbers', rep_keys, connection.ff_env)
+    action.output = reformat_and_patch_single(
+        rep_check_result['full_output'], 'replicatenumbers', rep_keys, connection.ff_env
+    )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -457,10 +456,12 @@ def tier1_metadata_present(connection, **kwargs):
     results = ff_utils.search_metadata('search/?biosource.cell_line_tier=Tier+1&type=Biosample',
                                        ff_env=connection.ff_env)
     missing = {}
-    msg_dict = {'culture_start_date': 'Tier 1 Biosample missing Culture Start Date',
-                # item will fail validation if missing a start date - remove this part of check?
-                'culture_duration': 'Tier 1 Biosample missing Culture Duration',
-                'morphology_image': 'Tier 1 Biosample missing Morphology Image'}
+    msg_dict = {
+        'culture_start_date': 'Tier 1 Biosample missing Culture Start Date',
+        # item will fail validation if missing a start date - remove this part of check?
+        'culture_duration': 'Tier 1 Biosample missing Culture Duration',
+        'morphology_image': 'Tier 1 Biosample missing Morphology Image'
+    }
     for result in results:
         if len(result.get('biosource')) != 1:
             continue
@@ -471,9 +472,9 @@ def tier1_metadata_present(connection, **kwargs):
             if messages:
                 missing[result['@id']] = '; '.join(messages)
 
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(missing, 'Biosample',
-                                                                 'tier1metadatamissing',
-                                                                 connection.ff_env)
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
+        missing, 'Biosample', 'tier1metadatamissing', connection.ff_env
+    )
     check.action = 'patch_badges_for_tier1_metadata'
     if missing:
         check.status = 'WARN'
@@ -483,10 +484,12 @@ def tier1_metadata_present(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'All Tier 1 biosamples have required metadata'
         check.description = '0 tier 1 biosamples found missing required metadata'
-    check.full_output = {'New tier1 biosamples missing required metadata': to_add,
-                         'Old tier1 biosamples missing required metadata': ok,
-                         'Tier1 biosamples no longer missing required metadata': to_remove,
-                         'Biosamples with a tier1_metadata_missing badge that needs editing': to_edit}
+    check.full_output = {
+        'New tier1 biosamples missing required metadata': to_add,
+        'Old tier1 biosamples missing required metadata': ok,
+        'Tier1 biosamples no longer missing required metadata': to_remove,
+        'Biosamples with a tier1_metadata_missing badge that needs editing': to_edit
+    }
     check.brief_output = list(missing.keys())
     if to_add or to_remove or to_edit:
         check.allow_action = True
@@ -499,12 +502,14 @@ def patch_badges_for_tier1_metadata(connection, **kwargs):
 
     tier1_check = init_check_res(connection, 'tier1_metadata_present')
     tier1_check_result = tier1_check.get_result_by_uuid(kwargs['called_by'])
-
-    tier1keys = ['New tier1 biosamples missing required metadata',
-                 'Tier1 biosamples no longer missing required metadata',
-                 'Biosamples with a tier1_metadata_missing badge that needs editing']
-
-    action.output = patch_badges(tier1_check_result['full_output'], 'tier1metadatamissing', tier1keys, connection.ff_env)
+    tier1keys = [
+        'New tier1 biosamples missing required metadata',
+        'Tier1 biosamples no longer missing required metadata',
+        'Biosamples with a tier1_metadata_missing badge that needs editing'
+    ]
+    action.output = reformat_and_patch_single(
+        tier1_check_result['full_output'], 'tier1metadatamissing', tier1keys, connection.ff_env
+    )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -552,9 +557,11 @@ def exp_has_raw_files(connection, **kwargs):
         check.summary = 'No experiments missing raw files'
         check.description = '0 sequencing experiments are missing raw files'
     check.action = 'patch_badges_for_raw_files'
-    check.full_output = {'Experiments newly missing raw files': to_add,
-                         'Old experiments missing raw files': ok,
-                         'Experiments no longer missing raw files': to_remove}
+    check.full_output = {
+        'Experiments newly missing raw files': to_add,
+        'Old experiments missing raw files': ok,
+        'Experiments no longer missing raw files': to_remove
+    }
     check.brief_output = missing_files
     if to_add or to_remove:
         check.allow_action = True
@@ -569,9 +576,9 @@ def patch_badges_for_raw_files(connection, **kwargs):
     raw_check_result = raw_check.get_result_by_uuid(kwargs['called_by'])
 
     raw_keys = ['Experiments newly missing raw files', 'Experiments no longer missing raw files']
-
-    action.output = patch_badges(raw_check_result['full_output'], 'norawfiles', raw_keys,
-                                 connection.ff_env, single_message='Raw files missing')
+    action.output = reformat_and_patch_single(
+        raw_check_result['full_output'], 'norawfiles', raw_keys, connection.ff_env, single_message='Raw files missing'
+    )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -598,10 +605,9 @@ def paired_end_info_consistent(connection, **kwargs):
                [result2['@id'] for result2 in results2]}
     results_rev = {item: key for key, val in results.items() for item in val}
 
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(results_rev, 'FileFastq',
-                                                                 'pairedendsconsistent',
-                                                                 connection.ff_env)
-
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
+        results_rev, 'FileFastq', 'pairedendsconsistent', connection.ff_env
+    )
     if [val for val in results.values() if val]:
         check.status = 'WARN'
         check.summary = 'Inconsistencies found in FileFastq paired end info'
@@ -613,10 +619,12 @@ def paired_end_info_consistent(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No inconsistencies in FileFastq paired end info'
         check.description = 'All paired end fastq files have both paired end number and "paired with" related_file'
-    check.full_output = {'New fastq files with inconsistent paired end info': to_add,
-                         'Old fastq files with inconsistent paired end info': ok,
-                         'Fastq files with paired end info now consistent': to_remove,
-                         'Fastq files with paired end badge that needs editing': to_edit}
+    check.full_output = {
+        'New fastq files with inconsistent paired end info': to_add,
+        'Old fastq files with inconsistent paired end info': ok,
+        'Fastq files with paired end info now consistent': to_remove,
+        'Fastq files with paired end badge that needs editing': to_edit
+    }
     check.brief_output = results
     check.action = 'patch_badges_for_paired_end_consistency'
     if to_add or to_remove or to_edit:
@@ -630,12 +638,14 @@ def patch_badges_for_paired_end_consistency(connection, **kwargs):
 
     pe_check = init_check_res(connection, 'paired_end_info_consistent')
     pe_check_result = pe_check.get_result_by_uuid(kwargs['called_by'])
-
-    pe_keys = ['New fastq files with inconsistent paired end info',
-               'Fastq files with paired end info now consistent',
-               'Fastq files with paired end badge that needs editing']
-
-    action.output = patch_badges(pe_check_result['full_output'], 'pairedendsconsistent', pe_keys, connection.ff_env)
+    pe_keys = [
+        'New fastq files with inconsistent paired end info',
+        'Fastq files with paired end info now consistent',
+        'Fastq files with paired end badge that needs editing'
+    ]
+    action.output = reformat_and_patch_single(
+        pe_check_result['full_output'], 'pairedendsconsistent', pe_keys, connection.ff_env
+    )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
