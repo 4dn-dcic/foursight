@@ -216,7 +216,10 @@ def patch_badges(patch_dict, already_list, ffenv):
             label = key + ' badge '
         for itemid, val in patch_dict[key].items():
             try:
-                response = ff_utils.patch_metadata({"badges": val}, itemid[1:], ff_env=ffenv)
+                if val:
+                    response = ff_utils.patch_metadata({"badges": val}, itemid[1:], ff_env=ffenv)
+                else:
+                    response = ff_utils.patch_metadata({}, itemid[1:] + '?delete_fields=badges', ff_env=ffenv)
                 if response['status'] == 'success':
                     patches[label + 'success'].append(itemid)
                 else:
@@ -294,7 +297,8 @@ def good_biosamples(connection, **kwargs):
 
     for result in results:
         bcc = result['cell_culture_details']
-        if result['biosource'][0].get('cell_line_tier') == 'Tier 1' and bcc.get('culture_duration'):
+        if (result['biosource'][0].get('cell_line_tier') == 'Tier 1' and bcc.get('culture_duration') and
+            bcc.get('morphology_image') and bcc['morphology_image'].get('attachment')):
             if bcc.get('karyotype') and bcc.get('follows_sop') == 'Yes':
                 gold.to_compare.append(result['@id'])
             elif bcc.get('follows_sop') == 'Yes' or bcc.get('protocols_additional'):
@@ -316,6 +320,12 @@ def good_biosamples(connection, **kwargs):
             "Need badge removed": to_remove,
             "Badge OK": ok
         }
+    check.full_output = output
+    check.brief_output = {
+        "Gold Biosamples": gold.to_compare,
+        "Silver Biosamples": silver.to_compare,
+        "Bronze Biosamples": bronze.to_compare
+    }
     check.action = 'patch_ranked_biosample_badges'
     if not patch:
         check.status = 'PASS'
@@ -417,10 +427,12 @@ def repsets_have_bio_reps(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No replicate experiment sets found with replicate number issues'
         check.description = '0 replicate experiment sets found with replicate number issues'
-    check.full_output = {'New replicate sets with replicate number issues': to_add,
-                         'Old replicate sets with replicate number issues': ok,
-                         'Replicate sets that no longer have replicate number issues': to_remove,
-                         'Replicate sets with a replicate_numbers badge that needs editing': to_edit}
+    check.full_output = {
+        'New replicate sets with replicate number issues': to_add,
+        'Old replicate sets with replicate number issues': ok,
+        'Replicate sets that no longer have replicate number issues': to_remove,
+        'Replicate sets with a replicate_numbers badge that needs editing': to_edit
+    }
     check.brief_output = audits
     if to_add or to_remove or to_edit:
         check.allow_action = True
