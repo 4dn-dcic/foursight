@@ -237,6 +237,18 @@
             }
         }
     },
+    "workflow_properties": {
+        "title": "Workflows with missing or duplicate steps properties",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
@@ -339,10 +351,156 @@
     },
     "prepare_static_headers": {
         "title": "Prepare static headers",
-        "group": "Metadata checks",
+        "group": "Static headers checks",
+        "schedule": {},
+        "display": ["data", "staging", "hotseat"]
+    },
+    "prepare_static_headers_data_use_guidelines": {
+        "title": "Data use guidelines",
+        "group": "Static headers checks",
         "schedule": {
             "morning_checks": {
                 "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_inSitu_HiC": {
+        "title": "InSitu Hi-C",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_dilution_HiC": {
+        "title": "dilution Hi-C",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_FISH": {
+        "title": "FISH",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_SPT": {
+        "title": "SPT",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_SPRITE": {
+        "title": "SPRITE",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_MARGI": {
+        "title": "MARGI",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "snapshot_rds": {
+        "title": "Snapshot RDS",
+        "group": "System checks",
+        "schedule": {
+            "monthly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
