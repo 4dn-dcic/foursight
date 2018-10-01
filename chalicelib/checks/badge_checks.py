@@ -16,10 +16,10 @@ class RankedBadge:
 
 
 def get_badges(item_type):
-    if item_type == 'biosample':
-        gold = RankedBadge('Gold', 'gold-biosample')
-        silver = RankedBadge('Silver', 'silver-biosample')
-        bronze = RankedBadge('Bronze', 'bronze-biosample')
+    if item_type in ['biosample', 'experiment']:
+        gold = RankedBadge('Gold', 'gold-{}'.format(item_type))
+        silver = RankedBadge('Silver', 'silver-{}'.format(item_type))
+        bronze = RankedBadge('Bronze', 'bronze-{}'.format(item_type))
         return gold, silver, bronze
 
 
@@ -272,6 +272,55 @@ def good_biosamples(connection, **kwargs):
 @check_function()
 def good_experiments(connection, **kwargs):
     check = init_check_res(connection, 'good_experiments')
+    # get 4DN certified protocols for checking expts against
+    protocol_url = ('search/?protocol_type=Experimental+protocol&tags=4DN+Standard'
+                    '&tags=4DN+Joint+Analysis+2018&type=Protocol')
+    protocols = [item['@id'] for item in ff_utils.search_metadata(protocol_url, ff_env=connection.ff_env)]
+    tiered = 'search/?type=Experiment&processed_files.uuid%21=No+value'
+    results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
+    gold, silver, bronze = get_badges('experiment')
+    check.output = {'Gold': [], 'Silver': [], 'Bronze': []}
+    for result in results:
+        badges = [badge.get('badge') for badge in result.get('badges')]
+        badges += [badge.get('badge') for badge in result['biosample'].get('badges')]
+        # Gold:
+        # follows_sop=Yes and protocol is 4DN certified
+        # biosample badge
+        # has processed files and raw files
+        # if HiC: check # reads
+        if (
+            result.get('follows_sop') == 'Yes' and
+            #result.get('protocol') and
+            #result['protocol'].get('@id') in protocols and
+            result.get('badges') and
+            'biosample' in ''.join(badges) and
+            'norawfiles' not in ''.join(badges) and
+            result.get('processed_files')
+        ):
+            if 'Hi-C' in result.get('experiment_type'):
+                # add up reads
+                file_url = 'search/?type=FileFastq&experiments.@id={}'.format(result['@id'])
+                fastqs = ff_utils.search_metadata(file_url, ff_env=connection.ff_env)
+                reads = sum([fq['quality_metric'].get('Total Sequences', 0) for
+                         fq in fastqs if 'quality_metric' in fq.keys()])
+                if reads >= 500000000:
+                    check.output['Gold'].append(result['@id'])
+                else:
+                    check.output['Silver'].append(result['@id'])
+            else:
+                check.output['Gold'].append(result['@id'])
+        # Silver:
+        # 4DN approved protocol or linked protocol deviations
+        # has processed files
+        elif result.get('protocol') and result.get('processed_files'):
+            if result['protocol'].get('@id') in protocols or result.get('protocol_variation'):
+                # silver
+                check.output['Silver'].append(result['@id'])
+            else:
+                # bronze
+                check.output['Bronze'].append(result['@id'])
+    check.status = "PASS"
+    check.summary = "Experiments qualify for ranked badges"
     return check
 
 
