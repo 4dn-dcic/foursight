@@ -269,6 +269,12 @@ def good_biosamples(connection, **kwargs):
     return check
 
 
+@check_function()
+def good_experiments(connection, **kwargs):
+    check = init_check_res(connection, 'good_experiments')
+    return check
+
+
 @action_function()
 def patch_ranked_biosample_badges(connection, **kwargs):
     action = init_action_res(connection, 'patch_ranked_biosample_badges')
