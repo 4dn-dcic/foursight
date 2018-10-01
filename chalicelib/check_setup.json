@@ -173,6 +173,18 @@
             }
         }
     },
+    "good_experiments": {
+        "title": "Gold/Silver/Bronze experiments",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "repsets_have_bio_reps": {
         "title": "Replicate experiment sets with replicate number issues",
         "group": "Badge checks",
