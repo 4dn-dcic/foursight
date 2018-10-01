@@ -126,6 +126,7 @@ class GoogleAPISyncer:
         self.docs       = GoogleAPISyncer.DocsAPI(self)
 
 
+
     class AnalyticsAPI(_NestedGoogleServiceAPI):
         '''
         Interface for accessing Google Analytics data using our Google API Syncer credentials.
@@ -133,6 +134,7 @@ class GoogleAPISyncer:
         Relevant Documentation:
         https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
         '''
+
 
         @staticmethod
         def transform_report_result(raw_result, save_raw_values=False):
@@ -214,12 +216,15 @@ class GoogleAPISyncer:
                 "for_date"      : for_date
             }
 
+
+
         def __init__(self, syncer_instance):
             _NestedGoogleServiceAPI.__init__(self, syncer_instance)
             self.view_id = self.owner.extra_config.get('analytics_view_id', DEFAULT_GOOGLE_API_CONFIG['analytics_view_id'])
             self._api = build('analyticsreporting', 'v4', credentials=self.owner.credentials)
 
-        
+
+    
         def get_report_provider_method_names(self):
             '''Gets every single report defined and marked with `@report` decorator.'''
             report_requests = []
@@ -228,6 +233,7 @@ class GoogleAPISyncer:
                 if method_instance and getattr(method_instance, 'is_report_provider', False):
                     report_requests.append(method_name)
             return report_requests
+
 
 
         def query_reports(self, report_requests=None, **kwargs):
@@ -284,18 +290,34 @@ class GoogleAPISyncer:
 
             formatted_report_requests = [ process_report_request_type(r, **kwargs) for r in report_requests ]
 
+            # Google only permits 5 requests max within a batchRequest, so we need to chunk it up if over this -
+            report_request_count = len(formatted_report_requests)
+            if report_request_count > 5:
+                raw_result = { "reports" : [] }
+                for chunk_num in range(report_request_count // 5 + 1):
+                    chunk_num_start = chunk_num * 5
+                    chunk_num_end = min([chunk_num_start + 5, report_request_count])
+                    for chunk_raw_res in self._api.reports().batchGet(body={ "reportRequests" : formatted_report_requests[chunk_num_start:chunk_num_end] }).execute().get('reports', []):
+                        raw_result['reports'].append(chunk_raw_res)
+            else:
+                raw_result = self._api.reports().batchGet(body={ "reportRequests" : formatted_report_requests }).execute()
+
             # We get back as raw_result:
             #   { "reports" : [{ "columnHeader" : { "dimensions" : [Xh, Yh, Zh], "metricHeaderEntries" : [{ "name" : 1h, "type" : "INTEGER" }, ...] }, "data" : { "rows": [{ "dimensions" : [X,Y,Z], "metrics" : [1,2,3,4] }] }  }, { .. }, ....] }
-            raw_result = self._api.reports().batchGet(body={ "reportRequests" : formatted_report_requests }).execute()
             raw_result['requests'] = formatted_report_requests
             raw_result['report_key_names'] = report_key_names
             # This transforms raw_result["reports"] into more usable data structure for ES and aggregation
             #   e.g. list of JSON items instead of multi-dimensional table representation
             return self.transform_report_result(raw_result)     # same as GoogleAPISyncer.AnalyticsAPI.transform_report_result(raw_result)
 
+
+
         def get_latest_tracking_item_date(self):
             '''
-            IN PROGRESS
+            This method is meant to be run periodically to fetch/sync Google Analytics data into Fourfront database.
+
+            Adds 1 TrackingItem for each day to represent analytics data for said day.
+            Fill up from latest already-existing TrackingItem until day before current day (to get full day of data).
 
             TODO:
             `date.fromisoformat(...)`  is not supported until Python 3.7 though (without extra libraries).
@@ -314,10 +336,13 @@ class GoogleAPISyncer:
             year, month, day = iso_date.split('-', 2)
             return date(int(year), int(month), int(day))
 
+
+
         def fill_with_tracking_items(self):
             last_tracking_item_date = self.get_latest_tracking_item_date()
             if last_tracking_item_date is None:
-                last_tracking_item_date = date.today() - timedelta(days=15)
+                # Fill up with last 60 days of Google Analytics data, if no other TrackingItem(s) yet exist.
+                last_tracking_item_date = date.today() - timedelta(days=61)
 
             # Day from which we begin to fill
             current_for_date = last_tracking_item_date + timedelta(days=1)
@@ -339,6 +364,8 @@ class GoogleAPISyncer:
                 current_for_date += timedelta(days=1)
 
             return { 'created' : counter }
+
+
 
         def create_tracking_item(self, report_data=None, do_post_request=False, **kwargs):
             '''
@@ -370,12 +397,16 @@ class GoogleAPISyncer:
             else:
                 return tracking_item
 
+
+
         @report
         def sessions_by_country(self, for_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
                 'metrics': [
                     { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:users', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:pageviews', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:sessionsPerUser' },
                     { 'expression': 'ga:avgSessionDuration' },
                     { 'expression': 'ga:bounceRate' }
@@ -389,8 +420,9 @@ class GoogleAPISyncer:
             return report_request_json
 
 
+
         @report
-        def detail_views_by_file(self, for_date='yesterday', execute=True):
+        def views_by_file(self, for_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
                 'metrics': [
@@ -418,8 +450,9 @@ class GoogleAPISyncer:
             return report_request_json
 
 
+
         @report
-        def detail_views_by_experiment_set(self, for_date='yesterday', execute=True):
+        def views_by_experiment_set(self, for_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
                 'metrics': [
@@ -447,6 +480,144 @@ class GoogleAPISyncer:
             return report_request_json
 
 
+
+        @report
+        def views_by_other_item(self, for_date='yesterday', execute=True):
+            report_request_json = {
+                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dimensions': [
+                    { 'name': 'ga:productName' },
+                    { 'name': 'ga:productSku' },
+                    { 'name': 'ga:productCategoryHierarchy' },
+                    { 'name': 'ga:productBrand' }
+                ],
+                'metrics': [
+                    { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' }
+                ],
+                "orderBys" : [{ 'fieldName' : 'ga:productDetailViews', 'sortOrder' : 'descending' }],
+                'dimensionFilterClauses' : [
+                    {
+                        "filters" : [
+                            {
+                                "not" : True,
+                                "dimensionName" : "ga:productCategoryLevel1",
+                                "expressions" : ["ExperimentSet"],
+                                "operator" : "PARTIAL"
+                            },
+                            {
+                                "not" : True,
+                                "dimensionName" : "ga:productCategoryLevel1",
+                                "expressions" : ["File"],
+                                "operator" : "EXACT"
+                            }
+                        ]
+                    }
+                ]
+            }
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+
+
+        @report
+        def search_search_queries(self, for_date='yesterday', execute=True):
+            report_request_json = {
+                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dimensions': [
+                    { 'name': 'ga:searchKeyword' }
+                ],
+                'metrics': [
+                    { 'expression': 'ga:users', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:pageviews', 'formattingType' : 'INTEGER' }
+                ],
+                "orderBys" : [{ 'fieldName' : 'ga:pageviews', 'sortOrder' : 'descending' }],
+                'dimensionFilterClauses' : [
+                    {
+                        "filters" : [
+                            {
+                                "dimensionName" : "ga:searchDestinationPage",
+                                "expressions" : ["/search/"],
+                                "operator" : "PARTIAL"
+                            }
+                        ]
+                    }
+                ]
+            }
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+
+
+        @report
+        def browse_search_queries(self, for_date='yesterday', execute=True):
+            report_request_json = {
+                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dimensions': [
+                    { 'name': 'ga:searchKeyword' }
+                ],
+                'metrics': [
+                    { 'expression': 'ga:users', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:pageviews', 'formattingType' : 'INTEGER' }
+                ],
+                "orderBys" : [{ 'fieldName' : 'ga:pageviews', 'sortOrder' : 'descending' }],
+                'dimensionFilterClauses' : [
+                    {
+                        "filters" : [
+                            {
+                                "dimensionName" : "ga:searchDestinationPage",
+                                "expressions" : ["/browse/"],
+                                "operator" : "PARTIAL"
+                            }
+                        ]
+                    }
+                ]
+            }
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+
+
+        @report
+        def fields_faceted(self, for_date='yesterday', execute=True):
+            report_request_json = {
+                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dimensions': [
+                    { 'name': 'ga:eventLabel' },
+                    { 'name': 'ga:dimension3' }, # Field Name
+                    { 'name': 'ga:dimension4' }  # Term Name
+                ],
+                'metrics': [
+                    { 'expression': 'ga:totalEvents', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:users', 'formattingType' : 'INTEGER' }
+                ],
+                "orderBys" : [{ 'fieldName' : 'ga:totalEvents', 'sortOrder' : 'descending' }],
+                'dimensionFilterClauses' : [
+                    {
+                        "filters" : [
+                            {
+                                "dimensionName" : "ga:eventAction",
+                                "expressions" : ["Set Filter"],
+                                "operator" : "EXACT"
+                            }
+                        ]
+                    }
+                ]
+            }
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+
+
+
     class SheetsAPI(_NestedGoogleServiceAPI):
         '''
         Use this sub-class to help query, read, edit, and analyze spreadsheet data, which will be returned in form of multi-dimensional JSON array.
@@ -454,6 +625,8 @@ class GoogleAPISyncer:
         TODO: Implement
         '''
         pass
+
+
 
 
     class DocsAPI(_NestedGoogleServiceAPI):
