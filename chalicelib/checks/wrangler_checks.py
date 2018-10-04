@@ -473,3 +473,51 @@ def patch_file_size(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function(date_to_check='2018-10-04')
+def find_new_changes(connection, **kwargs):
+    fourdnlab = '828cd4fe-ebb0-4b36-a94a-d2e3a36cc989'
+    check = init_check_res(connection, 'find_new_changes')
+    if kwargs.get('date_to_check', None) is not None:
+        date_to_check = kwargs.get('date_to_check')
+    else:
+        last_result = check.get_primary_result()
+        try:
+            date_to_check = last_result.get('data').get('uuid')
+        except AttributeError:
+            # check was never run as primary and no date param provided
+            date_to_check = '2000-01-01T00:00'
+    chk_query = 'search/?type=ExperimentSet&type=Experiment&status=in review by lab&frame=object'
+    item_results = ff_utils.search_metadata(chk_query, ff_env=connection.ff_env, page_limit=200)
+    new_items = []
+    mod_items = []
+    toucher = None
+    new = False
+    mod = False
+    for item in item_results:
+        if item.get('date_created') > date_to_check:
+            toucher = item.get('submitted_by')
+            new = True
+        elif item.get('last_modified', None) is not None:
+            if item.get('last_modified').get('date_modifed') > date_to_check:
+                toucher = item.get('last_modified').get('modified_by')
+                mod = True
+        if toucher is not None:
+            toucher_info = ff_utils.get_metadata(toucher, ff_env=connection.ff_env, add_on='frame=object')
+            if fourdnlab not in toucher_info.get('lab'):
+                if new:
+                    new_items.append(item)
+                elif mod:
+                    mod_items.append(item)
+    check.brief_output = {'new_items': len(new_items), 'modified_items': len(mod_items)}
+    full_output = {'new_items': new_items, 'modified_items': mod_items}
+    check.full_output = full_output
+    if new_items or mod_items:
+        check.status = 'WARN'
+        check.summary = 'Experiments or ExperimentSets submiited or modified'
+        check.description = "Experiments or ExperimentSets have been submitted or modified by non-DCIC users since last primary check run"
+    else:
+        check.status = 'PASS'
+        check.summary = 'No newly submitted or modified Experiments or ExperimentSets since last run'
+    return check
