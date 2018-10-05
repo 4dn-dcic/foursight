@@ -475,49 +475,75 @@ def patch_file_size(connection, **kwargs):
     return action
 
 
-@check_function(date_to_check='2018-10-04')
-def find_new_changes(connection, **kwargs):
+@check_function(reset=False)
+def new_or_updated_items(connection, **kwargs):
+    ''' Currently restricted to experiment sets and experiments
+        search query can be modified if desired
+
+        keeps a running total of number of new/changed items from
+        when the last time the 'reset' action was run
+    '''
     fourdnlab = '828cd4fe-ebb0-4b36-a94a-d2e3a36cc989'
-    check = init_check_res(connection, 'find_new_changes')
-    if kwargs.get('date_to_check', None) is not None:
-        date_to_check = kwargs.get('date_to_check')
-    else:
-        last_result = check.get_primary_result()
-        try:
-            date_to_check = last_result.get('data').get('uuid')
-        except AttributeError:
-            # check was never run as primary and no date param provided
-            date_to_check = '2000-01-01T00:00'
-    chk_query = 'search/?type=ExperimentSet&type=Experiment&status=in review by lab&frame=object'
-    item_results = ff_utils.search_metadata(chk_query, ff_env=connection.ff_env, page_limit=200)
-    new_items = []
-    mod_items = []
-    toucher = None
-    new = False
-    mod = False
-    for item in item_results:
-        if item.get('date_created') > date_to_check:
-            toucher = item.get('submitted_by')
-            new = True
-        elif item.get('last_modified', None) is not None:
-            if item.get('last_modified').get('date_modifed') > date_to_check:
-                toucher = item.get('last_modified').get('modified_by')
-                mod = True
-        if toucher is not None:
-            toucher_info = ff_utils.get_metadata(toucher, ff_env=connection.ff_env, add_on='frame=object')
-            if fourdnlab not in toucher_info.get('lab'):
-                if new:
-                    new_items.append(item)
-                elif mod:
-                    mod_items.append(item)
-    check.brief_output = {'new_items': len(new_items), 'modified_items': len(mod_items)}
-    full_output = {'new_items': new_items, 'modified_items': mod_items}
+    types2chk = ['ExperimentSet', 'Experiment']
+    check = init_check_res(connection, 'new_or_updated_items')
+    last_result = check.get_latest_result()
+    if last_result is None or last_result.get('status') == 'ERROR' or kwargs.get('reset') is True:
+        # initial set up when run on each environment - should produce 0 counts
+        # maybe also use for reset?
+        check.status = 'PASS'
+        check.summary = 'Resetting counters back to 0'
+        check.brief_output = {ty: {'new': 0, 'modified': 0} for ty in types2chk}
+        check.full_output = {ty: {'new': {}, 'modified': {}} for ty in types2chk}
+        return check
+
+    date_to_check = last_result.get('uuid')
+    brief_output = last_result.get('brief_output')
+    full_output = last_result.get('full_output')
+    search = 'search/?status=in review by lab&frame=object&type=%s'
+    changes = False
+    for itype in types2chk:
+        if brief_output.get(itype, None) is None:
+            brief_output[itype] = {'new': 0, 'modified': 0}
+            full_output[itype] = {'new': {}, 'modified': {}}
+        chk_query = search % itype
+        item_results = ff_utils.search_metadata(chk_query, ff_env=connection.ff_env, page_limit=200)
+        for item in item_results:
+            toucher = None
+            new = False
+            mod = False
+            if item.get('date_created') > date_to_check:
+                toucher = item.get('submitted_by')
+                new = True
+            elif item.get('last_modified', None) is not None:
+                if item.get('last_modified').get('date_modified') > date_to_check:
+                    toucher = item.get('last_modified').get('modified_by')
+                    mod = True
+            if toucher is not None:
+                toucher_info = ff_utils.get_metadata(toucher, ff_env=connection.ff_env, add_on='frame=object')
+                if fourdnlab not in toucher_info.get('lab'):
+                    if new:
+                        changes = True
+                        brief_output[itype]['new'] += 1
+                        full_output[itype]['new'][item.get('uuid')] = item
+                    elif mod:
+                        changes = True
+                        brief_output[itype]['modified'] += 1
+                        full_output[itype]['modified'][item.get('uuid')] = item
+    check.brief_output = brief_output
     check.full_output = full_output
-    if new_items or mod_items:
+    warn = False
+    for v in brief_output.values():
+        for c in v.values():
+            if c != 0:
+                warn = True
+    if warn:
         check.status = 'WARN'
-        check.summary = 'Experiments or ExperimentSets submiited or modified'
-        check.description = "Experiments or ExperimentSets have been submitted or modified by non-DCIC users since last primary check run"
+        check.summary = 'Experiments or ExperimentSets submitted or modified'
+        description = "Experiments or ExperimentSets have been submitted or modified by non-DCIC users since last reset"
+        if changes:
+            # changes since the last time check was run
+            description += '/n/tIncluding changes since the last time the check was run'
     else:
         check.status = 'PASS'
-        check.summary = 'No newly submitted or modified Experiments or ExperimentSets since last run'
+        check.summary = 'No newly submitted or modified Experiments or ExperimentSets since last reset'
     return check
