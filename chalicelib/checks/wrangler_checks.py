@@ -491,7 +491,7 @@ def new_or_updated_items(connection, **kwargs):
         # initial set up when run on each environment - should produce 0 counts
         # maybe also use for reset?
         check.status = 'PASS'
-        check.summary = 'Resetting counters back to 0'
+        check.summary = 'Counters reset to 0'
         check.brief_output = {ty: {'new': 0, 'modified': 0} for ty in types2chk}
         check.full_output = {ty: {'new': {}, 'modified': {}} for ty in types2chk}
         return check
@@ -539,10 +539,11 @@ def new_or_updated_items(connection, **kwargs):
     if warn:
         check.status = 'WARN'
         check.summary = 'Experiments or ExperimentSets submitted or modified'
-        description = "Experiments or ExperimentSets have been submitted or modified by non-DCIC users since last reset"
+        description = "Experiments or ExperimentSets have been submitted or modified by non-DCIC users since last reset."
         if changes:
             # changes since the last time check was run
-            description += '/n/tIncluding changes since the last time the check was run'
+            description += '  There have been changes since the last time the check was run'
+        check.description = description
     else:
         check.status = 'PASS'
         check.summary = 'No newly submitted or modified Experiments or ExperimentSets since last reset'

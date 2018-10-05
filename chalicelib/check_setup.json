@@ -313,6 +313,14 @@
                 "mastertest": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                } ,
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
