@@ -483,7 +483,24 @@ def new_or_updated_items(connection, **kwargs):
         keeps a running total of number of new/changed items from
         when the last time the 'reset' action was run
     '''
-    fourdnlab = '828cd4fe-ebb0-4b36-a94a-d2e3a36cc989'
+    class DictQuery(dict):
+        def get(self, path, default=None):
+            keys = path.split(".")
+            val = None
+            for key in keys:
+                if val:
+                    if isinstance(val, list):
+                        val = [v.get(key, default) if v else None for v in val]
+                    else:
+                        val = val.get(key, default)
+                else:
+                    val = dict.get(self, key, default)
+                if not val:
+                    break
+            return val
+    fourdnlab = "4DN DCIC, HMS"
+    flds2report = ['accession', 'lab.display_title', 'submitted_by.display_title', 'date_created',
+                   'last_modified.modified_by.display_title', 'last_modified.date_modified']
     types2chk = ['ExperimentSet', 'Experiment']
     check = init_check_res(connection, 'new_or_updated_items')
     last_result = check.get_latest_result()
@@ -499,7 +516,7 @@ def new_or_updated_items(connection, **kwargs):
     date_to_check = last_result.get('uuid')
     brief_output = last_result.get('brief_output')
     full_output = last_result.get('full_output')
-    search = 'search/?status=in review by lab&frame=object&type=%s'
+    search = 'search/?status=in review by lab&type=%s'
     changes = False
     for itype in types2chk:
         if brief_output.get(itype, None) is None:
@@ -519,16 +536,24 @@ def new_or_updated_items(connection, **kwargs):
                     toucher = item.get('last_modified').get('modified_by')
                     mod = True
             if toucher is not None:
-                toucher_info = ff_utils.get_metadata(toucher, ff_env=connection.ff_env, add_on='frame=object')
-                if fourdnlab not in toucher_info.get('lab'):
+                try:
+                    # assuming embedded but just in case
+                    toucher = toucher.get('uuid')
+                except AttributeError:
+                    pass
+                toucher_info = ff_utils.get_metadata(toucher, ff_env=connection.ff_env)
+                if fourdnlab != toucher_info.get('lab').get('display_title'):
+                    if new or mod:
+                        changes = True
+                        item_info = {}
+                        for fld in flds2report:
+                            item_info[fld] = DictQuery(item).get(fld)
                     if new:
-                        changes = True
                         brief_output[itype]['new'] += 1
-                        full_output[itype]['new'][item.get('uuid')] = item
+                        full_output[itype]['new'][item.get('uuid')] = item_info
                     elif mod:
-                        changes = True
                         brief_output[itype]['modified'] += 1
-                        full_output[itype]['modified'][item.get('uuid')] = item
+                        full_output[itype]['modified'][item.get('uuid')] = item_info
     check.brief_output = brief_output
     check.full_output = full_output
     warn = False
