@@ -7,6 +7,8 @@ from datetime import (
     date,
     timedelta
 )
+from types import FunctionType
+from calendar import monthrange
 from collections import OrderedDict
 from apiclient.discovery import build
 from google.oauth2.service_account import Credentials
@@ -38,12 +40,17 @@ class _NestedGoogleServiceAPI:
             raise Exception("No Google API credentials set.")
 
 
-def report(func, disabled=False):
+def report(*args, disabled=False):
     '''Decorator for AnalyticsAPI'''
-    if disabled:
+    def decorate_func(func):
+        if disabled:
+            return func
+        setattr(func, 'is_report_provider', True)
         return func
-    setattr(func, 'is_report_provider', True)
-    return func
+    if len(args) == 1 and isinstance(args[0], FunctionType):
+        return decorate_func(args[0])
+    else:
+        return decorate_func
 
 
 class GoogleAPISyncer:
@@ -137,7 +144,7 @@ class GoogleAPISyncer:
 
 
         @staticmethod
-        def transform_report_result(raw_result, save_raw_values=False):
+        def transform_report_result(raw_result, save_raw_values=False, date_increment="daily"):
             '''
             Transform raw responses (multi-dimensional array) in result to a more usable list-of-dictionaries structure.
 
@@ -207,13 +214,16 @@ class GoogleAPISyncer:
                 if common_end_date:
                     common_end_date = parse_google_api_date(common_end_date)
                 # They should be the same
-                if common_end_date != common_start_date:
+                if date_increment == 'daily' and common_end_date != common_start_date:
                     raise Exception('Expected 1 day interval(s) for analytics, but startDate and endDate are different.')
-                for_date = common_end_date
+                if date_increment == 'monthly' and common_end_date[0:7] != common_start_date[0:7]:
+                    raise Exception('Expected monthly interval(s) for analytics, but startDate and endDate "YYYY-MD" are different.')
+                for_date = common_start_date
 
             return { 
-                "reports"       : parsed_reports,
-                "for_date"      : for_date
+                "reports"        : parsed_reports,
+                "for_date"       : for_date,
+                "date_increment" : date_increment
             }
 
 
@@ -281,11 +291,11 @@ class GoogleAPISyncer:
 
             def process_report_request_type(report_request, **kwargs):
                 if isinstance(report_request, str): # Convert string to dict by executing AnalyticsAPI[report_request](**kwargs)
-                    report_request = getattr(self, report_request)(execute=False, **kwargs)
+                    report_request = getattr(self, report_request)(execute=False, **{ k:v for k,v in kwargs.items() if k in ('start_date', 'end_date') })
 
                 return dict(report_request, # Add required common key/vals, see https://developers.google.com/analytics/devguides/reporting/core/v4/basics.
                     viewId=self.view_id,
-                    pageSize=self.owner.extra_config.get('analytics_page_size', DEFAULT_GOOGLE_API_CONFIG['analytics_page_size'])
+                    pageSize=report_request.get('pageSize', self.owner.extra_config.get('analytics_page_size', DEFAULT_GOOGLE_API_CONFIG['analytics_page_size']))
                 )
 
             formatted_report_requests = [ process_report_request_type(r, **kwargs) for r in report_requests ]
@@ -308,23 +318,19 @@ class GoogleAPISyncer:
             raw_result['report_key_names'] = report_key_names
             # This transforms raw_result["reports"] into more usable data structure for ES and aggregation
             #   e.g. list of JSON items instead of multi-dimensional table representation
-            return self.transform_report_result(raw_result)     # same as GoogleAPISyncer.AnalyticsAPI.transform_report_result(raw_result)
+            return self.transform_report_result(raw_result, date_increment=kwargs.get('increment'))     # same as GoogleAPISyncer.AnalyticsAPI.transform_report_result(raw_result)
 
 
 
-        def get_latest_tracking_item_date(self):
+        def get_latest_tracking_item_date(self, increment="daily"):
             '''
-            This method is meant to be run periodically to fetch/sync Google Analytics data into Fourfront database.
-
-            Adds 1 TrackingItem for each day to represent analytics data for said day.
-            Fill up from latest already-existing TrackingItem until day before current day (to get full day of data).
-
-            TODO:
-            `date.fromisoformat(...)`  is not supported until Python 3.7 though (without extra libraries).
-            See: https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat
+            TODO: Accept yearly once we want to collect & viz it.
             '''
+            if increment not in ('daily', 'monthly'):
+                raise IndexError("increment parameter must be one of 'daily', 'monthly'")
+
             search_results = ff_utils.search_metadata(
-                '/search/?type=TrackingItem&tracking_type=google_analytics&sort=-google_analytics.for_date&limit=1',
+                '/search/?type=TrackingItem&tracking_type=google_analytics&sort=-google_analytics.for_date&limit=1&google_analytics.date_increment=' + increment,
                 key=dict(self.owner.access_key, server=self.owner.server)
             )
             if len(search_results) == 0:
@@ -338,30 +344,93 @@ class GoogleAPISyncer:
 
 
 
-        def fill_with_tracking_items(self):
-            last_tracking_item_date = self.get_latest_tracking_item_date()
+        def fill_with_tracking_items(self, increment):
+            '''
+            This method is meant to be run periodically to fetch/sync Google Analytics data into Fourfront database.
+
+            Adds 1 TrackingItem for each day to represent analytics data for said day.
+            Fill up from latest already-existing TrackingItem until day before current day (to get full day of data).
+
+            TODO:
+            `date.fromisoformat(...)`  is not supported until Python 3.7 though (without extra libraries).
+            See: https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat
+
+            Args:
+                increment - One of 'daily', 'monthly', or 'yearly'. Required.
+            '''
+
+            last_tracking_item_date = self.get_latest_tracking_item_date(increment=increment)
+            today = date.today()
+
             if last_tracking_item_date is None:
-                # Fill up with last 60 days of Google Analytics data, if no other TrackingItem(s) yet exist.
-                last_tracking_item_date = date.today() - timedelta(days=61)
+                if increment == 'daily':
+                    # Fill up with last 60 days of Google Analytics data, if no other TrackingItem(s) yet exist.
+                    last_tracking_item_date = today - timedelta(days=61)
+                    date_to_fill_from = last_tracking_item_date + timedelta(days=1)
+                elif increment == 'monthly':
+                    # Fill up with last 6 months Google Analytics data, if no other TrackingItem(s) yet exist.
+                    month_to_fill_from = today.month - 6
+                    year_to_fill_from = today.year
+                    while month_to_fill_from < 1:
+                        month_to_fill_from = 12 + curr_month
+                        year_to_fill_from += -1
+                    date_to_fill_from = date(year_to_fill_from, month_to_fill_from, 1)
+            else:
+                if increment == 'daily':
+                    # Day from which we begin to fill
+                    date_to_fill_from = last_tracking_item_date + timedelta(days=1)
+                elif increment == 'monthly':
+                    date_to_fill_from = date(last_tracking_item_date.year, last_tracking_item_date.month + 1, 1)
 
-            # Day from which we begin to fill
-            current_for_date = last_tracking_item_date + timedelta(days=1)
-
-            if current_for_date == date.today():
-                raise Exception("We have latest analytics data, no need to add more.")
-
-            # Last day
-            end_date = date.today() - timedelta(days=1)
 
             counter = 0
-            while current_for_date <= end_date:
-                response = self.create_tracking_item(
-                    do_post_request=True,
-                    for_date=current_for_date.isoformat()
-                )
-                counter += 1
-                print('Created ' + str(counter) + ' TrackingItems so far.')
-                current_for_date += timedelta(days=1)
+    
+            if increment == 'daily':
+                end_date = today - timedelta(days=1)
+
+                if date_to_fill_from > end_date:
+                    raise Exception("We have latest analytics data (daily), no need to add more.")
+
+                while date_to_fill_from <= end_date:
+                    for_date_str = date_to_fill_from.isoformat()
+                    response = self.create_tracking_item(
+                        do_post_request = True,
+                        start_date      = for_date_str, 
+                        end_date        = for_date_str,
+                        increment       = increment
+                    )
+                    counter += 1
+                    print('Created ' + str(counter) + ' TrackingItems so far.')
+                    date_to_fill_from += timedelta(days=1)
+
+
+            elif increment == 'monthly':
+                end_year = today.year
+                end_month = today.month - 1
+                fill_year = date_to_fill_from.year
+                fill_month = date_to_fill_from.month
+                if end_month == 0:
+                    end_year -= 1
+                    end_month += 12
+
+                if fill_year > end_year and fill_month > end_month:
+                    raise Exception("We have latest analytics data (monthly), no need to add more.")
+
+                while fill_year <= end_year and fill_month <= end_month:
+                    for_date_start_str = date(fill_year, fill_month, 1).isoformat()
+                    for_date_end_str = date(fill_year, fill_month, monthrange(fill_year, fill_month)[1]).isoformat() # Last day of fill month
+                    response = self.create_tracking_item(
+                        do_post_request = True,
+                        start_date      = for_date_start_str,
+                        end_date        = for_date_end_str,
+                        increment       = increment
+                    )
+                    counter += 1
+                    print('Created ' + str(counter) + ' TrackingItems so far.')
+                    fill_month += 1
+                    if fill_month > 12:
+                        fill_month -= 12
+                        fill_year += 1
 
             return { 'created' : counter }
 
@@ -400,9 +469,9 @@ class GoogleAPISyncer:
 
 
         @report
-        def sessions_by_country(self, for_date='yesterday', execute=True):
+        def sessions_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'metrics': [
                     { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:users', 'formattingType' : 'INTEGER' },
@@ -422,9 +491,9 @@ class GoogleAPISyncer:
 
 
         @report
-        def views_by_file(self, for_date='yesterday', execute=True):
+        def views_by_file(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'metrics': [
                     { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
@@ -443,7 +512,8 @@ class GoogleAPISyncer:
                             { "dimensionName" : "ga:productCategoryLevel1", "expressions" : ["File"], "operator" : "EXACT" }
                         ]
                     }
-                ]
+                ],
+                'pageSize' : 100
             }
             if execute:
                 return self.query_reports([report_request_json])
@@ -452,9 +522,9 @@ class GoogleAPISyncer:
 
 
         @report
-        def views_by_experiment_set(self, for_date='yesterday', execute=True):
+        def views_by_experiment_set(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'metrics': [
                     { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
@@ -473,7 +543,8 @@ class GoogleAPISyncer:
                             { "dimensionName" : "ga:productCategoryLevel1", "expressions" : ["ExperimentSet"], "operator" : "EXACT" }
                         ]
                     }
-                ]
+                ],
+                'pageSize' : 100
             }
             if execute:
                 return self.query_reports([report_request_json])
@@ -481,10 +552,10 @@ class GoogleAPISyncer:
 
 
 
-        @report
-        def views_by_other_item(self, for_date='yesterday', execute=True):
+        @report(disabled=True)
+        def views_by_other_item(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'dimensions': [
                     { 'name': 'ga:productName' },
                     { 'name': 'ga:productSku' },
@@ -514,7 +585,8 @@ class GoogleAPISyncer:
                             }
                         ]
                     }
-                ]
+                ],
+                'pageSize' : 20
             }
             if execute:
                 return self.query_reports([report_request_json])
@@ -522,10 +594,10 @@ class GoogleAPISyncer:
 
 
 
-        @report
-        def search_search_queries(self, for_date='yesterday', execute=True):
+        @report(disabled=True)
+        def search_search_queries(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'dimensions': [
                     { 'name': 'ga:searchKeyword' }
                 ],
@@ -553,10 +625,10 @@ class GoogleAPISyncer:
 
 
 
-        @report
-        def browse_search_queries(self, for_date='yesterday', execute=True):
+        @report(disabled=True)
+        def browse_search_queries(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'dimensions': [
                     { 'name': 'ga:searchKeyword' }
                 ],
@@ -585,13 +657,13 @@ class GoogleAPISyncer:
 
 
         @report
-        def fields_faceted(self, for_date='yesterday', execute=True):
+        def fields_faceted(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : for_date, 'endDate' : for_date }],
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'dimensions': [
-                    { 'name': 'ga:eventLabel' },
+                    #{ 'name': 'ga:eventLabel' }, # Too many distinct terms if we make it this granular.
                     { 'name': 'ga:dimension3' }, # Field Name
-                    { 'name': 'ga:dimension4' }  # Term Name
+                    #{ 'name': 'ga:dimension4' }  # Term Name # # Too many distinct terms if we make it this granular.
                 ],
                 'metrics': [
                     { 'expression': 'ga:totalEvents', 'formattingType' : 'INTEGER' },
