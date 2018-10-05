@@ -380,7 +380,11 @@ class GoogleAPISyncer:
                     # Day from which we begin to fill
                     date_to_fill_from = last_tracking_item_date + timedelta(days=1)
                 elif increment == 'monthly':
-                    date_to_fill_from = date(last_tracking_item_date.year, last_tracking_item_date.month + 1, 1)
+                    month_to_fill_from = last_tracking_item_date.month + 1
+                    year_to_fill_from = last_tracking_item_date.year
+                    if month_to_fill_from > 12:
+                        year_to_fill_from += 1
+                    date_to_fill_from = date(year_to_fill_from, month_to_fill_from, 1)
 
 
             counter = 0
