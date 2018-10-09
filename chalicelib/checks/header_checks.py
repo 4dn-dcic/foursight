@@ -278,3 +278,45 @@ def patch_static_headers_MARGI(connection, **kwargs):
     headers_check = init_check_res(connection, 'prepare_static_headers_MARGI')
     patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
     return action
+
+#sci-HiC
+@check_function()
+def prepare_static_headers_sciHiC(connection, **kwargs):
+   check = init_check_res(connection, 'prepare_static_headers_sciHiC')
+   add_search='/search/?experiments_in_set.experiment_type=sci-Hi-C&type=ExperimentSet&frame=object'
+   remove_search='/search/?experiments_in_set.experiment_type!=sci-Hi-C&type=ExperimentSet&frame=object'
+   header_at_id='/static-sections/ae5a6470-0694-4ba3-893a-40b170401bc0/'
+   check.action = 'patch_static_headers_sciHiC'
+   find_items_for_header_processing(connection, check, header_at_id,
+                                    add_search, remove_search)
+   return check
+
+
+@action_function()
+def patch_static_headers_sciHiC(connection, **kwargs):
+   action = init_action_res(connection, 'patch_static_headers_sciHiC')
+   # get latest results from prepare_static_headers
+   headers_check = init_check_res(connection, 'prepare_static_headers_sciHiC')
+   patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+   return action
+
+# DNase Hi-C
+@check_function()
+def prepare_static_headers_DNase_HiC(connection, **kwargs):
+   check = init_check_res(connection, 'prepare_static_headers_DNase_HiC')
+   add_search='/search/?experiments_in_set.experiment_type=DNase+Hi-C&type=ExperimentSet&frame=object'
+   remove_search='/search/?experiments_in_set.experiment_type!=DNase+Hi-C&type=ExperimentSet&frame=object'
+   header_at_id='/static-sections/84448fd6-ccf0-45a7-86c8-673b5686c059/'
+   check.action = 'patch_static_headers_DNase_HiC'
+   find_items_for_header_processing(connection, check, header_at_id,
+                                    add_search, remove_search)
+   return check
+
+
+@action_function()
+def patch_static_headers_DNase_HiC(connection, **kwargs):
+   action = init_action_res(connection, 'patch_static_headers_DNase_HiC')
+   # get latest results from prepare_static_headers
+   headers_check = init_check_res(connection, 'prepare_static_headers_DNase_HiC')
+   patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+   return action
