@@ -506,5 +506,45 @@
                 }
             }
         }
+    },
+    "prepare_static_headers_sciHiC": {
+        "title": "sciHiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_DNase_HiC": {
+        "title": "DNase_HiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
