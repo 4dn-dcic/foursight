@@ -498,76 +498,127 @@ def new_or_updated_items(connection, **kwargs):
                 if not val:
                     break
             return val
-    fourdnlab = "4DN DCIC, HMS"
-    flds2report = ['accession', 'lab.display_title', 'submitted_by.display_title', 'date_created',
-                   'last_modified.modified_by.display_title', 'last_modified.date_modified']
-    types2chk = ['ExperimentSet', 'Experiment']
+
+    seen = {}
+    dcic = {}
+
+    def get_non_dcic_user(user, seen, dcic):
+        dciclab = "4DN DCIC, HMS"
+        try:
+            user = user.get('uuid')
+        except AttributeError:
+            pass
+        if user in dcic:
+            return None
+        if user in seen and user not in dcic:
+            return seen.get(user)
+
+        user_item = ff_utils.get_metadata(user, ff_env=connection.ff_env)
+        seen[user] = user_item.get('display_title')
+        if user_item.get('lab').get('display_title') == dciclab:
+            dcic[user] = True
+            return None
+        return user_item.get('display_title')
+
     check = init_check_res(connection, 'new_or_updated_items')
+    rundate = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
+    check.brief_output = {'reset_date': rundate}
+    check.full_output = {'reset_date': rundate}
     last_result = check.get_latest_result()
     if last_result is None or last_result.get('status') == 'ERROR' or kwargs.get('reset') is True:
         # initial set up when run on each environment - should produce 0 counts
         # maybe also use for reset?
         check.status = 'PASS'
         check.summary = 'Counters reset to 0'
-        check.brief_output = {ty: {'new': 0, 'modified': 0} for ty in types2chk}
-        check.full_output = {ty: {'new': {}, 'modified': {}} for ty in types2chk}
         return check
 
-    date_to_check = last_result.get('uuid')
-    brief_output = last_result.get('brief_output')
-    full_output = last_result.get('full_output')
-    search = 'search/?status=in review by lab&type=%s'
-    changes = False
+    days_since = 7
+    last_check_date = last_result.get('uuid')
+    last_reset_date = last_result.get('brief_output').get('reset_date')
+    days_ago = (datetime.datetime.utcnow() - datetime.timedelta(days=days_since)).strftime('%Y-%m-%dT%H:%M')
+    label2date = {
+        'since last check': last_check_date,
+        'since last reset': last_reset_date,
+        'in the last %d days' % days_since: days_ago
+    }
+    earliest_date = min([last_check_date, last_reset_date, days_ago])
+    search = 'search/?status=in review by lab&type={type}'
+    brief_output = {}
+    full_output = {}
+    warn = False
+    # fields used for reporting
+    item_flds = ['accession', 'lab.uuid', 'lab.display_title', 'submitted_by.uuid',
+                 'last_modified.modified_by.uuid']
+    # can add or remove item types here
+    types2chk = ['ExperimentSet', 'Experiment']
     for itype in types2chk:
-        if brief_output.get(itype, None) is None:
-            brief_output[itype] = {'new': 0, 'modified': 0}
-            full_output[itype] = {'new': {}, 'modified': {}}
-        chk_query = search % itype
+        chk_query = search.format(type=itype)
         item_results = ff_utils.search_metadata(chk_query, ff_env=connection.ff_env, page_limit=200)
         for item in item_results:
-            toucher = None
-            new = False
-            mod = False
-            if item.get('date_created') > date_to_check:
-                toucher = item.get('submitted_by')
-                new = True
-            elif item.get('last_modified', None) is not None:
-                if item.get('last_modified').get('date_modified') > date_to_check:
-                    toucher = item.get('last_modified').get('modified_by')
-                    mod = True
-            if toucher is not None:
-                try:
-                    # assuming embedded but just in case
-                    toucher = toucher.get('uuid')
-                except AttributeError:
-                    pass
-                toucher_info = ff_utils.get_metadata(toucher, ff_env=connection.ff_env)
-                if fourdnlab != toucher_info.get('lab').get('display_title'):
-                    if new or mod:
-                        changes = True
-                        item_info = {}
-                        for fld in flds2report:
-                            item_info[fld] = DictQuery(item).get(fld)
-                    if new:
-                        brief_output[itype]['new'] += 1
-                        full_output[itype]['new'][item.get('uuid')] = item_info
-                    elif mod:
-                        brief_output[itype]['modified'] += 1
-                        full_output[itype]['modified'][item.get('uuid')] = item_info
-    check.brief_output = brief_output
-    check.full_output = full_output
-    warn = False
-    for v in brief_output.values():
-        for c in v.values():
-            if c != 0:
-                warn = True
-    if warn:
+            submitter = None
+            modifier = None
+            created = item.get('date_created')
+            modified = None
+            if item.get('last_modified', None) is not None:
+                modified = item.get('last_modified').get('date_modified')
+
+            if created and created > earliest_date:
+                submitter = get_non_dcic_user(item.get('submitted_by'), seen, dcic)
+            if modified and modified > earliest_date:
+                modifier = get_non_dcic_user(item.get('last_modified').get('modified_by'), seen, dcic)
+
+            # now we're ready to see which bucket item goes into
+            if submitter or modifier:
+                # we've got an item newer or modified since earliest date
+                item_info = {fld: DictQuery(item).get(fld) for fld in item_flds}
+                labname = item_info.get('lab.display_title')
+                labuuid = item_info.get('lab.uuid')
+                if submitter:
+                    brief_output.setdefault(submitter, {}).setdefault(labname, {}).setdefault(itype, {})
+                    full_output.setdefault(submitter, {}).setdefault(labname, {}).setdefault(itype, {})
+                    for label, date in label2date.items():
+                        newlabel = 'New ' + label
+                        brief_output[submitter][labname][itype].setdefault(newlabel, 0)
+                        full_output[submitter][labname][itype].setdefault(newlabel, 'None')
+                        if created > date:
+                            warn = True
+                            # newlabel = 'New ' + label
+                            # brief_output[submitter][labname][itype].setdefault(newlabel, 0)
+                            brief_output[submitter][labname][itype][newlabel] += 1
+                            # full_output[submitter][labname][itype].setdefault(newlabel, {'search': '', 'accessions': []})
+                            if full_output[submitter][labname][itype][newlabel] == 'None' or not full_output[submitter][labname][itype][newlabel].get('search'):
+                                searchdate, _ = date.split('T')
+                                newsearch = '{server}/search/?q=date_created:[{date} TO *]&type={itype}&lab.uuid={lab}&submitted_by.uuid={sub}&status=in review by lab'.format(
+                                    server=connection.ff_server, date=searchdate, itype=itype, lab=labuuid, sub=item_info.get('submitted_by.uuid')
+                                )
+                                full_output[submitter][labname][itype][newlabel] = {'search': newsearch}
+                            full_output[submitter][labname][itype][newlabel].setdefault('accessions', []).append(item_info['accession'])
+                if modifier:
+                    brief_output.setdefault(modifier, {}).setdefault(labname, {}).setdefault(itype, {})
+                    full_output.setdefault(modifier, {}).setdefault(labname, {}).setdefault(itype, {})
+                    for label, date in label2date.items():
+                        modlabel = 'Modified ' + label
+                        brief_output[modifier][labname][itype].setdefault(modlabel, 0)
+                        full_output[modifier][labname][itype].setdefault(modlabel, 'None')
+                        if modified > date:
+                            warn = True
+                            # modlabel = 'Modified ' + label
+                            # brief_output[modifier][labname][itype].setdefault(modlabel, 0)
+                            brief_output[modifier][labname][itype][modlabel] += 1
+                            # full_output[modifier][labname][itype].setdefault(modlabel, {'search': '', 'accessions': []})
+                            if full_output[submitter][labname][itype][modlabel] == 'None' or not full_output[submitter][labname][itype][modlabel].get('search'):
+                                searchdate, _ = date.split('T')
+                                modsearch = '{server}search/?q=last_modified.date_modified:[{date} TO *]&type={itype}&lab.uuid={lab}&last_modified.modified_by.uuid={mod}status=in review by lab'.format(
+                                    server=connection.ff_server, date=searchdate, itype=itype, lab=labuuid, mod=item_info.get('last_modified.modified_by.uuid')
+                                )
+                                full_output[submitter][labname][itype][modlabel] = {'search': modsearch}
+                            full_output[modifier][labname][itype][modlabel].setdefault('accessions', []).append(item_info['accession'])
+    check.brief_output.update(brief_output)
+    check.full_output.update(full_output)
+    if warn is True:
         check.status = 'WARN'
-        check.summary = 'Experiments or ExperimentSets submitted or modified'
-        description = "Experiments or ExperimentSets have been submitted or modified by non-DCIC users since last reset."
-        if changes:
-            # changes since the last time check was run
-            description += '  There have been changes since the last time the check was run'
+        check.summary = 'In review Experiments or ExperimentSets submitted or modified'
+        description = "Experiments or ExperimentSets with status='in review by lab' have been submitted or modified by non-DCIC users since last reset or in the past %d days." % days_since
         check.description = description
     else:
         check.status = 'PASS'
