@@ -279,6 +279,7 @@ def patch_static_headers_MARGI(connection, **kwargs):
     patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
     return action
 
+
 #sci-HiC
 @check_function()
 def prepare_static_headers_sciHiC(connection, **kwargs):
@@ -299,6 +300,7 @@ def patch_static_headers_sciHiC(connection, **kwargs):
    headers_check = init_check_res(connection, 'prepare_static_headers_sciHiC')
    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
    return action
+
 
 # DNase Hi-C
 @check_function()
