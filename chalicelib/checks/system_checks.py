@@ -280,7 +280,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    time_limit = 240 # 4 minutes
+    time_limit = 240  # 4 minutes
     t0 = time.time()
     sent = 0
     deleted = 0
@@ -511,3 +511,145 @@ def snapshot_rds(connection, **kwargs):
         check.summary = 'Snapshot successfully created'
         check.description = 'Snapshot succesfully created with name: %s' % snapshot_name
     return check
+
+
+@check_function()
+def process_download_tracking_items(connection, **kwargs):
+    """
+    Do a few things here, and be mindful of the 5min lambda limit.
+    - Consolidate tracking items with download_tracking.range_query=True
+    - Change remote_ip to geo_country and geo_city
+    - If the user_agent looks to be a bot, set status=deleted
+    - Change unused range query items to status=deleted
+    """
+    from ..utils import get_stage_info, parse_datetime_to_utc
+    import geocoder
+    check = init_check_res(connection, 'process_download_tracking_items')
+    # maybe handle this in check_setup.json
+    if get_stage_info()['stage'] != 'prod':
+        check.full_output = 'Will not run on dev foursight.'
+        check.status = 'PASS'
+        return check
+    range_cache = {}
+    range_consolidation_hrs = 1  # duration we want to consolidate range queries over
+    cons_date = (datetime.datetime.utcnow() -
+                 datetime.timedelta(hours=range_consolidation_hrs)).strftime('%Y-%m-%dT%H\:%M')
+    range_search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
+                                  '&download_tracking.is_visualization=True&sort=-date_created',
+                                  '&status=released&q=date_created:>=', cons_date])
+    cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    for tracking in cons_query:
+        dl_info = tracking['download_tracking']
+        range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
+                               dl_info['user_agent'], dl_info['user_uuid']])
+        parsed_date = parse_datetime_to_utc(tracking['date_created'])
+        if range_key in range_cache:  # this shouldn't happen
+            continue
+        range_cache[range_key] = [parsed_date]
+    del cons_query
+    ip_cache = {}
+    time_limit = 240  # 4 minutes
+    # list of strings used to flag user_agent as a bot. By no means complete
+    bot_strings = ['bot', 'crawl', 'slurp', 'spider', 'mediapartners', 'ltx71']
+    # need some sort of time-based window to consolidate range_queries within?
+    t0 = time.time()
+    elapsed = round(time.time() - t0, 2)
+    # do not search tracking items made in the last <UNIT OF TIME>
+    date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H\:%M')
+    search_query = ''.join([connection.ff_server, 'search/?type=TrackingItem',
+                            '&tracking_type=download_tracking&download_tracking.geo_country=No+value',
+                            '&status=in+review+by+lab&sort=-date_created'])
+                            # '&sort=-date_created&q=date_created:>=', date_str])
+    # batch large groups of tracking items at once to save time with geocoder
+    search_gen = ff_utils.get_search_generator(search_query, auth=connection.ff_keys,
+                                               ff_env=connection.ff_env, page_limit=500)
+
+    ### TEMP
+    user_cache = {}
+    format_exp_cache = {}
+
+    for page in search_gen:
+        elapsed = round(time.time() - t0, 2)
+        if elapsed > time_limit:
+            break
+        page_ips = set([tracking['download_tracking']['remote_ip'] for tracking in page])
+        # transform all IP addresses into GEO information with a persistent connection
+        with requests.Session() as session:
+            for track_ip in page_ips:
+                if track_ip in ip_cache:
+                    continue
+                geo = geocoder.ip(track_ip, session=session)
+                geo_country = getattr(geo, 'country', 'Unknown')
+                geo_city = getattr(geo, 'city', 'Unknown')
+                geo_state = getattr(geo, 'state', None)
+                if geo_state:
+                    geo_city = ', '.join([geo_city, geo_state])
+                # cache the geo info in an arbitrary form
+                ip_cache[track_ip] = '//'.join([geo_city, geo_country])
+        # iterate over the individual tracking items
+        for tracking in page:
+            dl_info = tracking['download_tracking']
+            geo_info = ip_cache[dl_info['remote_ip']]
+            dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
+            patch_body = {'status': 'released', 'download_tracking': dl_info}
+
+            ### START TEMP
+            # temporary code to upgrade the following on fields:
+            # user_email -> user_uuid, add experiment_type and file_format
+            if 'user_email' in dl_info:
+                if dl_info['user_email'] == 'anonymous':
+                    dl_info['user_uuid'] = 'anonymous'
+                else:
+                    if dl_info['user_email'] in user_cache:
+                        dl_info['user_uuid'] = user_cache[dl_info['user_email']]
+                    else:
+                        user = ff_utils.get_metadata('/users/' + dl_info['user_email'],
+                                                     key=connection.ff_keys, ff_env=connection.ff_env)
+                        user_cache[dl_info['user_email']] = user['uuid']
+                        dl_info['user_uuid'] = user['uuid']
+                del dl_info['user_email']
+
+            if 'file_format' not in dl_info or 'experiment_type' not in dl_info:
+                file_acc = dl_info['filename'].split('.')[0]
+                if file_acc in format_exp_cache:
+                    dl_info['file_format'] = format_exp_cache[file_acc]['file_format']
+                    dl_info['experiment_type'] = format_exp_cache[file_acc]['experiment_type']
+                else:
+                    file_data = ff_utils.get_metadata(file_acc, key=connection.ff_keys, ff_env=connection.ff_env)
+                    dl_info['file_format'] = file_data['file_format']['file_format']
+                    if file_data['experiments']:
+                        exp_type = file_data['experiments'][0]['experiment_type']
+                    else:
+                        exp_type = None
+                    dl_info['experiment_type'] = exp_type
+                    format_exp_cache[file_acc] = {'file_format': file_data['file_format']['file_format'],
+                                                  'experiment_type': exp_type}
+            ### END TEMP
+
+            if any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_strings):
+                patch_body['status'] = 'deleted'
+            if patch_body['status'] != 'deleted' and dl_info['range_query'] is True:
+                # TODO: this approach may be somewhat problematic because previous
+                # range queries are not taken into account; may create duplicate
+                # consolidated items if visualization takes place after check starts
+                range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
+                                       dl_info['user_agent'], dl_info['user_uuid']])
+                parsed_date = parse_datetime_to_utc(tracking['date_created'])
+                if range_key in range_cache:
+                    # for all reference range queries with this info, see if this one
+                    # was created within one hour of it. if so, it is redundant and delete
+                    for range_reference in range_cache[range_key]:
+                        compare_date = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
+                        if parsed_date > compare_date:
+                            patch_body['status'] = 'deleted'
+                            break
+                    if patch_body['status'] != 'deleted':
+                        range_cache[range_key].append(parsed_date)
+                        patch_body['is_visualization'] = True
+                else:
+                    # set the upper limit for for range queries to consolidate
+                    range_cache[range_key] = [parsed_date]
+                    patch_body['is_visualization'] = True
+            print('\n\n PATCHING:\n%s\n' % patch_body)
+        import pdb; pdb.set_trace()
+        pass

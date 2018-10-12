@@ -3,4 +3,5 @@ requests==2.19.1
 PyJWT==1.5.3
 Jinja2==2.9.6
 MarkupSafe==1.0
+geocoder==1.38.1
 -e git+git://github.com/4dn-dcic/chalice.git#egg=chalice
