@@ -608,12 +608,12 @@ def new_or_updated_items(connection, **kwargs):
                             # brief_output[modifier][labname][itype].setdefault(modlabel, 0)
                             brief_output[modifier][labname][itype][modlabel] += 1
                             # full_output[modifier][labname][itype].setdefault(modlabel, {'search': '', 'accessions': []})
-                            if full_output[submitter][labname][itype][modlabel] == 'None' or not full_output[submitter][labname][itype][modlabel].get('search'):
+                            if full_output[modifier][labname][itype][modlabel] == 'None' or not full_output[modifier][labname][itype][modlabel].get('search'):
                                 searchdate, _ = date.split('T')
                                 modsearch = '{server}search/?q=last_modified.date_modified:[{date} TO *]&type={itype}&lab.uuid={lab}&last_modified.modified_by.uuid={mod}status=in review by lab'.format(
                                     server=connection.ff_server, date=searchdate, itype=itype, lab=labuuid, mod=item_info.get('last_modified.modified_by.uuid')
                                 )
-                                full_output[submitter][labname][itype][modlabel] = {'search': modsearch}
+                                full_output[modifier][labname][itype][modlabel] = {'search': modsearch}
                             full_output[modifier][labname][itype][modlabel].setdefault('accessions', []).append(item_info['accession'])
     check.brief_output.update(brief_output)
     check.full_output.update(full_output)
