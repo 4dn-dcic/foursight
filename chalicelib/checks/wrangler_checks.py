@@ -522,12 +522,12 @@ def new_or_updated_items(connection, **kwargs):
 
     check = init_check_res(connection, 'new_or_updated_items')
     rundate = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
-    check.brief_output = {'reset_date': rundate}
-    check.full_output = {'reset_date': rundate}
     last_result = check.get_latest_result()
     if last_result is None or last_result.get('status') == 'ERROR' or kwargs.get('reset') is True:
         # initial set up when run on each environment - should produce 0 counts
         # maybe also use for reset?
+        check.brief_output = {'reset_date': rundate}
+        check.full_output = {'reset_date': rundate}
         check.status = 'PASS'
         check.summary = 'Counters reset to 0'
         return check
@@ -535,6 +535,8 @@ def new_or_updated_items(connection, **kwargs):
     days_since = 7
     last_check_date = last_result.get('uuid')
     last_reset_date = last_result.get('brief_output').get('reset_date')
+    check.brief_output = {'reset_date': last_reset_date}
+    check.full_output = {'reset_date': last_reset_date}
     days_ago = (datetime.datetime.utcnow() - datetime.timedelta(days=days_since)).strftime('%Y-%m-%dT%H:%M')
     label2date = {
         'since last check': last_check_date,
