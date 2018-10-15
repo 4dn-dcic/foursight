@@ -563,6 +563,11 @@ def new_or_updated_items(connection, **kwargs):
             modified = None
             if item.get('last_modified', None) is not None:
                 modified = item.get('last_modified').get('date_modified')
+                # check to see if modified and created are essentially the same and if so ignore modified
+                minute_created = ':'.join(created.split(':')[0:2])
+                minute_modified = ':'.join(modified.split(':')[0:2])
+                if minute_created == minute_modified:
+                    modified = None
 
             if created and created > earliest_date:
                 submitter = get_non_dcic_user(item.get('submitted_by'), seen, dcic)
