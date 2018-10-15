@@ -146,7 +146,8 @@ class GoogleAPISyncer:
         @staticmethod
         def transform_report_result(raw_result, save_raw_values=False, date_increment="daily"):
             '''
-            Transform raw responses (multi-dimensional array) in result to a more usable list-of-dictionaries structure.
+            Transform raw responses (multi-dimensional array) from Google Analytics to a more usable
+            list-of-dictionaries structure.
 
             Arguments:
                 raw_result - A dictionary containing at minimum `reports` (as delivered from) and `report_key_frames`
@@ -183,7 +184,13 @@ class GoogleAPISyncer:
                 return return_items
 
             def parse_google_api_date(date_requested):
-                '''Returns ISO format date. TODO: Return Python3 date when date.fromisoformat() is available (Python v3.7+)'''
+                '''
+                Returns ISO-formatted date of a date string sent to Google Analytics.
+                Translates 'yesterday', 'XdaysAgo', from `date.today()` appropriately.
+                TODO: Return Python3 date when date.fromisoformat() is available (Python v3.7+)
+                TODO: Handle 'today' and maybe other date string options.
+                '''
+
                 if date_requested == 'yesterday':
                     return (date.today() - timedelta(days=1)).isoformat()
                 if 'daysAgo' in date_requested:
@@ -205,7 +212,7 @@ class GoogleAPISyncer:
 
             for_date = None
 
-            # `start_date` and `end_date` must be same for all requests (defined in Google API docs).
+            # `start_date` and `end_date` must be same for all requests (defined in Google API docs) in a batchRequest, so we're ok getting from just first 1
             if len(raw_result['requests']) > 0:
                 common_start_date   = raw_result['requests'][0]['dateRanges'][0].get('startDate', '7daysAgo')   # Google API default
                 common_end_date     = raw_result['requests'][0]['dateRanges'][0].get('endDate', 'yesterday')    # Google API default
@@ -236,7 +243,10 @@ class GoogleAPISyncer:
 
     
         def get_report_provider_method_names(self):
-            '''Gets every single report defined and marked with `@report` decorator.'''
+            '''
+            Collects name of every single method defined on this classes which is
+            marked with `@report` decorator (non-disabled) and returns in form of list.
+            '''
             report_requests = []
             for method_name in GoogleAPISyncer.AnalyticsAPI.__dict__.keys():
                 method_instance = getattr(self, method_name)
@@ -324,6 +334,9 @@ class GoogleAPISyncer:
 
         def get_latest_tracking_item_date(self, increment="daily"):
             '''
+            Queries '/search/?type=TrackingItem&sort=-google_analytics.for_date&&google_analytics.date_increment=...'
+            to get date of last TrackingItem for increment in database.
+
             TODO: Accept yearly once we want to collect & viz it.
             '''
             if increment not in ('daily', 'monthly'):
@@ -339,7 +352,7 @@ class GoogleAPISyncer:
             iso_date = search_results[0]['google_analytics']['for_date']
 
             # TODO: Use date.fromisoformat() once we're on Python 3.7
-            year, month, day = iso_date.split('-', 2)
+            year, month, day = iso_date.split('-', 2) # In python, months are indexed from 1 <= month <= 12, not 0 <= month <= 11 like in JS.
             return date(int(year), int(month), int(day))
 
 
