@@ -305,6 +305,18 @@
             }
         }
     },
+    "check_help_page_urls": {
+        "title": "Static Section URL check",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "new_or_updated_items": {
         "title": "New or Modified Submissions",
         "group": "Metadata checks",
