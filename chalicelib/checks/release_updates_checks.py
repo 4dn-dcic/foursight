@@ -7,6 +7,7 @@ from ..utils import (
     parse_datetime_to_utc
 )
 from dcicutils import ff_utils
+from ..google_utils import GoogleAPISyncer
 import copy
 import itertools
 import datetime
@@ -638,3 +639,51 @@ def publish_data_release_updates(connection, **kwargs):
     }
     action.status = 'DONE'
     return action
+
+
+
+@check_function(start_date=None, end_date=None)
+def sync_google_analytics_data(connection, **kwargs):
+    '''
+    This checks the last time that analytics data was fetched (if any) and then
+    triggers an action to fill up fourfront with incremented google_analytics TrackingItems.
+
+    TODO: No use case yet, but we could accept start_date and end_date here & maybe in action eventually.
+    '''
+
+    from ..utils import get_stage_info
+
+    check = init_check_res(connection, 'sync_google_analytics_data')
+
+    if get_stage_info()['stage'] != 'prod':
+        check.summary = check.description = 'This check only runs on Foursight prod'
+        return check
+
+
+    recent_passing_run = False
+    recent_runs = check.get_result_history(0, 20, after_date = datetime.datetime.now() - datetime.timedelta(hours=3)) # Any runs of this type in last 3 hours.
+    for run in recent_runs:
+        if run.get('status') == 'PASS':
+            recent_passing_run = True
+            break
+
+    if recent_passing_run:
+        check.summary = check.description = 'This check was run within last 3 hours; skipping because need time for TrackingItems to be indexed.'
+        check.status = 'FAIL'
+        return check
+
+    google = GoogleAPISyncer(connection.ff_keys)
+
+    action_logs = { 'daily_created' : [], 'monthly_created' : [] }
+
+    res = google.analytics.fill_with_tracking_items('daily')
+    action_logs['daily_created'] = res.get('created', [])
+
+    res = google.analytics.fill_with_tracking_items('monthly')
+    action_logs['monthly_created'] = res.get('created', [])
+
+    check.full_output = action_logs
+    check.status = 'PASS' if (len(action_logs['daily_created']) > 0 or len(action_logs['monthly_created']) > 0) else 'WARN'
+    check.description = 'Created %s daily items and %s monthly Items.' % (str(len(action_logs['daily_created'])), str(len(action_logs['monthly_created'])))
+    return check
+

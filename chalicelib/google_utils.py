@@ -64,7 +64,6 @@ class GoogleAPISyncer:
 
     Arguments:
         ff_access_keys      - Optional. A dictionary with a 'key', 'secret', and 'server', identifying admin account access keys and FF server to POST to.
-        ff_env              - Optional. Provide in place of `ff_access_keys` to automatically grab credentials from S3. Defaults to 'fourfront-webprod'.
         google_api_key      - Optional. Override default API key for accessing Google.
         s3UtilsInstance     - Optional. Provide an S3Utils class instance which is connecting to `fourfront-webprod` fourfront environment in order
                               to obtain proper Google API key (if none supplied otherwise).
@@ -90,7 +89,6 @@ class GoogleAPISyncer:
     def __init__(
         self,
         ff_access_keys      = None,
-        ff_env              = "data",
         google_api_key      = None,
         s3UtilsInstance     = None,
         extra_config        = DEFAULT_GOOGLE_API_CONFIG
@@ -401,12 +399,13 @@ class GoogleAPISyncer:
 
 
             counter = 0
+            created_list = []
     
             if increment == 'daily':
                 end_date = today - timedelta(days=1)
 
                 if date_to_fill_from > end_date:
-                    raise Exception("We have latest analytics data (daily), no need to add more.")
+                    return { 'created' : created_list, 'count' : counter }
 
                 while date_to_fill_from <= end_date:
                     for_date_str = date_to_fill_from.isoformat()
@@ -417,6 +416,7 @@ class GoogleAPISyncer:
                         increment       = increment
                     )
                     counter += 1
+                    created_list.append(response['uuid'])
                     print('Created ' + str(counter) + ' TrackingItems so far.')
                     date_to_fill_from += timedelta(days=1)
 
@@ -431,7 +431,7 @@ class GoogleAPISyncer:
                     end_month += 12
 
                 if fill_year > end_year and fill_month > end_month:
-                    raise Exception("We have latest analytics data (monthly), no need to add more.")
+                    return { 'created' : created_list, 'count' : counter }
 
                 while fill_year <= end_year and fill_month <= end_month:
                     for_date_start_str = date(fill_year, fill_month, 1).isoformat()
@@ -443,13 +443,14 @@ class GoogleAPISyncer:
                         increment       = increment
                     )
                     counter += 1
+                    created_list.append(response['uuid'])
                     print('Created ' + str(counter) + ' TrackingItems so far.')
                     fill_month += 1
                     if fill_month > 12:
                         fill_month -= 12
                         fill_year += 1
 
-            return { 'created' : counter }
+            return { 'created' : created_list, 'count' : counter }
 
 
 
