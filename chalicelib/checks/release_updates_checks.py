@@ -663,7 +663,9 @@ def sync_google_analytics_data(connection, **kwargs):
     recent_passing_run = False
     recent_runs = check.get_result_history(0, 20, after_date = datetime.datetime.now() - datetime.timedelta(hours=3)) # Any runs of this type in last 3 hours.
     for run in recent_runs:
-        if run.get('status') == 'PASS':
+        # recent_runs is a list of lists. [status, None, kwargdict]
+        # Status is at index 0.
+        if run[0] == 'PASS':
             recent_passing_run = True
             break
 
