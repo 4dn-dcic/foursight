@@ -317,6 +317,26 @@
             }
         }
     },
+    "new_or_updated_items": {
+        "title": "New or Modified Submissions",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                } ,
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "workflow_run_has_deleted_input_file": {
         "title": "WorkflowRun linked to deleted Files",
         "group": "Metadata checks",
@@ -473,6 +493,46 @@
                     "dependencies": []
                 },
                 "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_MARGI": {
+        "title": "MARGI",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "snapshot_rds": {
+        "title": "Snapshot RDS",
+        "group": "System checks",
+        "schedule": {
+            "monthly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
