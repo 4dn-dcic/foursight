@@ -565,6 +565,7 @@ def process_download_tracking_items(connection, **kwargs):
                                                ff_env=connection.ff_env, page_limit=500)
 
     ### TEMP
+    count = 0
     user_cache = {}
     format_exp_cache = {}
 
@@ -607,7 +608,7 @@ def process_download_tracking_items(connection, **kwargs):
                                                      key=connection.ff_keys, ff_env=connection.ff_env)
                         user_cache[dl_info['user_email']] = user['uuid']
                         dl_info['user_uuid'] = user['uuid']
-                del dl_info['user_email']
+                dl_info['user_email'] = None
 
             if 'file_format' not in dl_info or 'experiment_type' not in dl_info:
                 file_acc = dl_info['filename'].split('.')[0]
@@ -626,12 +627,10 @@ def process_download_tracking_items(connection, **kwargs):
                                                   'experiment_type': exp_type}
             ### END TEMP
 
-            if any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_strings):
+            if (any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_strings)
+                and dl_info['user_uuid'] == 'anonymous'):
                 patch_body['status'] = 'deleted'
             if patch_body['status'] != 'deleted' and dl_info['range_query'] is True:
-                # TODO: this approach may be somewhat problematic because previous
-                # range queries are not taken into account; may create duplicate
-                # consolidated items if visualization takes place after check starts
                 range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
                                        dl_info['user_agent'], dl_info['user_uuid']])
                 parsed_date = parse_datetime_to_utc(tracking['date_created'])
@@ -650,6 +649,9 @@ def process_download_tracking_items(connection, **kwargs):
                     # set the upper limit for for range queries to consolidate
                     range_cache[range_key] = [parsed_date]
                     patch_body['is_visualization'] = True
-            print('\n\n PATCHING:\n%s\n' % patch_body)
+            count += 1
+            print('\nPATCHING: %s. ELAPSED: %s\n' % (patch_body, elapsed))
+            ff_utils.patch_metadata(patch_body, tracking['uuid'],
+                                    key=connection.ff_keys, ff_env=connection.ff_env)
         import pdb; pdb.set_trace()
         pass
