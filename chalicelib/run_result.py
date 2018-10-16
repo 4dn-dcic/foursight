@@ -139,16 +139,24 @@ class RunResult(object):
         return resp is not None
 
 
-    def get_result_history(self, start, limit):
+
+    def get_result_history(self, start, limit, after_date=None):
         """
         Used to get the uuid, status, and kwargs for a specific check.
         Results are ordered by uuid (timestamped) and sliced from start to limit.
         Probably only called from app_utils.get_foursight_history.
         Returns a list of lists (inner lists: [status, kwargs])
         """
+    
         all_keys = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
+
         # sort them from newest to oldest
-        all_keys.sort(key = lambda x: x[len(self.name + '/'):], reverse=True)
+        all_keys.sort(key=self.filename_to_datetime, reverse=True)
+
+        # enforce after_date, if any
+        if after_date is not None:
+            all_keys = list(filter(lambda k: self.filename_to_datetime(k) >= after_date, all_keys))
+
         # enforce limit and start
         all_keys = all_keys[start:start+limit]
         results = []
@@ -189,6 +197,17 @@ class RunResult(object):
             self.s3_connection.put_object(primary_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
+
+
+    def filename_to_datetime(self, key):
+        '''
+        Utility function.
+        Key might look like `sync_google_analytics_data/2018-10-15T19:08:32.734656.json`
+        We presume that timezone info is not important to allow us to use strptime.
+        '''
+        prefixlen = len(self.name) + 1
+        keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
+        return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
 
 
 

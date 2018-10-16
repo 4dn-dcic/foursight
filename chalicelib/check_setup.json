@@ -578,5 +578,17 @@
                 }
             }
         }
+    },
+    "sync_google_analytics_data": {
+        "title": "Sync Google Analytics",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
