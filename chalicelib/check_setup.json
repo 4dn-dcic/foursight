@@ -305,6 +305,38 @@
             }
         }
     },
+    "check_help_page_urls": {
+        "title": "Static Section URL check",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "new_or_updated_items": {
+        "title": "New or Modified Submissions",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                } ,
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "workflow_run_has_deleted_input_file": {
         "title": "WorkflowRun linked to deleted Files",
         "group": "Metadata checks",
@@ -501,6 +533,58 @@
                     "dependencies": []
                 },
                 "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_sciHiC": {
+        "title": "sciHiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_DNase_HiC": {
+        "title": "DNase_HiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "sync_google_analytics_data": {
+        "title": "Sync Google Analytics",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
