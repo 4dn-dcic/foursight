@@ -506,5 +506,17 @@
                 }
             }
         }
+    },
+    "process_download_tracking_items": {
+        "title": "Process download tracking items",
+        "group": "System checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
