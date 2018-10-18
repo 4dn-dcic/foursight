@@ -110,7 +110,9 @@ class RunResult(object):
 
 
     def get_all_results(self):
-        # return all results for this check. Should use with care
+        """
+        Return all results for this check. Should use with care
+        """
         all_results = []
         s3_prefix = ''.join([self.name, '/'])
         relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix)
@@ -145,9 +147,11 @@ class RunResult(object):
         Used to get the uuid, status, and kwargs for a specific check.
         Results are ordered by uuid (timestamped) and sliced from start to limit.
         Probably only called from app_utils.get_foursight_history.
+        after_date is an optional datetime object, if provided only the history
+        results after that point will be returned.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-    
+
         all_keys = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
 
         # sort them from newest to oldest
