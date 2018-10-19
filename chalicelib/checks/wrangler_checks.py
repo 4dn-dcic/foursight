@@ -185,13 +185,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
     # run the check
     for ftype in reg_filetypes:
         files_to_be_reg[ftype] = []
-        search_query = 'search/?file_format=%s&type=FileProcessed' % ftype
+        search_query = 'search/?file_format.file_format=%s&type=FileProcessed' % ftype
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for procfile in possibly_reg:
             file_info = {
                 'accession': procfile['accession'],
                 'uuid': procfile['uuid'],
-                'file_format': procfile['file_format'],
+                'file_format': procfile['file_format'].get('file_format'),
                 'higlass_uid': procfile.get('higlass_uid')
             }
             # bg files use an bw file from extra files to register
@@ -199,7 +199,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             # mcool and bw files use themselves
             if ftype == 'bg':
                 for extra in procfile.get('extra_files', []):
-                    if extra['file_format'] == 'bw' and 'upload_key' in extra:
+                    if extra['file_format'].get('display_title') == 'bw' and 'upload_key' in extra:
                         file_info['upload_key'] = extra['upload_key']
                         break
                 if 'upload_key' not in file_info:  # bw file not found
@@ -239,6 +239,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
     else:
         check.status = 'PASS'
     file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
+    if file_count != 0:
+        check.status = 'WARN'
     if check.summary:
         check.summary += '. %s files ready for registration' % file_count
         check.description += '. %s files ready for registration. Run with confirm_on_higlass=True to check against the higlass server' % file_count
