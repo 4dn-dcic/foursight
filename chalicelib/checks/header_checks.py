@@ -7,6 +7,7 @@ from ..utils import (
 )
 from dcicutils import ff_utils
 
+
 # generic CHECK function used to add a static headers to items of some search result
 def find_items_for_header_processing(connection, check, header, add_search=None,
                                      remove_search=None, append=True):
@@ -130,8 +131,10 @@ def patch_static_headers(connection, **kwargs):
 @check_function()
 def prepare_static_headers_data_use_guidelines(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_data_use_guidelines')
-    add_search='/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title=No%20value&frame=object'
-    remove_search='/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title!=No%20value&frame=object'
+    add_search=('/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title=No%20value'
+                '&status=released&status=released+to+project&frame=object')
+    remove_search=('/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title!=No%20value'
+                   '&status=released&status=released+to+project&frame=object')
     header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
     check.action = 'patch_static_headers_data_use_guidelines'
     find_items_for_header_processing(connection, check, header_at_id,
