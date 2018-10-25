@@ -249,6 +249,22 @@
             }
         }
     },
+    "check_status_mismatch": {
+        "title": "Experiment Sets containing Items with mismatch status",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",

@@ -8,6 +8,7 @@ from ..utils import (
 from dcicutils import ff_utils
 import re
 import requests
+import datetime
 
 
 def compare_badges(obj_ids, item_type, badge, ffenv):
@@ -702,4 +703,108 @@ def check_help_page_urls(connection, **kwargs):
         check.summary = 'No broken links found'
         check.description = check.summary
     check.full_output = sections_w_broken_links
+    return check
+
+
+@check_function()
+def check_status_mismatch(connection, **kwargs):
+    check = init_check_res(connection, 'check_status_mismatch')
+    ffkey = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)
+    if not ffkey:
+        check.status = 'FAIL'
+        check.description = "not able to get data from fourfront"
+        return check
+
+    MIN_CHUNK_SIZE = 500
+
+    # embedded sub items should have an equal or greater level
+    # than that of the item in which they are embedded
+    STATUS_LEVEL = {
+        'released': 3,
+        'archived': 3,
+        'current': 3,
+        'revoked': 3,
+        'released to project': 3,
+        'pre-release': 3,
+        'planned': 2,
+        'archived to project': 2,
+        'in review by lab': 1,
+        'submission in progress': 1,
+        'to be uploaded by workflow': 1,
+        'uploading': 1,
+        'uploaded': 1,
+        'upload failed': 1,
+        'draft': 1,
+        'deleted': 0,
+        'replaced': 0,
+        'obsolete': 0,
+    }
+
+    stati2search = ['released', 'released_to_project', 'pre-release']
+    items2search = ['ExperimentSet']
+    item_search = 'search/?frame=object'
+    for item in items2search:
+        item_search += '&type={}'.format(item)
+    for status in stati2search:
+        item_search += '&status={}'.format(status)
+
+    itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=500)
+    itemids = [item.get('uuid') for item in itemres]
+
+    es_items = ff_utils.get_es_metadata(itemids, key=ffkey)
+    id2links = {i.get('uuid'): i.get('linked_uuids') for i in es_items}
+    id2item = {i.get('uuid'): i for i in es_items}
+    id2status = {i.get('uuid'): STATUS_LEVEL.get(i.get('properties').get('status', 'in review by lab')) for i in es_items}
+
+    mismatches = {}
+    linked2get = {}
+    for iid in itemids:
+        linkedids = id2links.get(iid)
+        if not linkedids:  # item with no link
+            continue
+        istatus = id2status.get(iid)
+        for lid in linkedids:
+            lstatus = id2status.get(lid)
+            if not lstatus:  # add to list to get
+                linked2get.setdefault(lid, []).append(iid)
+            elif lstatus < istatus:  # status mismatch for an item we've seen before
+                mismatches.setdefault(iid, []).append(lid)
+
+        if len(linked2get) > MIN_CHUNK_SIZE:  # only query es when we have more than a set number of ids (500)
+            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey)
+            if linked2chk:
+                for litem in linked2chk:
+                    luuid = litem.get('uuid')
+                    status = litem.get('properties').get('status', 'in review by lab')
+                    lstatus = STATUS_LEVEL.get(status)
+
+                    # add info to tracking dict
+                    id2status[luuid] = lstatus
+                    id2item[luuid] = litem
+                    for lfid in set(linked2get[luuid]):
+                        if lstatus < id2status[lfid]:  # status mismatch so add to report
+                            mismatches.setdefault(lfid, []).append(luuid)
+            linked2get = {}  # reset the linked id dict
+    if mismatches:
+        brief_output = {}
+        full_output = {}
+        print(len(mismatches))
+        for eid, mids in mismatches.items():
+            eset = id2item.get(eid)
+            key = '{}    {}    {}'.format(eid, eset.get('properties').get('accession'), eset.get('properties').get('status'))
+            brief_output[key] = len(mids)
+            for mid in mids:
+                mitem = id2item.get(mid)
+                print(mitem)
+                val = '{}    {}    {}'.format(mid, mitem.get('item_type'), mitem.get('properties').get('status'))
+                full_output.setdefault(key, []).append(val)
+        check.status = 'WARN'
+        check.summary = "MISMATCHED STATUSES FOUND"
+        check.description = 'Released or pre-release items have linked items with unreleased status'
+        check.brief_output = brief_output
+        check.full_output = full_output
+    else:
+        check.status = 'PASS'
+        check.summary = "NO MISMATCHES FOUND"
+        check.description = 'all statuses present and correct'
     return check
