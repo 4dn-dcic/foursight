@@ -131,10 +131,11 @@ def patch_static_headers(connection, **kwargs):
 @check_function()
 def prepare_static_headers_data_use_guidelines(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_data_use_guidelines')
+    # only check experiment sets that are released, released to project, or in pre-release
     add_search=('/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title=No%20value'
-                '&status=released&status=released+to+project&frame=object')
+                '&status=released&status=released+to+project&status=pre-release&frame=object')
     remove_search=('/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title!=No%20value'
-                   '&status=released&status=released+to+project&frame=object')
+                   '&status=released&status=released+to+project&status=pre-release&frame=object')
     header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
     check.action = 'patch_static_headers_data_use_guidelines'
     find_items_for_header_processing(connection, check, header_at_id,
