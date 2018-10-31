@@ -706,16 +706,17 @@ def check_help_page_urls(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(id_list=None)
 def check_status_mismatch(connection, **kwargs):
     check = init_check_res(connection, 'check_status_mismatch')
+    id_list = kwargs['id_list']
     ffkey = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)
     if not ffkey:
         check.status = 'FAIL'
         check.description = "not able to get data from fourfront"
         return check
 
-    MIN_CHUNK_SIZE = 500
+    MIN_CHUNK_SIZE = 100
 
     # embedded sub items should have an equal or greater level
     # than that of the item in which they are embedded
@@ -748,17 +749,20 @@ def check_status_mismatch(connection, **kwargs):
     for status in stati2search:
         item_search += '&status={}'.format(status)
 
-    itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=500)
-    itemids = [item.get('uuid') for item in itemres]
-
-    es_items = ff_utils.get_es_metadata(itemids, key=ffkey)
+    if id_list:
+        itemids = re.split(',|\s+', id_list)
+        itemids = [id for id in itemids if id]
+    else:
+        itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=100)
+        itemids = [item.get('uuid') for item in itemres]
+    es_items = ff_utils.get_es_metadata(itemids, key=ffkey, chunk_size=100)
     id2links = {i.get('uuid'): i.get('linked_uuids') for i in es_items}
     id2item = {i.get('uuid'): i for i in es_items}
     id2status = {i.get('uuid'): STATUS_LEVEL.get(i.get('properties').get('status', 'in review by lab')) for i in es_items}
 
     mismatches = {}
     linked2get = {}
-    for iid in itemids:
+    for i, iid in enumerate(itemids):
         linkedids = id2links.get(iid)
         if not linkedids:  # item with no link
             continue
@@ -770,8 +774,8 @@ def check_status_mismatch(connection, **kwargs):
             elif lstatus < istatus:  # status mismatch for an item we've seen before
                 mismatches.setdefault(iid, []).append(lid)
 
-        if len(linked2get) > MIN_CHUNK_SIZE:  # only query es when we have more than a set number of ids (500)
-            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey)
+        if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
+            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=100)
             if linked2chk:
                 for litem in linked2chk:
                     luuid = litem.get('uuid')
@@ -788,14 +792,12 @@ def check_status_mismatch(connection, **kwargs):
     if mismatches:
         brief_output = {}
         full_output = {}
-        print(len(mismatches))
         for eid, mids in mismatches.items():
             eset = id2item.get(eid)
             key = '{}    {}    {}'.format(eid, eset.get('properties').get('accession'), eset.get('properties').get('status'))
             brief_output[key] = len(mids)
             for mid in mids:
                 mitem = id2item.get(mid)
-                print(mitem)
                 val = '{}    {}    {}'.format(mid, mitem.get('item_type'), mitem.get('properties').get('status'))
                 full_output.setdefault(key, []).append(val)
         check.status = 'WARN'

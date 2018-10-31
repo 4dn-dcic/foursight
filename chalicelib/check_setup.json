@@ -254,6 +254,10 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
                 "mastertest": {
                     "kwargs": {"primary": true},
                     "dependencies": []
