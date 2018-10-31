@@ -1,5 +1,5 @@
 dcicutils>=0.4.0
-requests==2.19.1
+requests==2.20.0
 PyJWT==1.5.3
 Jinja2==2.9.6
 MarkupSafe==1.0
