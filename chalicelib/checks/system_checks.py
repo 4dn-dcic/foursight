@@ -567,11 +567,6 @@ def process_download_tracking_items(connection, **kwargs):
                                            ff_env=connection.ff_env, page_limit=200)
     counts = {'proc': 0, 'deleted': 0, 'released': 0}
 
-    ### TEMP
-    user_cache = {}
-    format_exp_cache = {}
-    ### END TEMP
-
     page_ips = set([tracking['download_tracking']['remote_ip'] for tracking in search_page])
     # transform all IP addresses into GEO information with a persistent connection
     with requests.Session() as session:
@@ -594,50 +589,6 @@ def process_download_tracking_items(connection, **kwargs):
         geo_info = ip_cache[dl_info['remote_ip']]
         dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
         patch_body = {'status': 'released', 'download_tracking': dl_info}
-
-        ### START TEMP
-        # temporary code to upgrade the following on fields:
-        # user_email -> user_uuid, add experiment_type and file_format
-        # can be removed when the download tracking code is on staging + data
-        if 'user_email' in dl_info:
-            if dl_info['user_email'] == 'anonymous':
-                dl_info['user_uuid'] = 'anonymous'
-            else:
-                if dl_info['user_email'] in user_cache:
-                    dl_info['user_uuid'] = user_cache[dl_info['user_email']]
-                else:
-                    user = ff_utils.get_metadata('/users/' + dl_info['user_email'],
-                                                 key=connection.ff_keys, ff_env=connection.ff_env)
-                    user_cache[dl_info['user_email']] = user['uuid']
-                    dl_info['user_uuid'] = user['uuid']
-            del dl_info['user_email']
-
-        if 'file_format' not in dl_info or 'experiment_type' not in dl_info:
-            file_acc = dl_info['filename'].split('.')[0]
-            if file_acc in format_exp_cache:
-                dl_info['file_format'] = format_exp_cache[file_acc]['file_format']
-                dl_info['experiment_type'] = format_exp_cache[file_acc]['experiment_type']
-            else:
-                # file may be deleted
-                try:
-                    file_data = ff_utils.get_metadata(file_acc, key=connection.ff_keys, ff_env=connection.ff_env)
-                except:
-                    # just go ahead and remove the tracking item, I guess
-                    patch_body['status'] = 'deleted'
-                    dl_info['experiment_type'] = 'None'
-                else:
-                    dl_info['file_format'] = file_data['file_format']['file_format']
-                    if file_data['experiments']:
-                        exp_type = file_data['experiments'][0]['experiment_type']
-                    else:
-                        exp_type = 'None'
-                    dl_info['experiment_type'] = exp_type
-                    format_exp_cache[file_acc] = {'file_format': file_data['file_format']['file_format'],
-                                                  'experiment_type': exp_type}
-
-        if dl_info['experiment_type'] == None:
-            dl_info['experiment_type'] = 'None'
-        ### END TEMP
 
         if (any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_strings)
             and dl_info['user_uuid'] == 'anonymous'):
