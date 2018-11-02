@@ -5,10 +5,11 @@ from ..utils import (
     action_function,
     init_action_res
 )
-from dcicutils import ff_utils
+from dcicutils import ff_utils, es_utils
 import re
 import requests
 import datetime
+import json
 
 
 def compare_badges(obj_ids, item_type, badge, ffenv):
@@ -716,7 +717,7 @@ def check_status_mismatch(connection, **kwargs):
         check.description = "not able to get data from fourfront"
         return check
 
-    MIN_CHUNK_SIZE = 100
+    MIN_CHUNK_SIZE = 200
 
     # embedded sub items should have an equal or greater level
     # than that of the item in which they are embedded
@@ -741,6 +742,9 @@ def check_status_mismatch(connection, **kwargs):
         'obsolete': 0,
     }
 
+    id2links = {}
+    id2status = {}
+    id2item = {}
     stati2search = ['released', 'released_to_project', 'pre-release']
     items2search = ['ExperimentSet']
     item_search = 'search/?frame=object'
@@ -753,12 +757,20 @@ def check_status_mismatch(connection, **kwargs):
         itemids = re.split(',|\s+', id_list)
         itemids = [id for id in itemids if id]
     else:
-        itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=100)
+        itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=500)
         itemids = [item.get('uuid') for item in itemres]
-    es_items = ff_utils.get_es_metadata(itemids, key=ffkey, chunk_size=100)
-    id2links = {i.get('uuid'): i.get('linked_uuids') for i in es_items}
-    id2item = {i.get('uuid'): i for i in es_items}
-    id2status = {i.get('uuid'): STATUS_LEVEL.get(i.get('properties').get('status', 'in review by lab')) for i in es_items}
+    es_items = andys_get_es_metadata(itemids, key=ffkey, chunk_size=200, is_generator=True)
+    # oes = open('/Users/andrew/Desktop/es_item.out', 'w')
+    for es_item in es_items:
+        # oes.write(json.dumps(es_item, indent=4))
+        import pdb; pdb.set_trace()
+        label = es_item.get('embedded').get('display_title')
+        status = es_item.get('properties').get('status', 'in review by lab')
+        opfs = _get_all_other_processed_files(es_item)
+
+        id2links[es_item.get('uuid')] = es_item.get('linked_uuids')
+        id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
+        id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'to_ignore': list(set(opfs))}
 
     mismatches = {}
     linked2get = {}
@@ -775,30 +787,35 @@ def check_status_mismatch(connection, **kwargs):
                 mismatches.setdefault(iid, []).append(lid)
 
         if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
-            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=100)
-            if linked2chk:
-                for litem in linked2chk:
-                    luuid = litem.get('uuid')
-                    status = litem.get('properties').get('status', 'in review by lab')
-                    lstatus = STATUS_LEVEL.get(status)
+            linked2chk = andys_get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=200, is_generator=True)
+            # if linked2chk:
+            for litem in linked2chk:
+                luuid = litem.get('uuid')
+                listatus = litem.get('properties').get('status', 'in review by lab')
+                llabel = litem.get('item_type')
+                lstatus = STATUS_LEVEL.get(listatus)
 
-                    # add info to tracking dict
-                    id2status[luuid] = lstatus
-                    id2item[luuid] = litem
-                    for lfid in set(linked2get[luuid]):
-                        if lstatus < id2status[lfid]:  # status mismatch so add to report
-                            mismatches.setdefault(lfid, []).append(luuid)
+                # add info to tracking dict
+                id2status[luuid] = lstatus
+                id2item[luuid] = {'label': llabel, 'status': listatus}
+                for lfid in set(linked2get[luuid]):
+                    # check to see if the linked item is something to ignore for that item
+                    ignore = id2item[lfid].get('to_ignore')
+                    if ignore is not None and luuid in ignore:
+                        continue
+                    elif lstatus < id2status[lfid]:  # status mismatch so add to report
+                        mismatches.setdefault(lfid, []).append(luuid)
             linked2get = {}  # reset the linked id dict
     if mismatches:
         brief_output = {}
         full_output = {}
         for eid, mids in mismatches.items():
             eset = id2item.get(eid)
-            key = '{}    {}    {}'.format(eid, eset.get('properties').get('accession'), eset.get('properties').get('status'))
+            key = '{}    {}    {}'.format(eid, eset.get('label'), eset.get('status'))
             brief_output[key] = len(mids)
             for mid in mids:
                 mitem = id2item.get(mid)
-                val = '{}    {}    {}'.format(mid, mitem.get('item_type'), mitem.get('properties').get('status'))
+                val = '{}    {}    {}'.format(mid, mitem.get('label'), mitem.get('status'))
                 full_output.setdefault(key, []).append(val)
         check.status = 'WARN'
         check.summary = "MISMATCHED STATUSES FOUND"
@@ -810,3 +827,99 @@ def check_status_mismatch(connection, **kwargs):
         check.summary = "NO MISMATCHES FOUND"
         check.description = 'all statuses present and correct'
     return check
+
+
+def _get_all_other_processed_files(item):
+    toignore = []
+    # get directly linked other processed files
+    for pfinfo in item.get('properties').get('other_processed_files'):
+        toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
+    # experiment sets can also have linked opfs from experiment
+    expts = item.get('embedded').get('experiments_in_set')
+    if expts is not None:
+        for exp in expts:
+            opfs = exp.get('other_processed_files')
+            if opfs is not None:
+                for pfinfo in opfs:
+                    toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
+    return toignore
+
+
+def _get_es_metadata(uuids, es_client=None, filters={}, chunk_size=200,
+                     key=None, ff_env=None, is_generator=False):
+    """
+    Given a list of string item uuids, will return a
+    dictionary response of the full ES record for those items (or an empty
+    dictionary if the items don't exist/ are not indexed)
+    You can pass in an Elasticsearch client (initialized by create_es_client)
+    through the es_client param to save init time.
+    Advanced users can optionally pass a dict of filters that will be added
+    to the Elasticsearch query.
+        For example: filters={'status': 'released'}
+        You can also specify NOT fields:
+            example: filters={'status': '!released'}
+        You can also specifiy lists of values for fields:
+            example: filters={'status': ['released', archived']}
+    NOTES:
+        - different filter field are combined using AND queries (must all match)
+            example: filters={'status': ['released'], 'public_release': ['2018-01-01']}
+        - values for the same field and combined with OR (such as multiple statuses)
+    Integer chunk_size may be used to control the number of uuids that are
+    passed to Elasticsearch in each query; setting this too high may cause
+    ES reads to timeout.
+    Same auth mechanism as the other metadata functions
+    """
+    if es_client is None:
+        es_url = ff_utils.get_health_page(key, ff_env)['elasticsearch']
+        es_client = es_utils.create_es_client(es_url, use_aws_auth=True)
+    # match all given uuids to _id fields
+    # sending in too many uuids in the terms query can crash es; break them up
+    # into groups of max size 100
+    es_res = []
+    for i in range(0, len(uuids), chunk_size):
+        query_uuids = uuids[i:i + chunk_size]
+        es_query = {
+            'query': {
+                'bool': {
+                    'must': [
+                        {'terms': {'_id': query_uuids}}
+                    ],
+                    'must_not': []
+                }
+            },
+            'sort': [{'_uid': {'order': 'desc'}}]
+        }
+        if filters:
+            if not isinstance(filters, dict):
+                print('Invalid filter for get_es_metadata: %s' % filters)
+            else:
+                for k, v in filters.items():
+                    key_terms = []
+                    key_not_terms = []
+                    iter_terms = [v] if not isinstance(v, list) else v
+                    for val in iter_terms:
+                        if val.startswith('!'):
+                            key_not_terms.append(val[1:])
+                        else:
+                            key_terms.append(val)
+                    if key_terms:
+                        es_query['query']['bool']['must'].append(
+                            {'terms': {'embedded.' + k + '.raw': key_terms}}
+                        )
+                    if key_not_terms:
+                        es_query['query']['bool']['must_not'].append(
+                            {'terms': {'embedded.' + k + '.raw': key_not_terms}}
+                        )
+        # use chunk_limit as page size for performance reasons
+        for es_page in ff_utils.get_es_search_generator(es_client, '_all', es_query,
+                                                        page_size=chunk_size):
+            for hit in es_page:
+                yield hit['_source']
+
+
+def andys_get_es_metadata(uuids, es_client=None, filters={}, chunk_size=200,
+                          key=None, ff_env=None, is_generator=False):
+    meta = _get_es_metadata(uuids, es_client, filters, chunk_size, key, ff_env)
+    if is_generator:
+        return meta
+    return list(meta)
