@@ -354,17 +354,17 @@ def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts')
     counts_check = init_check_res(connection, 'item_counts_by_type')
-    latest = counts_check.get_primary_result()
+    latest_check = counts_check.get_primary_result()
     # get_item_counts run closest to 10 mins
-    prior = counts_check.get_closest_result(diff_hours=24)
-    if not latest.get('full_output') or not prior.get('full_output'):
+    prior_check = counts_check.get_closest_result(diff_hours=24)
+    if not latest_check.get('full_output') or not prior_check.get('full_output'):
         check.status = 'ERROR'
         check.description = 'There are no counts_check results to run this check with.'
         return check
     diff_counts = {}
     # drill into full_output
-    latest = latest['full_output']
-    prior = prior['full_output']
+    latest = latest_check['full_output']
+    prior = prior_check['full_output']
     # get any keys that are in prior but not latest
     prior_unique = list(set(prior.keys()) - set(latest.keys()))
     for index in latest:
@@ -378,11 +378,13 @@ def change_in_item_counts(connection, **kwargs):
                 diff_counts[index] = diff_DB
     for index in prior_unique:
         diff_counts[index] = -1 * prior[index]['DB']
-    check.brief_output = diff_counts
-
+    check.brief_output = {'DB': diff_counts}
     # now do a metadata search to make sure they match
-    date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H\:%M')
-    search_query = ''.join(['search/?type=Item&frame=object&q=date_created:>=', date_str])
+    # date_created endpoints for the FF search
+    to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d %H:%M')
+    from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d %H:%M')
+    search_query = ''.join(['search/?type=Item&frame=object&date_created.from=',
+                            from_date, '&date_created.to=', to_date])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     # add deleted/replaced items
     search_query += '&status=deleted&status=replaced'
@@ -395,7 +397,9 @@ def change_in_item_counts(connection, **kwargs):
             'date_created': res.get('date_created'),
             'status': res.get('status')
         })
-    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&q=date_created:>=', date_str])
+    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&date_created.from=',
+                             from_date, '&date_created.to=', to_date])
+    check.brief_output['ES'] = len(search_resp)
     check.full_output = search_output
 
     # total created items from diff counts (exclude any negative counts)
@@ -411,7 +415,8 @@ def change_in_item_counts(connection, **kwargs):
         check.status = 'WARN'
         check.summary = 'Change in DB counts does not match search result for new items'
         check.description = ('Positive numbers represent an increase in counts. '
-                             'The change in counts does not match search result for new items.')
+                             'The change in counts does not match search result for new items. '
+                             'See full output for details on the search results.')
     else:
         check.status = 'PASS'
         check.summary = 'There are %s new items in the past day' % total_counts
