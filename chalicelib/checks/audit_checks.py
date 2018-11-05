@@ -712,10 +712,6 @@ def check_status_mismatch(connection, **kwargs):
     check = init_check_res(connection, 'check_status_mismatch')
     id_list = kwargs['id_list']
     ffkey = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)
-    if not ffkey:
-        check.status = 'FAIL'
-        check.description = "not able to get data from fourfront"
-        return check
 
     MIN_CHUNK_SIZE = 200
 
