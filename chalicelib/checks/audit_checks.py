@@ -5,7 +5,7 @@ from ..utils import (
     action_function,
     init_action_res
 )
-from dcicutils import ff_utils, es_utils
+from dcicutils import ff_utils
 import re
 import requests
 import datetime
@@ -728,6 +728,7 @@ def check_status_mismatch(connection, **kwargs):
         'revoked': 3,
         'released to project': 3,
         'pre-release': 3,
+        'restricted': 3,
         'planned': 2,
         'archived to project': 2,
         'in review by lab': 1,
@@ -759,11 +760,8 @@ def check_status_mismatch(connection, **kwargs):
     else:
         itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=500)
         itemids = [item.get('uuid') for item in itemres]
-    es_items = andys_get_es_metadata(itemids, key=ffkey, chunk_size=200, is_generator=True)
-    # oes = open('/Users/andrew/Desktop/es_item.out', 'w')
+    es_items = ff_utils.get_es_metadata(itemids, key=ffkey, chunk_size=200, is_generator=True)
     for es_item in es_items:
-        # oes.write(json.dumps(es_item, indent=4))
-        import pdb; pdb.set_trace()
         label = es_item.get('embedded').get('display_title')
         status = es_item.get('properties').get('status', 'in review by lab')
         opfs = _get_all_other_processed_files(es_item)
@@ -784,11 +782,14 @@ def check_status_mismatch(connection, **kwargs):
             if not lstatus:  # add to list to get
                 linked2get.setdefault(lid, []).append(iid)
             elif lstatus < istatus:  # status mismatch for an item we've seen before
-                mismatches.setdefault(iid, []).append(lid)
+                ignore = id2item.get(iid).get('to_ignore')
+                if ignore is not None and lid in ignore:
+                    continue
+                else:
+                    mismatches.setdefault(iid, []).append(lid)
 
         if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
-            linked2chk = andys_get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=200, is_generator=True)
-            # if linked2chk:
+            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=200, is_generator=True)
             for litem in linked2chk:
                 luuid = litem.get('uuid')
                 listatus = litem.get('properties').get('status', 'in review by lab')
@@ -832,7 +833,7 @@ def check_status_mismatch(connection, **kwargs):
 def _get_all_other_processed_files(item):
     toignore = []
     # get directly linked other processed files
-    for pfinfo in item.get('properties').get('other_processed_files'):
+    for pfinfo in item.get('properties').get('other_processed_files', []):
         toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
     # experiment sets can also have linked opfs from experiment
     expts = item.get('embedded').get('experiments_in_set')
@@ -843,83 +844,3 @@ def _get_all_other_processed_files(item):
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
     return toignore
-
-
-def _get_es_metadata(uuids, es_client=None, filters={}, chunk_size=200,
-                     key=None, ff_env=None, is_generator=False):
-    """
-    Given a list of string item uuids, will return a
-    dictionary response of the full ES record for those items (or an empty
-    dictionary if the items don't exist/ are not indexed)
-    You can pass in an Elasticsearch client (initialized by create_es_client)
-    through the es_client param to save init time.
-    Advanced users can optionally pass a dict of filters that will be added
-    to the Elasticsearch query.
-        For example: filters={'status': 'released'}
-        You can also specify NOT fields:
-            example: filters={'status': '!released'}
-        You can also specifiy lists of values for fields:
-            example: filters={'status': ['released', archived']}
-    NOTES:
-        - different filter field are combined using AND queries (must all match)
-            example: filters={'status': ['released'], 'public_release': ['2018-01-01']}
-        - values for the same field and combined with OR (such as multiple statuses)
-    Integer chunk_size may be used to control the number of uuids that are
-    passed to Elasticsearch in each query; setting this too high may cause
-    ES reads to timeout.
-    Same auth mechanism as the other metadata functions
-    """
-    if es_client is None:
-        es_url = ff_utils.get_health_page(key, ff_env)['elasticsearch']
-        es_client = es_utils.create_es_client(es_url, use_aws_auth=True)
-    # match all given uuids to _id fields
-    # sending in too many uuids in the terms query can crash es; break them up
-    # into groups of max size 100
-    es_res = []
-    for i in range(0, len(uuids), chunk_size):
-        query_uuids = uuids[i:i + chunk_size]
-        es_query = {
-            'query': {
-                'bool': {
-                    'must': [
-                        {'terms': {'_id': query_uuids}}
-                    ],
-                    'must_not': []
-                }
-            },
-            'sort': [{'_uid': {'order': 'desc'}}]
-        }
-        if filters:
-            if not isinstance(filters, dict):
-                print('Invalid filter for get_es_metadata: %s' % filters)
-            else:
-                for k, v in filters.items():
-                    key_terms = []
-                    key_not_terms = []
-                    iter_terms = [v] if not isinstance(v, list) else v
-                    for val in iter_terms:
-                        if val.startswith('!'):
-                            key_not_terms.append(val[1:])
-                        else:
-                            key_terms.append(val)
-                    if key_terms:
-                        es_query['query']['bool']['must'].append(
-                            {'terms': {'embedded.' + k + '.raw': key_terms}}
-                        )
-                    if key_not_terms:
-                        es_query['query']['bool']['must_not'].append(
-                            {'terms': {'embedded.' + k + '.raw': key_not_terms}}
-                        )
-        # use chunk_limit as page size for performance reasons
-        for es_page in ff_utils.get_es_search_generator(es_client, '_all', es_query,
-                                                        page_size=chunk_size):
-            for hit in es_page:
-                yield hit['_source']
-
-
-def andys_get_es_metadata(uuids, es_client=None, filters={}, chunk_size=200,
-                          key=None, ff_env=None, is_generator=False):
-    meta = _get_es_metadata(uuids, es_client, filters, chunk_size, key, ff_env)
-    if is_generator:
-        return meta
-    return list(meta)
