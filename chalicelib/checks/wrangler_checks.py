@@ -203,6 +203,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
             typename = 'FileProcessed'
             typebucket = connection.ff_s3.outfile_bucket
         search_query = 'search/?file_format.file_format=%s&type=%s' % (ftype, typename)
+        # status filtering on the search
+        search_query += '&status!=uploading&status!=to+be+uploaded+by+workflow&status!=upload+failed'
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for procfile in possibly_reg:
             if 'genome_assembly' not in procfile:
@@ -384,6 +386,7 @@ def item_counts_by_type(connection, **kwargs):
 
 @check_function()
 def change_in_item_counts(connection, **kwargs):
+    from ..utils import convert_camel_to_snake
     # use this check to get the comparison
     check = init_check_res(connection, 'change_in_item_counts')
     counts_check = init_check_res(connection, 'item_counts_by_type')
@@ -404,18 +407,18 @@ def change_in_item_counts(connection, **kwargs):
         if index == 'ALL':
             continue
         if index not in prior:
-            diff_counts[index] = latest[index]['DB']
+            diff_counts[index] = {'DB': latest[index]['DB']}
         else:
             diff_DB = latest[index]['DB'] - prior[index]['DB']
             if diff_DB != 0:
-                diff_counts[index] = diff_DB
+                diff_counts[index] = {'DB': diff_DB}
     for index in prior_unique:
-        diff_counts[index] = -1 * prior[index]['DB']
-    check.brief_output = {'DB': diff_counts}
+        diff_counts[index] = {'DB': -1 * prior[index]['DB']}
+
     # now do a metadata search to make sure they match
     # date_created endpoints for the FF search
-    to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d %H:%M')
-    from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d %H:%M')
+    to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
+    from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     search_query = ''.join(['search/?type=Item&frame=object&date_created.from=',
                             from_date, '&date_created.to=', to_date])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
@@ -424,35 +427,36 @@ def change_in_item_counts(connection, **kwargs):
     search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env))
     search_output = []
     for res in search_resp:
-        search_output.append({
-            'uuid': res.get('uuid'),
-            '@id': res.get('@id'),
-            'date_created': res.get('date_created'),
-            'status': res.get('status')
-        })
+        # convert type to index name. e.g. ExperimentSet --> experiment_set
+        res_index = convert_camel_to_snake(res['@type'][0])
+        if res_index in diff_counts:
+            diff_counts[res_index]['ES'] = diff_counts[res_index]['ES'] + 1 if 'ES' in diff_counts[res_index] else 1
+        else:
+            # db entry wasn't already present for this index
+            diff_counts[res_index] = {'DB': 0, 'ES': 1}
+
     check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&date_created.from=',
                              from_date, '&date_created.to=', to_date])
-    check.brief_output['ES'] = len(search_resp)
-    check.full_output = search_output
+    check.brief_output = diff_counts
 
     # total created items from diff counts (exclude any negative counts)
-    total_counts = sum([diff_counts[coll] for coll in diff_counts if diff_counts[coll] >= 0])
+    total_counts_db = sum([diff_counts[coll]['DB'] for coll in diff_counts if diff_counts[coll]['DB'] >= 0])
     # see if we have negative counts
-    negative_counts = any([diff_counts[coll] < 0 for coll in diff_counts])
+    negative_counts = any([diff_counts[coll]['DB'] < 0 for coll in diff_counts])
+    inconsistent_counts = any([diff_counts[coll]['DB'] != diff_counts[coll]['ES'] for coll in diff_counts])
     if negative_counts:
         check.status = 'FAIL'
-        check.summary = 'One or more item counts has decreased in the past day'
+        check.summary = 'One or more DB item counts has decreased in the past day'
         check.description = ('Positive numbers represent an increase in counts. '
-                             'Some counts have decreased!')
-    elif total_counts != len(search_output):
+                             'Some DB counts have decreased!')
+    elif inconsistent_counts:
         check.status = 'WARN'
         check.summary = 'Change in DB counts does not match search result for new items'
         check.description = ('Positive numbers represent an increase in counts. '
-                             'The change in counts does not match search result for new items. '
-                             'See full output for details on the search results.')
+                             'The change in counts does not match search result for new items.')
     else:
         check.status = 'PASS'
-        check.summary = 'There are %s new items in the past day' % total_counts
+        check.summary = 'There are %s new items in the past day' % total_counts_db
         check.description = check.summary + '. Positive numbers represent an increase in counts.'
     return check
 

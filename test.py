@@ -1051,6 +1051,11 @@ class TestUtils(FSTest):
         dt_5_auto = utils.parse_datetime_to_utc(self.timestr_5)
         self.assertTrue(dt_5_auto == dt_5_man)
 
+    def test_camel_case_to_snake(self):
+        camel_test = 'SomeCamelCaseString'
+        snake_res = utils.convert_camel_to_snake(camel_test)
+        assert snake_res == 'some_camel_case_string'
+
     def test_get_s3_utils(self):
         """
         Sanity test for s3 utils for all envs
