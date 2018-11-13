@@ -8,6 +8,8 @@ from ..utils import (
 from dcicutils import ff_utils
 import re
 import requests
+import datetime
+import json
 
 
 def compare_badges(obj_ids, item_type, badge, ffenv):
@@ -703,3 +705,138 @@ def check_help_page_urls(connection, **kwargs):
         check.description = check.summary
     check.full_output = sections_w_broken_links
     return check
+
+
+@check_function(id_list=None)
+def check_status_mismatch(connection, **kwargs):
+    check = init_check_res(connection, 'check_status_mismatch')
+    id_list = kwargs['id_list']
+    ffkey = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)
+
+    MIN_CHUNK_SIZE = 200
+
+    # embedded sub items should have an equal or greater level
+    # than that of the item in which they are embedded
+    STATUS_LEVEL = {
+        'released': 3,
+        'archived': 3,
+        'current': 3,
+        'revoked': 3,
+        'released to project': 3,
+        'pre-release': 3,
+        'restricted': 3,
+        'planned': 2,
+        'archived to project': 2,
+        'in review by lab': 1,
+        'submission in progress': 1,
+        'to be uploaded by workflow': 1,
+        'uploading': 1,
+        'uploaded': 1,
+        'upload failed': 1,
+        'draft': 1,
+        'deleted': 0,
+        'replaced': 0,
+        'obsolete': 0,
+    }
+
+    id2links = {}
+    id2status = {}
+    id2item = {}
+    stati2search = ['released', 'released_to_project', 'pre-release']
+    items2search = ['ExperimentSet']
+    item_search = 'search/?frame=object'
+    for item in items2search:
+        item_search += '&type={}'.format(item)
+    for status in stati2search:
+        item_search += '&status={}'.format(status)
+
+    if id_list:
+        itemids = re.split(',|\s+', id_list)
+        itemids = [id for id in itemids if id]
+    else:
+        itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=500)
+        itemids = [item.get('uuid') for item in itemres]
+    es_items = ff_utils.get_es_metadata(itemids, key=ffkey, chunk_size=200, is_generator=True)
+    for es_item in es_items:
+        label = es_item.get('embedded').get('display_title')
+        status = es_item.get('properties').get('status', 'in review by lab')
+        opfs = _get_all_other_processed_files(es_item)
+
+        id2links[es_item.get('uuid')] = es_item.get('linked_uuids')
+        id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
+        id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'to_ignore': list(set(opfs))}
+
+    mismatches = {}
+    linked2get = {}
+    for i, iid in enumerate(itemids):
+        linkedids = id2links.get(iid)
+        if not linkedids:  # item with no link
+            continue
+        istatus = id2status.get(iid)
+        for lid in linkedids:
+            lstatus = id2status.get(lid)
+            if not lstatus:  # add to list to get
+                linked2get.setdefault(lid, []).append(iid)
+            elif lstatus < istatus:  # status mismatch for an item we've seen before
+                ignore = id2item.get(iid).get('to_ignore')
+                if ignore is not None and lid in ignore:
+                    continue
+                else:
+                    mismatches.setdefault(iid, []).append(lid)
+
+        if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
+            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=200, is_generator=True)
+            for litem in linked2chk:
+                luuid = litem.get('uuid')
+                listatus = litem.get('properties').get('status', 'in review by lab')
+                llabel = litem.get('item_type')
+                lstatus = STATUS_LEVEL.get(listatus)
+
+                # add info to tracking dict
+                id2status[luuid] = lstatus
+                id2item[luuid] = {'label': llabel, 'status': listatus}
+                for lfid in set(linked2get[luuid]):
+                    # check to see if the linked item is something to ignore for that item
+                    ignore = id2item[lfid].get('to_ignore')
+                    if ignore is not None and luuid in ignore:
+                        continue
+                    elif lstatus < id2status[lfid]:  # status mismatch so add to report
+                        mismatches.setdefault(lfid, []).append(luuid)
+            linked2get = {}  # reset the linked id dict
+    if mismatches:
+        brief_output = {}
+        full_output = {}
+        for eid, mids in mismatches.items():
+            eset = id2item.get(eid)
+            key = '{}    {}    {}'.format(eid, eset.get('label'), eset.get('status'))
+            brief_output[key] = len(mids)
+            for mid in mids:
+                mitem = id2item.get(mid)
+                val = '{}    {}    {}'.format(mid, mitem.get('label'), mitem.get('status'))
+                full_output.setdefault(key, []).append(val)
+        check.status = 'WARN'
+        check.summary = "MISMATCHED STATUSES FOUND"
+        check.description = 'Released or pre-release items have linked items with unreleased status'
+        check.brief_output = brief_output
+        check.full_output = full_output
+    else:
+        check.status = 'PASS'
+        check.summary = "NO MISMATCHES FOUND"
+        check.description = 'all statuses present and correct'
+    return check
+
+
+def _get_all_other_processed_files(item):
+    toignore = []
+    # get directly linked other processed files
+    for pfinfo in item.get('properties').get('other_processed_files', []):
+        toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
+    # experiment sets can also have linked opfs from experiment
+    expts = item.get('embedded').get('experiments_in_set')
+    if expts is not None:
+        for exp in expts:
+            opfs = exp.get('other_processed_files')
+            if opfs is not None:
+                for pfinfo in opfs:
+                    toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
+    return toignore
