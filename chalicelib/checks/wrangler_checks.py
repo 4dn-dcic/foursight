@@ -407,13 +407,13 @@ def change_in_item_counts(connection, **kwargs):
         if index == 'ALL':
             continue
         if index not in prior:
-            diff_counts[index] = {'DB': latest[index]['DB']}
+            diff_counts[index] = {'DB': latest[index]['DB'], 'ES': 0}
         else:
             diff_DB = latest[index]['DB'] - prior[index]['DB']
             if diff_DB != 0:
-                diff_counts[index] = {'DB': diff_DB}
+                diff_counts[index] = {'DB': diff_DB, 'ES': 0}
     for index in prior_unique:
-        diff_counts[index] = {'DB': -1 * prior[index]['DB']}
+        diff_counts[index] = {'DB': -1 * prior[index]['DB'], 'ES': 0}
 
     # now do a metadata search to make sure they match
     # date_created endpoints for the FF search
