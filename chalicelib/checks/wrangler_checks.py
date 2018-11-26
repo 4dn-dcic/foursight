@@ -197,12 +197,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
     for ftype in reg_filetypes:
         files_to_be_reg[ftype] = []
         if ftype in valid_types_raw:
-            typename = 'FileReference'
+            typenames = ['FileReference']
             typebucket = connection.ff_s3.raw_file_bucket
         else:
-            typename = 'FileProcessed'
+            typenames = ['FileProcessed', 'FileVistrack']
             typebucket = connection.ff_s3.outfile_bucket
-        search_query = 'search/?file_format.file_format=%s&type=%s' % (ftype, typename)
+        typestr = 'type=' + '&type='.join(typenames)
+        search_query = 'search/?file_format.file_format=%s&%s' % (ftype, typestr)
         # status filtering on the search
         search_query += '&status!=uploading&status!=to+be+uploaded+by+workflow&status!=upload+failed'
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
