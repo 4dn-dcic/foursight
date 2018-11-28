@@ -179,7 +179,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.description = "not able to get data from fourfront"
     # keep track of mcool, bg, and bw files separately
     valid_types_raw = ['chromsizes', 'beddb']
-    valid_types_proc = ['mcool', 'bg', 'bw']
+    valid_types_proc = ['mcool', 'bg', 'bw', 'bed']
     all_valid_types = valid_types_raw + valid_types_proc
     files_to_be_reg = {}
     not_found_upload_key = []
@@ -219,14 +219,16 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'genome_assembly': procfile['genome_assembly']
             }
             # bg files use an bw file from extra files to register
+            # bed files use a beddb file from extra files to regiser
             # don't FAIL if the bg is missing the bw, however
             # mcool and bw files use themselves
-            if ftype == 'bg':
+            type2extra = {'bg': 'bw', 'bed': 'beddb'}
+            if ftype in type2extra:
                 for extra in procfile.get('extra_files', []):
-                    if extra['file_format'].get('display_title') == 'bw' and 'upload_key' in extra:
+                    if extra['file_format'].get('display_title') == type2extra[ftype] and 'upload_key' in extra:
                         file_info['upload_key'] = extra['upload_key']
                         break
-                if 'upload_key' not in file_info:  # bw file not found
+                if 'upload_key' not in file_info:  # bw or beddb file not found
                     continue
             else:
                 if 'upload_key' in procfile:
@@ -315,6 +317,10 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
+            elif ftype == 'bed':
+                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
+                payload['filetype'] = 'beddb'
+                payload['datatype'] = 'bedlike'
             # register with previous higlass_uid if already there
             if hit.get('higlass_uid'):
                 payload['uuid'] = hit['higlass_uid']
