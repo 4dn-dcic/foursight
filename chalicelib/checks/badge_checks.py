@@ -280,7 +280,6 @@ def good_experiments(connection, **kwargs):
     tiered = 'search/?type=Experiment&processed_files.uuid%21=No+value'
     results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
     gold, silver, bronze = get_badges('experiment')
-    check.brief_output = {'Gold': [], 'Silver': [], 'Bronze': []}
     for result in results:
         badges = [badge.get('badge') for badge in result.get('badges', [])]
         badges += [badge.get('badge') for badge in result['biosample'].get('badges', [])]
@@ -299,22 +298,49 @@ def good_experiments(connection, **kwargs):
                     reads = sum([fq['quality_metric'].get('Total Sequences', 0) for
                                  fq in fastqs if 'quality_metric' in fq.keys()])
                     if reads >= 500000000:
-                        check.brief_output['Gold'].append(result['@id'])
+                        gold.to_compare.append(result['@id'])
                     else:
-                        check.brief_output['Silver'].append(result['@id'])
+                        silver.to_compare.append(result['@id'])
                 else:
-                    check.brief_output['Gold'].append(result['@id'])
+                    gold.to_compare.append(result['@id'])
             elif (result.get('experiment_type') in approved_types and
                   (result.get('protocol_variation') or result.get('follows_sop') == 'Yes')):
                 # Silver:
                 # 4DN approved protocol or linked protocol deviations
                 # has processed files
-                check.brief_output['Silver'].append(result['@id'])
+                silver.to_compare.append(result['@id'])
             elif result.get('protocol'):
                 # bronze
-                check.brief_output['Bronze'].append(result['@id'])
-    check.status = "PASS"
-    check.summary = "Experiments qualify for ranked badges"
+                bronze.to_compare.append(result['@id'])
+    patch = False
+    for badge in [gold, silver, bronze]:
+        # for each badge type, compare to items that already have badge
+        to_add, to_remove, ok = compare_badges(badge.to_compare, 'experiment', badge.badge_id, connection.ff_env)
+        if to_add or to_remove:
+            patch = True
+        output['{} Experiments'.format(badge.level)] = {
+            "Need badge": to_add,
+            "Need badge removed": to_remove,
+            "Badge OK": ok
+        }
+    check.full_output = output
+    check.brief_output = {  # dict containing list of items that qualify for each badge
+        "Gold Biosamples": gold.to_compare,
+        "Silver Biosamples": silver.to_compare,
+        "Bronze Biosamples": bronze.to_compare
+    }
+    check.action = 'patch_ranked_experiment_badges'
+    if not patch:
+        check.status = 'PASS'
+        check.summary = 'All qualifying experiments have proper ranked badges'
+        check.description = '0 biosamples need ranked badge patching'
+    else:
+        check.status = 'WARN'
+        check.summary = 'Some biosamples need ranked badge patching'
+        check.description = '{} biosamples need badge patching'.format(
+            sum([len(output[key]['Need badge']) + len(output[key]['Need badge removed'].keys()) for key in output.keys()]))
+        check.full_output = output
+        check.allow_action = True
     return check
 
 
