@@ -364,6 +364,26 @@ def patch_ranked_biosample_badges(connection, **kwargs):
     return action
 
 
+@action_function()
+def patch_ranked_experiment_badges(connection, **kwargs):
+    action = init_action_res(connection, 'patch_ranked_experiment_badges')
+
+    exp_check = init_check_res(connection, 'good_experiments')
+    exp_check_result = bs_check.get_result_by_uuid(kwargs['called_by'])
+    outputkeys = ['Gold Experiments', 'Silver Experiments', 'Bronze Experiments']
+    exp_badges = ['gold-experiment', 'silver-experiment', 'bronze-experiment']
+    action.output = reformat_and_patch_multiple(
+        exp_check_result['full_output'], outputkeys, exp_badges, connection.ff_env
+    )
+    if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
+        action.status = 'FAIL'
+        action.description = 'Some items failed to patch. See below for details.'
+    else:
+        action.status = 'DONE'
+        action.description = 'Patching ranked badges successful for experiments'
+    return action
+
+
 @check_function()
 def repsets_have_bio_reps(connection, **kwargs):
     check = init_check_res(connection, 'repsets_have_bio_reps')
