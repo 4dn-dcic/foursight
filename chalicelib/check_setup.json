@@ -279,7 +279,7 @@
     },
     "files_not_registered_with_higlass": {
         "title": "Files not registered with higlass",
-        "group": "Metadata checks",
+        "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
                 "data": {
@@ -609,6 +609,22 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "generate_higlass_view_confs_files": {
+        "title": "Generate Higlass ViewConigs for Files",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
