@@ -119,14 +119,24 @@ def post_higlass_view_confs_files(connection, **kwargs):
         for file in gen_check_result[ga]:
             # start with the reference files and add the target file
             to_post = {'files': ref_files_by_ga['ga'] + [file]}
+            view_conf_uuid = None
             # post to the visualization endpoint
             ff_endpoint = connection.ff_server + 'add_files_to_higlass_viewconf'
             res = requests.post(ff_endpoint, data=json.dumps(to_post),
                                 auth=ff_auth, headers=headers)
-            # handle the res
+            # handle the res and post the view conf
             if res.json().get('success', False):
                 view_conf = res.json()['new_viewconfig']
-                action_logs['new_view_confs_by_file'][file] = view_conf
+                # post the new view config
+                try:
+                    viewconf_res = ff_utils.post_metadata(view_conf, 'higlass-view-configs',
+                                                          key=connection.ff_keys, ff_env=connection.ff_env)
+                except:
+                    action_logs['failed_post_files'].append(file)
+                    continue
+                else:
+                    view_conf_uuid = viewconf_res['uuid']
+                    action_logs['new_view_confs_by_file'][file] = view_conf_uuid
             else:
                 action_logs['failed_post_files'].append(file)
                 continue
@@ -137,7 +147,7 @@ def post_higlass_view_confs_files(connection, **kwargs):
             file_static_content = file_res.get('static_content', [])
             new_view_conf_sc = {
                 'location': 'tab:higlass',
-                'content': view_conf,
+                'content': view_conf_uuid,
                 'description': 'auto_generated_higlass_view_config'
             }
             new_static_content = file_static_content + [new_view_conf_sc]
@@ -145,7 +155,7 @@ def post_higlass_view_confs_files(connection, **kwargs):
                 ff_utils.patch_metadata({'static_content': new_static_content}, obj_id=file,
                                         key=connection.ff_keys, ff_env=connection.ff_env)
             except Exception as e:
-                action_logs['failed_post_files'].append(file)
+                action_logs['failed_patch_files'].append(file)
     action.status = 'DONE'
     action.output = action_logs
     return action
