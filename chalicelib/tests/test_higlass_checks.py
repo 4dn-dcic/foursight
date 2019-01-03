@@ -53,44 +53,6 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         pass
 
     def tearDown(self):
-        ''' Delete all files added during these tests
-        '''
-
-        # Make authority and headers
-        ff_auth = (TestGenerateHiglassViewConfFiles.connection.ff_keys['key'], TestGenerateHiglassViewConfFiles.connection.ff_keys['secret'])
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-
-        reference_file_types = ("/file-formats/beddb/", "/file-formats/chromsizes/")
-        processed_file_types = ("/file-formats/mcool/")
-
-        for file_type in TestGenerateHiglassViewConfFiles.files_created_by_type:
-
-            ff_endpoint = None
-            if file_type in reference_file_types:
-                ff_endpoint = TestGenerateHiglassViewConfFiles.connection.ff_server + 'files-reference'
-            elif file_type in processed_file_types:
-                ff_endpoint = TestGenerateHiglassViewConfFiles.connection.ff_server + 'files-processed'
-
-            for file in TestGenerateHiglassViewConfFiles.files_created_by_type[file_type]:
-                uuid_data = {
-                    "uuid": file["uuid"]
-                }
-
-                # Try to delete the file
-                try:
-                    response = requests.delete(
-                        ff_endpoint + "/" + file["uuid"] + "/",
-                        data=json.dumps(uuid_data),
-                        auth=ff_auth,
-                        headers=headers
-                    )
-                except Exception as e:
-                    continue
-
-                # Delete all view conf files
         pass
 
     def add_processed_file(self, accession, genome_assembly, higlass_uid, endpoint_url='files-processed', extra_data=None):
@@ -101,7 +63,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         # Make dummy data and overwrite with extra_data
         file_data = {
             "lab": "/labs/4dn-dcic-lab/",
-            "status": "uploaded",
+            "status": "released",
             "award":"/awards/1U01CA200059-01/",
             "accession": accession,
             "file_classification":"processed file",
@@ -161,7 +123,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         new_file = response.json()["@graph"][0]
 
         # Get the file type
-        file_type = new_file["file_format"] # TODO this will be like "/file-formats/beddb/", did you want only beddb ?
+        file_type = new_file["file_format"]
 
         # Add file to files_created_by_type
         if not file_type in TestGenerateHiglassViewConfFiles.files_created_by_type:
@@ -195,7 +157,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         )
 
         # Add an mcool file. It will have a Human genome assembly.
-        file_uuid = self.add_processed_file("TESTMCOOL00", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = self.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
         })
 
@@ -210,6 +172,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 
         # The mcool file should be targeted
         self.assertTrue("GRCh38" in check["full_output"]['target_files'])
+
         self.assertTrue(file_uuid in check["full_output"]['target_files']['GRCh38'])
 
         # Both human reference files should be referenced
@@ -246,7 +209,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 
         # Add an mcool file. It will have a Human genome assembly.
         # Add a auto_generated_higlass_view_config field.
-        file_uuid = self.add_processed_file("TESTMCOOL00", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = self.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"],
             "static_content": [
                 {
@@ -274,6 +237,51 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         self.assertTrue("GRCh38" in check["full_output"]['reference_files'])
         self.assertTrue(chromsize_uuid in check["full_output"]['reference_files']['GRCh38'])
         self.assertTrue(beddb_uuid in check["full_output"]['reference_files']['GRCh38'])
+
+        # Status = PASS
+        self.assertEqual("PASS", check["status"])
+
+    def test_associate_with_genome_assembly(self):
+        ''' Add a new file with a different genome assembly.
+        After running the generate_higlass_view_confs_files check, task will note a new file to create using a different genome_assembly.
+        '''
+
+        # Add reference files for Mouse genome assembly.
+        chromsize_uuid = self.add_processed_file("TESTCHROMSIZES02", "GRCm38", "higlass_uid05",
+            endpoint_url='files-reference',
+            extra_data={
+                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["chromsizes"]["uuid"],
+                "tags": ["higlass_reference"],
+                "file_classification": "ancillary file",
+            }
+        )
+
+        beddb_uuid = self.add_processed_file("TESTBEDDB02", "GRCm38", "higlass_uid04",
+            endpoint_url='files-reference',
+            extra_data={
+                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["beddb"]["uuid"],
+                "tags": ["higlass_reference"],
+                "file_classification": "ancillary file",
+            }
+        )
+
+        # Add an mcool file. It will have a Mouse genome assembly.
+        file_uuid = self.add_processed_file("TESTMCOOL02", "GRCm38", "higlass_uid03", extra_data={
+            "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
+        })
+
+        # Run the check to generate Higlass view configs.
+        check = app.run_check_or_action(TestGenerateHiglassViewConfFiles.connection, 'higlass_checks/generate_higlass_view_confs_files', {'called_by': None})
+
+        # Check is ready to generate Higlass view configs
+        self.assertTrue("Ready to generate " in check["summary"])
+
+        # Allow action is True
+        self.assertTrue(check["allow_action"])
+
+        # The mcool file should be targeted, under the mouse genome_assembly
+        self.assertTrue("GRCm38" in check["full_output"]['target_files'])
+        self.assertTrue(file_uuid in check["full_output"]['target_files']['GRCm38'])
 
         # Status = PASS
         self.assertEqual("PASS", check["status"])
