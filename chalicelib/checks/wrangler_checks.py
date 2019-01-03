@@ -468,7 +468,7 @@ def change_in_item_counts(connection, **kwargs):
     return check
 
 
-@check_function(file_type=None, status=None)
+@check_function(file_type=None, status=None, file_format=None, search_add_on=None)
 def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
@@ -478,6 +478,15 @@ def identify_files_without_filesize(connection, **kwargs):
     filetype = kwargs.get('file_type') or default_filetype
     stati = 'status=' + (kwargs.get('status') or default_stati)
     search_query = 'search/?type={}&{}&frame=object'.format(filetype, stati)
+    ff = kwargs.get('file_format')
+    if ff is not None:
+        ff = '&file_format.file_format=' + ff
+        search_query += ff
+    addon = kwargs.get('search_add_on')
+    if addon is not None:
+        if not addon.startswith('&'):
+            addon = '&' + addon
+        search_query += addon
     problem_files = []
     file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
     for hit in file_hits:
@@ -500,8 +509,11 @@ def identify_files_without_filesize(connection, **kwargs):
         type_str = ''
         if kwargs.get('file_type'):
             type_str = kwargs.get('file_type') + ' '
-        check.description = "{cnt} {type}files that are {st} don't have file_size.".format(
-            cnt=len(problem_files), type=type_str, st=status_str)
+        ff_str = ''
+        if kwargs.get('file_format'):
+            ff_str = kwargs.get('file_format') + ' '
+        check.description = "{cnt} {type}{ff}files that are {st} don't have file_size.".format(
+            cnt=len(problem_files), type=type_str, st=status_str, ff=ff_str)
         check.action_message = "Will attempt to patch file_size for %s files." % str(len(problem_files))
         check.allow_action = True  # allows the action to be run
     else:
