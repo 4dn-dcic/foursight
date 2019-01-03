@@ -474,7 +474,7 @@ def identify_files_without_filesize(connection, **kwargs):
     # must set this to be the function name of the action
     check.action = "patch_file_size"
     default_filetype = 'File'
-    default_stati = 'released%20to%20project&status=released&status=uploaded'
+    default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
     filetype = kwargs.get('file_type') or default_filetype
     stati = 'status=' + (kwargs.get('status') or default_stati)
     search_query = 'search/?type={}&{}&frame=object'.format(filetype, stati)
