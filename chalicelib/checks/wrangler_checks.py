@@ -503,7 +503,7 @@ def identify_files_without_filesize(connection, **kwargs):
     if problem_files:
         check.status = 'WARN'
         check.summary = 'File metadata found without file_size'
-        status_str = 'released/released to project/uploaded'
+        status_str = 'pre-release/released/released to project/uploaded'
         if kwargs.get('status'):
             status_str = kwargs.get('status')
         type_str = ''
