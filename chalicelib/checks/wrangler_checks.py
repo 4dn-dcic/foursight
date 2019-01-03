@@ -468,15 +468,16 @@ def change_in_item_counts(connection, **kwargs):
     return check
 
 
-@check_function(search_add_on=None)
+@check_function(file_type=None, status=None)
 def identify_files_without_filesize(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
     check.action = "patch_file_size"
-    search_query = ('search/?type=File&status=released%20to%20project'
-                    '&status=released&status=uploaded&frame=object')
-    if kwargs.get('search_add_on'):
-        search_query = ''.join([search_query, kwargs['search_add_on']])
+    default_filetype = 'File'
+    default_stati = 'released%20to%20project&status=released&status=uploaded'
+    filetype = kwargs.get('file_type') or default_filetype
+    stati = 'status=' + (kwargs.get('status') or default_stati)
+    search_query = 'search/?type={}&{}&frame=object'.format(filetype, stati)
     problem_files = []
     file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
     for hit in file_hits:
@@ -488,13 +489,14 @@ def identify_files_without_filesize(connection, **kwargs):
                 'upload_key': hit.get('upload_key')
             }
             problem_files.append(hit_dict)
+    check.brief_output = '{} files with no file size'.format(len(problem_files))
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
         check.summary = 'File metadata found without file_size'
-        check.description = "One or more files that are released/released to project/uploaded don't have file_size."
+        check.description = "{} files that are released/released to project/uploaded don't have file_size.".format(len(problem_files))
         check.action_message = "Will attempt to patch file_size for %s files." % str(len(problem_files))
-        check.allow_action = True # allows the action to be run
+        check.allow_action = True  # allows the action to be run
     else:
         check.status = 'PASS'
     return check
