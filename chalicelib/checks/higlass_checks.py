@@ -56,10 +56,9 @@ def generate_higlass_view_confs_files(connection, **kwargs):
     for hg_file in search_res:
         # Skip the file if it has previously been registered by Foursight.
         # - registered files will have a static_content item with description 'auto_generated_higlass_view_config'.
-        # - TODO Also check the date it was created - it may be outdated.
 
         # it might be better to check the static_content.location instead...
-        sc_descrips = [sc.get('description') for sc in hg_files.get('static_content', [])]
+        sc_descrips = [sc.get('description') for sc in hg_file.get('static_content', [])]
         if 'auto_generated_higlass_view_config' in sc_descrips:
             continue
 
@@ -327,7 +326,6 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload['filetype'] = 'chromsizes-tsv'
                 payload['datatype'] = 'chromsizes'
             elif ftype == 'beddb':
-                # TODO Do I need to change the datatype based on extra files?
                 payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'gene-annotation'
@@ -336,12 +334,10 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload['filetype'] = 'cooler'
                 payload['datatype'] = 'matrix'
             elif ftype in ['bg', 'bw']:
-                # TODO Do I need to change the datatype based on extra files?
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
             elif ftype == 'bed':
-                # TODO Do I need to change the datatype based on extra files?
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'bedlike'
