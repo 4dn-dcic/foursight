@@ -494,7 +494,14 @@ def identify_files_without_filesize(connection, **kwargs):
     if problem_files:
         check.status = 'WARN'
         check.summary = 'File metadata found without file_size'
-        check.description = "{} files that are released/released to project/uploaded don't have file_size.".format(len(problem_files))
+        status_str = 'released/released to project/uploaded'
+        if kwargs.get('status'):
+            status_str = kwargs.get('status')
+        type_str = ''
+        if kwargs.get('file_type'):
+            type_str = kwargs.get('file_type') + ' '
+        check.description = "{cnt} {type}files that are {st} don't have file_size.".format(
+            cnt=len(problem_files), type=type_str, st=status_str)
         check.action_message = "Will attempt to patch file_size for %s files." % str(len(problem_files))
         check.allow_action = True  # allows the action to be run
     else:
