@@ -370,4 +370,4 @@ class TestPostHiglassViewConfsFiles(unittest.TestCase):
 # Check the upload key is the bw's key
 
 def run_tests():
-    unittest.main(module='chalicelib.tests.test_higlass_checks', defaultTest='TestPostHiglassViewConfsFiles')
+    unittest.main(module='chalicelib.tests.test_higlass_checks', defaultTest='TestFilesNotRegisteredWithHiglass')
