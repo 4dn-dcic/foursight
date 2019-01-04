@@ -10,10 +10,83 @@ import app
 
 # Track all created files by the server route used to create them.
 
-# Look for reference files for the given genome assembly
-#) If they don't exist, make them and mark them to be deleted later
+def add_processed_file(accession, genome_assembly, higlass_uid, endpoint_url='files-processed', extra_data=None):
+    ''' Add file with the given genome assembly and accession
+    Also add higlass_uid (if given)
+    If the file already exists, patch it with this data.
+    '''
 
-# Delete all files added during these tests
+    # Make dummy data and overwrite with extra_data
+    file_data = {
+        "lab": "/labs/4dn-dcic-lab/",
+        "status": "released",
+        "award":"/awards/1U01CA200059-01/",
+        "accession": accession,
+        "file_classification":"processed file",
+        "date_created":"2018-11-29T01:37:58.357095+00:00",
+        "submitted_by": "4dndcic@gmail.com",
+        "file_type": "other",
+        "genome_assembly": genome_assembly,
+    }
+
+    if higlass_uid:
+        file_data["higlass_uid"] = higlass_uid
+
+    if endpoint_url == 'files-processed':
+        file_data.update({
+            "dataset_type": "Dataset",
+            "assay_info": "Assay",
+            "biosource_name" : "Biosource",
+        })
+
+    file_data.update(extra_data)
+
+    # Post to fourfront
+    ff_endpoint = TestGenerateHiglassViewConfFiles.connection.ff_server + endpoint_url
+    ff_auth = (TestGenerateHiglassViewConfFiles.connection.ff_keys['key'], TestGenerateHiglassViewConfFiles.connection.ff_keys['secret'])
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+
+    try:
+        response = requests.post(
+            ff_endpoint,
+            data=json.dumps(file_data),
+            auth=ff_auth,
+            headers=headers
+        )
+    except Exception as e:
+        return
+
+    # Make sure the response is successful and notes a new file
+    if response.status_code != 201:
+        # If this already exists, patch it instead.
+        if response.status_code == 409:
+            file_data["status"] = "released"
+            try:
+                response = requests.patch(
+                    ff_endpoint + "/" + accession + "/",
+                    data=json.dumps(file_data),
+                    auth=ff_auth,
+                    headers=headers
+                )
+            except Exception as e:
+                return
+        else:
+            return
+
+    new_file = response.json()["@graph"][0]
+
+    # Get the file type
+    file_type = new_file["file_format"]
+
+    # Add file to files_created_by_type
+    if not file_type in TestGenerateHiglassViewConfFiles.files_created_by_type:
+        TestGenerateHiglassViewConfFiles.files_created_by_type[file_type] = []
+    TestGenerateHiglassViewConfFiles.files_created_by_type[file_type].append(new_file)
+
+    return new_file["uuid"]
 
 class TestGenerateHiglassViewConfFiles(unittest.TestCase):
     file_formats = {}
@@ -104,7 +177,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         for genome_assembly in reference_files_by_ga:
             for filetype, fileuuid in reference_files_by_ga[genome_assembly].items():
                 if not fileuuid:
-                    TestGenerateHiglassViewConfFiles.add_processed_file(new_reference_files_by_ga[genome_assembly][filetype]["accession"], genome_assembly, new_reference_files_by_ga[genome_assembly][filetype]["higlass_uid"],
+                    add_processed_file(new_reference_files_by_ga[genome_assembly][filetype]["accession"], genome_assembly, new_reference_files_by_ga[genome_assembly][filetype]["higlass_uid"],
                         endpoint_url='files-reference',
                         extra_data={
                             "file_format" : TestGenerateHiglassViewConfFiles.file_formats[filetype]["uuid"],
@@ -119,91 +192,13 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
     def tearDown(self):
         pass
 
-    @classmethod
-    def add_processed_file(cls, accession, genome_assembly, higlass_uid, endpoint_url='files-processed', extra_data=None):
-        ''' Add file with the given genome assembly and accession
-        Also add higlass_uid (if given)
-        '''
-
-        # Make dummy data and overwrite with extra_data
-        file_data = {
-            "lab": "/labs/4dn-dcic-lab/",
-            "status": "released",
-            "award":"/awards/1U01CA200059-01/",
-            "accession": accession,
-            "file_classification":"processed file",
-            "date_created":"2018-11-29T01:37:58.357095+00:00",
-            "submitted_by": "4dndcic@gmail.com",
-            "file_type": "other",
-            "genome_assembly": genome_assembly,
-        }
-
-        if higlass_uid:
-            file_data["higlass_uid"] = higlass_uid
-
-        if endpoint_url == 'files-processed':
-            file_data.update({
-                "dataset_type": "Dataset",
-                "assay_info": "Assay",
-                "biosource_name" : "Biosource",
-            })
-
-        file_data.update(extra_data)
-
-        # Post to fourfront
-        ff_endpoint = TestGenerateHiglassViewConfFiles.connection.ff_server + endpoint_url
-        ff_auth = (TestGenerateHiglassViewConfFiles.connection.ff_keys['key'], TestGenerateHiglassViewConfFiles.connection.ff_keys['secret'])
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-
-        try:
-            response = requests.post(
-                ff_endpoint,
-                data=json.dumps(file_data),
-                auth=ff_auth,
-                headers=headers
-            )
-        except Exception as e:
-            return
-
-        # Make sure the response is successful and notes a new file
-        if response.status_code != 201:
-            # If this already exists, patch it instead.
-            if response.status_code == 409:
-                file_data["status"] = "released"
-                try:
-                    response = requests.patch(
-                        ff_endpoint + "/" + accession + "/",
-                        data=json.dumps(file_data),
-                        auth=ff_auth,
-                        headers=headers
-                    )
-                except Exception as e:
-                    return
-            else:
-                return
-
-        new_file = response.json()["@graph"][0]
-
-        # Get the file type
-        file_type = new_file["file_format"]
-
-        # Add file to files_created_by_type
-        if not file_type in TestGenerateHiglassViewConfFiles.files_created_by_type:
-            TestGenerateHiglassViewConfFiles.files_created_by_type[file_type] = []
-        TestGenerateHiglassViewConfFiles.files_created_by_type[file_type].append(new_file)
-
-        return new_file["uuid"]
-
     def test_check_found_viewconf_to_generate(self):
         ''' Create a new mcool file.
         After running the generate_higlass_view_confs_files check, task will note a new file to create.
         '''
 
         # Add an mcool file. It will have a Human genome assembly.
-        file_uuid = TestGenerateHiglassViewConfFiles.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
         })
 
@@ -231,7 +226,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 
         # Add an mcool file. It will have a Human genome assembly.
         # Add a auto_generated_higlass_view_config field.
-        file_uuid = TestGenerateHiglassViewConfFiles.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"],
             "static_content": [
                 {
@@ -263,7 +258,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         After running the generate_higlass_view_confs_files check, task will note a new file to create using a different genome_assembly.
         '''
         # Add an mcool file. It will have a Mouse genome assembly.
-        file_uuid = TestGenerateHiglassViewConfFiles.add_processed_file("TESTMCOOL02", "GRCm38", "higlass_uid03", extra_data={
+        file_uuid = add_processed_file("TESTMCOOL02", "GRCm38", "higlass_uid03", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
         })
 
@@ -282,9 +277,6 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 
         # Status = PASS
         self.assertEqual("PASS", check["status"])
-
-# File has different genome assembly
-# No view configs to generate
 
 # Action: Post higlass_viewconf_file
 # Post a file with a Human genome assembly
