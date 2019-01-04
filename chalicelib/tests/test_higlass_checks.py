@@ -10,7 +10,7 @@ import app
 
 # Track all created files by the server route used to create them.
 
-def add_processed_file(accession, genome_assembly, higlass_uid, endpoint_url='files-processed', extra_data=None):
+def add_processed_file(connection, accession, genome_assembly, higlass_uid, endpoint_url='files-processed', extra_data=None):
     ''' Add file with the given genome assembly and accession
     Also add higlass_uid (if given)
     If the file already exists, patch it with this data.
@@ -42,8 +42,8 @@ def add_processed_file(accession, genome_assembly, higlass_uid, endpoint_url='fi
     file_data.update(extra_data)
 
     # Post to fourfront
-    ff_endpoint = TestGenerateHiglassViewConfFiles.connection.ff_server + endpoint_url
-    ff_auth = (TestGenerateHiglassViewConfFiles.connection.ff_keys['key'], TestGenerateHiglassViewConfFiles.connection.ff_keys['secret'])
+    ff_endpoint = connection.ff_server + endpoint_url
+    ff_auth = (connection.ff_keys['key'], connection.ff_keys['secret'])
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -78,10 +78,10 @@ def add_processed_file(accession, genome_assembly, higlass_uid, endpoint_url='fi
 
     new_file = response.json()["@graph"][0]
 
-    # Get the file type
-    file_type = new_file["file_format"]
+    # Get the file type, wait for the database to update.
+    file_metadata = ff_utils.get_metadata(new_file["uuid"], key=connection.ff_keys, ff_env=connection.ff_env, check_queue=True)
 
-    return new_file["uuid"]
+    return file_metadata["uuid"]
 
 def get_file_formats(connection):
     """Returns a dict of file formats, with display title as keys.
@@ -175,7 +175,7 @@ def maybe_add_reference_files(connection, file_formats):
     for genome_assembly in reference_files_by_ga:
         for filetype, fileuuid in reference_files_by_ga[genome_assembly].items():
             if not fileuuid:
-                add_processed_file(new_reference_files_by_ga[genome_assembly][filetype]["accession"], genome_assembly, new_reference_files_by_ga[genome_assembly][filetype]["higlass_uid"],
+                ref_uuid = add_processed_file(connection, new_reference_files_by_ga[genome_assembly][filetype]["accession"], genome_assembly, new_reference_files_by_ga[genome_assembly][filetype]["higlass_uid"],
                     endpoint_url='files-reference',
                     extra_data={
                         "file_format" : file_formats[filetype]["uuid"],
@@ -183,6 +183,8 @@ def maybe_add_reference_files(connection, file_formats):
                         "file_classification": "ancillary file",
                     }
                 )
+                reference_files_by_ga[genome_assembly][ref_format] = ref_uuid
+    return reference_files_by_ga
 
 class TestGenerateHiglassViewConfFiles(unittest.TestCase):
     file_formats = {}
@@ -205,7 +207,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         '''
 
         # Add an mcool file. It will have a Human genome assembly.
-        file_uuid = add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = add_processed_file(TestGenerateHiglassViewConfFiles.connection, "TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
         })
 
@@ -233,7 +235,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 
         # Add an mcool file. It will have a Human genome assembly.
         # Add a auto_generated_higlass_view_config field.
-        file_uuid = add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = add_processed_file(TestGenerateHiglassViewConfFiles.connection, "TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"],
             "static_content": [
                 {
@@ -265,7 +267,7 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         After running the generate_higlass_view_confs_files check, task will note a new file to create using a different genome_assembly.
         '''
         # Add an mcool file. It will have a Mouse genome assembly.
-        file_uuid = add_processed_file("TESTMCOOL02", "GRCm38", "higlass_uid03", extra_data={
+        file_uuid = add_processed_file(TestGenerateHiglassViewConfFiles.connection, "TESTMCOOL02", "GRCm38", "higlass_uid03", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
         })
 
@@ -285,29 +287,69 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         # Status = PASS
         self.assertEqual("PASS", check["status"])
 
-# ref_files_by_ga = gen_check_result['full_output'].get('reference_files', {})
-# for ga in gen_check_result['full_output'].get('target_files', {}):
-# Read response to get uuid
-#                     viewconf_res = ff_utils.post_metadata(view_conf, 'higlass-view-configs',
-#                                                          key=connection.ff_keys, ff_env=connection.ff_env)
-# Get static content to look for tab:higlass info
-#            file_res = ff_utils.get_metadata(file, key=connection.ff_keys, ff_env=connection.ff_env)
-#            file_static_content = file_res.get('static_content', [])
-# Check to see it posted
-#            new_view_conf_sc = {
-#                'location': 'tab:higlass',
-#                'content': view_conf_uuid,
-#                'description': 'auto_generated_higlass_view_config'
-#            }
+class TestPostHiglassViewConfsFiles(unittest.TestCase):
+    '''Make sure to wait for the queue to clear before running.
+    '''
+    file_formats = {}
+    connection = None
+    reference_files_by_ga = {}
 
+    @classmethod
+    def setUpClass(cls):
+        # Set up connection to test server
+        TestPostHiglassViewConfsFiles.connection = app.init_connection('mastertest')
 
-# Action: Post higlass_viewconf_file
-# Post a file with a Human genome assembly
-# Check on it and make sure it's ready to post
-# Call function it should complete
-# status = DONE
-# You can find the viewconf for this file
-# Make sure there is an auto_generated_higlass_view_config static content tag.
+        # Get file formats
+        TestPostHiglassViewConfsFiles.file_formats = get_file_formats(TestPostHiglassViewConfsFiles.connection)
+
+        # Add the reference files, if needed
+        TestPostHiglassViewConfsFiles.reference_files_by_ga = maybe_add_reference_files(TestPostHiglassViewConfsFiles.connection, TestPostHiglassViewConfsFiles.file_formats)
+
+    def test_add_higlass_view_conf(self):
+        """ Running the action should create a new view conf and add a static section to display it.
+        """
+
+        # Post a new file containing a Human genome assembly, wiping out its static content.
+        # Get the uuid.
+        file_uuid = add_processed_file(TestPostHiglassViewConfsFiles.connection, "TESTMCOOL06", "GRCh38", "higlass_uid06", extra_data={
+            "file_format" : TestPostHiglassViewConfsFiles.file_formats["mcool"]["uuid"],
+            "static_content": []
+        })
+
+        # Call the generate_higlass_view_confs_files check
+        file_res = ff_utils.get_metadata(file_uuid, key=TestPostHiglassViewConfsFiles.connection.ff_keys, ff_env=TestPostHiglassViewConfsFiles.connection.ff_env, check_queue=True)
+
+        check_result = app.run_check_or_action(TestPostHiglassViewConfsFiles.connection, 'higlass_checks/generate_higlass_view_confs_files', {'called_by': "test_higlass_checks"})
+
+        self.assertTrue(file_uuid in check_result['full_output']['target_files']["GRCh38"])
+
+        # Now run the action.
+        action_result = app.run_check_or_action(TestPostHiglassViewConfsFiles.connection, 'higlass_checks/post_higlass_view_confs_files', {'called_by': check_result["kwargs"]["uuid"]})
+
+        # Action should be DONE.
+        self.assertEqual('DONE', action_result["status"])
+
+        # This file should NOT be in the failed_patch_files
+        self.assertFalse(file_uuid in action_result["output"]["failed_patch_files"])
+
+        # This file should be in the new_view_confs_by_file
+        self.assertTrue(file_uuid in action_result["output"]["new_view_confs_by_file"])
+
+        # You should be able to find the new viewconf file
+        viewconf_uuid = action_result["output"]["new_view_confs_by_file"][file_uuid]
+
+        # This file should have a static section, get the metadata again to be sure
+        file_metadata = ff_utils.get_metadata(file_uuid, key=TestPostHiglassViewConfsFiles.connection.ff_keys, ff_env=TestPostHiglassViewConfsFiles.connection.ff_env, check_queue=True)
+        file_static_content = file_metadata.get('static_content', [])
+
+        def found_viewconf_static_section(static_content):
+            return (
+                static_content['location'] == 'tab:higlass' and
+                static_content['content']['uuid'] == viewconf_uuid and
+                static_content['description'] == 'auto_generated_higlass_view_config'
+            )
+
+        self.assertTrue(any(found_viewconf_static_section(sc) for sc in file_static_content))
 
 # Check file not registered
 # Add chromsize file with mouse genome assembly and no higlass_uid
@@ -328,4 +370,4 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 # Check the upload key is the bw's key
 
 def run_tests():
-    unittest.main(module='chalicelib.tests.test_higlass_checks')
+    unittest.main(module='chalicelib.tests.test_higlass_checks', defaultTest='TestPostHiglassViewConfsFiles')

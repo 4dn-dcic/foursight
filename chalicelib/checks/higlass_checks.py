@@ -113,12 +113,13 @@ def post_higlass_view_confs_files(connection, **kwargs):
     for ga in gen_check_result['full_output'].get('target_files', {}):
         if ga not in ref_files_by_ga:  # reference files not found
             continue
-        for file in gen_check_result[ga]:
+        for file in gen_check_result['full_output']['target_files'][ga]:
             # start with the reference files and add the target file
-            to_post = {'files': ref_files_by_ga['ga'] + [file]}
+            #to_post = {'files': ref_files_by_ga[ga] + [file]} # TODO Uncomment
+            to_post = {'files': [file]} # TODO DELETE THIS
             view_conf_uuid = None
             # post to the visualization endpoint
-            ff_endpoint = connection.ff_server + 'add_files_to_higlass_viewconf'
+            ff_endpoint = connection.ff_server + 'add_files_to_higlass_viewconf/'
             res = requests.post(ff_endpoint, data=json.dumps(to_post),
                                 auth=ff_auth, headers=headers)
             # Handle the response.
@@ -126,14 +127,15 @@ def post_higlass_view_confs_files(connection, **kwargs):
                 view_conf = res.json()['new_viewconfig']
                 # Post the new view config.
                 try:
+                    for todo_delete_this_when_finished_testing in ('zoomLocks', 'editable', 'views', 'exportViewUrl', 'locationLocks', 'trackSourceServers', 'zoomFixed', 'valueScaleLocks'): # TODO Had to remove to allow testing
+                        view_conf.pop(todo_delete_this_when_finished_testing, None) # TODO Had to remove to allow testing
                     viewconf_res = ff_utils.post_metadata(view_conf, 'higlass-view-configs',
                                                           key=connection.ff_keys, ff_env=connection.ff_env)
-                except:
+                    view_conf_uuid = viewconf_res['@graph'][0]['uuid']
+                    action_logs['new_view_confs_by_file'][file] = view_conf_uuid
+                except Exception as e:
                     action_logs['failed_post_files'].append(file)
                     continue
-                else:
-                    view_conf_uuid = viewconf_res['uuid']
-                    action_logs['new_view_confs_by_file'][file] = view_conf_uuid
             else:
                 action_logs['failed_post_files'].append(file)
                 continue
