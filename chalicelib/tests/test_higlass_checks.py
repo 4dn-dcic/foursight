@@ -49,13 +49,78 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
             for raw_format in response.json()["@graph"]:
                 TestGenerateHiglassViewConfFiles.file_formats[raw_format["display_title"]] = raw_format
 
+        # Look for genome assembly files for Human and Mouse. If they don't exist, add them.
+        reference_files_by_ga = {
+            "GRCh38" : {
+                'chromsizes' : None,
+                'beddb' : None,
+            },
+            "GRCm38" : {
+                'chromsizes' : None,
+                'beddb' : None,
+            },
+        }
+        ref_search_q = '/search/?type=File&tags=higlass_reference'
+        ref_res = ff_utils.search_metadata(ref_search_q, key=TestGenerateHiglassViewConfFiles.connection.ff_keys, ff_env=TestGenerateHiglassViewConfFiles.connection.ff_env)
+        for ref in ref_res:
+            if 'higlass_uid' not in ref or 'genome_assembly' not in ref:
+                continue
+
+            genome_assembly = ref['genome_assembly']
+            if not genome_assembly in reference_files_by_ga:
+                continue
+
+            # Get file format.
+            ref_format = ref.get('file_format', {}).get('file_format')
+            if ref_format not in reference_files_by_ga[genome_assembly]:
+                continue
+
+            # cache reference files by genome_assembly
+            reference_files_by_ga[genome_assembly][ref_format] = ref['uuid']
+
+        new_reference_files_by_ga = {
+            "GRCh38" : {
+                'chromsizes' : {
+                    "accession" : "TESTCHROMSIZES00",
+                    "higlass_uid" : "higlass_uid00",
+                },
+                'beddb' : {
+                    "accession" : "TESTBEDDB01",
+                    "higlass_uid" : "higlass_uid01",
+                },
+            },
+            "GRCm38" : {
+                'chromsizes' : {
+                    "accession" : "TESTCHROMSIZES02",
+                    "higlass_uid" : "higlass_uid05",
+                },
+                'beddb' : {
+                    "accession" : "TESTBEDDB02",
+                    "higlass_uid" : "higlass_uid04",
+                },
+            },
+        }
+
+        for genome_assembly in reference_files_by_ga:
+            for filetype, fileuuid in reference_files_by_ga[genome_assembly].items():
+                if not fileuuid:
+                    TestGenerateHiglassViewConfFiles.add_processed_file(new_reference_files_by_ga[genome_assembly][filetype]["accession"], genome_assembly, new_reference_files_by_ga[genome_assembly][filetype]["higlass_uid"],
+                        endpoint_url='files-reference',
+                        extra_data={
+                            "file_format" : TestGenerateHiglassViewConfFiles.file_formats[filetype]["uuid"],
+                            "tags": ["higlass_reference"],
+                            "file_classification": "ancillary file",
+                        }
+                    )
+
     def setUp(self):
         pass
 
     def tearDown(self):
         pass
 
-    def add_processed_file(self, accession, genome_assembly, higlass_uid, endpoint_url='files-processed', extra_data=None):
+    @classmethod
+    def add_processed_file(cls, accession, genome_assembly, higlass_uid, endpoint_url='files-processed', extra_data=None):
         ''' Add file with the given genome assembly and accession
         Also add higlass_uid (if given)
         '''
@@ -137,27 +202,8 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         After running the generate_higlass_view_confs_files check, task will note a new file to create.
         '''
 
-        # Add reference files for Human genome assembly.
-        chromsize_uuid = self.add_processed_file("TESTCHROMSIZES00", "GRCh38", "higlass_uid00",
-            endpoint_url='files-reference',
-            extra_data={
-                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["chromsizes"]["uuid"],
-                "tags": ["higlass_reference"],
-                "file_classification": "ancillary file",
-            }
-        )
-
-        beddb_uuid = self.add_processed_file("TESTBEDDB01", "GRCh38", "higlass_uid01",
-            endpoint_url='files-reference',
-            extra_data={
-                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["beddb"]["uuid"],
-                "tags": ["higlass_reference"],
-                "file_classification": "ancillary file",
-            }
-        )
-
         # Add an mcool file. It will have a Human genome assembly.
-        file_uuid = self.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = TestGenerateHiglassViewConfFiles.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
         })
 
@@ -175,11 +221,6 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 
         self.assertTrue(file_uuid in check["full_output"]['target_files']['GRCh38'])
 
-        # Both human reference files should be referenced
-        self.assertTrue("GRCh38" in check["full_output"]['reference_files'])
-        self.assertTrue(chromsize_uuid in check["full_output"]['reference_files']['GRCh38'])
-        self.assertTrue(beddb_uuid in check["full_output"]['reference_files']['GRCh38'])
-
         # Status = PASS
         self.assertEqual("PASS", check["status"])
 
@@ -188,28 +229,9 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         When the check runs it should not mark this file as requiring a new view config.
         '''
 
-        # Add reference files for Human genome assembly.
-        chromsize_uuid = self.add_processed_file("TESTCHROMSIZES00", "GRCh38", "higlass_uid00",
-            endpoint_url='files-reference',
-            extra_data={
-                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["chromsizes"]["uuid"],
-                "tags": ["higlass_reference"],
-                "file_classification": "ancillary file",
-            }
-        )
-
-        beddb_uuid = self.add_processed_file("TESTBEDDB01", "GRCh38", "higlass_uid01",
-            endpoint_url='files-reference',
-            extra_data={
-                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["beddb"]["uuid"],
-                "tags": ["higlass_reference"],
-                "file_classification": "ancillary file",
-            }
-        )
-
         # Add an mcool file. It will have a Human genome assembly.
         # Add a auto_generated_higlass_view_config field.
-        file_uuid = self.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
+        file_uuid = TestGenerateHiglassViewConfFiles.add_processed_file("TESTMCOOL01", "GRCh38", "higlass_uid02", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"],
             "static_content": [
                 {
@@ -233,11 +255,6 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         self.assertTrue("GRCh38" in check["full_output"]['target_files'])
         self.assertFalse(file_uuid in check["full_output"]['target_files']['GRCh38'])
 
-        # Both human reference files should be referenced
-        self.assertTrue("GRCh38" in check["full_output"]['reference_files'])
-        self.assertTrue(chromsize_uuid in check["full_output"]['reference_files']['GRCh38'])
-        self.assertTrue(beddb_uuid in check["full_output"]['reference_files']['GRCh38'])
-
         # Status = PASS
         self.assertEqual("PASS", check["status"])
 
@@ -245,28 +262,8 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
         ''' Add a new file with a different genome assembly.
         After running the generate_higlass_view_confs_files check, task will note a new file to create using a different genome_assembly.
         '''
-
-        # Add reference files for Mouse genome assembly.
-        chromsize_uuid = self.add_processed_file("TESTCHROMSIZES02", "GRCm38", "higlass_uid05",
-            endpoint_url='files-reference',
-            extra_data={
-                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["chromsizes"]["uuid"],
-                "tags": ["higlass_reference"],
-                "file_classification": "ancillary file",
-            }
-        )
-
-        beddb_uuid = self.add_processed_file("TESTBEDDB02", "GRCm38", "higlass_uid04",
-            endpoint_url='files-reference',
-            extra_data={
-                "file_format" : TestGenerateHiglassViewConfFiles.file_formats["beddb"]["uuid"],
-                "tags": ["higlass_reference"],
-                "file_classification": "ancillary file",
-            }
-        )
-
         # Add an mcool file. It will have a Mouse genome assembly.
-        file_uuid = self.add_processed_file("TESTMCOOL02", "GRCm38", "higlass_uid03", extra_data={
+        file_uuid = TestGenerateHiglassViewConfFiles.add_processed_file("TESTMCOOL02", "GRCm38", "higlass_uid03", extra_data={
             "file_format" : TestGenerateHiglassViewConfFiles.file_formats["mcool"]["uuid"]
         })
 
