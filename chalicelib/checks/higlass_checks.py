@@ -115,8 +115,7 @@ def post_higlass_view_confs_files(connection, **kwargs):
             continue
         for file in gen_check_result['full_output']['target_files'][ga]:
             # start with the reference files and add the target file
-            #to_post = {'files': ref_files_by_ga[ga] + [file]} # TODO Uncomment
-            to_post = {'files': [file]} # TODO DELETE THIS
+            to_post = {'files': ref_files_by_ga[ga] + [file]}
             view_conf_uuid = None
             # post to the visualization endpoint
             ff_endpoint = connection.ff_server + 'add_files_to_higlass_viewconf/'
@@ -127,8 +126,6 @@ def post_higlass_view_confs_files(connection, **kwargs):
                 view_conf = res.json()['new_viewconfig']
                 # Post the new view config.
                 try:
-                    for todo_delete_this_when_finished_testing in ('zoomLocks', 'editable', 'views', 'exportViewUrl', 'locationLocks', 'trackSourceServers', 'zoomFixed', 'valueScaleLocks'): # TODO Had to remove to allow testing
-                        view_conf.pop(todo_delete_this_when_finished_testing, None) # TODO Had to remove to allow testing
                     viewconf_res = ff_utils.post_metadata(view_conf, 'higlass-view-configs',
                                                           key=connection.ff_keys, ff_env=connection.ff_env)
                     view_conf_uuid = viewconf_res['@graph'][0]['uuid']
