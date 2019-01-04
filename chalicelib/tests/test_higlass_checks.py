@@ -81,116 +81,123 @@ def add_processed_file(accession, genome_assembly, higlass_uid, endpoint_url='fi
     # Get the file type
     file_type = new_file["file_format"]
 
-    # Add file to files_created_by_type
-    if not file_type in TestGenerateHiglassViewConfFiles.files_created_by_type:
-        TestGenerateHiglassViewConfFiles.files_created_by_type[file_type] = []
-    TestGenerateHiglassViewConfFiles.files_created_by_type[file_type].append(new_file)
-
     return new_file["uuid"]
+
+def get_file_formats(connection):
+    """Returns a dict of file formats, with display title as keys.
+    """
+    # Get authentication
+    ff_auth = (connection.ff_keys['key'], connection.ff_keys['secret'])
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+
+    # Get the uuid to file format mappings.
+    try:
+        response = requests.get(
+            connection.ff_server + 'file-formats/?type=FileFormat&limit=all',
+            auth=ff_auth,
+            headers=headers
+        )
+    except Exception as e:
+        raise
+
+    file_formats = {}
+    if response.status_code == 200:
+        # Populate the file formats by display_title.
+        for raw_format in response.json()["@graph"]:
+            file_formats[raw_format["display_title"]] = raw_format
+    return file_formats
+
+def maybe_add_reference_files(connection, file_formats):
+    """Check the test server to see if refernce files need to be added.
+    """
+    # Get authentication
+    ff_auth = (connection.ff_keys['key'], connection.ff_keys['secret'])
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+
+    # Look for genome assembly files for Human and Mouse. If they don't exist, add them.
+    reference_files_by_ga = {
+        "GRCh38" : {
+            'chromsizes' : None,
+            'beddb' : None,
+        },
+        "GRCm38" : {
+            'chromsizes' : None,
+            'beddb' : None,
+        },
+    }
+    ref_search_q = '/search/?type=File&tags=higlass_reference'
+    ref_res = ff_utils.search_metadata(ref_search_q, key=connection.ff_keys, ff_env=connection.ff_env)
+    for ref in ref_res:
+        if 'higlass_uid' not in ref or 'genome_assembly' not in ref:
+            continue
+
+        genome_assembly = ref['genome_assembly']
+        if not genome_assembly in reference_files_by_ga:
+            continue
+
+        # Get file format.
+        ref_format = ref.get('file_format', {}).get('file_format')
+        if ref_format not in reference_files_by_ga[genome_assembly]:
+            continue
+
+        # cache reference files by genome_assembly
+        reference_files_by_ga[genome_assembly][ref_format] = ref['uuid']
+
+    new_reference_files_by_ga = {
+        "GRCh38" : {
+            'chromsizes' : {
+                "accession" : "TESTCHROMSIZES00",
+                "higlass_uid" : "higlass_uid00",
+            },
+            'beddb' : {
+                "accession" : "TESTBEDDB01",
+                "higlass_uid" : "higlass_uid01",
+            },
+        },
+        "GRCm38" : {
+            'chromsizes' : {
+                "accession" : "TESTCHROMSIZES02",
+                "higlass_uid" : "higlass_uid05",
+            },
+            'beddb' : {
+                "accession" : "TESTBEDDB02",
+                "higlass_uid" : "higlass_uid04",
+            },
+        },
+    }
+
+    for genome_assembly in reference_files_by_ga:
+        for filetype, fileuuid in reference_files_by_ga[genome_assembly].items():
+            if not fileuuid:
+                add_processed_file(new_reference_files_by_ga[genome_assembly][filetype]["accession"], genome_assembly, new_reference_files_by_ga[genome_assembly][filetype]["higlass_uid"],
+                    endpoint_url='files-reference',
+                    extra_data={
+                        "file_format" : file_formats[filetype]["uuid"],
+                        "tags": ["higlass_reference"],
+                        "file_classification": "ancillary file",
+                    }
+                )
 
 class TestGenerateHiglassViewConfFiles(unittest.TestCase):
     file_formats = {}
-    files_created_by_type = {}
     connection = None
 
     @classmethod
     def setUpClass(cls):
-        TestGenerateHiglassViewConfFiles.file_formats = {}
-
         # Set up connection to test server
         TestGenerateHiglassViewConfFiles.connection = app.init_connection('mastertest')
 
-        # Get authentication
-        ff_auth = (TestGenerateHiglassViewConfFiles.connection.ff_keys['key'], TestGenerateHiglassViewConfFiles.connection.ff_keys['secret'])
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
+        # Get file formats
+        TestGenerateHiglassViewConfFiles.file_formats = get_file_formats(TestGenerateHiglassViewConfFiles.connection)
 
-        # Get the uuid to file format mappings.
-        try:
-            response = requests.get(
-                TestGenerateHiglassViewConfFiles.connection.ff_server + 'file-formats/?type=FileFormat&limit=all',
-                auth=ff_auth,
-                headers=headers
-            )
-        except Exception as e:
-            raise
-
-        if response.status_code == 200:
-            # Populate the file formats by display_title.
-            for raw_format in response.json()["@graph"]:
-                TestGenerateHiglassViewConfFiles.file_formats[raw_format["display_title"]] = raw_format
-
-        # Look for genome assembly files for Human and Mouse. If they don't exist, add them.
-        reference_files_by_ga = {
-            "GRCh38" : {
-                'chromsizes' : None,
-                'beddb' : None,
-            },
-            "GRCm38" : {
-                'chromsizes' : None,
-                'beddb' : None,
-            },
-        }
-        ref_search_q = '/search/?type=File&tags=higlass_reference'
-        ref_res = ff_utils.search_metadata(ref_search_q, key=TestGenerateHiglassViewConfFiles.connection.ff_keys, ff_env=TestGenerateHiglassViewConfFiles.connection.ff_env)
-        for ref in ref_res:
-            if 'higlass_uid' not in ref or 'genome_assembly' not in ref:
-                continue
-
-            genome_assembly = ref['genome_assembly']
-            if not genome_assembly in reference_files_by_ga:
-                continue
-
-            # Get file format.
-            ref_format = ref.get('file_format', {}).get('file_format')
-            if ref_format not in reference_files_by_ga[genome_assembly]:
-                continue
-
-            # cache reference files by genome_assembly
-            reference_files_by_ga[genome_assembly][ref_format] = ref['uuid']
-
-        new_reference_files_by_ga = {
-            "GRCh38" : {
-                'chromsizes' : {
-                    "accession" : "TESTCHROMSIZES00",
-                    "higlass_uid" : "higlass_uid00",
-                },
-                'beddb' : {
-                    "accession" : "TESTBEDDB01",
-                    "higlass_uid" : "higlass_uid01",
-                },
-            },
-            "GRCm38" : {
-                'chromsizes' : {
-                    "accession" : "TESTCHROMSIZES02",
-                    "higlass_uid" : "higlass_uid05",
-                },
-                'beddb' : {
-                    "accession" : "TESTBEDDB02",
-                    "higlass_uid" : "higlass_uid04",
-                },
-            },
-        }
-
-        for genome_assembly in reference_files_by_ga:
-            for filetype, fileuuid in reference_files_by_ga[genome_assembly].items():
-                if not fileuuid:
-                    add_processed_file(new_reference_files_by_ga[genome_assembly][filetype]["accession"], genome_assembly, new_reference_files_by_ga[genome_assembly][filetype]["higlass_uid"],
-                        endpoint_url='files-reference',
-                        extra_data={
-                            "file_format" : TestGenerateHiglassViewConfFiles.file_formats[filetype]["uuid"],
-                            "tags": ["higlass_reference"],
-                            "file_classification": "ancillary file",
-                        }
-                    )
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+        # Add the reference files, if needed
+        maybe_add_reference_files(TestGenerateHiglassViewConfFiles.connection, TestGenerateHiglassViewConfFiles.file_formats)
 
     def test_check_found_viewconf_to_generate(self):
         ''' Create a new mcool file.
@@ -277,6 +284,22 @@ class TestGenerateHiglassViewConfFiles(unittest.TestCase):
 
         # Status = PASS
         self.assertEqual("PASS", check["status"])
+
+# ref_files_by_ga = gen_check_result['full_output'].get('reference_files', {})
+# for ga in gen_check_result['full_output'].get('target_files', {}):
+# Read response to get uuid
+#                     viewconf_res = ff_utils.post_metadata(view_conf, 'higlass-view-configs',
+#                                                          key=connection.ff_keys, ff_env=connection.ff_env)
+# Get static content to look for tab:higlass info
+#            file_res = ff_utils.get_metadata(file, key=connection.ff_keys, ff_env=connection.ff_env)
+#            file_static_content = file_res.get('static_content', [])
+# Check to see it posted
+#            new_view_conf_sc = {
+#                'location': 'tab:higlass',
+#                'content': view_conf_uuid,
+#                'description': 'auto_generated_higlass_view_config'
+#            }
+
 
 # Action: Post higlass_viewconf_file
 # Post a file with a Human genome assembly
