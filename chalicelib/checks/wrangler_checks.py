@@ -80,6 +80,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     check = init_check_res(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
+    check.action = "add_pub_2_replace_biorxiv"
     # run the check
     search_query = 'search/?journal=bioRxiv&type=Publication&status=current&limit=all'
     biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
@@ -155,6 +156,65 @@ def biorxiv_is_now_published(connection, **kwargs):
     check.brief_output = fndcnt
     check.full_output = fulloutput
     return check
+
+
+@action_function()
+def add_pub_and_replace_biorxiv(connection, **kwargs):
+    action = init_action_res(connection, 'add_pub_2_replace_biorxiv')
+    action_logs = {'action_failure': [], 'action_success': [], 'action_partial': []}
+    biorxiv_check = init_check_res(connection, 'biorxiv_is_now_published')
+    if kwargs.get('called_by', None):
+        biorxiv_check_result = biorxiv_check.get_result_by_uuid(kwargs['called_by'])
+    else:
+        biorxiv_check_result = biorxiv_check.get_primary_result()
+    to_replace = biorxiv_check_result.get('full_output', {})
+    for buuid, pmids in to_replace.items():
+        if len(pmids) > 1:
+            # possible multiple pubs found in pubmed search - uh oh - needs manual patch
+            action_logs['action_failure'].append({buiid: 'multiple pmids - manual intervention needed!'})
+            continue
+        else:
+            # get biorxiv info
+            biorxiv = ff_utils.get_metadata(buuid, key=connection.ff_keys)
+            if biorxiv.get('status') == 'error':
+                action_logs['action_failure'].append({buuid: 'biorxiv info not retrieved from database'})
+                continue
+            else:
+                fields2transfer = [
+                    'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
+                    'exp_sets_used_in_pub', 'published_by'
+                ]
+                post_metadata = {f: biorxiv.get(f) for f in fields2transfer}
+                post_metadata['ID'] = pmids[0]
+                if 'url' in biorxiv:
+                    post_metadata['aka'] = biorxiv.get('url')
+
+            # first try to post the pub
+            try:
+                jares = ff_utils.post_metadata(post_metadata, 'publication', key=connection.ff_keys)
+            except Exception as e:
+                if '409' in str(e.value):
+                    # there is a conflict-see if pub is already in portal
+                    try:
+                        ja = ff_utils.get_metadata(post_metadata['ID'], key=connection.ff_keys)
+                    except Exception as e:
+                        pass
+                    if ja:
+                        exist = {}
+                        for f, v in post_metadata:
+                            if f in ja and ja.get(f):
+                                exist{f} = ja.get(f)
+                                del post_metadata[f]
+                        try:
+                            jares = patch_metadata(post_metadata, ja.get('uuid'), key=connection.ff_keys)
+                        except Exception as e:
+                            pass
+                else:
+                    pass
+            if jares and jares.get('status') == success:
+                if exist:
+                    # report that it was an incomplete patch
+                    pass
 
 
 @check_function(confirm_on_higlass=False, filetype='all', higlass_server=None)
