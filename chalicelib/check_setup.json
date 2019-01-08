@@ -615,8 +615,24 @@
             }
         }
     },
-    "generate_higlass_view_confs_files": {
-        "title": "Generate Higlass ViewConigs for Files",
+    "generate_higlass_view_confs_files_for_expsets": {
+        "title": "Generate Higlass ViewConigs for Files for Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "files_not_registered_with_higlass": {
+        "title": "Files not Registered with Higlass",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
