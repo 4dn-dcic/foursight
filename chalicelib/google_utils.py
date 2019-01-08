@@ -383,7 +383,7 @@ class GoogleAPISyncer:
                     month_to_fill_from = today.month - 6
                     year_to_fill_from = today.year
                     while month_to_fill_from < 1:
-                        month_to_fill_from = 12 + curr_month
+                        month_to_fill_from = 12 + month_to_fill_from
                         year_to_fill_from += -1
                     date_to_fill_from = date(year_to_fill_from, month_to_fill_from, 1)
             else:
@@ -394,6 +394,7 @@ class GoogleAPISyncer:
                     month_to_fill_from = last_tracking_item_date.month + 1
                     year_to_fill_from = last_tracking_item_date.year
                     if month_to_fill_from > 12:
+                        month_to_fill_from = 1
                         year_to_fill_from += 1
                     date_to_fill_from = date(year_to_fill_from, month_to_fill_from, 1)
 
