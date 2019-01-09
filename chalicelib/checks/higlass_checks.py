@@ -186,10 +186,8 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
                                                   key=connection.ff_keys, ff_env=connection.ff_env)
             view_conf_uuid = viewconf_res['@graph'][0]['uuid']
         except Exception as e:
-            print(e)
             return None
     else:
-        print (res.json().get('errors', ""))
         return None
     return view_conf_uuid
 
@@ -219,6 +217,27 @@ def add_viewconf_static_content_to_file(connection, item_uuid, view_conf_uuid):
         return None
     return True
 
+def create_view_config_and_patch_to_file(connection, reference_files, target_file, source_files, ff_auth, headers):
+    """
+    Take the reference_files and source_files to create a new Higlass view config. Then post the view config and patch the target_file so refers to the view config in its static content.
+
+    Returns two items:
+    - A string showing the type of error (may be None if there are no errors)
+    - The new view config uuid. (may be None if there was an error)
+    """
+    # Create a new view config based on the file list and reference files.
+    view_conf_uuid = post_viewconf_to_visualization_endpoint(connection, reference_files, source_files, ff_auth, headers)
+
+    # If no view conf was generated, an error occured while creating the view conf.
+    if not view_conf_uuid:
+        return 'failed_post_file', None
+
+    # now link the view conf to the file with a patch
+    success = add_viewconf_static_content_to_file(connection, target_file, view_conf_uuid)
+    if success:
+        return None, view_conf_uuid
+    return 'failed_patch_file', view_conf_uuid
+
 @action_function()
 def post_higlass_view_confs_files(connection, **kwargs):
     """
@@ -231,6 +250,7 @@ def post_higlass_view_confs_files(connection, **kwargs):
     action = init_action_res(connection, 'post_higlass_view_confs')
     action_logs = {'new_view_confs_by_file': {}, 'failed_post_files': [],
                    'failed_patch_files': []}
+
     # get latest results
     gen_check = init_check_res(connection, 'generate_higlass_view_confs_files')
     if kwargs.get('called_by', None):
@@ -252,19 +272,18 @@ def post_higlass_view_confs_files(connection, **kwargs):
         if ga not in ref_files_by_ga:  # reference files not found
             continue
         for file in gen_check_result['full_output']['target_files'][ga]:
-            # Create a new view config based on the file list and reference files.
-            view_conf_uuid = post_viewconf_to_visualization_endpoint(connection, ref_files_by_ga[ga], [file], ff_auth, headers)
+            # Create a new config file and patch it to the experiment file.
+            error, view_conf_uuid = create_view_config_and_patch_to_file(connection, ref_files_by_ga[ga], file, [file], ff_auth, headers)
 
-            # If no view conf was generated, an error occured while creating the view conf.
-            if not view_conf_uuid:
+            # Note if there was an error while creating the view config.
+            if error and "post" in error:
                 action_logs['failed_post_files'].append(file)
                 continue
 
             action_logs['new_view_confs_by_file'][file] = view_conf_uuid
 
-            # now link the view conf to the file with a patch
-            success = add_viewconf_static_content_to_file(connection, file, view_conf_uuid)
-            if not success:
+            # Note if we failed to patch the static content to this file.
+            if error and "patch" in error:
                 # We failed to patch the static content to this file.
                 action_logs['failed_patch_files'].append(file)
     action.status = 'DONE'
@@ -304,19 +323,18 @@ def post_higlass_view_confs_expsets(connection, **kwargs):
             # Get the files used to create this Experiment Set.
             experiment_set_files = gen_check_result['full_output']['target_files'][ga][experiment_set_uuid]
 
-            # Create a new view config based on the file list and reference files.
-            view_conf_uuid = post_viewconf_to_visualization_endpoint(connection, ref_files_by_ga[ga], experiment_set_files, ff_auth, headers)
+            # Create a new config file and patch it to the experiment file.
+            error, view_conf_uuid = create_view_config_and_patch_to_file(connection, ref_files_by_ga[ga], experiment_set_uuid, experiment_set_files, ff_auth, headers)
 
-            # If no view conf was generated, an error occured while creating the view conf.
-            if not view_conf_uuid:
+            # Note if there was an error while creating the view config.
+            if error and "post" in error:
                 action_logs['failed_post_files'].append(experiment_set_uuid)
                 continue
 
             action_logs['new_view_confs_by_file'][experiment_set_uuid] = view_conf_uuid
 
-            # now link the view conf to the file with a patch
-            success = add_viewconf_static_content_to_file(connection, experiment_set_uuid, view_conf_uuid)
-            if not success:
+            # Note if we failed to patch the static content to this file.
+            if error and "patch" in error:
                 # We failed to patch the static content to this file.
                 action_logs['failed_patch_files'].append(experiment_set_uuid)
     action.status = 'DONE'
