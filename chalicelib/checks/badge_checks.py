@@ -122,7 +122,7 @@ def reformat_and_patch_single(full_output, badge_name, output_keys, ffenv, messa
     return patch_badges(to_patch, already, ffenv)
 
 
-def reformat_and_patch_multiple(output, output_keys, badges, ffenv):
+def reformat_and_patch_multiple(output, output_keys, badge_list, ffenv):
     '''
     Reorganize check output and performs patches for multiple badges.
     Works to ensure that a 'remove' patch after an 'add' patch doesn't remove
@@ -149,12 +149,11 @@ def reformat_and_patch_multiple(output, output_keys, badges, ffenv):
             elif at_id not in new_dict.keys():
                 new_dict[at_id] = {'Add': '', 'Remove': val}
             new_dict[at_id]['Get'] = False
-    print(new_dict)
     patches_dict = {'Add': {}, 'Remove': {}, 'Both': {}}
     has_badge_already = []
     for item in new_dict.keys():
         if new_dict[item]['Add']:
-            badge_id = '/badges/' + badges[output_keys.index(new_dict[item]['Add'])] + '/'
+            badge_id = '/badges/' + badge_list[output_keys.index(new_dict[item]['Add'])] + '/'
             if not new_dict[item]['Get']:
                 patches_dict['Both'][item] = new_dict[item]['Remove'] + [{'badge': badge_id}]
             else:
@@ -198,17 +197,16 @@ def patch_badges(patch_dict, already_list, ffenv):
         else:
             label = key + ' badge '
         for itemid, val in patch_dict[key].items():
-            try:
-                if val:
-                    response = ff_utils.patch_metadata({"badges": val}, itemid[1:], ff_env=ffenv)
-                else:
-                    response = ff_utils.patch_metadata({}, itemid[1:] + '?delete_fields=badges', ff_env=ffenv)
-                if response['status'] == 'success':
-                    patches[label + 'success'].append(itemid)
-                else:
-                    patches[label + 'failure'].append(itemid)
-            except Exception:
+            if val:
+                response = ff_utils.patch_metadata({"badges": val}, itemid[1:], ff_env=ffenv)
+            else:
+                response = ff_utils.patch_metadata({}, itemid[1:] + '?delete_fields=badges', ff_env=ffenv)
+            if response['status'] == 'success':
+                patches[label + 'success'].append(itemid)
+            else:
                 patches[label + 'failure'].append(itemid)
+            # except Exception:
+            #     patches[label + 'failure'].append(itemid)
     patches['Add badge failure'] += already_list
     return patches
 
@@ -240,7 +238,7 @@ def good_biosamples(connection, **kwargs):
     patch = False
     for badge in [gold, silver, bronze]:
         # for each badge type, compare to items that already have badge
-        to_add, to_remove, ok = compare_badges(badge.to_compare, 'biosample', badge.badge_id, connection.ff_env)
+        to_add, to_remove, ok = compare_badges(badge.to_compare, 'Biosample', badge.badge_id, connection.ff_env)
         if to_add or to_remove:
             patch = True
         output['{} Biosamples'.format(badge.level)] = {
@@ -281,8 +279,8 @@ def good_experiments(connection, **kwargs):
     results = ff_utils.search_metadata(tiered, ff_env=connection.ff_env)
     gold, silver, bronze = get_badges('experiment')
     for result in results:
-        badges = [badge.get('badge') for badge in result.get('badges', [])]
-        badges += [badge.get('badge') for badge in result['biosample'].get('badges', [])]
+        badges = [badge.get('badge').get('@id') for badge in result.get('badges', [])]
+        badges += [badge.get('badge').get('@id') for badge in result['biosample'].get('badges', [])]
         # Gold:
         # follows_sop=Yes and protocol is 4DN certified
         # biosample badge
@@ -313,9 +311,10 @@ def good_experiments(connection, **kwargs):
                 # bronze
                 bronze.to_compare.append(result['@id'])
     patch = False
+    output = {}
     for badge in [gold, silver, bronze]:
         # for each badge type, compare to items that already have badge
-        to_add, to_remove, ok = compare_badges(badge.to_compare, 'experiment', badge.badge_id, connection.ff_env)
+        to_add, to_remove, ok = compare_badges(badge.to_compare, 'Experiment', badge.badge_id, connection.ff_env)
         if to_add or to_remove:
             patch = True
         output['{} Experiments'.format(badge.level)] = {
@@ -369,7 +368,7 @@ def patch_ranked_experiment_badges(connection, **kwargs):
     action = init_action_res(connection, 'patch_ranked_experiment_badges')
 
     exp_check = init_check_res(connection, 'good_experiments')
-    exp_check_result = bs_check.get_result_by_uuid(kwargs['called_by'])
+    exp_check_result = exp_check.get_result_by_uuid(kwargs['called_by'])
     outputkeys = ['Gold Experiments', 'Silver Experiments', 'Bronze Experiments']
     exp_badges = ['gold-experiment', 'silver-experiment', 'bronze-experiment']
     action.output = reformat_and_patch_multiple(
