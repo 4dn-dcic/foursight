@@ -324,19 +324,19 @@ def good_experiments(connection, **kwargs):
         }
     check.full_output = output
     check.brief_output = {  # dict containing list of items that qualify for each badge
-        "Gold Biosamples": gold.to_compare,
-        "Silver Biosamples": silver.to_compare,
-        "Bronze Biosamples": bronze.to_compare
+        "Gold Experiments": gold.to_compare,
+        "Silver Experiments": silver.to_compare,
+        "Bronze Experiments": bronze.to_compare
     }
     check.action = 'patch_ranked_experiment_badges'
     if not patch:
         check.status = 'PASS'
         check.summary = 'All qualifying experiments have proper ranked badges'
-        check.description = '0 biosamples need ranked badge patching'
+        check.description = '0 experiments need ranked badge patching'
     else:
         check.status = 'WARN'
-        check.summary = 'Some biosamples need ranked badge patching'
-        check.description = '{} biosamples need badge patching'.format(
+        check.summary = 'Some experiments need ranked badge patching'
+        check.description = '{} experiments need badge patching'.format(
             sum([len(output[key]['Need badge']) + len(output[key]['Need badge removed'].keys()) for key in output.keys()]))
         check.full_output = output
         check.allow_action = True
