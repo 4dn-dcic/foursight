@@ -11,8 +11,13 @@ import json
 
 def does_processed_file_have_auto_viewconf(hg_file):
     """
-    Given a file descriptor (usually the JSON blob from search results),
-    return True if the file has an auto generated higlass view config.
+    See if the file has an auto generated higlass view config in its static contents.
+
+    Args:
+        hg_file(bool): A dict representing the file with static content.
+
+    Returns:
+        True if the file has an auto generated higlass view config, False otherwise
     """
     # - registered files will have a static_content item with description 'auto_generated_higlass_view_config'.
 
@@ -24,8 +29,15 @@ def does_processed_file_have_auto_viewconf(hg_file):
 
 def get_reference_files(connection):
     """
-    Returns a dictionary of reference files.
-    key is the genome assembly and value is a list of uuids.
+    Find all of the tagged reference files needed to create Higlass view configs.
+
+    Args:
+        connection: The connection to Fourfront.
+
+    Returns:
+        Returns a dictionary of reference files.
+            Each key is the genome assembly (examples: GRCm38, GRCh38)
+            Each value is a list of uuids.
     """
     # first, find and cache the reference files
     reference_files_by_ga = {}
@@ -49,6 +61,13 @@ def get_reference_files(connection):
 def generate_higlass_view_confs_files(connection, **kwargs):
     """
     Check to generate Higlass view configs on Fourfront for appropriate files
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        check results object.
     """
     check = init_check_res(connection, 'generate_higlass_view_confs_files')
     check.full_output = {}  # we will store results here
@@ -97,6 +116,13 @@ def generate_higlass_view_confs_files(connection, **kwargs):
 def generate_higlass_view_confs_files_for_expsets(connection, **kwargs):
     """
     Check to generate Higlass view configs on Fourfront for ExpSets.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        check results object.
     """
     check = init_check_res(connection, 'generate_higlass_view_confs_files_for_expsets')
     check.full_output = {}  # we will store results here
@@ -167,6 +193,17 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
     Given the list of files, contact fourfront and generate a higlass view config.
     Then post the view config.
     Returns the viewconf uuid upon success, or None otherwise.
+
+    Args:
+        connection              : The connection to Fourfront.
+        reference_files(dict)   : Reference files, stored by genome assembly (see get_reference_files)
+        files(list)             : A list of file identifiers.
+        ff_auth(dict)           : Authorization needed to post to Fourfront.
+        headers(dict)           : Header information needed to post to Fourfront.
+
+    Returns:
+        string referring to the new Higlass view conf uuid if it succeeded.
+        None otherwise.
     """
     # start with the reference files and add the target files
     to_post = {'files': reference_files + files}
@@ -195,6 +232,14 @@ def add_viewconf_static_content_to_file(connection, item_uuid, view_conf_uuid):
     """
     Add some static content for the item that shows the view config created for it.
     Returns True upon success.
+
+    Args:
+        connection          : The connection to Fourfront.
+        item_uuid(str)      : Identifier for the item.
+        view_conf_uuid(str) : Identifier for the Higlass view config.
+
+    Returns:
+        True upon success, False otherwise.
     """
 
     # requires get_metadata to make sure we have most up-to-date static_content
@@ -214,16 +259,24 @@ def add_viewconf_static_content_to_file(connection, item_uuid, view_conf_uuid):
             ff_env=connection.ff_env
         )
     except Exception as e:
-        return None
+        return False
     return True
 
 def create_view_config_and_patch_to_file(connection, reference_files, target_file, source_files, ff_auth, headers):
     """
     Take the reference_files and source_files to create a new Higlass view config. Then post the view config and patch the target_file so refers to the view config in its static content.
 
-    Returns two items:
-    - A string showing the type of error (may be None if there are no errors)
-    - The new view config uuid. (may be None if there was an error)
+    Args:
+        connection              : The connection to Fourfront.
+        reference_files(dict)   : Reference files, stored by genome assembly (see get_reference_files)
+        target_file(str)        : Use this identifier to find the file to associate the view config file to.
+        source_files(list)      : A list of file identifiers used to create the new view config.
+        ff_auth(dict)           : Authorization needed to post to Fourfront.
+        headers(dict)           : Header information needed to post to Fourfront.
+
+    Returns:
+        A string showing the type of error (may be None if there are no errors)
+        The new view config uuid. (may be None if there was an error)
     """
     # Create a new view config based on the file list and reference files.
     view_conf_uuid = post_viewconf_to_visualization_endpoint(connection, reference_files, source_files, ff_auth, headers)
@@ -240,12 +293,15 @@ def create_view_config_and_patch_to_file(connection, reference_files, target_fil
 
 @action_function()
 def post_higlass_view_confs_files(connection, **kwargs):
-    """
-    Action that is used with generate_higlass_view_confs_files to actually
+    """ Action that is used with generate_higlass_view_confs_files to actually
     POST new higlass view configs and PATCH the old files.
 
-    A lot of this code could probably be broken out and reused for the other
-    analagous actions (for experiments/experiment sets)
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check/action object.
     """
     action = init_action_res(connection, 'post_higlass_view_confs')
     action_logs = {'new_view_confs_by_file': {}, 'failed_post_files': [],
@@ -292,9 +348,15 @@ def post_higlass_view_confs_files(connection, **kwargs):
 
 @action_function()
 def post_higlass_view_confs_expsets(connection, **kwargs):
-    """
-    Action that is used with generate_higlass_view_confs_files_for_expsets to
+    """ Action that is used with generate_higlass_view_confs_files_for_expsets to
     actually POST new higlass view configs and PATCH the old files.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check/action object.
     """
     action = init_action_res(connection, 'post_higlass_view_confs_expsets')
     action_logs = {'new_view_confs_by_file': {}, 'failed_post_files': [],
@@ -361,6 +423,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
 
     Since 'chromsizes' file defines the coordSystem (assembly) used to register
     other files in higlass, these go first.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check/action object.
     """
     check = init_check_res(connection, 'files_not_registered_with_higlass')
     check.status = "FAIL"
@@ -473,9 +542,18 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.allow_action = True  # allows the action to be run
     return check
 
-
 @action_function()
 def patch_file_higlass_uid(connection, **kwargs):
+    """ After running "files_not_registered_with_higlass",
+    Try to register files with higlass.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check/action object.
+    """
     action = init_action_res(connection, 'patch_file_higlass_uid')
     action_logs = {'patch_failure': [], 'patch_success': [],
                    'registration_failure': [], 'registration_success': 0}
