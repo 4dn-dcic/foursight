@@ -48,6 +48,7 @@ def get_reference_files(connection):
             continue
         # file_format should be 'chromsizes' or 'beddb'
         ref_format = ref.get('file_format', {}).get('file_format')
+
         if ref_format not in ['chromsizes', 'beddb']:
             continue
         # cache reference files by genome_assembly
@@ -624,6 +625,78 @@ def patch_file_higlass_uid(connection, **kwargs):
                         action_logs['patch_success'].append(hit['accession'])
             else:
                 action_logs['registration_failure'].append(hit['accession'])
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+@check_function()
+def find_viewconfigs_to_purge(connection, **kwargs):
+    """ Looks for all Higlass view configs that are deleted and marked for purging.
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check/action object
+    """
+
+    check = init_check_res(connection, 'find_viewconfigs_to_purge')
+    check.full_output = {'viewconfigs_to_purge':[]}
+
+    # associate the action with the check.
+    check.action = 'purge_viewconfigs'
+
+    # Search for all items with the tag
+    search_query = '/search/?type=HiglassViewConfig&status=deleted'
+    search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+
+    # Add all of the uuids to the output
+    viewconfigs_to_purge = [item["uuid"] for item in search_response]
+
+    # Note the number of items ready to purge
+    check.full_output['viewconfigs_to_purge'] = viewconfigs_to_purge
+    check.status = 'PASS'
+
+    if not viewconfigs_to_purge:
+        check.summary = check.description = "No new Higalss view configs to purge."
+    else:
+        check.summary = "Ready to purge %s Higalss view configs" % len(viewconfigs_to_purge)
+        check.description = check.summary + ". See full_output for details."
+        check.allow_action = True
+    return check
+
+@action_function()
+def purge_viewconfigs(connection, **kwargs):
+    """ Using the find_viewconfigs_to_purge check, deletes the indicated view configs.
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check object
+    """
+
+    action = init_action_res(connection, 'purge_viewconfigs')
+    action_logs = {
+        'viewconfs_purged':[],
+        'failed_to_purge':{}
+    }
+
+    # get latest results
+    gen_check = init_check_res(connection, 'find_viewconfigs_to_purge')
+    if kwargs.get('called_by', None):
+        gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
+    else:
+        gen_check_result = gen_check.get_primary_result()
+
+    # Purge the deleted files.
+    for view_conf_uuid in gen_check_result["full_output"]["viewconfigs_to_purge"]:
+        purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys, ff_env=connection.ff_env)
+        if purge_response['status'] == 'success':
+            action_logs['viewconfs_purged'].append(view_conf_uuid)
+        else:
+            action_logs['failed_to_purge'][view_conf_uuid] = purge_response["comment"]
+
     action.status = 'DONE'
     action.output = action_logs
     return action

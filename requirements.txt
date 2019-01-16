@@ -1,4 +1,4 @@
-dcicutils>=0.5.4
+dcicutils>=0.5.9
 requests==2.20.0
 click==6.7
 PyJWT==1.5.3

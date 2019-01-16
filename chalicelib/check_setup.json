@@ -662,5 +662,21 @@
                 }
             }
         }
+    },
+    "find_viewconfigs_to_purge": {
+        "title": "Find Viewconfigs to Purge",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
