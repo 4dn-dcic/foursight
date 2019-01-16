@@ -166,19 +166,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "hotseat": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "good_experiments": {
-        "title": "Gold/Silver/Bronze experiments",
-        "group": "Badge checks",
-        "schedule": {
-            "morning_checks": {
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -190,11 +178,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -206,11 +190,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -222,11 +202,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -238,11 +214,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
