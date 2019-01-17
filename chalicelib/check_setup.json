@@ -245,6 +245,18 @@
             }
         }
     },
+    "check_status_mismatch": {
+        "title": "Experiment Sets containing Items with mismatch status",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
@@ -307,6 +319,26 @@
         "schedule": {
             "morning_checks": {
                 "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "new_or_updated_items": {
+        "title": "New or Modified Submissions",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                } ,
+                "staging": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -468,6 +500,110 @@
                     "kwargs": {"primary": true},
                     "dependencies": []
                 },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_MARGI": {
+        "title": "MARGI",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "snapshot_rds": {
+        "title": "Snapshot RDS",
+        "group": "System checks",
+        "schedule": {
+            "monthly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_sciHiC": {
+        "title": "sciHiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "prepare_static_headers_DNase_HiC": {
+        "title": "DNase_HiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks": {
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "sync_google_analytics_data": {
+        "title": "Sync Google Analytics",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "process_download_tracking_items": {
+        "title": "Process download tracking items",
+        "group": "System checks",
+        "schedule": {
+            "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []

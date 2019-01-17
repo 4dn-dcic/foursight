@@ -606,6 +606,52 @@ class TestCheckResult(FSTest):
         self.assertTrue('Could not find closest non-ERROR result' in str(exc.exception))
 
 
+    def test_get_result_history(self):
+        """
+        This relies on the check having been run enough times. If not, return
+        """
+        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        # ensure at least one entry present
+        check.status = 'IGNORE'
+        check.summary = 'TEST HISTORY'
+        check.kwargs['test'] = 'yea'
+        res = check.store_result()
+        time.sleep(2)
+        ignore_uuid = res['uuid']
+        hist_10 = check.get_result_history(0, 10)
+        assert isinstance(hist_10, list)
+        for chk in hist_10:
+            assert isinstance(chk[2], dict) and 'uuid' in chk[2]
+            # this kwarg is removed
+            assert '_run_info' not in chk[2]
+        # eliminate timing errors, another check could've been stored
+        found_chks = [chk for chk in hist_10 if chk[2]['uuid'] == ignore_uuid]
+        assert len(found_chks) == 1
+        assert found_chks[0][0] == 'IGNORE'
+        assert found_chks[0][1] == 'TEST HISTORY'
+        assert found_chks[0][2].get('test') == 'yea'
+        if len(hist_10) != 10:
+            return
+        hist_offset = check.get_result_history(1, 2)
+        hist_offset2 = check.get_result_history(2, 2)
+        assert len(hist_offset) == len(hist_offset2) == 2
+        if hist_offset[1][2]['uuid'] == hist_offset2[0][2]['uuid']:
+            assert hist_offset[0][2]['uuid'] != hist_offset2[0][2]['uuid']
+        # test after_date param
+        after_date = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+        hist_after = check.get_result_history(0, 10, after_date=after_date)
+        for chk in hist_after:
+            chk_date = datetime.datetime.strptime(chk[2]['uuid'], '%Y-%m-%dT%H:%M:%S.%f')
+            assert chk_date >= after_date
+
+
+    def test_filename_to_datetime(self):
+        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check_result = check.store_result()
+        time_key = ''.join([check.name, '/', check_result['uuid'], check.extension])
+        filename_date = check.filename_to_datetime(time_key)
+        compare_date = datetime.datetime.strptime(check_result['uuid'], '%Y-%m-%dT%H:%M:%S.%f')
+        assert filename_date == compare_date
 
 
 class TestActionResult(FSTest):
@@ -1004,6 +1050,11 @@ class TestUtils(FSTest):
         dt_5_man = utils.parse_datetime_to_utc(self.timestr_5, manual_format="%Y-%m-%dT%H:%M:%S")
         dt_5_auto = utils.parse_datetime_to_utc(self.timestr_5)
         self.assertTrue(dt_5_auto == dt_5_man)
+
+    def test_camel_case_to_snake(self):
+        camel_test = 'SomeCamelCaseString'
+        snake_res = utils.convert_camel_to_snake(camel_test)
+        assert snake_res == 'some_camel_case_string'
 
     def test_get_s3_utils(self):
         """

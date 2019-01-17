@@ -10,6 +10,7 @@ import boto3
 import sys
 import os
 import json
+import re
 from importlib import import_module
 from functools import wraps, partial
 from .run_result import CheckResult, ActionResult
@@ -287,6 +288,15 @@ def parse_datetime_to_utc(time_str, manual_format=None):
             except ValueError:
                 return None
     return timeobj.replace(tzinfo=tz.tzutc())
+
+
+def convert_camel_to_snake(name):
+    """
+    Convert a given CamelCase string to snake_case
+    Credit: https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case 
+    """
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 ##### SQS utils #####

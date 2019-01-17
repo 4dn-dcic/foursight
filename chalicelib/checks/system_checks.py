@@ -8,7 +8,8 @@ from ..utils import (
 )
 from dcicutils import (
     ff_utils,
-    es_utils
+    es_utils,
+    beanstalk_utils
 )
 
 import requests
@@ -279,7 +280,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    time_limit = 240 # 4 minutes
+    time_limit = 240  # 4 minutes
     t0 = time.time()
     sent = 0
     deleted = 0
@@ -485,3 +486,141 @@ def manage_old_filebeat_logs(connection, **kwargs):
     # check.status = "PASS"
     # check.description = 'Performed auto-backup to repository %s' % snapshot[:-1]
     # return check
+
+
+@check_function()
+def snapshot_rds(connection, **kwargs):
+    from ..utils import get_stage_info
+    check = init_check_res(connection, 'snapshot_rds')
+    if get_stage_info()['stage'] != 'prod':
+        check.summary = check.description = 'This check only runs on Foursight prod'
+        return check
+    rds_name = 'fourfront-webprod' if 'webprod' in connection.ff_env else connection.ff_env
+    # snapshot ID can only have letters, numbers, and hyphens
+    snap_time = datetime.datetime.strptime(kwargs['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%dT%H-%M-%S")
+    snapshot_name = 'foursight-snapshot-%s-%s' % (rds_name, snap_time)
+    res = beanstalk_utils.create_db_snapshot(rds_name, snapshot_name)
+    if res == 'Deleting':
+        check.status = 'FAIL'
+        check.summary = check.description = 'Something went wrong during snaphot creation'
+    else:
+        check.status = 'PASS'
+        # there is a datetime in the response that must be str formatted
+        res['DBSnapshot']['InstanceCreateTime'] = str(res['DBSnapshot']['InstanceCreateTime'])
+        check.full_output = res
+        check.summary = 'Snapshot successfully created'
+        check.description = 'Snapshot succesfully created with name: %s' % snapshot_name
+    return check
+
+
+@check_function()
+def process_download_tracking_items(connection, **kwargs):
+    """
+    Do a few things here, and be mindful of the 5min lambda limit.
+    - Consolidate tracking items with download_tracking.range_query=True
+    - Change remote_ip to geo_country and geo_city
+    - If the user_agent looks to be a bot, set status=deleted
+    - Change unused range query items to status=deleted
+    """
+    from ..utils import get_stage_info, parse_datetime_to_utc
+    import geocoder
+    check = init_check_res(connection, 'process_download_tracking_items')
+    # maybe handle this in check_setup.json
+    if get_stage_info()['stage'] != 'prod':
+        check.full_output = 'Will not run on dev foursight.'
+        check.status = 'PASS'
+        return check
+    range_cache = {}
+    # duration we want to consolidate range queries over
+    # search older entries since range_consolidation_hrs * 2to avoid duplication
+    range_consolidation_hrs = 1
+    cons_date = (datetime.datetime.utcnow() -
+                 datetime.timedelta(hours=range_consolidation_hrs * 2)).strftime('%Y-%m-%dT%H\:%M')
+    range_search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
+                                  '&download_tracking.is_visualization=true&sort=-date_created',
+                                  '&status=released&q=last_modified.date_modified:>=', cons_date])
+    cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    for tracking in cons_query:
+        dl_info = tracking['download_tracking']
+        range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
+                               dl_info['user_agent'], dl_info['user_uuid']])
+        parsed_date = parse_datetime_to_utc(tracking['date_created'])
+        if range_key in range_cache:
+            range_cache[range_key].append(parsed_date)
+        else:
+            range_cache[range_key] = [parsed_date]
+    del cons_query
+    ip_cache = {}
+    time_limit = 270  # 4.5 minutes
+    # list of strings used to flag user_agent as a bot. By no means complete
+    bot_strings = ['bot', 'crawl', 'slurp', 'spider', 'mediapartners', 'ltx71']
+    t0 = time.time()  # keep track of how start time
+
+    # batch large groups of tracking items at once to save time with geocoder
+    # for now, this function will process only <search_limit> results.
+    # I would love to use a generator, but search results change as items are indexed...
+    search_limit = 1000
+    search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
+                            '&download_tracking.geo_country=No+value',
+                            '&status=in+review+by+lab&sort=-date_created&limit=', str(search_limit)])
+    search_page = ff_utils.search_metadata(search_query, key=connection.ff_keys,
+                                           ff_env=connection.ff_env, page_limit=200)
+    counts = {'proc': 0, 'deleted': 0, 'released': 0}
+
+    page_ips = set([tracking['download_tracking']['remote_ip'] for tracking in search_page])
+    # transform all IP addresses into GEO information with a persistent connection
+    with requests.Session() as session:
+        for track_ip in page_ips:
+            if track_ip in ip_cache:
+                continue
+            geo = geocoder.ip(track_ip, session=session)
+            geo_country = getattr(geo, 'country', 'Unknown')
+            geo_city = getattr(geo, 'city', 'Unknown')
+            geo_state = getattr(geo, 'state', None)
+            if geo_state:
+                geo_city = ', '.join([geo_city, geo_state])
+            # cache the geo info in an arbitrary form
+            ip_cache[track_ip] = '//'.join([geo_city, geo_country])
+    # iterate over the individual tracking items
+    for tracking in search_page:
+        if round(time.time() - t0, 2) > time_limit:
+            break
+        dl_info = tracking['download_tracking']
+        geo_info = ip_cache[dl_info['remote_ip']]
+        dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
+        patch_body = {'status': 'released', 'download_tracking': dl_info}
+
+        if (any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_strings)
+            and dl_info['user_uuid'] == 'anonymous'):
+            patch_body['status'] = 'deleted'
+        if patch_body['status'] != 'deleted' and dl_info['range_query'] is True:
+            range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
+                                   dl_info['user_agent'], dl_info['user_uuid']])
+            parsed_date = parse_datetime_to_utc(tracking['date_created'])
+            if range_key in range_cache:
+                # for all reference range queries with this info, see if this one
+                # was created within one hour of it. if so, it is redundant and delete
+                for range_reference in range_cache[range_key]:
+                    compare_date_low = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
+                    compare_date_high = range_reference + datetime.timedelta(hours=range_consolidation_hrs)
+                    if parsed_date > compare_date_low and parsed_date < compare_date_high:
+                        patch_body['status'] = 'deleted'
+                        break
+                if patch_body['status'] != 'deleted':
+                    range_cache[range_key].append(parsed_date)
+                    dl_info['is_visualization'] = True
+            else:
+                # set the upper limit for for range queries to consolidate
+                range_cache[range_key] = [parsed_date]
+                dl_info['is_visualization'] = True
+        ff_utils.patch_metadata(patch_body, tracking['uuid'],
+                                key=connection.ff_keys, ff_env=connection.ff_env)
+        counts['proc'] += 1
+        if patch_body['status'] == 'released':
+            counts['released'] += 1
+        else:
+            counts['deleted'] += 1
+    check.status = 'PASS'
+    check.summary = 'Successfully processed %s download tracking items' % counts['proc']
+    check.description = '%s. Released %s items and deleted %s items' % (check.summary, counts['released'], counts['deleted'])
+    return check
