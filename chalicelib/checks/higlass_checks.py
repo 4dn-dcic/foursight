@@ -8,6 +8,7 @@ from ..utils import (
 from dcicutils import ff_utils
 import requests
 import json
+import time
 
 def does_processed_file_have_auto_viewconf(hg_file):
     """
@@ -214,15 +215,21 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
     ff_endpoint = connection.ff_server + 'add_files_to_higlass_viewconf/'
     res = requests.post(ff_endpoint, data=json.dumps(to_post),
                         auth=ff_auth, headers=headers)
+
     # Handle the response.
-    if res.json().get('success', False):
+    if res and res.json().get('success', False):
         view_conf = res.json()['new_viewconfig']
 
         # Post the new view config.
+        viewconf_description = {
+            "genome_assembly": res.json()['new_genome_assembly'],
+            "viewconfig": view_conf
+        }
         try:
-            viewconf_res = ff_utils.post_metadata(view_conf, 'higlass-view-configs',
+            viewconf_res = ff_utils.post_metadata(viewconf_description, 'higlass-view-configs',
                                                   key=connection.ff_keys, ff_env=connection.ff_env)
             view_conf_uuid = viewconf_res['@graph'][0]['uuid']
+            return view_conf_uuid
         except Exception as e:
             return None
     else:
@@ -244,8 +251,14 @@ def add_viewconf_static_content_to_file(connection, item_uuid, view_conf_uuid):
     """
 
     # requires get_metadata to make sure we have most up-to-date static_content
-    file_res = ff_utils.get_metadata(item_uuid, key=connection.ff_keys, ff_env=connection.ff_env)
+    file_res = ff_utils.get_metadata(item_uuid, key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=raw")
     file_static_content = file_res.get('static_content', [])
+
+    # If the viewconf was already added, don't add it again.
+    for sc in file_static_content:
+        if sc.content == view_conf_uuid:
+            return True
+
     new_view_conf_sc = {
         'location': 'tab:higlass',
         'content': view_conf_uuid,
@@ -323,12 +336,24 @@ def post_higlass_view_confs_files(connection, **kwargs):
     # pointer to the reference files (by genome_assembly)
     ref_files_by_ga = gen_check_result['full_output'].get('reference_files', {})
 
+    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    start_time = time.time()
+    time_expired = False
+
     # these are the files we care about
     # loop by genome_assembly
-    for ga in gen_check_result['full_output'].get('target_files', {}):
+    target_files_by_ga = gen_check_result['full_output'].get('target_files', {})
+    for ga in target_files_by_ga:
+        if time_expired:
+            break
         if ga not in ref_files_by_ga:  # reference files not found
             continue
         for file in gen_check_result['full_output']['target_files'][ga]:
+            # If we've taken more than 270 seconds to complete, break immediately
+            if time.time() - start_time > 270:
+                time_expired = True
+                break
+
             # Create a new config file and patch it to the experiment file.
             error, view_conf_uuid = create_view_config_and_patch_to_file(connection, ref_files_by_ga[ga], file, [file], ff_auth, headers)
 
@@ -345,6 +370,13 @@ def post_higlass_view_confs_files(connection, **kwargs):
                 action_logs['failed_patch_files'].append(file)
     action.status = 'DONE'
     action.output = action_logs
+
+    target_files_by_ga = gen_check_result['full_output'].get('target_files', {})
+    file_count = sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
+    action.progress = "{completed} out of {possible} files".format(
+        completed=len(action_logs["new_view_confs_by_file"].keys()),
+        possible=file_count
+    )
     return action
 
 @action_function()
@@ -456,8 +488,14 @@ def files_not_registered_with_higlass(connection, **kwargs):
     higlass_key = connection.ff_s3.get_higlass_key()
     higlass_server = kwargs['higlass_server'] if kwargs['higlass_server'] else higlass_key['server']
 
+    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    start_time = time.time()
+    time_expired = False
+
     # Run the check against all filetypes.
     for ftype in reg_filetypes:
+        if time_expired:
+            break
         files_to_be_reg[ftype] = []
         if ftype in valid_types_raw:
             typenames = ['FileReference']
@@ -473,6 +511,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
 
         for procfile in possibly_reg:
+            # If we've taken more than 270 seconds to complete, break immediately
+            if time.time() - start_time > 270:
+                time_expired = True
+                break
+
             if 'genome_assembly' not in procfile:
                 no_genome_assembly.append(procfile['accession'])
                 continue
@@ -577,10 +620,21 @@ def patch_file_higlass_uid(connection, **kwargs):
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
 
+    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    start_time = time.time()
+    time_expired = False
+
     # Files to register is organized by filetype.
     to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
     for ftype, hits in to_be_registered.items():
+        if time_expired:
+            break
         for hit in hits:
+            # If we've taken more than 270 seconds to complete, break immediately
+            if time.time() - start_time > 270:
+                time_expired = True
+                break
+
             # Based on the filetype, construct a payload to upload to the higlass server.
             payload = {'coordSystem': hit['genome_assembly']}
             if ftype == 'chromsizes':
@@ -689,8 +743,17 @@ def purge_viewconfigs(connection, **kwargs):
     else:
         gen_check_result = gen_check.get_primary_result()
 
+    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    start_time = time.time()
+    time_expired = False
+
     # Purge the deleted files.
     for view_conf_uuid in gen_check_result["full_output"]["viewconfigs_to_purge"]:
+        # If we've taken more than 270 seconds to complete, break immediately
+        if time.time() - start_time > 270:
+            time_expired = True
+            break
+
         purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys, ff_env=connection.ff_env)
         if purge_response['status'] == 'success':
             action_logs['viewconfs_purged'].append(view_conf_uuid)
