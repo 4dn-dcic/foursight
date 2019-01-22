@@ -158,7 +158,7 @@ def generate_higlass_view_confs_files_for_expsets(connection, **kwargs):
             continue
 
         # This needs a view conf. Collect all of the files that have higlass uids.
-        for exp_set_file_type in ("processed_files", "other_processed_files"):
+        for exp_set_file_type in ("processed_files"):
             if exp_set_file_type not in exp_set:
                 continue
 
@@ -695,26 +695,60 @@ def find_viewconfigs_to_purge(connection, **kwargs):
     """
 
     check = init_check_res(connection, 'find_viewconfigs_to_purge')
-    check.full_output = {'viewconfigs_to_purge':[]}
+    check.full_output = {
+        'viewconfigs_to_purge':[],
+        'rationale':{},
+    }
 
     # associate the action with the check.
     check.action = 'purge_viewconfigs'
 
-    # Search for all items with the tag
+    # Search for all Higlass View Config that are deleted.
     search_query = '/search/?type=HiglassViewConfig&status=deleted'
     search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
 
-    # Add all of the uuids to the output
-    viewconfigs_to_purge = [item["uuid"] for item in search_response]
+    # For each view config
+    for viewconf in search_response:
+        uuid = viewconf["uuid"]
+        # Get their tags
+        tags = viewconf.get("tags", [])
+
+        # For a given file, track:
+        # - purge(boolean): If we should definitely purge it (or definitely keep it)
+        # - reason(string): The rule dictating purge/keep (this shows the reason)
+        # - priority(number): The priority of the reason (so higher priority can ignore lower ones and we get consistent behavior)
+        rule_rationale = []
+
+        # If it's marked for deletion by Cypress testing, purge.
+        if "deleted_by_cypress_test" in tags:
+            rule_rationale.append({
+                "purge" : True,
+                "reason" : "cypress_test",
+                "priority" : 100
+            })
+
+        # All tags have been processed, pick the highest priority rule.
+        if len(rule_rationale) > 0:
+            max_rule = max(
+                rule_rationale,
+                key = lambda rul : rul["priority"]
+            )
+
+            # If the file should be purged, add it.
+            if max_rule["purge"]:
+                check.full_output['viewconfigs_to_purge'].append(uuid)
+
+            # Add the rationale to the full output.
+            check.full_output['rationale'][uuid] = rule_rationale
 
     # Note the number of items ready to purge
-    check.full_output['viewconfigs_to_purge'] = viewconfigs_to_purge
+    num_viewconfigs = len(check.full_output['viewconfigs_to_purge'])
     check.status = 'PASS'
 
-    if not viewconfigs_to_purge:
+    if num_viewconfigs == 0:
         check.summary = check.description = "No new Higalss view configs to purge."
     else:
-        check.summary = "Ready to purge %s Higalss view configs" % len(viewconfigs_to_purge)
+        check.summary = "Ready to purge %s Higalss view configs" % num_viewconfigs
         check.description = check.summary + ". See full_output for details."
         check.allow_action = True
     return check
