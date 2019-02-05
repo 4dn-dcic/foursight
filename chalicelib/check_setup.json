@@ -663,8 +663,8 @@
             }
         }
     },
-    "find_viewconfigs_to_purge": {
-        "title": "Find Viewconfigs to Purge",
+    "find_cypress_test_items_to_purge": {
+        "title": "Find Cypress Test files to Purge",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {

@@ -152,13 +152,13 @@ def generate_higlass_view_confs_files_for_expsets(connection, **kwargs):
 
     for exp_set in search_res:
         exp_set_uuid = exp_set["uuid"]
-
+        debug = (exp_set_uuid == "331106bc-8535-3338-903e-854af460b544") # TODO
         # Skip the file if it has previously been registered by Foursight.
         if does_processed_file_have_auto_viewconf(exp_set):
             continue
 
         # This needs a view conf. Collect all of the files that have higlass uids.
-        for exp_set_file_type in ("processed_files"):
+        for exp_set_file_type in ("processed_files",):
             if exp_set_file_type not in exp_set:
                 continue
 
@@ -684,8 +684,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     return action
 
 @check_function()
-def find_viewconfigs_to_purge(connection, **kwargs):
-    """ Looks for all Higlass view configs that are deleted and marked for purging.
+def find_cypress_test_items_to_purge(connection, **kwargs):
+    """ Looks for all items that are deleted and marked for purging by cypress test.
     Args:
         connection: The connection to Fourfront.
         **kwargs
@@ -694,17 +694,17 @@ def find_viewconfigs_to_purge(connection, **kwargs):
         A check/action object
     """
 
-    check = init_check_res(connection, 'find_viewconfigs_to_purge')
+    check = init_check_res(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
-        'viewconfigs_to_purge':[],
+        'items_to_purge':[],
         'rationale':{},
     }
 
     # associate the action with the check.
-    check.action = 'purge_viewconfigs'
+    check.action = 'purge_cypress_items'
 
     # Search for all Higlass View Config that are deleted.
-    search_query = '/search/?type=HiglassViewConfig&status=deleted'
+    search_query = '/search/?type=Item&status=deleted'
     search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
 
     # For each view config
@@ -736,26 +736,26 @@ def find_viewconfigs_to_purge(connection, **kwargs):
 
             # If the file should be purged, add it.
             if max_rule["purge"]:
-                check.full_output['viewconfigs_to_purge'].append(uuid)
+                check.full_output['items_to_purge'].append(uuid)
 
             # Add the rationale to the full output.
             check.full_output['rationale'][uuid] = rule_rationale
 
     # Note the number of items ready to purge
-    num_viewconfigs = len(check.full_output['viewconfigs_to_purge'])
+    num_viewconfigs = len(check.full_output['items_to_purge'])
     check.status = 'PASS'
 
     if num_viewconfigs == 0:
-        check.summary = check.description = "No new Higalss view configs to purge."
+        check.summary = check.description = "No new items to purge."
     else:
-        check.summary = "Ready to purge %s Higalss view configs" % num_viewconfigs
+        check.summary = "Ready to purge %s items" % num_viewconfigs
         check.description = check.summary + ". See full_output for details."
         check.allow_action = True
     return check
 
 @action_function()
-def purge_viewconfigs(connection, **kwargs):
-    """ Using the find_viewconfigs_to_purge check, deletes the indicated view configs.
+def purge_cypress_items(connection, **kwargs):
+    """ Using the find_cypress_test_items_to_purge check, deletes the indicated items.
     Args:
         connection: The connection to Fourfront.
         **kwargs
@@ -764,14 +764,14 @@ def purge_viewconfigs(connection, **kwargs):
         A check object
     """
 
-    action = init_action_res(connection, 'purge_viewconfigs')
+    action = init_action_res(connection, 'purge_cypress_items')
     action_logs = {
         'viewconfs_purged':[],
         'failed_to_purge':{}
     }
 
     # get latest results
-    gen_check = init_check_res(connection, 'find_viewconfigs_to_purge')
+    gen_check = init_check_res(connection, 'find_cypress_test_items_to_purge')
     if kwargs.get('called_by', None):
         gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
     else:
@@ -782,7 +782,7 @@ def purge_viewconfigs(connection, **kwargs):
     time_expired = False
 
     # Purge the deleted files.
-    for view_conf_uuid in gen_check_result["full_output"]["viewconfigs_to_purge"]:
+    for view_conf_uuid in gen_check_result["full_output"]["items_to_purge"]:
         # If we've taken more than 270 seconds to complete, break immediately
         if time.time() - start_time > 270:
             time_expired = True
@@ -790,7 +790,7 @@ def purge_viewconfigs(connection, **kwargs):
 
         purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys, ff_env=connection.ff_env)
         if purge_response['status'] == 'success':
-            action_logs['viewconfs_purged'].append(view_conf_uuid)
+            action_logs['items_purged'].append(view_conf_uuid)
         else:
             action_logs['failed_to_purge'][view_conf_uuid] = purge_response["comment"]
 
