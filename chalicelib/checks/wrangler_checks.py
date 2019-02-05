@@ -367,7 +367,9 @@ def change_in_item_counts(connection, **kwargs):
     # date_created endpoints for the FF search
     to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
-    search_query = ''.join(['search/?type=Item&frame=object&date_created.from=',
+    # tracking items and ontology terms must be explicitly searched for
+    search_query = ''.join(['search/?type=Item&type=OntologyTerm&type=TrackingItem',
+                            '&frame=object&date_created.from=',
                             from_date, '&date_created.to=', to_date])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     # add deleted/replaced items
@@ -383,7 +385,8 @@ def change_in_item_counts(connection, **kwargs):
             # db entry wasn't already present for this index
             diff_counts[res_index] = {'DB': 0, 'ES': 1}
 
-    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&date_created.from=',
+    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&',
+                             'type=OntologyTerm&type=TrackingItem&date_created.from=',
                              from_date, '&date_created.to=', to_date])
     check.brief_output = diff_counts
 
