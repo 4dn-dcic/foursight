@@ -357,8 +357,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
             type2extra = {'bg': 'bw', 'bed': 'beddb'}
             if ftype in type2extra:
                 for extra in procfile.get('extra_files', []):
+                    # check if there is a higlass type file in extra with upload key
                     if extra['file_format'].get('display_title') == type2extra[ftype] and 'upload_key' in extra:
-                        file_info['upload_key'] = extra['upload_key']
+                        # check if it has a status to skip (not all extra files has status)
+                        if not extra.get('status', '') in ['uploading', 'upload failed', 'to be uploaded by workflow']:
+                            file_info['upload_key'] = extra['upload_key']
                         break
                 if 'upload_key' not in file_info:  # bw or beddb file not found
                     continue
