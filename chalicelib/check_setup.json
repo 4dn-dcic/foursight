@@ -614,5 +614,29 @@
                 }
             }
         }
+    },
+    "md5run_status_extra_file" : {
+        "title": "User Submitter Extra Files",
+        "group": "Pipeline checks",
+        "shcedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "md5run_status" : {
+        "title": "md5run",
+        "group": "Pipeline checks",
+        "shcedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
