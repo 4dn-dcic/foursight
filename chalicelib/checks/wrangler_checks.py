@@ -80,6 +80,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     check = init_check_res(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
+    check.action = "add_pub_and_replace_biorxiv"
     # run the check
     search_query = 'search/?journal=bioRxiv&type=Publication&status=current&limit=all'
     biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
@@ -154,7 +155,138 @@ def biorxiv_is_now_published(connection, **kwargs):
     check.summary = check.description = chkdesc
     check.brief_output = fndcnt
     check.full_output = fulloutput
+    check.allow_action = True
     return check
+
+
+@action_function()
+def add_pub_and_replace_biorxiv(connection, **kwargs):
+    action = init_action_res(connection, 'add_pub_2_replace_biorxiv')
+    action_log = {}
+    biorxiv_check = init_check_res(connection, 'biorxiv_is_now_published')
+    if kwargs.get('called_by', None):
+        biorxiv_check_result = biorxiv_check.get_result_by_uuid(kwargs['called_by'])
+    else:
+        biorxiv_check_result = biorxiv_check.get_primary_result()
+    to_replace = biorxiv_check_result.get('full_output', {})
+    for buuid, pmids in to_replace.items():
+        error = ''
+        if len(pmids) > 1:
+            pmstr = ', '.join(pmids)
+            action_log[buuid] = 'multiple pmids {} - manual intervention needed!'.format(pmstr)
+            continue
+
+        pmid = pmids[0]
+        biorxiv = None
+        # get biorxiv info
+        try:
+            biorxiv = ff_utils.get_metadata(buuid, key=connection.ff_keys, add_on='frame=object')
+        except Exception as e:
+            error = 'Problem getting biorxiv - msg: ' + str(e)
+        else:
+            if not biorxiv:
+                error = 'Biorxiv not found!'
+        if error:
+            action_log[buuid] = error
+            continue
+
+        # prepare a post/patch for transferring data
+        existing_fields = {}
+        fields_to_patch = {}
+        fields2transfer = [
+            'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
+            'exp_sets_used_in_pub', 'published_by'
+        ]
+        post_metadata = {f: biorxiv.get(f) for f in fields2transfer if biorxiv.get(f) is not None}
+        post_metadata['ID'] = pmid
+        if 'url' in biorxiv:
+            post_metadata['aka'] = biorxiv.get('url')
+
+        # first try to post the pub
+        pub_upd_res = None
+        try:
+            pub_upd_res = ff_utils.post_metadata(post_metadata, 'publication', key=connection.ff_keys)
+        except Exception as e:
+            error = str(e)
+        else:
+            if pub_upd_res.get('status') != 'success':
+                error = pub_upd_res.get('status')
+        if error:
+            if "'code': 409" in error:
+                # there is a conflict-see if pub is already in portal
+                pub_search_res = None
+                error = ''  # reset error
+                try:
+                    search = 'search/?type=Publication&ID={}&frame=object'.format(post_metadata['ID'])
+                    pub_search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
+                except Exception as e:
+                        error = 'SEARCH failure for {} - msg: {}'.format(pmid, str(e))
+                else:
+                    if not pub_search_res or len(pub_search_res) != 1:
+                        error = 'SEARCH for {} returned zero or multiple results'.format(pmid)
+                if error:
+                    action_log[buuid] = error
+                    continue
+
+                # a single pub with that pmid is found - try to patch it
+                pub = pub_search_res[0]
+                for f, v in post_metadata.items():
+                    if f in pub and pub.get(f):
+                        if f != 'ID':
+                            existing_fields[f] = pub.get(f)
+                    else:
+                        fields_to_patch[f] = v
+
+                if fields_to_patch:
+                    try:
+                        puuid = pub.get('uuid')
+                        pub_upd_res = ff_utils.patch_metadata(fields_to_patch, puuid, key=connection.ff_keys)
+                    except Exception as e:
+                        error = 'PATCH failure for {} msg: '.format(pmid, str(e))
+                    else:
+                        if pub_upd_res.get('status') != 'success':
+                            error = 'PATCH failure for {} msg: '.format(pmid, pub_upd_res.get('status'))
+                    if error:
+                        action_log[buuid] = error
+                        continue
+                else:  # all the fields already exist on the item
+                    msg = 'NOTHING TO AUTO PATCH - {} already has all the fields in the biorxiv - WARNING values may be different!'.format(pmid)
+                    action_log[buuid] = {
+                        'message': msg,
+                        'existing': existing_fields,
+                        'possibly_new': post_metadata
+                    }
+            else:
+                error = 'POST failure for {} msg: {}'.format(pmid, error)
+                action_log[buuid] = error
+
+        # here we have successfully posted or patched a pub
+        # set status of biorxiv to replaced
+        try:
+            replace_res = ff_utils.patch_metadata({'status': 'replaced'}, buuid, key=connection.ff_keys)
+        except Exception as e:
+            error = 'FAILED TO UPDATE STATUS FOR {} - msg: '.format(buuid, str(e))
+        else:
+            if replace_res.get('status') != 'success':
+                error = 'FAILED TO UPDATE STATUS FOR {} - msg: '.format(buuid, replace_res.get('status'))
+
+        # do we want to add a flag to indicate if it was post or patch
+        if existing_fields:
+            # report that it was an incomplete patch
+            msg = 'PARTIAL PATCH'
+            action_log[buuid] = {
+                'message': msg,
+                'existing': existing_fields,
+                'possibly_new': fields_to_patch,
+                'all_rxiv_data': post_metadata
+            }
+        else:
+            action_log[buuid] = {'message': 'DATA TRANSFERED TO ' + pmid}
+        if error:
+            action_log[buuid].update({'error': error})
+    action.status = 'DONE'
+    action.output = action_log
+    return action
 
 
 @check_function(confirm_on_higlass=False, filetype='all', higlass_server=None)
@@ -426,7 +558,9 @@ def change_in_item_counts(connection, **kwargs):
     # date_created endpoints for the FF search
     to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
-    search_query = ''.join(['search/?type=Item&frame=object&date_created.from=',
+    # tracking items and ontology terms must be explicitly searched for
+    search_query = ''.join(['search/?type=Item&type=OntologyTerm&type=TrackingItem',
+                            '&frame=object&date_created.from=',
                             from_date, '&date_created.to=', to_date])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     # add deleted/replaced items
@@ -442,7 +576,8 @@ def change_in_item_counts(connection, **kwargs):
             # db entry wasn't already present for this index
             diff_counts[res_index] = {'DB': 0, 'ES': 1}
 
-    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&date_created.from=',
+    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&',
+                             'type=OntologyTerm&type=TrackingItem&date_created.from=',
                              from_date, '&date_created.to=', to_date])
     check.brief_output = diff_counts
 
