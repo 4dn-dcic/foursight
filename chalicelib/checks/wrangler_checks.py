@@ -844,79 +844,56 @@ def new_or_updated_items(connection, **kwargs):
 
 @check_function()
 def clean_up_webdev_wfrs(connection, **kwargs):
-    check = init_check_res(connection, 'clean_up_webdev_wfrs')
-    check.full_output = []
 
-    response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45', # input for test pseudo hi-c-processing-bam
+    def patch_wfr_and_log(wfr, full_output):
+        uuid = wfr['uuid']
+        patch_json = {'uuid': uuid, 'status': 'deleted'}
+        try:
+            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys,
+                                    ff_env=connection.ff_env)
+        except Exception as exc:
+            # log something about str(exc)
+            full_output['failure'].append('%s. %s' % (uuid, str(exc)))
+        else:
+            # successful patch
+            full_output['success'].append(uuid)
+
+    check = init_check_res(connection, 'clean_up_webdev_wfrs')
+    check.full_output = {'success': [], 'failure': []}
+
+    # input for test pseudo hi-c-processing-bam
+    response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
                                      key=connection.ff_keys, ff_env=connection.ff_env)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
-         print(entry)
-         uuid = entry['uuid']
-         patch_json = {'uuid': uuid, 'status': 'deleted'}
-         try:
-             ff_utils.patch_metadata(patch_json, uuid,
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as exc:
-            # log something about str(exc)
-            check.full_output.append('%s failure. Reason: %s' % (uuid, str(exc)))
-        else:
-            # successful patch
-            check.full_output.append('%s success' % uuid)
+        patch_wfr_and_log(entry, check.full_output)
 
     wfrlist = response['workflow_run_outputs']
     for entry in wfrlist:
-         print(entry)
-         uuid = entry['uuid']
-         patch_json = {'uuid': uuid, 'status': 'deleted'}
+         patch_wfr_and_log(entry, check.full_output)
 
-         try:
-             ff_utils.patch_metadata(patch_json, uuid,
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as exc:
-            # log something about str(exc)
-            check.full_output.append('%s failure. Reason: %s' % (uuid, str(exc)))
-        else:
-            # successful patch
-            check.full_output.append('%s success' % uuid)
-
-
-
-    response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',   # input for test md5 and bwa-mem
+    # input for test md5 and bwa-mem
+    response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
                                      key=connection.ff_keys, ff_env=connection.ff_env)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
-         print(entry)
-         uuid = entry['uuid']
-         patch_json = {'uuid': uuid, 'status': 'deleted'}
+        patch_wfr_and_log(entry, check.full_output)
 
-         try:
-             ff_utils.patch_metadata(patch_json, uuid,
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as exc:
-            # log something about str(exc)
-            check.full_output.append('%s failure. Reason: %s' % (uuid, str(exc)))
-        else:
-            # successful patch
-            check.full_output.append('%s success' % uuid)
-
-
-    response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',  # input for test md5 and bwa-mem
+    # input for test md5 and bwa-mem
+    response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
                                      key=connection.ff_keys, ff_env=connection.ff_env)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
-         print(entry)
-         uuid = entry['uuid']
-         patch_json = {'uuid': uuid, 'status': 'deleted'}
+        patch_wfr_and_log(entry, check.full_output)
 
-         try:
-             ff_utils.patch_metadata(patch_json, uuid,
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as exc:
-            # log something about str(exc)
-            check.full_output.append('%s failure. Reason: %s' % (uuid, str(exc)))
+    if check.full_output['failure']:
+        check.status = 'WARN'
+        check.summary = 'One or more WFR patches failed'
+    else:
+        check.status = 'WARN'
+        if check.full_output['success']:
+            check.summary = 'All WFR patches successful'
         else:
-            # successful patch
-            check.full_output.append('%s success' % uuid)
+            check.summary = 'No WFR patches run'
 
     return check
