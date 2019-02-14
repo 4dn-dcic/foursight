@@ -848,6 +848,9 @@ def clean_up_webdev_wfrs(connection, **kwargs):
     def patch_wfr_and_log(wfr, full_output):
         uuid = wfr['uuid']
         patch_json = {'uuid': uuid, 'status': 'deleted'}
+        # no need to patch again
+        if uuid in full_output['success']:
+            return
         try:
             ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys,
                                     ff_env=connection.ff_env)
