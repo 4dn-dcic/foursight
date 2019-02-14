@@ -890,7 +890,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
         check.status = 'WARN'
         check.summary = 'One or more WFR patches failed'
     else:
-        check.status = 'WARN'
+        check.status = 'PASS'
         if check.full_output['success']:
             check.summary = 'All WFR patches successful'
         else:
