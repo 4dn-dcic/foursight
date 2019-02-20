@@ -12,6 +12,19 @@ import datetime
 import json
 
 
+def stringify(item):
+    if isinstance(item, str):
+        return item
+    elif isinstance(item, list):
+        if len(item) == 1:
+            return stringify(item[0])
+        elif all(isinstance(i, dict) for i in item):
+            return str([sorted(i.items()) for i in item])
+    elif isinstance(item, dict):
+        return str(sorted(item.items()))
+    return str(item)
+
+
 def compare_badges(obj_ids, item_type, badge, ffenv):
     '''
     Compares items that should have a given badge to items that do have the given badge.
