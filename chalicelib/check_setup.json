@@ -166,11 +166,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -198,11 +194,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -214,11 +206,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
