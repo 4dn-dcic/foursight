@@ -176,7 +176,7 @@ def repsets_have_bio_reps(connection, **kwargs):
             by_exp[result['@id']] = '; '.join(exp_audits)
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
-                                                                 'replicatenumbers', connection.ff_env)
+                                                                 'replicate-numbers', connection.ff_env)
     check.action = 'patch_badges_for_replicate_numbers'
     if by_exp:
         check.status = 'WARN'
@@ -207,7 +207,7 @@ def patch_badges_for_replicate_numbers(connection, **kwargs):
                 'Replicate sets that no longer have replicate number issues',
                 'Replicate sets with a replicate_numbers badge that needs editing']
 
-    action.output = patch_badges(rep_check_result['full_output'], 'replicatenumbers', rep_keys, connection.ff_env)
+    action.output = patch_badges(rep_check_result['full_output'], 'replicate-numbers', rep_keys, connection.ff_env)
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -239,7 +239,7 @@ def tier1_metadata_present(connection, **kwargs):
                 missing[result['@id']] = '; '.join(messages)
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(missing, 'Biosample',
-                                                                 'tier1metadatamissing',
+                                                                 'tier1-metadata-missing',
                                                                  connection.ff_env)
     check.action = 'patch_badges_for_tier1_metadata'
     if missing:
@@ -271,7 +271,7 @@ def patch_badges_for_tier1_metadata(connection, **kwargs):
                  'Tier1 biosamples no longer missing required metadata',
                  'Biosamples with a tier1_metadata_missing badge that needs editing']
 
-    action.output = patch_badges(tier1_check_result['full_output'], 'tier1metadatamissing', tier1keys, connection.ff_env)
+    action.output = patch_badges(tier1_check_result['full_output'], 'tier1-metadata-missing', tier1keys, connection.ff_env)
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -308,7 +308,7 @@ def exp_has_raw_files(connection, **kwargs):
         if not raw_files:
             missing_files.append(expt)
 
-    to_add, to_remove, ok = compare_badges(missing_files, 'Experiment', 'norawfiles', connection.ff_env)
+    to_add, to_remove, ok = compare_badges(missing_files, 'Experiment', 'no-raw-files', connection.ff_env)
 
     if missing_files:
         check.status = 'WARN'
@@ -337,7 +337,7 @@ def patch_badges_for_raw_files(connection, **kwargs):
 
     raw_keys = ['Experiments newly missing raw files', 'Experiments no longer missing raw files']
 
-    action.output = patch_badges(raw_check_result['full_output'], 'norawfiles', raw_keys,
+    action.output = patch_badges(raw_check_result['full_output'], 'no-raw-files', raw_keys,
                                  connection.ff_env, single_message='Raw files missing')
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
@@ -366,7 +366,7 @@ def paired_end_info_consistent(connection, **kwargs):
     results_rev = {item: key for key, val in results.items() for item in val}
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(results_rev, 'FileFastq',
-                                                                 'pairedendsconsistent',
+                                                                 'paired-ends-consistent',
                                                                  connection.ff_env)
 
     if [val for val in results.values() if val]:
@@ -402,7 +402,7 @@ def patch_badges_for_paired_end_consistency(connection, **kwargs):
                'Fastq files with paired end info now consistent',
                'Fastq files with paired end badge that needs editing']
 
-    action.output = patch_badges(pe_check_result['full_output'], 'pairedendsconsistent', pe_keys, connection.ff_env)
+    action.output = patch_badges(pe_check_result['full_output'], 'paired-ends-consistent', pe_keys, connection.ff_env)
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
