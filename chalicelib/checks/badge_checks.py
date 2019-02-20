@@ -410,3 +410,88 @@ def patch_badges_for_paired_end_consistency(connection, **kwargs):
         action.status = 'DONE'
         action.description = 'Patching successful for paired end fastq files.'
     return action
+
+
+@check_function()
+def consistent_replicate_info(connection, **kwargs):
+    check = init_check_res(connection, 'consistent_replicate_info')
+
+    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id'
+    exp_url = 'search/?type=Experiment&frame=object'
+    bio_url = 'search/?type=Experiment&field=biosample'
+    repsets = [item for item in ff_utils.search_metadata(repset_url, ff_env=connection.ff_env) if item.get('experiments_in_set')]
+    exps = ff_utils.search_metadata(exp_url, ff_env=connection.ff_env)
+    biosamples = ff_utils.search_metadata(bio_url, ff_env=connection.ff_env)
+    exp_keys = {exp['@id']: exp for exp in exps}
+    bio_keys = {bs['@id']: bs['biosample'] for bs in biosamples}
+    fields2check = [
+        'lab',
+        'award',
+        'experiment_type',
+        'crosslinking_method',
+        'crosslinking_time',
+        'crosslinking_temperature',
+        'digestion_enzyme',
+        'enzyme_lot_number',
+        'digestion_time',
+        'digestion_temperature',
+        'tagging_method',
+        'ligation_time',
+        'ligation_temperature',
+        'ligation_volume',
+        'biotin_removed',
+        'protocol',
+        'protocol_variation',
+        'follows_sop',
+        'average_fragment_size',
+        'fragment_size_range',
+        'fragmentation_method',
+        'fragment_size_selection_method',
+        'rna_tag',
+        'target_regions',
+        'dna_label',
+        'labeling_time',
+        'antibody',
+        'antibody_lot_id',
+        'microscopy_technique',
+        'imaging_paths',
+    ]
+    check.full_output = {}
+    for repset in repsets:
+        info_dict = {}
+        exp_list = [item['@id'] for item in repset['experiments_in_set']]
+        for field in fields2check:
+            vals = [stringify(exp_keys[exp].get(field)) for exp in exp_list]
+            if field == 'average_fragment_size' and 'None' not in vals:
+                int_vals = [int(val) for val in vals]
+                if max(int_vals) - min(int_vals) < 50:
+                    continue
+            if len(set(vals)) > 1:
+                info_dict[field] = vals
+        for bfield in ['treatments_summary', 'modifications_summary']:
+            bvals = [stringify(bio_keys[exp].get(bfield)) for exp in exp_list]
+            if len(set(bvals)) > 1:
+                info_dict[bfield] = bvals
+        biosource_vals = [stringify([item['@id'] for item in bio_keys[exp].get('biosource')]) for exp in exp_list]
+        if len(set(biosource_vals)) > 1:
+            info_dict['biosource'] = biosource_vals
+        if [True for exp in exp_list if bio_keys[exp].get('cell_culture_details')]:
+            for ccfield in ['synchronization_stage', 'differentiation_stage', 'follows_sop']:
+                ccvals = [stringify([item['@id'] for item in bio_keys[exp].get('cell_culture_details').get(ccfield)]) for exp in exp_list]
+                if len(set(ccvals)) > 1:
+                    info_dict[ccfield] = ccvals
+        if [True for exp in exp_list if bio_keys[exp].get('biosample_protocols')]:
+            bp_vals = [stringify([item['@id'] for item in bio_keys[exp].get('biosample_protocols', [])]) for exp in exp_list]
+            if len(set(bp_vals)) > 1:
+                info_dict['biosample_protocols'] = bp_vals
+        if info_dict:
+            check.full_output[repset['@id']] = info_dict
+    check.brief_output = {k: list(v.keys()) for k, v in check.full_output.items()}
+    if check.full_output:
+        check.status = 'WARN'
+        check.summary = 'Inconsistent Replicate Info Found'
+        check.description = '{} Replicate Experiment Sets found with inconsistent replicate information'.format(len(check.full_output.keys()))
+    else:
+        check.status = 'PASS'
+        check.summary = 'All Replicate Information Consistent'
+    return check
