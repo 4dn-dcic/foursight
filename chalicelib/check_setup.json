@@ -163,7 +163,7 @@
     },
     "repsets_have_bio_reps": {
         "title": "Replicate experiment sets with replicate number issues",
-        "group": "Audit checks",
+        "group": "Badge checks",
         "schedule": {
             "morning_checks": {
                 "all": {
@@ -175,7 +175,7 @@
     },
     "tier1_metadata_present": {
         "title": "Tier 1 Biosamples with Missing Metadata",
-        "group": "Audit checks",
+        "group": "Badge checks",
         "schedule": {
             "morning_checks": {
                 "mastertest": {
@@ -191,7 +191,7 @@
     },
     "exp_has_raw_files": {
         "title": "Experiments missing raw files",
-        "group": "Audit checks",
+        "group": "Badge checks",
         "schedule": {
             "morning_checks": {
                 "all": {
@@ -203,7 +203,7 @@
     },
     "paired_end_info_consistent": {
         "title": "Fastq files with inconsistent paired end information",
-        "group": "Audit checks",
+        "group": "Badge checks",
         "schedule": {
             "morning_checks": {
                 "all": {
