@@ -782,3 +782,118 @@ def patch_file_higlass_uid(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+@check_function()
+def find_cypress_test_items_to_purge(connection, **kwargs):
+    """ Looks for all items that are deleted and marked for purging by cypress test.
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check/action object
+    """
+
+    check = init_check_res(connection, 'find_cypress_test_items_to_purge')
+    check.full_output = {
+        'items_to_purge':[],
+        'rationale':{},
+    }
+
+    # associate the action with the check.
+    check.action = 'purge_cypress_items'
+
+    # Search for all Higlass View Config that are deleted.
+    search_query = '/search/?type=Item&status=deleted'
+    search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+
+    # For each view config
+    for viewconf in search_response:
+        uuid = viewconf["uuid"]
+        # Get their tags
+        tags = viewconf.get("tags", [])
+
+        # For a given file, track:
+        # - purge(boolean): If we should definitely purge it (or definitely keep it)
+        # - reason(string): The rule dictating purge/keep (this shows the reason)
+        # - priority(number): The priority of the reason (so higher priority can ignore lower ones and we get consistent behavior)
+        rule_rationale = []
+
+        # If it's marked for deletion by Cypress testing, purge.
+        if "deleted_by_cypress_test" in tags:
+            rule_rationale.append({
+                "purge" : True,
+                "reason" : "cypress_test",
+                "priority" : 100
+            })
+
+        # All tags have been processed, pick the highest priority rule.
+        if len(rule_rationale) > 0:
+            max_rule = max(
+                rule_rationale,
+                key = lambda rul : rul["priority"]
+            )
+
+            # If the file should be purged, add it.
+            if max_rule["purge"]:
+                check.full_output['items_to_purge'].append(uuid)
+
+            # Add the rationale to the full output.
+            check.full_output['rationale'][uuid] = rule_rationale
+
+    # Note the number of items ready to purge
+    num_viewconfigs = len(check.full_output['items_to_purge'])
+    check.status = 'PASS'
+
+    if num_viewconfigs == 0:
+        check.summary = check.description = "No new items to purge."
+    else:
+        check.summary = "Ready to purge %s items" % num_viewconfigs
+        check.description = check.summary + ". See full_output for details."
+        check.allow_action = True
+    return check
+
+@action_function()
+def purge_cypress_items(connection, **kwargs):
+    """ Using the find_cypress_test_items_to_purge check, deletes the indicated items.
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        A check object
+    """
+
+    action = init_action_res(connection, 'purge_cypress_items')
+    action_logs = {
+        'viewconfs_purged':[],
+        'failed_to_purge':{}
+    }
+
+    # get latest results
+    gen_check = init_check_res(connection, 'find_cypress_test_items_to_purge')
+    if kwargs.get('called_by', None):
+        gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
+    else:
+        gen_check_result = gen_check.get_primary_result()
+
+    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    start_time = time.time()
+    time_expired = False
+
+    # Purge the deleted files.
+    for view_conf_uuid in gen_check_result["full_output"]["items_to_purge"]:
+        # If we've taken more than 270 seconds to complete, break immediately
+        if time.time() - start_time > 270:
+            time_expired = True
+            break
+
+        purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys, ff_env=connection.ff_env)
+        if purge_response['status'] == 'success':
+            action_logs['items_purged'].append(view_conf_uuid)
+        else:
+            action_logs['failed_to_purge'][view_conf_uuid] = purge_response["comment"]
+
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
