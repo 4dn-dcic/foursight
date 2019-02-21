@@ -679,4 +679,21 @@
             }
         }
     }
+
+    , "check_for_bad_viewconf_static_content": {
+        "title": "check_for_bad_viewconf_static_content",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    }
 }
