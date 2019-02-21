@@ -436,10 +436,8 @@ def consistent_replicate_info(connection, **kwargs):
     bio_url = 'search/?type=Experiment&field=biosample'
     repsets = [item for item in ff_utils.search_metadata(repset_url, ff_env=connection.ff_env) if item.get('experiments_in_set')]
     exps = ff_utils.search_metadata(exp_url, ff_env=connection.ff_env)
-    print(len(exps))
     biosamples = ff_utils.search_metadata(bio_url, ff_env=connection.ff_env)
     exp_keys = {exp['@id']: exp for exp in exps}
-    print([key for key in exp_keys.keys() if 'tsaseq' in key])
     bio_keys = {bs['@id']: bs['biosample'] for bs in biosamples}
     fields2check = [
         'lab',
@@ -503,7 +501,7 @@ def consistent_replicate_info(connection, **kwargs):
                 info_dict['biosample_protocols'] = bp_vals
         if info_dict:
             info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
-            msg = 'Inconsistent replicate information in field(s) ' + '; '.join(info)
+            msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
             results[repset['@id']] = msg
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
