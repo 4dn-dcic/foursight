@@ -16,12 +16,14 @@ def stringify(item):
     if isinstance(item, str):
         return item
     elif isinstance(item, list):
-        if len(item) == 1:
-            return stringify(item[0])
-        elif all(isinstance(i, dict) for i in item):
-            return str([sorted(i.items()) for i in item])
+        # if len(item) == 1:
+        #     return stringify(item[0])
+        # elif all(isinstance(i, dict) for i in item):
+        #     return str([sorted(i.items()) for i in item])
+        return '[' + ', '.join([stringify(i) for i in item]) + ']'
     elif isinstance(item, dict):
-        return str(sorted(item.items()))
+        # return str(sorted(item.items()))
+        return '{' + ', '.join(['{}: {}'.format(k, str(v)) for k, v in sorted(item.items())]) + '}'
     return str(item)
 
 
@@ -434,8 +436,10 @@ def consistent_replicate_info(connection, **kwargs):
     bio_url = 'search/?type=Experiment&field=biosample'
     repsets = [item for item in ff_utils.search_metadata(repset_url, ff_env=connection.ff_env) if item.get('experiments_in_set')]
     exps = ff_utils.search_metadata(exp_url, ff_env=connection.ff_env)
+    print(len(exps))
     biosamples = ff_utils.search_metadata(bio_url, ff_env=connection.ff_env)
     exp_keys = {exp['@id']: exp for exp in exps}
+    print([key for key in exp_keys.keys() if 'tsaseq' in key])
     bio_keys = {bs['@id']: bs['biosample'] for bs in biosamples}
     fields2check = [
         'lab',
@@ -469,7 +473,7 @@ def consistent_replicate_info(connection, **kwargs):
         'microscopy_technique',
         'imaging_paths',
     ]
-    check.full_output = {}
+    results = {}
     for repset in repsets:
         info_dict = {}
         exp_list = [item['@id'] for item in repset['experiments_in_set']]
@@ -498,13 +502,52 @@ def consistent_replicate_info(connection, **kwargs):
             if len(set(bp_vals)) > 1:
                 info_dict['biosample_protocols'] = bp_vals
         if info_dict:
-            check.full_output[repset['@id']] = info_dict
-    check.brief_output = {k: list(v.keys()) for k, v in check.full_output.items()}
-    if check.full_output:
+            info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
+            msg = 'Inconsistent replicate information in field(s) ' + '; '.join(info)
+            results[repset['@id']] = msg
+
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
+        results, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
+    )
+    if to_add or to_remove or to_edit:
         check.status = 'WARN'
-        check.summary = 'Inconsistent Replicate Info Found'
-        check.description = '{} Replicate Experiment Sets found with inconsistent replicate information'.format(len(check.full_output.keys()))
+        check.summary = 'Replicate Info badges need patching'
+        check.description = ('{} ExperimentSetReplicates found that need a replicate-info badge patched'
+                             ''.format(len(to_add.keys()) + len(to_remove.keys()) + len(to_edit.keys())))
     else:
         check.status = 'PASS'
-        check.summary = 'All Replicate Information Consistent'
+        check.summary = 'Replicate Info badges are up-to-date'
+        check.description = 'No ExperimentSetReplicates found that need a replicate-info badge patched'
+    check.full_output = {'New replicate experiment sets with inconsistent replicate info': to_add,
+                         'Old replicate experiment sets with inconsistent replicate info': ok,
+                         'Replicate experiment sets with replicate info now consistent': to_remove,
+                         'Replicate experiment sets with replicate-info badge that needs editing': to_edit}
+    check.brief_output = results
+    check.action = 'patch_badges_for_inconsistent_replicate_info'
+    if to_add or to_remove or to_edit:
+        check.allow_action = True
     return check
+
+
+@action_function()
+def patch_badges_for_inconsistent_replicate_info(connection, **kwargs):
+    action = init_action_res(connection, 'patch_badges_for_inconsistent_replicate_info')
+
+    rep_info_check = init_check_res(connection, 'consistent_replicate_info')
+    rep_info_check_result = rep_info_check.get_result_by_uuid(kwargs['called_by'])
+
+    rep_info_keys = [
+        'New replicate experiment sets with inconsistent replicate info',
+        'Replicate experiment sets with replicate info now consistent',
+        'Replicate experiment sets with replicate-info badge that needs editing'
+    ]
+
+    action.output = patch_badges(rep_info_check_result['full_output'], 'inconsistent-replicate-info',
+                                 rep_info_keys, connection.ff_env)
+    if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
+        action.status = 'FAIL'
+        action.description = 'Some items failed to patch. See below for details.'
+    else:
+        action.status = 'DONE'
+        action.description = 'Patching successful for inconsistent replicate info badges.'
+    return action
