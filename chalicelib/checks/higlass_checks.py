@@ -374,11 +374,10 @@ def generate_higlass_view_confs_files_for_expsets(connection, **kwargs):
     exp_sets_to_generate_viewconfs_for_count = 0
 
     if kwargs['expset_uuid']:
-        search_query = '/search/?uuid=' + kwargs['expset_uuid']
+        search_res = [ ff_utils.get_metadata(kwargs['expset_uuid'], key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded"), ]
     else:
         search_query = '/search/?type=ExperimentSet'
-
-    search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
 
     for exp_set in search_res:
         # Skip the file if it has previously been registered by Foursight.
@@ -416,13 +415,15 @@ def generate_higlass_view_confs_files_for_expsets(connection, **kwargs):
         check.allow_action = True  # allow the action to be run
     return check
 
-@action_function(expset_uuid=None)
+@action_function(expset_uuid=None, one_per_genome_assembly=False)
 def post_higlass_view_confs_files_for_expsets(connection, **kwargs):
     """ Action that is used with generate_higlass_view_confs_files_for_expsets to
     actually POST new higlass view configs and PATCH the old files.
 
     Args:
         connection: The connection to Fourfront.
+        expset_uuid(string, optional, default=None): Only generate a viewconf for the given Experiment Set UUID.
+        one_per_genome_assembly(boolean, optional, default=False): Only generate one viewconf per genome assembly
         **kwargs
 
     Returns:
@@ -460,7 +461,7 @@ def post_higlass_view_confs_files_for_expsets(connection, **kwargs):
             experiment_set_files = gen_check_result['full_output']['target_files'][ga][experiment_set_uuid]
 
             # Create a new config file and patch it to the experiment file.
-            create_results = create_view_config_and_patch_to_file(connection, ref_files_by_ga[ga], experiment_set_uuid, experiment_set_files, ff_auth, headers, 'tab:processed_files')
+            create_results = create_view_config_and_patch_to_file(connection, ref_files_by_ga[ga], experiment_set_uuid, experiment_set_files, ff_auth, headers, 'tab:processed_files_higlass_test')
             error = create_results["error"]
             success = create_results["success"]
 
@@ -475,6 +476,11 @@ def post_higlass_view_confs_files_for_expsets(connection, **kwargs):
             if not success and "patch" in error:
                 # We failed to patch the static content to this file.
                 action_logs['failed_patch_files'].append(experiment_set_uuid)
+
+            # If only one per genome assembly, break out of the inner loop.
+            if success and kwargs["one_per_genome_assembly"]:
+                break
+
     action.status = 'DONE'
     action.output = action_logs
     return action
