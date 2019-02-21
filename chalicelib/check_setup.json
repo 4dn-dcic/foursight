@@ -213,6 +213,18 @@
             }
         }
     },
+    "consistent_replicate_info": {
+        "title": "Replicate Experiment Sets with inconsistent replicate information",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "page_children_routes": {
         "title": "Pages with bad routes",
         "group": "Audit checks",
