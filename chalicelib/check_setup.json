@@ -631,8 +631,8 @@
             }
         }
     },
-    "generate_higlass_view_confs_files_for_expsets": {
-        "title": "Generate Higlass ViewConigs for Files in Experiment Sets",
+    "check_expsets_processedfiles_for_higlass_viewconf": {
+        "title": "Create HiGlass viewconfs for Experiment Sets",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
