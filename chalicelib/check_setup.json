@@ -615,7 +615,7 @@
             }
         }
     },
-    "generate_higlass_view_confs_files": {
+    "check_files_for_higlass_viewconf": {
         "title": "Generate Higlass ViewConigs for Files",
         "group": "Higlass checks",
         "schedule": {
