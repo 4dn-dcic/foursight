@@ -330,14 +330,14 @@ def post_higlass_view_confs_files(connection, **kwargs):
     )
     return action
 
-@check_function(expset_uuid=None)
+@check_function(expset_accession=None)
 def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     """ Check to generate Higlass view configs on Fourfront for ExpSets.
 
         Args:
             connection: The connection to Fourfront.
             **kwargs, which may include:
-                expset_uuid: Only check this expset.
+                expset_accession: Only check this expset.
 
         Returns:
             check results object.
@@ -347,33 +347,44 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     check.full_output = {}
     check.action = 'patch_expsets_processedfiles_for_higlass_viewconf'
 
-    if kwargs['expset_uuid']:
-        expsets_by_uuid = {
-            kwargs['expset_uuid'] : ff_utils.get_metadata(kwargs['expset_uuid'], key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
+    if kwargs['expset_accession']:
+        expsets_by_accession = {
+            kwargs['expset_accession'] : ff_utils.get_metadata(kwargs['expset_accession'], key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
         }
     else:
+        fields_to_include = "&field=" + "&field=".join(
+            (
+                "accession",
+                "static_content",
+                "processed_files.accession",
+                "processed_files.genome_assembly",
+                "processed_files.higlass_uid",
+                "experiments_in_set.processed_files.accession",
+                "experiments_in_set.processed_files.genome_assembly",
+                "experiments_in_set.processed_files.higlass_uid",
+            )
+        )
+
         #Loop through all experiment sets that match.
         #Include ExpSets whose Processed Files have higlass_uid
-        processed_expsets_query = '/search/?type=ExperimentSetReplicate&processed_files.higlass_uid%21=No+value'
+        processed_expsets_query = '/search/?type=ExperimentSetReplicate&processed_files.higlass_uid%21=No+value' + fields_to_include
         search_res = ff_utils.search_metadata(processed_expsets_query, key=connection.ff_keys, ff_env=connection.ff_env)
 
         # store results by uuid
-        expsets_by_uuid = {}
-        for expset in search_res:
-            expsets_by_uuid[ expset["uuid"] ] = expset
+        expsets_by_accession = {expset["accession"]: expset for expset in search_res }
 
-        #Include ExpSets whose Experiments contain Processed Files with at higlass_uid
-        processed_experiments_query = '/search/?type=ExperimentSetReplicate&experiments_in_set.processed_files.higlass_uid%21=No+value'
+        #Include ExpSets whose Experiments contain Processed Files with  higlass_uid
+        processed_experiments_query = '/search/?type=ExperimentSetReplicate&experiments_in_set.processed_files.higlass_uid%21=No+value' + fields_to_include
         search_res = ff_utils.search_metadata(processed_experiments_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for expset in search_res:
-            expsets_by_uuid[ expset["uuid"] ] = expset
+            expsets_by_accession[ expset["accession"] ] = expset
 
         #Exclude any ExpSets with static content with the description = "auto_generated_higlass_view_config"
-        static_content_query = '/search/?type=ExperimentSetReplicate&static_content.description=auto_generated_higlass_view_config'
+        static_content_query = '/search/?type=ExperimentSetReplicate&static_content.description=auto_generated_higlass_view_config&field=accession'
         search_res = ff_utils.search_metadata(static_content_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for expset in search_res:
-            if expset["uuid"] in expsets_by_uuid:
-                del expsets_by_uuid[ expset["uuid"] ]
+            if expset["accession"] in expsets_by_accession:
+                del expsets_by_accession[ expset["accession"] ]
 
     # Get reference files
     reference_files_by_ga = get_reference_files(connection)
@@ -383,8 +394,8 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     file_count = 0
     expset_count = 0
 
-    for expset_uuid in expsets_by_uuid:
-        expset = expsets_by_uuid[expset_uuid]
+    for expset_accession in expsets_by_accession:
+        expset = expsets_by_accession[expset_accession]
 
         # Get all of the processed files
         file_info = gather_processedfiles_for_expset(expset)
@@ -397,7 +408,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
 
         if processed_file_genome_assembly not in target_files_by_ga:
             target_files_by_ga[ processed_file_genome_assembly ] = {}
-        target_files_by_ga[ processed_file_genome_assembly ][expset_uuid] = {
+        target_files_by_ga[ processed_file_genome_assembly ][expset_accession] = {
             "static_content" : expset.get("static_content", []),
             "files" : file_info["files"],
         }
@@ -417,14 +428,14 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         check.allow_action = True  # allow the action to be run
     return check
 
-@action_function(expset_uuid=None, one_per_genome_assembly=False)
+@action_function(expset_accession=None, one_per_genome_assembly=False)
 def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     """ Create, Post and Patch HiGlass viewconfig files for the given Experiment Sets.
 
         Args:
             connection: The connection to Fourfront.
             **kwargs, which may include:
-                expset_uuid(string, optional, default=None): Only generate a viewconf for the given Experiment Set UUID.
+                expset_accession(string, optional, default=None): Only generate a viewconf for the given Experiment Set UUID.
                 one_per_genome_assembly(boolean, optional, default=False): Only generate one viewconf per genome assembly
 
         Returns:
@@ -466,38 +477,38 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             continue
         ref_files = ref_files_by_ga[ga]
 
-        for expset_uuid in target_files[ga]:
+        for expset_accession in target_files[ga]:
             # If we've taken more than 270 seconds to complete, break immediately
             if time.time() - start_time > 270:
                 time_expired = True
                 break
 
             # If a specific uuid was desired, skip the others
-            if kwargs['expset_uuid'] and expset_uuid != kwargs['expset_uuid']:
+            if kwargs['expset_accession'] and expset_accession != kwargs['expset_accession']:
                 continue
 
-            files_for_viewconf = target_files[ga][expset_uuid]["files"]
-            static_content_section = target_files[ga][expset_uuid]["static_content"]
+            files_for_viewconf = target_files[ga][expset_accession]["files"]
+            static_content_section = target_files[ga][expset_accession]["static_content"]
 
             # Post a new Higlass viewconf using the file list
             post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, files_for_viewconf, ff_auth, headers)
 
             if post_viewconf_results["error"]:
-                action_logs['failed_to_create_viewconf'][expset_uuid] = post_viewconf_results["error"]
+                action_logs['failed_to_create_viewconf'][expset_accession] = post_viewconf_results["error"]
                 continue
 
             # Create a new static content section with the description = "auto_generated_higlass_view_config" and the new viewconf as the content
             # Patch the ExpSet static content
-            successful_patch, patch_error =  add_viewconf_static_content_to_file(connection, expset_uuid, post_viewconf_results["view_config_uuid"],
+            successful_patch, patch_error =  add_viewconf_static_content_to_file(connection, expset_accession, post_viewconf_results["view_config_uuid"],
             static_content_section,
             "tab:higlass_processed_file_testing")
 
             if not successful_patch:
-                action_logs['failed_to_patch_expset'][expset_uuid] = patch_error
+                action_logs['failed_to_patch_expset'][expset_accession] = patch_error
                 continue
 
             # Report success.
-            action_logs['successes'][expset_uuid] = post_viewconf_results["view_config_uuid"]
+            action_logs['successes'][expset_accession] = post_viewconf_results["view_config_uuid"]
 
             # If only one per genome assembly, break out of the inner loop.
             if kwargs["one_per_genome_assembly"]:
@@ -530,8 +541,8 @@ def gather_processedfiles_for_expset(expset):
 
     # Search each Experiment, they may have Processed Files.
     if "experiments_in_set" in expset:
-        for experiment in expset["experiments_in_set"]:
-            exp_processed_files = [ pf for pf in experiment if "higlass_uid" in pf ]
+        for experiment in [ exp for exp in expset["experiments_in_set"] if "processed_files" in exp]:
+            exp_processed_files = [ pf for pf in experiment["processed_files"] if "higlass_uid" in pf ]
             processed_files += exp_processed_files
 
     if len(processed_files) < 1:
@@ -552,13 +563,13 @@ def gather_processedfiles_for_expset(expset):
         }
 
     # Return all of the processed files.
-    unique_uuids = {}
+    unique_accession = {}
     unique_files = []
     for pf in processed_files:
-        if pf["uuid"] in unique_uuids:
+        if pf["accession"] in unique_accession:
             continue
-        unique_uuids[pf["uuid"]] = pf
-        unique_files.append(pf["uuid"])
+        unique_accession[pf["accession"]] = pf
+        unique_files.append(pf["accession"])
 
     return {
         "error": "",
