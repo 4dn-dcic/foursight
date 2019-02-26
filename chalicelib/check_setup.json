@@ -203,7 +203,7 @@
     },
     "paired_end_info_consistent": {
         "title": "Fastq files with inconsistent paired end information",
-        "group": "Badge checks",
+        "group": "Audit checks",
         "schedule": {
             "morning_checks": {
                 "all": {
