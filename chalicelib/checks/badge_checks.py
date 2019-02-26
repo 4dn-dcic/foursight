@@ -16,14 +16,11 @@ def stringify(item):
     if isinstance(item, str):
         return item
     elif isinstance(item, list):
-        # if len(item) == 1:
-        #     return stringify(item[0])
-        # elif all(isinstance(i, dict) for i in item):
-        #     return str([sorted(i.items()) for i in item])
         return '[' + ', '.join([stringify(i) for i in item]) + ']'
     elif isinstance(item, dict):
-        # return str(sorted(item.items()))
         return '{' + ', '.join(['{}: {}'.format(k, str(v)) for k, v in sorted(item.items())]) + '}'
+    elif isinstance(item, float) and abs(item - int(item)) == 0:
+        return str(int(item))
     return str(item)
 
 
@@ -270,8 +267,8 @@ def tier1_metadata_present(connection, **kwargs):
                          'Tier1 biosamples no longer missing required metadata': to_remove,
                          'Biosamples with a tier1_metadata_missing badge that needs editing': to_edit}
     check.brief_output = list(missing.keys())
-    if to_add or to_remove or to_edit:
-        check.allow_action = True
+    # if to_add or to_remove or to_edit:
+    #     check.allow_action = True
     return check
 
 
@@ -408,6 +405,7 @@ def consistent_replicate_info(connection, **kwargs):
         'imaging_paths',
     ]
     results = {}
+    check.brief_output = {}
     for repset in repsets:
         info_dict = {}
         exp_list = [item['@id'] for item in repset['experiments_in_set']]
@@ -415,7 +413,7 @@ def consistent_replicate_info(connection, **kwargs):
             vals = [stringify(exp_keys[exp].get(field)) for exp in exp_list]
             if field == 'average_fragment_size' and 'None' not in vals:
                 int_vals = [int(val) for val in vals]
-                if max(int_vals) - min(int_vals) < 50:
+                if max(int_vals) - min(int_vals) < 100:
                     continue
             if len(set(vals)) > 1:
                 info_dict[field] = vals
@@ -439,6 +437,7 @@ def consistent_replicate_info(connection, **kwargs):
             info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
             msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
             results[repset['@id']] = msg
+            check.brief_output[repset['@id']] = info_dict
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
         results, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
@@ -456,7 +455,7 @@ def consistent_replicate_info(connection, **kwargs):
                          'Old replicate experiment sets with inconsistent replicate info': ok,
                          'Replicate experiment sets with replicate info now consistent': to_remove,
                          'Replicate experiment sets with replicate-info badge that needs editing': to_edit}
-    check.brief_output = results
+    #check.brief_output = results
     check.action = 'patch_badges_for_inconsistent_replicate_info'
     if to_add or to_remove or to_edit:
         check.allow_action = True
