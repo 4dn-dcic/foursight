@@ -466,6 +466,29 @@ def check_status_mismatch(connection, **kwargs):
     return check
 
 
+@check_function()
+def check_validation_errors(connection, **kwargs):
+    check = init_check_res(connection, 'check_validation_errors')
+
+    search_url = 'search/?audit.INTERNAL_ACTION.category=validation+error&type=Item'
+    results = ff_utils.search_metadata(search_url + '&field=@id', ff_env=connection.ff_env)
+    if results:
+        types = {item for result in results for item in result['@type'] if item != 'Item'}
+        check.status = 'WARN'
+        check.summary = 'Validation errors found'
+        check.description = ('{} items found with validation errors, comprising the following '
+                             'item types: {}. \nFor search results see link below.'.format(
+                                 len(results), ', '.join(list(types))
+                            ))
+        check.ff_link = connection.ff_server + search_url
+    else:
+        check.status = 'PASS'
+        check.summary = 'No validation errors'
+        check.description = 'No validation errors found.'
+    return check
+
+
+
 def _get_all_other_processed_files(item):
     toignore = []
     # get directly linked other processed files
