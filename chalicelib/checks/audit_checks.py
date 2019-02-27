@@ -171,7 +171,9 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
 
 @check_function()
 def paired_end_info_consistent(connection, **kwargs):
-    # check that fastqs with a paired_end number have a paired_with related_file, and vice versa
+    '''
+    Check that fastqs with a paired_end number have a paired_with related_file, and vice versa
+    '''
     check = init_check_res(connection, 'paired_end_info_consistent')
 
     search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
@@ -468,6 +470,10 @@ def check_status_mismatch(connection, **kwargs):
 
 @check_function()
 def check_validation_errors(connection, **kwargs):
+    '''
+    Counts number of items in fourfront with schema validation errors,
+    returns link to search if found.
+    '''
     check = init_check_res(connection, 'check_validation_errors')
 
     search_url = 'search/?audit.INTERNAL_ACTION.category=validation+error&type=Item'

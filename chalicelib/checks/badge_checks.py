@@ -145,6 +145,15 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, single_message='')
 
 @check_function()
 def repsets_have_bio_reps(connection, **kwargs):
+    '''
+    Check for replicate experiment sets that have one of the following issues:
+    1) Only a single experiment
+    2) Only a single biological replicate
+    3) Biological replicate numbers that are not in sequence
+    4) Technical replicate numbers that are not in sequence
+
+    Action patches badges with a message detailing which of the above issues is relevant.
+    '''
     check = init_check_res(connection, 'repsets_have_bio_reps')
 
     results = ff_utils.search_metadata('search/?type=ExperimentSetReplicate&frame=object',
@@ -233,6 +242,18 @@ def patch_badges_for_replicate_numbers(connection, **kwargs):
 
 @check_function()
 def tier1_metadata_present(connection, **kwargs):
+    '''
+    Check for Tier 1 Biosample badges that are missing one or more of the following
+    pieces of required metadata:
+    1) culture_start_date
+    2) culture_harvest_date
+    3) culture_duration
+    4) morphology_image
+    5) a linked cell_culture_details item
+
+    Action patches badges with a message detailing which of the above pieces of
+    metadata is missing.
+    '''
     check = init_check_res(connection, 'tier1_metadata_present')
 
     results = ff_utils.search_metadata('search/?biosource.cell_line_tier=Tier+1&type=Biosample',
@@ -299,6 +320,10 @@ def patch_badges_for_tier1_metadata(connection, **kwargs):
 
 @check_function()
 def exp_has_raw_files(connection, **kwargs):
+    '''
+    Check for sequencing experiments that don't have raw files
+    Action patches badges
+    '''
     check = init_check_res(connection, 'exp_has_raw_files')
     # search all experiments except microscopy experiments for missing files field
     no_files = ff_utils.search_metadata('search/?type=Experiment&%40type%21=ExperimentMic&files.uuid=No+value',
@@ -368,6 +393,13 @@ def patch_badges_for_raw_files(connection, **kwargs):
 
 @check_function()
 def consistent_replicate_info(connection, **kwargs):
+    '''
+    Check for replicate experiment sets that have discrepancies in metadata between
+    replicate experiments.
+
+    Action patches badges with a message detailing which fields have the inconsistencies
+    and what the inconsistent values are.
+    '''
     check = init_check_res(connection, 'consistent_replicate_info')
 
     repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id'
@@ -390,6 +422,7 @@ def consistent_replicate_info(connection, **kwargs):
         'digestion_time',
         'digestion_temperature',
         'tagging_method',
+        'tagging_rounds',
         'ligation_time',
         'ligation_temperature',
         'ligation_volume',
