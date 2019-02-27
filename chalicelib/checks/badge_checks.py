@@ -173,11 +173,11 @@ def repsets_have_bio_reps(connection, **kwargs):
                     rep_dict[exp['bio_rep_no']] = [exp['tec_rep_no']]
         if rep_dict:
         # check if only 1 experiment present in set
-            if len(result['replicate_exps']) == 1:
-                audits['single_experiment'].append('{} contains only 1 experiment'.format(result['@id']))
-                exp_audits.append('Replicate set contains only a single experiment')
+            # if len(result['replicate_exps']) == 1:
+            #     audits['single_experiment'].append('{} contains only 1 experiment'.format(result['@id']))
+            #     exp_audits.append('Replicate set contains only a single experiment')
             # check for technical replicates only
-            elif len(rep_dict.keys()) == 1:
+            if len(rep_dict.keys()) == 1:
                 audits['single_biorep'].append('{} contains only a single biological replicate'.format(result['@id']))
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
