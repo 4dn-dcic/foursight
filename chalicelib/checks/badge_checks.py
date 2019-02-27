@@ -190,14 +190,16 @@ def repsets_have_bio_reps(connection, **kwargs):
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
                                                                  'replicate-numbers', connection.ff_env)
     check.action = 'patch_badges_for_replicate_numbers'
-    if by_exp:
+    if to_add or to_remove or to_edit:
         check.status = 'WARN'
-        check.summary = 'Replicate experiment sets found with replicate number issues'
-        check.description = '{} replicate experiment sets found with replicate number issues'.format(len(by_exp.keys()))
+        check.summary = 'Replicate number badges need patching'
+        check.description = '{} replicate experiment sets need replicate badges patched'.format(
+            len(to_add.values()) + len(to_remove.values()) + len(to_edit.values())
+        )
     else:
         check.status = 'PASS'
-        check.summary = 'No replicate experiment sets found with replicate number issues'
-        check.description = '0 replicate experiment sets found with replicate number issues'
+        check.summary = 'Replicate number badges up-to-date'
+        check.description = 'No replicate number badges need patching'
     check.full_output = {'New replicate sets with replicate number issues': to_add,
                          'Old replicate sets with replicate number issues': ok,
                          'Replicate sets that no longer have replicate number issues': to_remove,
@@ -254,14 +256,16 @@ def tier1_metadata_present(connection, **kwargs):
                                                                  'tier1-metadata-missing',
                                                                  connection.ff_env)
     check.action = 'patch_badges_for_tier1_metadata'
-    if missing:
+    if to_add or to_remove or to_edit:
         check.status = 'WARN'
-        check.summary = 'Tier 1 biosamples found missing required metadata'
-        check.description = '{} tier 1 biosamples found missing required metadata'.format(len(missing.keys()))
+        check.summary = 'Tier 1 metadata badges need patching'
+        check.description = '{} tier 1 biosamples need metadata_missing badges patched'.format(
+            len(to_add.values()) + len(to_remove.values()) + len(to_edit.values())
+        )
     else:
         check.status = 'PASS'
-        check.summary = 'All Tier 1 biosamples have required metadata'
-        check.description = '0 tier 1 biosamples found missing required metadata'
+        check.summary = 'Tier 1 metadata badges up-to-date'
+        check.description = 'No tier 1 biosamples need metadata_missing badges patched'
     check.full_output = {'New tier1 biosamples missing required metadata': to_add,
                          'Old tier1 biosamples missing required metadata': ok,
                          'Tier1 biosamples no longer missing required metadata': to_remove,
@@ -322,14 +326,16 @@ def exp_has_raw_files(connection, **kwargs):
 
     to_add, to_remove, ok = compare_badges(missing_files, 'Experiment', 'no-raw-files', connection.ff_env)
 
-    if missing_files:
+    if to_add or to_remove:
         check.status = 'WARN'
-        check.summary = 'Experiments missing raw files found'
-        check.description = '{} sequencing experiments are missing raw files'.format(len(missing_files))
+        check.summary = 'Raw Files badges need patching'
+        check.description = '{} sequencing experiments need raw files badges patched'.format(
+            len(to_add.values()) + len(to_remove.values())
+        )
     else:
         check.status = 'PASS'
-        check.summary = 'No experiments missing raw files'
-        check.description = '0 sequencing experiments are missing raw files'
+        check.summary = 'Raw Files badges up-to-date'
+        check.description = 'No sequencing experiments need raw files badges patched'
     check.action = 'patch_badges_for_raw_files'
     check.full_output = {'Experiments newly missing raw files': to_add,
                          'Old experiments missing raw files': ok,
