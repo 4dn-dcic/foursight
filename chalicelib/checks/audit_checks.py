@@ -759,12 +759,15 @@ def check_status_mismatch(connection, **kwargs):
     es_items = ff_utils.get_es_metadata(itemids, key=ffkey, chunk_size=200, is_generator=True)
     for es_item in es_items:
         label = es_item.get('embedded').get('display_title')
+        desc = es_item.get('object').get('description')
+        lab = es_item.get('embedded').get('lab').get('display_title')
         status = es_item.get('properties').get('status', 'in review by lab')
         opfs = _get_all_other_processed_files(es_item)
 
         id2links[es_item.get('uuid')] = es_item.get('linked_uuids')
         id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
-        id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'to_ignore': list(set(opfs))}
+        id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'lab': lab,
+                                        'description': desc, 'to_ignore': list(set(opfs))}
 
     mismatches = {}
     linked2get = {}
@@ -808,12 +811,17 @@ def check_status_mismatch(connection, **kwargs):
         full_output = {}
         for eid, mids in mismatches.items():
             eset = id2item.get(eid)
-            key = '{}    {}    {}'.format(eid, eset.get('label'), eset.get('status'))
-            brief_output[key] = len(mids)
+            key = '{} | {} | {} | {}'.format(
+                eid, eset.get('label'), eset.get('status'), eset.get('description'))
+            brief_output.setdefault(eset.get('lab'), {}).update({key: len(mids)})
+            #key = '{}    {}    {}    {}    {}'.format(
+            #    eid, eset.get('label'), eset.get('status'), eset.get('lab'), eset.get('description'))
+            #brief_output[key] = len(mids)
             for mid in mids:
                 mitem = id2item.get(mid)
-                val = '{}    {}    {}'.format(mid, mitem.get('label'), mitem.get('status'))
-                full_output.setdefault(key, []).append(val)
+                val = '{} | {} | {}'.format(mid, mitem.get('label'), mitem.get('status'))
+                full_output.setdefault(eset.get('lab'), {}).setdefault(key, []).append(val)
+                #full_output.setdefault(key, []).append(val)
         check.status = 'WARN'
         check.summary = "MISMATCHED STATUSES FOUND"
         check.description = 'Released or pre-release items have linked items with unreleased status'
