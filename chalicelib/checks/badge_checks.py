@@ -12,6 +12,11 @@ import datetime
 import json
 
 
+REV = ['In review by lab', 'Submission in progress']
+REV_KEY = 'In review by lab/Submission in progress'
+RELEASED_KEY = 'Released/Released to project/Pre-release/Archived'
+
+
 def stringify(item):
     if isinstance(item, str):
         return item
@@ -159,7 +164,10 @@ def repsets_have_bio_reps(connection, **kwargs):
     results = ff_utils.search_metadata('search/?type=ExperimentSetReplicate&frame=object',
                                        ff_env=connection.ff_env, page_limit=50)
 
-    audits = {'single_experiment': [], 'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
+    audits = {
+        REV_KEY: {'single_experiment': [], 'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []},
+        RELEASED_KEY: {'single_experiment': [], 'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
+    }
     by_exp = {}
     for result in results:
         rep_dict = {}
@@ -172,17 +180,22 @@ def repsets_have_bio_reps(connection, **kwargs):
                 else:
                     rep_dict[exp['bio_rep_no']] = [exp['tec_rep_no']]
         if rep_dict:
+            if result.get('status') in REV:
+                audit_key = REV_KEY
+            else:
+                audit_key = RELEASED_KEY
+
         # check if only 1 experiment present in set
             # if len(result['replicate_exps']) == 1:
             #     audits['single_experiment'].append('{} contains only 1 experiment'.format(result['@id']))
             #     exp_audits.append('Replicate set contains only a single experiment')
             # check for technical replicates only
             if len(rep_dict.keys()) == 1:
-                audits['single_biorep'].append('{} contains only a single biological replicate'.format(result['@id']))
+                audits[audit_key]['single_biorep'].append('{} contains only a single biological replicate'.format(result['@id']))
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
             elif sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
-                audits['biorep_nums'].append('Biological replicate numbers of {} are not in sequence:'
+                audits[audit_key]['biorep_nums'].append('Biological replicate numbers of {} are not in sequence:'
                                              ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
                 exp_audits.append('Biological replicate numbers are not in sequence')
         # check if tech rep numbers not in sequence
@@ -194,7 +207,9 @@ def repsets_have_bio_reps(connection, **kwargs):
                         exp_audits.append('Technical replicate numbers of biological replicate {}'
                                           ' are not in sequence'.format(key))
         if exp_audits:
-            by_exp[result['@id']] = '; '.join(exp_audits)
+            msg = '; '.join(exp_audits)
+            if result.get('status') not in REV:
+                by_exp[result['@id']] = msg
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
                                                                  'replicate-numbers', connection.ff_env)
@@ -258,7 +273,7 @@ def tier1_metadata_present(connection, **kwargs):
 
     results = ff_utils.search_metadata('search/?biosource.cell_line_tier=Tier+1&type=Biosample',
                                        ff_env=connection.ff_env)
-    missing = {}
+    missing = {REV_KEY: {}, RELEASED_KEY: {}}
     msg_dict = {'culture_start_date': 'Tier 1 Biosample missing Culture Start Date',
                 # item will fail validation if missing a start date - remove this part of check?
                 'culture_duration': 'Tier 1 Biosample missing Culture Duration',
@@ -271,11 +286,14 @@ def tier1_metadata_present(connection, **kwargs):
         else:
             messages = [val for key, val in msg_dict.items() if not result['cell_culture_details'].get(key)]
             if messages:
-                missing[result['@id']] = '; '.join(messages)
+                if result.get('status') in REV:
+                    missing[REV_KEY][result['@id']] = '; '.join(messages)
+                else:
+                    missing[RELEASED_KEY][result['@id']] = '; '.join(messages)
 
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(missing, 'Biosample',
-                                                                 'tier1-metadata-missing',
-                                                                 connection.ff_env)
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
+        missing[RELEASED_KEY], 'Biosample', 'tier1-metadata-missing', connection.ff_env
+    )
     check.action = 'patch_badges_for_tier1_metadata'
     if to_add or to_remove or to_edit:
         check.status = 'WARN'
@@ -291,7 +309,7 @@ def tier1_metadata_present(connection, **kwargs):
                          'Old tier1 biosamples missing required metadata': ok,
                          'Tier1 biosamples no longer missing required metadata': to_remove,
                          'Biosamples with a tier1_metadata_missing badge that needs editing': to_edit}
-    check.brief_output = list(missing.keys())
+    check.brief_output = missing
     # if to_add or to_remove or to_edit:
     #     check.allow_action = True
     return check
@@ -335,11 +353,10 @@ def exp_has_raw_files(connection, **kwargs):
     bad_status_ids = [item['@id'] for item in bad_status]
     exps = list(set([exp['@id'] for fastq in bad_status for exp in
                      fastq.get('experiments') if fastq.get('experiments')]))
-    missing_files = [e['@id'] for e in no_files]
+    missing_files_released = [e['@id'] for e in no_files if e.get('status') not in REV]
+    missing_files_in_rev = [e['@id'] for e in no_files if e.get('status') in REV]
     for expt in exps:
         result = ff_utils.get_metadata(expt, ff_env=connection.ff_env)
-        if result.get('status') == 'archived':
-            continue
         raw_files = False
         if result.get('files'):
             for fastq in result.get('files'):
@@ -347,16 +364,20 @@ def exp_has_raw_files(connection, **kwargs):
                     raw_files = True
                     break
         if not raw_files:
-            missing_files.append(expt)
+            if result.get('status') in rev:
+                missing_files_in_rev.append(expt)
+            else:
+                missing_files_released.append(expt)
 
-    to_add, to_remove, ok = compare_badges(missing_files, 'Experiment', 'no-raw-files', connection.ff_env)
+    to_add, to_remove, ok = compare_badges(missing_files_released, 'Experiment', 'no-raw-files', connection.ff_env)
 
     if to_add or to_remove:
         check.status = 'WARN'
         check.summary = 'Raw Files badges need patching'
         check.description = '{} sequencing experiments need raw files badges patched'.format(
-            len(to_add.values()) + len(to_remove.values())
+            len(to_add) + len(to_remove)
         )
+        check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'Raw Files badges up-to-date'
@@ -365,9 +386,8 @@ def exp_has_raw_files(connection, **kwargs):
     check.full_output = {'Experiments newly missing raw files': to_add,
                          'Old experiments missing raw files': ok,
                          'Experiments no longer missing raw files': to_remove}
-    check.brief_output = missing_files
-    if to_add or to_remove:
-        check.allow_action = True
+    check.brief_output = {REV_KEY: missing_files_in_rev,
+                          RELEASED_KEY: missing_files_released}
     return check
 
 
@@ -443,8 +463,7 @@ def consistent_replicate_info(connection, **kwargs):
         'microscopy_technique',
         'imaging_paths',
     ]
-    results = {}
-    check.brief_output = {}
+    check.brief_output = {REV_KEY: {}, RELEASED_KEY: {}}
     for repset in repsets:
         info_dict = {}
         exp_list = [item['@id'] for item in repset['experiments_in_set']]
@@ -475,11 +494,13 @@ def consistent_replicate_info(connection, **kwargs):
         if info_dict:
             info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
             msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
-            results[repset['@id']] = msg
-            check.brief_output[repset['@id']] = info_dict
+            if repset.get('status') in REV:
+                check.brief_output[REV_KEY][repset['@id']] = info_dict
+            else:
+                check.brief_output[RELEASED_KEY][repset['@id']] = info_dict
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
-        results, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
+        check.brief_output[RELEASED_KEY], 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
     )
     if to_add or to_remove or to_edit:
         check.status = 'WARN'
