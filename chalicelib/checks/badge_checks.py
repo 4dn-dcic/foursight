@@ -422,7 +422,7 @@ def consistent_replicate_info(connection, **kwargs):
     '''
     check = init_check_res(connection, 'consistent_replicate_info')
 
-    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id'
+    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id&field=uuid&field=status'
     exp_url = 'search/?type=Experiment&frame=object'
     bio_url = 'search/?type=Experiment&field=biosample'
     repsets = [item for item in ff_utils.search_metadata(repset_url, ff_env=connection.ff_env) if item.get('experiments_in_set')]
@@ -464,6 +464,7 @@ def consistent_replicate_info(connection, **kwargs):
         'imaging_paths',
     ]
     check.brief_output = {REV_KEY: {}, RELEASED_KEY: {}}
+    compare = {}
     for repset in repsets:
         info_dict = {}
         exp_list = [item['@id'] for item in repset['experiments_in_set']]
@@ -494,13 +495,15 @@ def consistent_replicate_info(connection, **kwargs):
         if info_dict:
             info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
             msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
+            name = '{}    {}    {}'.format(repset.get('uuid', ''), repset['@id'][-13:-1], repset['status'])
             if repset.get('status') in REV:
-                check.brief_output[REV_KEY][repset['@id']] = info_dict
+                check.brief_output[REV_KEY][name] = info_dict
             else:
-                check.brief_output[RELEASED_KEY][repset['@id']] = info_dict
+                check.brief_output[RELEASED_KEY][name] = info_dict
+                compare[repset['@id']] = msg
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
-        check.brief_output[RELEASED_KEY], 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
+        compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
     )
     if to_add or to_remove or to_edit:
         check.status = 'WARN'
