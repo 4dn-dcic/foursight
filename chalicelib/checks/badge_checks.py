@@ -422,7 +422,7 @@ def consistent_replicate_info(connection, **kwargs):
     '''
     check = init_check_res(connection, 'consistent_replicate_info')
 
-    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id&field=uuid&field=status'
+    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id&field=uuid&field=status&field=lab.display_title'
     exp_url = 'search/?type=Experiment&frame=object'
     bio_url = 'search/?type=Experiment&field=biosample'
     repsets = [item for item in ff_utils.search_metadata(repset_url, ff_env=connection.ff_env) if item.get('experiments_in_set')]
@@ -495,11 +495,13 @@ def consistent_replicate_info(connection, **kwargs):
         if info_dict:
             info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
             msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
-            name = '{}    {}    {}'.format(repset.get('uuid', ''), repset['@id'][-13:-1], repset['status'])
-            if repset.get('status') in REV:
-                check.brief_output[REV_KEY][name] = info_dict
-            else:
-                check.brief_output[RELEASED_KEY][name] = info_dict
+            name = '{}    {}    {}'.format(repset['uuid'], repset['@id'][-13:-1], repset['status'])
+            lab = repset['lab']['display_title']
+            audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
+            if lab not in check.brief_output[audit_key]:
+                check.brief_output[audit_key][lab] = {}
+            check.brief_output[audit_key][lab][name] = info_dict
+            if repset['status'] not in REV:
                 compare[repset['@id']] = msg
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
