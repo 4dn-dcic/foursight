@@ -11,24 +11,6 @@ import json
 import time
 from copy import deepcopy
 
-def does_processed_file_have_auto_viewconf(hg_file):
-    """
-    See if the file has an auto generated higlass view config in its static contents.
-
-    Args:
-        hg_file(bool): A dict representing the file with static content.
-
-    Returns:
-        True if the file has an auto generated higlass view config, False otherwise
-    """
-    # - registered files will have a static_content item with description 'auto_generated_higlass_view_config'.
-
-    # it might be better to check the static_content.location instead...
-    sc_descrips = [sc.get('description') for sc in hg_file.get('static_content', [])]
-    if 'auto_generated_higlass_view_config' in sc_descrips:
-        return True
-    return False
-
 def get_reference_files(connection):
     """
     Find all of the tagged reference files needed to create Higlass view configs.
@@ -231,14 +213,10 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
 
     target_files_by_ga = {}
 
-    # next, find the files we are interested in (exclude reference files)
-    search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&field=accession&field=genome_assembly&field=static_content'
+    # next, find the files we are interested in (exclude reference files and any with existing Higlass viewconfs.)
+    search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&field=accession&field=genome_assembly&field=static_content'
     search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     for hg_file in search_res:
-        # Skip the file if it has previously been registered by Foursight.
-        if does_processed_file_have_auto_viewconf(hg_file):
-            continue
-
         # Otherwise add the file to the todo list.
         accession = hg_file["accession"]
         genome_assembly = hg_file["genome_assembly"]
@@ -397,13 +375,13 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         # store results by accession
         expsets_by_accession = {expset["accession"]: expset for expset in search_res }
 
-        # Include ExpSets whose Experiments contain Processed Files with  higlass_uid
+        # Include ExpSets whose Experiments contain Processed Files with higlass_uid
         processed_experiments_query = '/search/?type=ExperimentSetReplicate&experiments_in_set.processed_files.higlass_uid%21=No+value' + fields_to_include
         search_res = ff_utils.search_metadata(processed_experiments_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for expset in search_res:
             expsets_by_accession[ expset["accession"] ] = expset
 
-        #Exclude any ExpSets with static content with the description = "auto_generated_higlass_view_config"
+        # Exclude any ExpSets with static content with the description "auto_generated_higlass_view_config"
         static_content_query = '/search/?type=ExperimentSetReplicate&static_content.description=auto_generated_higlass_view_config&field=accession'
         search_res = ff_utils.search_metadata(static_content_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for expset in search_res:
