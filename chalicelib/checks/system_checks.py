@@ -624,3 +624,13 @@ def process_download_tracking_items(connection, **kwargs):
     check.summary = 'Successfully processed %s download tracking items' % counts['proc']
     check.description = '%s. Released %s items and deleted %s items' % (check.summary, counts['released'], counts['deleted'])
     return check
+
+
+@check_function(
+    search='/search/?status=deleted&type=TrackingItem&tracking_type=download_tracking',
+    record_metadata=True
+)
+def purge_items_by_search(connection, **kwargs):
+    check = init_check_res(connection, 'purge_items_by_search')
+    search_res = ff_utils.search_metadata(kwargs['search'], key=connection.ff_keys,
+                                           ff_env=connection.ff_env, add_on='frame=object')
