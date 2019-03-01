@@ -42,7 +42,7 @@ def get_reference_files(connection):
             reference_files_by_ga[ref['genome_assembly']] = [ref['uuid']]
     return reference_files_by_ga
 
-def post_viewconf_to_visualization_endpoint(connection, reference_files, files, ff_auth, headers):
+def post_viewconf_to_visualization_endpoint(connection, reference_files, files, ff_auth, headers, title="", description=""):
     """
     Given the list of files, contact fourfront and generate a higlass view config.
     Then post the view config.
@@ -54,6 +54,8 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
         files(list)             : A list of file identifiers.
         ff_auth(dict)           : Authorization needed to post to Fourfront.
         headers(dict)           : Header information needed to post to Fourfront.
+        title(string, optional, default = "")       : Higlass view config title.
+        description(string, optional, default = "") : Higlass view config description.
 
     Returns:
         A dictionary:
@@ -78,6 +80,12 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
             "genome_assembly": res.json()['new_genome_assembly'],
             "viewconfig": view_conf
         }
+
+        if description:
+            viewconf_description["description"] = description
+        if title:
+            viewconf_description["title"] = title
+
         try:
             viewconf_res = ff_utils.post_metadata(viewconf_description, 'higlass-view-configs',
                                                   key=connection.ff_keys, ff_env=connection.ff_env)
@@ -135,52 +143,6 @@ def add_viewconf_static_content_to_file(connection, item_uuid, view_conf_uuid, s
     except Exception as e:
         return False, str(e)
     return True, ""
-
-def create_view_config_and_patch_to_file(connection, reference_files, target_file, source_files, ff_auth, headers, sc_location):
-    """
-    Take the reference_files and source_files to create a new Higlass view config. Then post the view config and patch the target_file so refers to the view config in its static content.
-
-    Args:
-        connection              : The connection to Fourfront.
-        reference_files(dict)   : Reference files, stored by genome assembly (see get_reference_files)
-        target_file(str)        : Use this identifier to find the file to associate the view config file to.
-        source_files(list)      : A list of file identifiers used to create the new view config.
-        ff_auth(dict)           : Authorization needed to post to Fourfront.
-        headers(dict)           : Header information needed to post to Fourfront.
-        sc_location(str)        : Name for the new Static Content's location field.
-
-    Returns:
-        Dictionary containing:
-        success(boolean): Return True if higlass viewconf was posted and patched.
-        view_conf_uuid(string): The new view config uuid. (may be None if there was an error)
-        error(string): A string showing the type of error
-    """
-    # Create a new view config based on the file list and reference files.
-    post_info = post_viewconf_to_visualization_endpoint(connection, reference_files, source_files, ff_auth, headers)
-    view_conf_uuid = post_info["view_config_uuid"]
-    post_error = post_info["error"]
-
-    # If no view conf was generated, an error occured while creating the view conf.
-    if post_error:
-        return {
-            "success": False,
-            "view_conf_uuid": None,
-            "error" : 'failed_post_file: ' + post_error,
-        }
-
-    # now link the view conf to the file with a patch
-    success, patch_error = add_viewconf_static_content_to_file(connection, target_file, view_conf_uuid, sc_location)
-    if success:
-        return {
-            "success": True,
-            "view_conf_uuid": view_conf_uuid,
-            "error" : 'message during patch: ' + patch_error,
-        }
-    return {
-        "success": False,
-        "view_conf_uuid": None,
-        "error" : 'failed_patch_file: ' + patch_error,
-    }
 
 @check_function()
 def check_files_for_higlass_viewconf(connection, **kwargs):
@@ -304,7 +266,9 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
             static_content_section = target_files_by_ga[ga][ file_accession ]
 
             # Post a new Higlass viewconf using the file list
-            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers)
+            higlass_title = "{acc} - Higlass Viewconfig".format(acc=file_accession)
+
+            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers, higlass_title)
 
             if post_viewconf_results["error"]:
                 action_logs['failed_to_create_viewconf'][file_accession] = post_viewconf_results["error"]
@@ -393,7 +357,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     check.full_output['reference_files'] = reference_files_by_ga
 
     target_files_by_ga = {}
-    file_count = 0
+    higlass_count = 0
     expset_count = 0
 
     for expset_accession in expsets_by_accession:
@@ -414,7 +378,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             "static_content" : expset.get("static_content", []),
             "files" : file_info["files"],
         }
-        file_count += len(file_info["files"])
+        higlass_count += 1
         expset_count += 1
 
     # Generate check response
@@ -425,7 +389,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         # nothing new to generate
         check.summary = check.description = "No new view configs to generate"
     else:
-        check.summary = "Ready to generate {file_count} Higlass view configs for {exp_sets} Experiment Sets".format(file_count=file_count, exp_sets=expset_count)
+        check.summary = "Ready to generate {higlass_count} Higlass view configs for {exp_sets} Experiment Sets".format(higlass_count=higlass_count, exp_sets=expset_count)
         check.description = check.summary + ". See full_output for details."
         check.allow_action = True  # allow the action to be run
     return check
@@ -491,6 +455,9 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
 
             files_for_viewconf = target_files[ga][expset_accession]["files"]
             static_content_section = target_files[ga][expset_accession]["static_content"]
+
+            higlass_title = "{acc} Processed Files".format(acc=expset_accession)
+            higlass_desc = ", ".join(files_for_viewconf)
 
             # Post a new Higlass viewconf using the file list
             post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, files_for_viewconf, ff_auth, headers)
@@ -689,12 +656,16 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             if title in expset_titles_with_higlass:
                 continue
 
-            # If the title is not in the ExpSet's other_processed_files, create a new group.
-            if title not in expset_titles:
+            # Create the filegroup based on the experiment if:
+            # - It doesn't exist in the ExpSet
+            # - It does exist in the ExpSet, but the ExpSet didn't have any files to generate higlass uid with.
+            if not (title in expset_titles and title in filegroups_to_update):
                 filegroups_to_update[title] = {
                     "genome_assembly": info["genome_assembly"],
                     "files": []
                 }
+
+            # Add the files to the existing filegroup
             filegroups_to_update[title]["files"] += info["files"]
 
         # If at least one filegroup needs to be updated, then record  the ExpSet and its other_processed_files section.
@@ -780,7 +751,18 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
             # Create the Higlass Viewconf and get the uuid
             data_files = info["files"]
-            post_viewconf_results =  post_viewconf_to_visualization_endpoint(connection, reference_files, data_files, ff_auth, headers)
+            higlass_title = "{acc} - {title}".format(acc=accession, title=title)
+            higlass_desc = ", ".join(data_files)
+
+            post_viewconf_results =  post_viewconf_to_visualization_endpoint(
+                connection,
+                reference_files,
+                data_files,
+                ff_auth,
+                headers,
+                higlass_title,
+                higlass_desc
+            )
 
             if post_viewconf_results["error"]:
                 if accession not in action_logs['failed_to_create_viewconf']:
@@ -809,6 +791,12 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
         # The other_processed_files section has been updated. Patch the changes.
         try:
+            # Make sure all higlass_view_config fields just show the uuid.
+            for g in expsets_to_update[accession]:
+                if isinstance(g["higlass_view_config"], dict):
+                    uuid = g["higlass_view_config"]["uuid"]
+                    g["higlass_view_config"] = uuid
+
             ff_utils.patch_metadata(
                 {'other_processed_files': expsets_to_update[accession]},
                 obj_id=accession,
