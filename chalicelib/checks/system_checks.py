@@ -586,6 +586,12 @@ def process_download_tracking_items(connection, **kwargs):
         if round(time.time() - t0, 2) > time_limit:
             break
         dl_info = tracking['download_tracking']
+
+        ### TEMPORARY
+        ### SKIP ITEMS WITH download_tracking.request_headers
+        if dl_info.get('request_headers'):
+            continue
+
         geo_info = ip_cache[dl_info['remote_ip']]
         dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
         patch_body = {'status': 'released', 'download_tracking': dl_info}
@@ -626,11 +632,59 @@ def process_download_tracking_items(connection, **kwargs):
     return check
 
 
-@check_function(
-    search='/search/?status=deleted&type=TrackingItem&tracking_type=download_tracking',
-    record_metadata=True
-)
-def purge_items_by_search(connection, **kwargs):
-    check = init_check_res(connection, 'purge_items_by_search')
-    search_res = ff_utils.search_metadata(kwargs['search'], key=connection.ff_keys,
-                                           ff_env=connection.ff_env, add_on='frame=object')
+@check_function()
+def purge_download_tracking_items(connection, **kwargs):
+    from ..utils import get_stage_info
+    """
+    This check was originally created to take in any search through kwargs.
+    Changed to hardcode a search for tracking items, but it can easily
+    adapted; as it is, already handles recording for any number of item types.
+    Ensure search includes limit, field=uuid, and status=deleted
+    """
+    check = init_check_res(connection, 'purge_download_tracking_items')
+
+    if get_stage_info()['stage'] != 'prod':
+        check.summary = check.description = 'This check only runs on Foursight prod'
+        return check
+
+    time_limit = 270  # 4.5 minutes
+    t0 = time.time()
+    check.full_output = {}  # purged items by item type
+    search = '/search/?type=TrackingItem&tracking_type=download_tracking&status=deleted&field=uuid&limit=300'
+    search_res = ff_utils.search_metadata(search, key=connection.ff_keys,
+                                          ff_env=connection.ff_env)
+    search_uuids = [res['uuid'] for res in search_res]
+    client = es_utils.create_es_client(connection.ff_es, True)
+    # a bit convoluted, but we want the frame=raw, which does not include uuid
+    # use get_es_metadata to handle this. Use it as a generator
+    for to_purge in ff_utils.get_es_metadata(search_uuids, es_client=client, is_generator=True,
+                                    key=connection.ff_keys, ff_env=connection.ff_env):
+        if round(time.time() - t0, 2) > time_limit:
+            break
+        purge_properties = to_purge['properties']
+        purge_properties['uuid'] = to_purge['uuid']  # add uuid to frame=raw
+        try:
+            purge_res = ff_utils.purge_metadata(to_purge['uuid'], key=connection.ff_keys,
+                                                ff_env=connection.ff_env)
+        except Exception as exc:
+            purge_status = 'error'
+            purge_detail = str(exc)
+        else:
+            purge_status = purge_res['status']
+            purge_detail = purge_properties if purge_status == 'success' else purge_res
+        purge_record = {'uuid': to_purge['uuid'], 'result': purge_detail}
+        if to_purge['item_type'] not in check.full_output:
+            check.full_output[to_purge['item_type']] = {}
+        if purge_status not in check.full_output[to_purge['item_type']]:
+            check.full_output[to_purge['item_type']][purge_status] = []
+        check.full_output[to_purge['item_type']][purge_status].append(purge_record)
+    purge_out_str = '. '.join(['%s: %s' % (it, len(check.full_output[it]['success']))
+                               for it in check.full_output if check.full_output[it].get('success')])
+    check.description = 'Purged: ' + purge_out_str + '. Search used: %s' % search
+    if any([it for it in check.full_output if check.full_output[it].get('error')]):
+        check.status = 'WARN'
+        check.summary = 'Some items failed to purge. See full output'
+    else:
+        check.status = 'PASS'
+        check.summary = 'Items purged successfully'
+    return check
