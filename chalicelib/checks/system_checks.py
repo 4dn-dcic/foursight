@@ -634,13 +634,13 @@ def process_download_tracking_items(connection, **kwargs):
 
 @check_function()
 def purge_download_tracking_items(connection, **kwargs):
-    from ..utils import get_stage_info
     """
     This check was originally created to take in any search through kwargs.
     Changed to hardcode a search for tracking items, but it can easily
     adapted; as it is, already handles recording for any number of item types.
     Ensure search includes limit, field=uuid, and status=deleted
     """
+    from ..utils import get_stage_info
     check = init_check_res(connection, 'purge_download_tracking_items')
 
     if get_stage_info()['stage'] != 'prod':
@@ -687,4 +687,62 @@ def purge_download_tracking_items(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.summary = 'Items purged successfully'
+    return check
+
+
+@check_function(hours=72)
+def check_long_running_ec2s(connection, **kwargs):
+    """
+    Flag all ec2s that have been running for longer than given number of hours
+    in the kwargs. Fail if any contain any strings from `warn_names` in their
+    names, or if they have no name.
+    TODO: Maybe add a kwarg for warn_name?
+    """
+    from ..utils import get_stage_info
+    check = init_check_res(connection, 'check_long_running_ec2s')
+    if get_stage_info()['stage'] != 'prod':
+        check.summary = check.description = 'This check only runs on Foursight prod'
+        return check
+
+    client = boto3.client('ec2')
+    # flag instances that contain any of warn_names and have been running
+    # longer than warn_time
+    warn_names = ['awsem']
+    warn_time = (datetime.datetime.now(datetime.timezone.utc) -
+                 datetime.timedelta(hours=kwargs['hours']))
+    ec2_res = client.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+    check.full_output = []
+    check.brief_output = []
+    for ec2_info in ec2_res.get('Reservations', []):
+        instances = ec2_info.get('Instances', [])
+        if not instances:
+            continue
+        # for multiple instance (?) just check if any of them require warnings
+        for ec2_inst in instances:
+            inst_warn = False
+            state = ec2_inst.get('State')
+            created = ec2_inst.get('LaunchTime')
+            if not state or not created:
+                continue
+            inst_name = [kv['Value'] for kv in ec2_inst.get('Tags', [])
+                         if kv['Key'] == 'Name']
+            if not inst_name or any([wn for wn in warn_names if wn in inst_name]):
+                inst_warn = True
+            if created < warn_time:
+                ec2_log = {
+                    'state': state['Name'], 'name': inst_name,
+                    'id': ec2_inst.get('InstanceId'),
+                    'type': ec2_inst.get('InstanceType'),
+                    'date_created_utc': created.strftime('%Y-%m-%dT%H\:%M')
+                }
+                check.full_output.append(ec2_log)
+                if inst_warn:
+                    check.brief_output.append(ec2_log)
+    if check.brief_output:
+        check.status = 'FAIL'
+        check.summary = '%s suspect EC2 instances running longer than %s hours' % (len(check.brief_output), kwargs['hours'])
+        check.description = check.summary + '. Flagged because name is empty or contains %s. There are also %s non-flagged instances.' % (warn_names, len(check.full_output) - len(check.brief_output))
+    else:
+        check.status = 'PASS'
+        check.summary = '%s EC2 instances running longer than %s hours' % (len(check.full_output), kwargs['hours'])
     return check
