@@ -733,7 +733,7 @@ def check_long_running_ec2s(connection, **kwargs):
                     'state': state['Name'], 'name': inst_name,
                     'id': ec2_inst.get('InstanceId'),
                     'type': ec2_inst.get('InstanceType'),
-                    'date_created_utc': created.strftime('%Y-%m-%dT%H\:%M')
+                    'date_created_utc': created.strftime('%Y-%m-%dT%H:%M')
                 }
                 check.full_output.append(ec2_log)
                 if inst_warn:
