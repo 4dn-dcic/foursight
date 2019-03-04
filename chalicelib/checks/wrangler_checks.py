@@ -587,14 +587,17 @@ def change_in_item_counts(connection, **kwargs):
     # total created items from diff counts (exclude any negative counts)
     total_counts_db = sum([diff_counts[coll]['DB'] for coll in diff_counts if diff_counts[coll]['DB'] >= 0])
     # see if we have negative counts
-    negative_counts = any([diff_counts[coll]['DB'] < 0 for coll in diff_counts])
-    inconsistent_counts = any([diff_counts[coll]['DB'] != diff_counts[coll]['ES'] for coll in diff_counts])
-    if negative_counts:
+    # allow negative counts, but make note of, for the following types
+    purged_types = ['tracking_item']
+    negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
+    inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
+    if negative_types:
+        negative_str = ', '.join(negative_types)
         check.status = 'FAIL'
-        check.summary = 'One or more DB item counts has decreased in the past day'
+        check.summary = 'DB counts decreased in the past day for %s' % negative_str
         check.description = ('Positive numbers represent an increase in counts. '
                              'Some DB counts have decreased!')
-    elif inconsistent_counts:
+    elif inconsistent_types:
         check.status = 'WARN'
         check.summary = 'Change in DB counts does not match search result for new items'
         check.description = ('Positive numbers represent an increase in counts. '
@@ -603,6 +606,7 @@ def change_in_item_counts(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'There are %s new items in the past day' % total_counts_db
         check.description = check.summary + '. Positive numbers represent an increase in counts.'
+    check.description += ' Excluded types: %s' % ', '.join(purged_types)
     return check
 
 
