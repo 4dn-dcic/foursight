@@ -152,10 +152,9 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, single_message='')
 def repsets_have_bio_reps(connection, **kwargs):
     '''
     Check for replicate experiment sets that have one of the following issues:
-    1) Only a single experiment
-    2) Only a single biological replicate
-    3) Biological replicate numbers that are not in sequence
-    4) Technical replicate numbers that are not in sequence
+    1) Only a single biological replicate (includes sets with single experiment)
+    2) Biological replicate numbers that are not in sequence
+    3) Technical replicate numbers that are not in sequence
 
     Action patches badges with a message detailing which of the above issues is relevant.
     '''
@@ -165,8 +164,8 @@ def repsets_have_bio_reps(connection, **kwargs):
                                        ff_env=connection.ff_env, page_limit=50)
 
     audits = {
-        REV_KEY: {'single_experiment': [], 'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []},
-        RELEASED_KEY: {'single_experiment': [], 'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
+        REV_KEY: {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []},
+        RELEASED_KEY: {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
     }
     by_exp = {}
     for result in results:
@@ -191,19 +190,19 @@ def repsets_have_bio_reps(connection, **kwargs):
             #     exp_audits.append('Replicate set contains only a single experiment')
             # check for technical replicates only
             if len(rep_dict.keys()) == 1:
-                audits[audit_key]['single_biorep'].append('{} contains only a single biological replicate'.format(result['@id']))
+                audits[audit_key]['single_biorep'].append(result['@id'])
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
             elif sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
-                audits[audit_key]['biorep_nums'].append('Biological replicate numbers of {} are not in sequence:'
+                audits[audit_key]['biorep_nums'].append('{} - biological replicate #s:'
                                              ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
                 exp_audits.append('Biological replicate numbers are not in sequence')
         # check if tech rep numbers not in sequence
             else:
                 for key, val in rep_dict.items():
                     if sorted(val) != list(range(min(val), max(val) + 1)):
-                        audits['techrep_nums'].append('Technical replicates of Bio Rep {} in {} are not in '
-                                                      'sequence {}'.format(key, result['@id'], str(sorted(val))))
+                        audits['techrep_nums'].append('{} - technical replicate #s of biorep {}:'
+                                                      ' {}'.format(result['@id'], key, str(sorted(val))))
                         exp_audits.append('Technical replicate numbers of biological replicate {}'
                                           ' are not in sequence'.format(key))
         if exp_audits:
@@ -350,7 +349,7 @@ def exp_has_raw_files(connection, **kwargs):
     bad_status = ff_utils.search_metadata('search/?status=uploading&status=archived&status=deleted&status=upload+failed'
                                           '&type=FileFastq&experiments.uuid%21=No+value',
                                           ff_env=connection.ff_env)
-    bad_status_ids = [item['@id'] for item in bad_status]
+    bad_status_ids = {item['@id']: item['status'] for item in bad_status}
     exps = list(set([exp['@id'] for fastq in bad_status for exp in
                      fastq.get('experiments') if fastq.get('experiments')]))
     missing_files_released = [e['@id'] for e in no_files if e.get('status') not in REV]
@@ -360,11 +359,11 @@ def exp_has_raw_files(connection, **kwargs):
         raw_files = False
         if result.get('files'):
             for fastq in result.get('files'):
-                if fastq['@id'] not in bad_status_ids:
+                if fastq['@id'] not in bad_status_ids or result['status'] == bad_status_ids[fastq['@id']]:
                     raw_files = True
                     break
         if not raw_files:
-            if result.get('status') in rev:
+            if result.get('status') in REV:
                 missing_files_in_rev.append(expt)
             else:
                 missing_files_released.append(expt)
