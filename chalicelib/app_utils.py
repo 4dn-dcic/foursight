@@ -675,7 +675,7 @@ def queue_scheduled_checks(sched_environ, schedule_name):
             check_vals.extend(check_schedule.get(environ, []))
             send_sqs_messages(queue, environ, check_vals)
     runner_input = {'sqs_url': queue.url}
-    for n in range(2): # number of parallel runners to kick off
+    for n in range(4): # number of parallel runners to kick off
         invoke_check_runner(runner_input)
     return runner_input # for testing purposes
 

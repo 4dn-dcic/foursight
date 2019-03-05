@@ -690,13 +690,12 @@ def purge_download_tracking_items(connection, **kwargs):
     return check
 
 
-@check_function(hours=72)
+@check_function()
 def check_long_running_ec2s(connection, **kwargs):
     """
-    Flag all ec2s that have been running for longer than given number of hours
-    in the kwargs. Fail if any contain any strings from `warn_names` in their
+    Flag all ec2s that have been running for longer than 1 week (WARN) or 2 weeks
+    (FAIL) if any contain any strings from `flag_names` in their
     names, or if they have no name.
-    TODO: Maybe add a kwarg for warn_name?
     """
     from ..utils import get_stage_info
     check = init_check_res(connection, 'check_long_running_ec2s')
@@ -705,44 +704,73 @@ def check_long_running_ec2s(connection, **kwargs):
         return check
 
     client = boto3.client('ec2')
-    # flag instances that contain any of warn_names and have been running
+    # flag instances that contain any of flag_names and have been running
     # longer than warn_time
-    warn_names = ['awsem']
+    flag_names = ['awsem']
     warn_time = (datetime.datetime.now(datetime.timezone.utc) -
-                 datetime.timedelta(hours=kwargs['hours']))
-    ec2_res = client.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+                 datetime.timedelta(days=7))
+    fail_time = (datetime.datetime.now(datetime.timezone.utc) -
+                 datetime.timedelta(days=14))
+    ec2_res = client.describe_instances(
+        Filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+    )
     check.full_output = []
-    check.brief_output = []
+    check.brief_output = {'one_week': [], 'two_weeks': []}
     for ec2_info in ec2_res.get('Reservations', []):
         instances = ec2_info.get('Instances', [])
         if not instances:
             continue
         # for multiple instance (?) just check if any of them require warnings
         for ec2_inst in instances:
-            inst_warn = False
             state = ec2_inst.get('State')
             created = ec2_inst.get('LaunchTime')
             if not state or not created:
                 continue
             inst_name = [kv['Value'] for kv in ec2_inst.get('Tags', [])
                          if kv['Key'] == 'Name']
-            if not inst_name or any([wn for wn in warn_names if wn in inst_name]):
-                inst_warn = True
-            if created < warn_time:
-                ec2_log = {
-                    'state': state['Name'], 'name': inst_name,
-                    'id': ec2_inst.get('InstanceId'),
-                    'type': ec2_inst.get('InstanceType'),
-                    'date_created_utc': created.strftime('%Y-%m-%dT%H:%M')
-                }
+            other_tags = {kv['Key']: kv['Value'] for kv in ec2_inst.get('Tags', [])
+                         if kv['Key'] != 'Name'}
+            ec2_log = {
+                'state': state['Name'], 'name': inst_name,
+                'id': ec2_inst.get('InstanceId'),
+                'type': ec2_inst.get('InstanceType'),
+                'date_created_utc': created.strftime('%Y-%m-%dT%H:%M')
+            }
+            if not inst_name:
+                flag_instance = True
+                # include all other tags if Name tag is empty
+                ec2_log['tags'] = other_tags
+            elif any([wn for wn in flag_names if wn in inst_name]):
+                flag_instance = True
+            else:
+                flag_instance = False
+            # always add record to full_output; add to brief_output if
+            # the instance is flagged based on 'Name' tag
+            if created < fail_time:
+                if flag_instance:
+                    check.brief_output['two_weeks'].append(ec2_log)
                 check.full_output.append(ec2_log)
-                if inst_warn:
-                    check.brief_output.append(ec2_log)
-    if check.brief_output:
-        check.status = 'FAIL'
-        check.summary = '%s suspect EC2 instances running longer than %s hours' % (len(check.brief_output), kwargs['hours'])
-        check.description = check.summary + '. Flagged because name is empty or contains %s. There are also %s non-flagged instances.' % (warn_names, len(check.full_output) - len(check.brief_output))
+            elif created < warn_time:
+                if flag_instance:
+                    check.brief_output['one_week'].append(ec2_log)
+                check.full_output.append(ec2_log)
+
+    if check.brief_output['one_week'] or check.brief_output['two_weeks']:
+        num_1wk = len(check.brief_output['one_week'])
+        num_2wk = len(check.brief_output['two_weeks'])
+        check.summary = ''
+        if check.brief_output['two_weeks']:
+            check.status = 'FAIL'
+            check.summary = '%s suspect EC2s running longer than 2 weeks' % num_2wk
+        if check.brief_output['one_week']:
+            if check.status != 'FAIL':
+                check.status = 'WARN'
+            if check.summary:
+                check.summary += ' and %s others longer than 1 week' % num_1wk
+            else:
+                check.summary = '%s suspect EC2s running longer than 1 week' % num_1wk
+        check.description = check.summary + '. Flagged because name is empty or contains %s. There are also %s non-flagged instances.' % (flag_names, len(check.full_output) - (num_1wk + num_2wk))
     else:
         check.status = 'PASS'
-        check.summary = '%s EC2 instances running longer than %s hours' % (len(check.full_output), kwargs['hours'])
+        check.summary = '%s EC2s running longer than 1 week' % (len(check.full_output))
     return check
