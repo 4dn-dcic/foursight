@@ -12,7 +12,7 @@ import datetime
 import json
 
 
-REV = ['In review by lab', 'Submission in progress']
+REV = ['in review by lab', 'submission in progress']
 REV_KEY = 'In review by lab/Submission in progress'
 RELEASED_KEY = 'Released/Released to project/Pre-release/Archived'
 
