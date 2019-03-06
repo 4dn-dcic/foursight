@@ -690,5 +690,29 @@
                 }
             }
         }
+    },
+    "purge_download_tracking_items": {
+        "title": "Purge Download Tracking Items",
+        "group": "Cleanup checks",
+        "schedule": {
+            "ten_min_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_long_running_ec2s": {
+        "title": "Check Long-Running EC2s",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
