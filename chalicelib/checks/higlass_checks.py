@@ -25,21 +25,16 @@ def get_reference_files(connection):
     """
     # first, find and cache the reference files
     reference_files_by_ga = {}
-    ref_search_q = '/search/?type=File&tags=higlass_reference'
+    ref_search_q = '/search/?type=File&tags=higlass_reference&higlass_uid!=No+value&genome_assembly!=No+value&file_format.file_format=beddb&file_format.file_format=chromsizes&field=genome_assembly&field=file_format&field=accession'
     ref_res = ff_utils.search_metadata(ref_search_q, key=connection.ff_keys, ff_env=connection.ff_env)
     for ref in ref_res:
-        if 'higlass_uid' not in ref or 'genome_assembly' not in ref:
-            continue
         # file_format should be 'chromsizes' or 'beddb'
         ref_format = ref.get('file_format', {}).get('file_format')
 
-        if ref_format not in ['chromsizes', 'beddb']:
-            continue
         # cache reference files by genome_assembly
-        if ref['genome_assembly'] in reference_files_by_ga:
-            reference_files_by_ga[ref['genome_assembly']].append(ref['uuid'])
-        else:
-            reference_files_by_ga[ref['genome_assembly']] = [ref['uuid']]
+        if ref['genome_assembly'] not in reference_files_by_ga:
+            reference_files_by_ga[ref['genome_assembly']] = []
+        reference_files_by_ga[ref['genome_assembly']].append(ref['accession'])
     return reference_files_by_ga
 
 def post_viewconf_to_visualization_endpoint(connection, reference_files, files, ff_auth, headers, title="", description=""):
@@ -212,7 +207,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         all_files = sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
         check.summary = "Ready to generate %s Higlass view configs" % all_files
         check.description = check.summary + ". See full_output for details."
-        check.allow_action = True  # allow the action to be run
+        check.allow_action = True
     return check
 
 @action_function(file_accession=None)
@@ -404,7 +399,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     else:
         check.summary = "Ready to generate {higlass_count} Higlass view configs for {exp_sets} Experiment Sets".format(higlass_count=higlass_count, exp_sets=expset_count)
         check.description = check.summary + ". See full_output for details."
-        check.allow_action = True  # allow the action to be run
+        check.allow_action = True
     return check
 
 @action_function(expset_accession=None, one_per_genome_assembly=False)
@@ -658,7 +653,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
             expset_titles = { fg["title"] for fg in expset["other_processed_files"] }
 
-            expset_titles_with_higlass = [ fg["title"] for fg in expset["other_processed_files"] if  fg.get("higlass_view_config", None) ]
+            expset_titles_with_higlass = [ fg["title"] for fg in expset["other_processed_files"] if fg.get("higlass_view_config", None) ]
 
         # Scan each Experiment in set to look for other processed file groups with higlass_uid .
         experiments_in_set_to_update = {}
@@ -683,7 +678,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             # Add the files to the existing filegroup
             filegroups_to_update[title]["files"] += info["files"]
 
-        # If at least one filegroup needs to be updated, then record  the ExpSet and its other_processed_files section.
+        # If at least one filegroup needs to be updated, then record the ExpSet and its other_processed_files section.
         if filegroups_to_update:
             filegroups_info = expset.get("other_processed_files", [])
 
@@ -708,7 +703,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     else:
         check.summary = "Ready to generate {file_count} Higlass view configs for {exp_sets} Experiment Set".format(file_count=higlass_view_count, exp_sets=len(expsets_to_update))
         check.description = check.summary + ". See full_output for details."
-        check.allow_action = True  # allow the action to be run
+        check.allow_action = True
     return check
 
 @action_function(expset_accession=None)
@@ -821,7 +816,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         except Exception as e:
             if accession not in action_logs['failed_to_patch_expset']:
                 action_logs['failed_to_patch_expset'][accession] = {}
-            if title not in  action_logs['failed_to_patch_expset'][accession]:
+            if title not in action_logs['failed_to_patch_expset'][accession]:
                 action_logs['failed_to_patch_expset'][accession][title] = {}
             action_logs['failed_to_patch_expset'][accession][title] = str(e)
             continue
@@ -1043,7 +1038,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
 
 
     check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
-    check.allow_action = True  # allows the action to be run
+    check.allow_action = True
     return check
 
 @action_function(file_accession=None)
