@@ -144,14 +144,15 @@ def add_viewconf_static_content_to_file(connection, item_uuid, view_conf_uuid, s
         return False, str(e)
     return True, ""
 
-@check_function()
+@check_function(file_accession=None)
 def check_files_for_higlass_viewconf(connection, **kwargs):
     """
     Check to generate Higlass view configs on Fourfront for appropriate files
 
     Args:
         connection: The connection to Fourfront.
-        **kwargs
+        **kwargs, which may include:
+            file_accession: Only check this file.
 
     Returns:
         check results object.
@@ -175,19 +176,31 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
 
     target_files_by_ga = {}
 
-    # next, find the files we are interested in (exclude reference files and any with existing Higlass viewconfs.)
-    search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&field=accession&field=genome_assembly&field=static_content'
-    search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-    for hg_file in search_res:
-        # Otherwise add the file to the todo list.
-        accession = hg_file["accession"]
-        genome_assembly = hg_file["genome_assembly"]
-        static_content = hg_file.get("static_content", [])
+    # If the file is specified, use that instead.
+    if kwargs['file_accession']:
+        accession = kwargs['file_accession']
 
-        if genome_assembly not in target_files_by_ga:
-            target_files_by_ga[genome_assembly] = {}
+        file_resource = ff_utils.get_metadata(accession, key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
 
+        genome_assembly = file_resource["genome_assembly"]
+        static_content = file_resource.get("static_content", [])
+
+        target_files_by_ga[genome_assembly] = {}
         target_files_by_ga[genome_assembly][accession] = static_content
+    else:
+        # next, find the files we are interested in (exclude reference files and any with existing Higlass viewconfs.)
+        search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&field=accession&field=genome_assembly&field=static_content'
+        search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        for hg_file in search_res:
+            # Otherwise add the file to the todo list.
+            accession = hg_file["accession"]
+            genome_assembly = hg_file["genome_assembly"]
+            static_content = hg_file.get("static_content", [])
+
+            if genome_assembly not in target_files_by_ga:
+                target_files_by_ga[genome_assembly] = {}
+
+            target_files_by_ga[genome_assembly][accession] = static_content
 
     check.full_output['target_files'] = target_files_by_ga
     check.status = 'PASS'
@@ -209,8 +222,8 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
 
     Args:
         connection: The connection to Fourfront.
-        expset_accession(string, optional, default=None): Only generate a viewconf for the given file acccession.
-        **kwargs
+        **kwargs, which may include:
+            file_accession(string, optional, default=None): Only generate a viewconf for the given file acccession.
 
     Returns:
         A check/action object.
@@ -253,7 +266,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
         if ga not in ref_files_by_ga:  # reference files not found
             continue
 
-        for file_accession in target_files_by_ga[ga]:
+        for file_accession, file_info in target_files_by_ga[ga].items():
             # If we've taken more than 270 seconds to complete, break immediately
             if time.time() - start_time > 270:
                 time_expired = True
@@ -268,7 +281,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
             # Post a new Higlass viewconf using the file list
             higlass_title = "{acc} - Higlass Viewconfig".format(acc=file_accession)
 
-            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers, higlass_title)
+            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers, higlass_title, file_info['description'])
 
             if post_viewconf_results["error"]:
                 action_logs['failed_to_create_viewconf'][file_accession] = post_viewconf_results["error"]
@@ -329,6 +342,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
                 "experiments_in_set.processed_files.accession",
                 "experiments_in_set.processed_files.genome_assembly",
                 "experiments_in_set.processed_files.higlass_uid",
+                "description",
             )
         )
 
@@ -360,9 +374,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     higlass_count = 0
     expset_count = 0
 
-    for expset_accession in expsets_by_accession:
-        expset = expsets_by_accession[expset_accession]
-
+    for expset_accession, expset in expsets_by_accession.items():
         # Get all of the processed files
         file_info = gather_processedfiles_for_expset(expset)
 
@@ -377,6 +389,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         target_files_by_ga[ processed_file_genome_assembly ][expset_accession] = {
             "static_content" : expset.get("static_content", []),
             "files" : file_info["files"],
+            "description": expset["description"],
         }
         higlass_count += 1
         expset_count += 1
@@ -443,7 +456,7 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             continue
         ref_files = ref_files_by_ga[ga]
 
-        for expset_accession in target_files[ga]:
+        for expset_accession, file_info in target_files[ga].items():
             # If we've taken more than 270 seconds to complete, break immediately
             if time.time() - start_time > 270:
                 time_expired = True
@@ -453,14 +466,14 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             if kwargs['expset_accession'] and expset_accession != kwargs['expset_accession']:
                 continue
 
-            files_for_viewconf = target_files[ga][expset_accession]["files"]
-            static_content_section = target_files[ga][expset_accession]["static_content"]
+            files_for_viewconf = file_info["files"]
+            static_content_section = file_info["static_content"]
 
             higlass_title = "{acc} Processed Files".format(acc=expset_accession)
-            higlass_desc = ", ".join(files_for_viewconf)
+            higlass_desc = file_info["description"] + ": " + ", ".join(files_for_viewconf)
 
             # Post a new Higlass viewconf using the file list
-            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, files_for_viewconf, ff_auth, headers)
+            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, files_for_viewconf, ff_auth, headers, higlass_title, higlass_desc)
 
             if post_viewconf_results["error"]:
                 action_logs['failed_to_create_viewconf'][expset_accession] = post_viewconf_results["error"]
@@ -576,6 +589,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 "accession",
                 "other_processed_files",
                 "experiments_in_set",
+                "description",
             )
         )
 
@@ -606,7 +620,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     check.full_output['reference_files'] = reference_files_by_ga
 
     # Create a helper function that finds files with higlass_uid and the genome assembly
-    def find_higlass_files(other_processed_files, filegroups_to_update):
+    def find_higlass_files(other_processed_files, filegroups_to_update, description):
         # For each ExpSet Other Processed Filegroup without a higlass_view_config
         for filegroup in [ fg for fg in other_processed_files if not fg.get("higlass_view_config", None) ]:
             genome_assembly = None
@@ -622,6 +636,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                         "genome_assembly": fil["genome_assembly"],
                         "files": [],
                         "type": filegroup["type"],
+                        "description": description
                     }
 
                 # add file accessions to this group
@@ -639,7 +654,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         expset_titles = set()
         expset_titles_with_higlass = set()
         if "other_processed_files" in expset:
-            find_higlass_files(expset["other_processed_files"], filegroups_to_update)
+            find_higlass_files(expset["other_processed_files"], filegroups_to_update, expset["description"])
 
             expset_titles = { fg["title"] for fg in expset["other_processed_files"] }
 
@@ -649,7 +664,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         experiments_in_set_to_update = {}
         for experiment in expset.get("experiments_in_set", []):
             if "other_processed_files" in experiment:
-                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update)
+                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, expset["description"])
 
         for title, info in experiments_in_set_to_update.items():
             # Skip the experiment's file if the higlass view has already been generated.
@@ -752,7 +767,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             # Create the Higlass Viewconf and get the uuid
             data_files = info["files"]
             higlass_title = "{acc} - {title}".format(acc=accession, title=title)
-            higlass_desc = ", ".join(data_files)
+            higlass_desc = info["description"] + " :" + ", ".join(data_files)
 
             post_viewconf_results =  post_viewconf_to_visualization_endpoint(
                 connection,
@@ -831,7 +846,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     the metadata.
 
     The filetype arg allows you to specify which filetypes to operate on.
-    Must be one of: 'all', 'mcool', 'bg', 'bw', 'beddb', 'chromsizes'.
+    Must be one of: 'all', 'bigbed', 'mcool', 'bg', 'bw', 'beddb', 'chromsizes'.
     'chromsizes' and 'beddb' are from the raw files bucket; all other filetypes
     are from the processed files bucket.
 
@@ -852,8 +867,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.status = "FAIL"
     check.description = "not able to get data from fourfront"
     # keep track of mcool, bg, and bw files separately
+    valid_filetypes = {
+        "raw": ['chromsizes', 'beddb'],
+        "proc": ['mcool', 'bg', 'bw', 'bed', 'bigbed'],
+    }
+
     valid_types_raw = ['chromsizes', 'beddb']
-    valid_types_proc = ['mcool', 'bg', 'bw', 'bed']
+    valid_types_proc = ['mcool', 'bg', 'bw', 'bed', 'bigbed']
     all_valid_types = valid_types_raw + valid_types_proc
 
     files_to_be_reg = {}
@@ -862,9 +882,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
     no_genome_assembly = []
 
     # Make sure the filetype is valid.
-    if kwargs['filetype'] != 'all' and kwargs['filetype'] not in all_valid_types:
+    search_all_filetypes = kwargs['filetype'] == 'all'
+    if not search_all_filetypes and kwargs['filetype'] not in all_valid_types:
         check.description = check.summary = "Filetype must be one of: %s" % (all_valid_types + ['all'])
         return check
+
     reg_filetypes = all_valid_types if kwargs['filetype'] == 'all' else [kwargs['filetype']]
     check.action = "patch_file_higlass_uid"
 
@@ -876,22 +898,58 @@ def files_not_registered_with_higlass(connection, **kwargs):
     start_time = time.time()
     time_expired = False
 
-    # Run the check against all filetypes.
-    for ftype in reg_filetypes:
-        if time_expired:
-            break
-        files_to_be_reg[ftype] = []
-        if ftype in valid_types_raw:
-            typenames = ['FileReference']
-            typebucket = connection.ff_s3.raw_file_bucket
+    # Get the query for all file types
+    search_queries_by_type = {
+        "raw": None,
+        "proc": None,
+    }
+
+    for file_cat, filetypes in valid_filetypes.items():
+        # If the user specified a filetype, only use that one.
+        filetypes_to_use = [f for f in filetypes if search_all_filetypes or f == kwargs['filetype']]
+
+        if not filetypes_to_use:
+            continue
+
+        # Build a file query string.
+        if file_cat == "raw":
+            type_filter = '&type=FileReference'
         else:
             typenames = ['FileProcessed', 'FileVistrack']
-            typebucket = connection.ff_s3.outfile_bucket
-        typestr = 'type=' + '&type='.join(typenames)
+            type_filter = '&type=' + '&type='.join(typenames)
 
-        # Find all files with the file type and published status.
-        search_query = 'search/?file_format.file_format=%s&%s' % (ftype, typestr)
+        # Build a file format filter
+        file_format_filter = "?file_format.file_format=" + "&file_format.file_format=".join(filetypes_to_use)
+
+        # Build the query that finds all published files.
+        search_query = 'search/' + file_format_filter + type_filter
+
+        # Make sure it's published
         search_query += '&status!=uploading&status!=to+be+uploaded+by+workflow&status!=upload+failed'
+
+        # Only request the necessary fields
+        search_query += "&field=" + "&field=".join(
+            (
+                "accession",
+                "genome_assembly",
+                "file_format",
+                "higlass_uuid",
+                "uuid",
+                "file_format",
+                "extra_files",
+                "upload_key",
+            )
+        )
+        # Add the query
+        search_queries_by_type[file_cat] = search_query
+
+    for file_cat, search_query in search_queries_by_type.items():
+
+        # Skip if there is no search query (most likely it was filtered out)
+        if not search_query:
+            continue
+
+        # Query all possible files
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
 
         for procfile in possibly_reg:
@@ -900,9 +958,12 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 time_expired = True
                 break
 
+            # Note any file without a genome assembly.
             if 'genome_assembly' not in procfile:
                 no_genome_assembly.append(procfile['accession'])
                 continue
+
+            # Gather needed information from each file
             file_info = {
                 'accession': procfile['accession'],
                 'uuid': procfile['uuid'],
@@ -910,14 +971,18 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'higlass_uid': procfile.get('higlass_uid'),
                 'genome_assembly': procfile['genome_assembly']
             }
+            file_format = file_info["file_format"]
+
+            if file_format not in files_to_be_reg:
+                files_to_be_reg[file_format] = []
 
             # bg files use an bw file from extra files to register
             # bed files use a beddb file from extra files to regiser
             # don't FAIL if the bg is missing the bw, however
             type2extra = {'bg': 'bw', 'bed': 'beddb'}
-            if ftype in type2extra:
+            if file_format in type2extra:
                 for extra in procfile.get('extra_files', []):
-                    if extra['file_format'].get('display_title') == type2extra[ftype] and 'upload_key' in extra:
+                    if extra['file_format'].get('display_title') == type2extra[file_format] and 'upload_key' in extra:
                         file_info['upload_key'] = extra['upload_key']
                         break
                 if 'upload_key' not in file_info:  # bw or beddb file not found
@@ -930,9 +995,15 @@ def files_not_registered_with_higlass(connection, **kwargs):
                     not_found_upload_key.append(file_info['accession'])
                     continue
             # make sure file exists on s3
-            if not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket):
+            typebucket_by_cat = {
+                "raw" : connection.ff_s3.raw_file_bucket,
+                "proc" : connection.ff_s3.outfile_bucket,
+            }
+
+            if not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[file_cat]):
                 not_found_s3.append(file_info)
                 continue
+
             # check for higlass_uid and, if confirm_on_higlass is True, check the higlass server
             if file_info.get('higlass_uid'):
                 if kwargs['confirm_on_higlass'] is True:
@@ -940,11 +1011,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
                     hg_res = requests.get(higlass_get)
                     # Make sure the response completed successfully and did not return an error.
                     if hg_res.status_code >= 400:
-                        files_to_be_reg[ftype].append(file_info)
+                        files_to_be_reg[file_format].append(file_info)
                     elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
-                        files_to_be_reg[ftype].append(file_info)
+                        files_to_be_reg[file_format].append(file_info)
             else:
-                files_to_be_reg[ftype].append(file_info)
+                files_to_be_reg[file_format].append(file_info)
 
     check.full_output = {'files_not_registered': files_to_be_reg,
                          'files_without_upload_key': not_found_upload_key,
@@ -961,10 +1032,15 @@ def files_not_registered_with_higlass(connection, **kwargs):
         check.status = 'WARN'
     if check.summary:
         check.summary += '. %s files ready for registration' % file_count
-        check.description += '. %s files ready for registration. Run with confirm_on_higlass=True to check against the higlass server' % file_count
+        check.description += '. %s files ready for registration.' % file_count
+        if not kwargs['confirm_on_higlass']:
+            check.description += "Run with confirm_on_higlass=True to check against the higlass server"
     else:
         check.summary = '%s files ready for registration' % file_count
-        check.description = check.summary + '. Run with confirm_on_higlass=True to check against the higlass server'
+        check.description = check.summary
+        if not kwargs['confirm_on_higlass']:
+            check.description += "Run with confirm_on_higlass=True to check against the higlass server"
+
 
     check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
     check.allow_action = True  # allows the action to be run
