@@ -1046,21 +1046,26 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.allow_action = True  # allows the action to be run
     return check
 
-@action_function()
+@action_function(file_accession=None)
 def patch_file_higlass_uid(connection, **kwargs):
     """ After running "files_not_registered_with_higlass",
     Try to register files with higlass.
 
     Args:
         connection: The connection to Fourfront.
-        **kwargs
+        **kwargs, which may include:
+            file_accession: Only check this file.
 
     Returns:
         A check/action object.
     """
     action = init_action_res(connection, 'patch_file_higlass_uid')
-    action_logs = {'patch_failure': [], 'patch_success': [],
-                   'registration_failure': [], 'registration_success': 0}
+    action_logs = {
+        'patch_failure': {},
+        'patch_success': [],
+        'registration_failure': {},
+        'registration_success': 0
+    }
     # get latest results
     higlass_check = init_check_res(connection, 'files_not_registered_with_higlass')
     if kwargs.get('called_by', None):
@@ -1077,8 +1082,10 @@ def patch_file_higlass_uid(connection, **kwargs):
 
     # Prepare authentication header
     authentication = (higlass_key['key'], higlass_key['secret'])
-    headers = {'Content-Type': 'application/json',
-               'Accept': 'application/json'}
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
 
     # Checks expire after 280 seconds, so keep track of how long this task has lasted.
     start_time = time.time()
@@ -1094,6 +1101,10 @@ def patch_file_higlass_uid(connection, **kwargs):
             if time.time() - start_time > 270:
                 time_expired = True
                 break
+
+            # If a file accession was specified, skip all others
+            if kwargs['file_accession'] and hit['accession'] != kwargs['file_accession']:
+                continue
 
             # Based on the filetype, construct a payload to upload to the higlass server.
             payload = {'coordSystem': hit['genome_assembly']}
@@ -1120,25 +1131,32 @@ def patch_file_higlass_uid(connection, **kwargs):
             # register with previous higlass_uid if already there
             if hit.get('higlass_uid'):
                 payload['uuid'] = hit['higlass_uid']
-            res = requests.post(higlass_server + '/api/v1/link_tile/',
-                                data=json.dumps(payload), auth=authentication,
-                                headers=headers)
+            res = requests.post(
+                higlass_server + '/api/v1/link_tile/',
+                data=json.dumps(payload),
+                auth=authentication,
+                headers=headers
+            )
+
             # update the metadata file as well, if uid wasn't already present or changed
             if res.status_code == 201:
                 action_logs['registration_success'] += 1
                 # Get higlass's uuid. This is Fourfront's higlass_uid.
-                response_higlass_uid = res.json()['uuid']
+                #response_higlass_uid = res.json()['uuid']
                 if 'higlass_uid' not in hit or hit['higlass_uid'] != response_higlass_uid:
                     patch_data = {'higlass_uid': response_higlass_uid}
                     try:
                         ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
                     except Exception as e:
-                        acc_and_error = '\n'.join([hit['accession'], str(e)])
-                        action_logs['patch_failure'].append(acc_and_error)
+                        action_logs['patch_failure'][hit['accession']] = "{type}: {message}".format(
+                            type = type(e),
+                            message = str(e)
+                        )
                     else:
                         action_logs['patch_success'].append(hit['accession'])
             else:
-                action_logs['registration_failure'].append(hit['accession'])
+                # Add reason for failure
+                action_logs['registration_failure'][hit['accession']] = res.json().get("error", res.status_code)
     action.status = 'DONE'
     action.output = action_logs
     return action
