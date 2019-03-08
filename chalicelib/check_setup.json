@@ -665,7 +665,7 @@
     },
     "find_cypress_test_items_to_purge": {
         "title": "Find Cypress Test files to Purge",
-        "group": "Higlass checks",
+        "group": "Cleanup checks",
         "schedule": {
             "morning_checks": {
                 "data": {

@@ -478,7 +478,7 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             # Patch the ExpSet static content
             successful_patch, patch_error =  add_viewconf_static_content_to_file(connection, expset_accession, post_viewconf_results["view_config_uuid"],
             static_content_section,
-            "tab:higlass_processed_files")
+            "tab:processed-files")
 
             if not successful_patch:
                 action_logs['failed_to_patch_expset'][expset_accession] = patch_error
@@ -602,13 +602,6 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for expset in search_res:
             expsets_by_accession[ expset["accession"] ] = expset
-
-        # Exclude all Other Processed File groups with higlass_uid
-        expset_query = '/search/?type=ExperimentSetReplicate&other_processed_files.higlass_view_config%21=No+value&field=accession'
-        search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys, ff_env=connection.ff_env)
-        for expset in search_res:
-            if expset["accession"] in expsets_by_accession:
-                del expsets_by_accession[ expset["accession"] ]
 
     # Get reference files
     reference_files_by_ga = get_reference_files(connection)
@@ -749,6 +742,10 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
     # For each expset we want to update
     for accession in expsets_to_update:
+        # If we've taken more than 270 seconds to complete, break immediately
+        if time_expired:
+            break
+
         # If a particular expset was used as an argument, reject the others.
         if kwargs["expset_accession"] and kwargs["expset_accession"] != accession:
             continue
@@ -756,6 +753,11 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         # Look in the filegroups we need to update for that ExpSet
         new_viewconfs = {}
         for title, info in filegroups_to_update[accession].items():
+            # If we've taken more than 270 seconds to complete, break immediately
+            if time.time() - start_time > 270:
+                time_expired = True
+                break
+
             # Get the reference files for the genome assembly
             reference_files = ref_files_by_ga[ info["genome_assembly"] ]
 
@@ -914,7 +916,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             type_filter = '&type=' + '&type='.join(typenames)
 
         # Build a file format filter
-        file_format_filter = "?file_format.file_format=" + "&file_format.file_format=".join(filetypes_to_use)
+        file_format_filter = "?file_format.file_format=" + filetypes_to_use[0] + "&file_format.file_format=".join(filetypes_to_use[1:])
 
         # Build the query that finds all published files.
         search_query = 'search/' + file_format_filter + type_filter
@@ -923,7 +925,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
         search_query += '&status!=uploading&status!=to+be+uploaded+by+workflow&status!=upload+failed'
 
         # Only request the necessary fields
-        search_query += "&field=" + "&field=".join(
+        search_query += "&field=".join(
             (
                 "accession",
                 "genome_assembly",
@@ -1137,7 +1139,7 @@ def patch_file_higlass_uid(connection, **kwargs):
             if res.status_code == 201:
                 action_logs['registration_success'] += 1
                 # Get higlass's uuid. This is Fourfront's higlass_uid.
-                #response_higlass_uid = res.json()['uuid']
+                response_higlass_uid = res.json()['uuid']
                 if 'higlass_uid' not in hit or hit['higlass_uid'] != response_higlass_uid:
                     patch_data = {'higlass_uid': response_higlass_uid}
                     try:
@@ -1169,50 +1171,17 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     check = init_check_res(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
-        'items_to_purge':[],
-        'rationale':{},
+        'items_to_purge':[]
     }
 
     # associate the action with the check.
     check.action = 'purge_cypress_items'
 
-    # Search for all Higlass View Config that are deleted.
-    search_query = '/search/?type=Item&status=deleted'
+    # Search for all Higlass View Config that are deleted and have the deleted_by_cypress_test tag.
+    search_query = '/search/?type=Item&status=deleted&tags=deleted_by_cypress_test'
     search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
 
-    # For each view config
-    for viewconf in search_response:
-        uuid = viewconf["uuid"]
-        # Get their tags
-        tags = viewconf.get("tags", [])
-
-        # For a given file, track:
-        # - purge(boolean): If we should definitely purge it (or definitely keep it)
-        # - reason(string): The rule dictating purge/keep (this shows the reason)
-        # - priority(number): The priority of the reason (so higher priority can ignore lower ones and we get consistent behavior)
-        rule_rationale = []
-
-        # If it's marked for deletion by Cypress testing, purge.
-        if "deleted_by_cypress_test" in tags:
-            rule_rationale.append({
-                "purge" : True,
-                "reason" : "cypress_test",
-                "priority" : 100
-            })
-
-        # All tags have been processed, pick the highest priority rule.
-        if len(rule_rationale) > 0:
-            max_rule = max(
-                rule_rationale,
-                key = lambda rul : rul["priority"]
-            )
-
-            # If the file should be purged, add it.
-            if max_rule["purge"]:
-                check.full_output['items_to_purge'].append(uuid)
-
-            # Add the rationale to the full output.
-            check.full_output['rationale'][uuid] = rule_rationale
+    check.full_output['items_to_purge'] = [ s["uuid"] for s in search_response ]
 
     # Note the number of items ready to purge
     num_viewconfigs = len(check.full_output['items_to_purge'])
@@ -1239,7 +1208,7 @@ def purge_cypress_items(connection, **kwargs):
 
     action = init_action_res(connection, 'purge_cypress_items')
     action_logs = {
-        'viewconfs_purged':[],
+        'items_purged':[],
         'failed_to_purge':{}
     }
 
