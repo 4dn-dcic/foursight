@@ -286,7 +286,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
             # Patch the ExpSet static content
             successful_patch, patch_error =  add_viewconf_static_content_to_file(connection, file_accession, post_viewconf_results["view_config_uuid"],
             static_content_section,
-            "tab:higlass_file_testing")
+            "tab:higlass")
 
             if not successful_patch:
                 action_logs['failed_to_patch_file'][file_accession] = patch_error
@@ -478,7 +478,7 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             # Patch the ExpSet static content
             successful_patch, patch_error =  add_viewconf_static_content_to_file(connection, expset_accession, post_viewconf_results["view_config_uuid"],
             static_content_section,
-            "tab:higlass_processed_file_testing")
+            "tab:higlass_processed_files")
 
             if not successful_patch:
                 action_logs['failed_to_patch_expset'][expset_accession] = patch_error
