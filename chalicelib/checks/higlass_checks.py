@@ -147,7 +147,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
     Args:
         connection: The connection to Fourfront.
         **kwargs, which may include:
-            file_accession: Only check this file.
+            file_accession (optional, default=None): Only generate a viewconf for the given file acccession.
 
     Returns:
         check results object.
@@ -256,10 +256,10 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
         if time_expired:
             break
 
-        ref_files = ref_files_by_ga[ga]
-
         if ga not in ref_files_by_ga:  # reference files not found
             continue
+
+        ref_files = ref_files_by_ga[ga]
 
         for file_accession, file_info in target_files_by_ga[ga].items():
             # If we've taken more than 270 seconds to complete, break immediately
@@ -276,7 +276,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
             # Post a new Higlass viewconf using the file list
             higlass_title = "{acc} - Higlass Viewconfig".format(acc=file_accession)
 
-            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers, higlass_title, file_info['description'])
+            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers, higlass_title)
 
             if post_viewconf_results["error"]:
                 action_logs['failed_to_create_viewconf'][file_accession] = post_viewconf_results["error"]
@@ -299,7 +299,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
 
     target_files_by_ga = gen_check_result['full_output'].get('target_files', {})
     file_count = sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
-    action.progress = "{completed} out of {possible} files".format(
+    action.progress = "Created Higlass viewconfs for {completed} out of {possible} files".format(
         completed=len(action_logs["new_view_confs_by_file"].keys()),
         possible=file_count
     )

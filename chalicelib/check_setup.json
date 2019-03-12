@@ -619,7 +619,7 @@
         "title": "Generate Higlass ViewConigs for Files",
         "group": "Higlass checks",
         "schedule": {
-            "morning_checks": {
+            "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -669,10 +669,6 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
