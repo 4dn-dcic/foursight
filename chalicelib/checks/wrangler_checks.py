@@ -357,8 +357,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
             type2extra = {'bg': 'bw', 'bed': 'beddb'}
             if ftype in type2extra:
                 for extra in procfile.get('extra_files', []):
+                    # check if there is a higlass type file in extra with upload key
                     if extra['file_format'].get('display_title') == type2extra[ftype] and 'upload_key' in extra:
-                        file_info['upload_key'] = extra['upload_key']
+                        # check if it has a status to skip (not all extra files has status)
+                        if not extra.get('status', '') in ['uploading', 'upload failed', 'to be uploaded by workflow']:
+                            file_info['upload_key'] = extra['upload_key']
                         break
                 if 'upload_key' not in file_info:  # bw or beddb file not found
                     continue
@@ -584,14 +587,17 @@ def change_in_item_counts(connection, **kwargs):
     # total created items from diff counts (exclude any negative counts)
     total_counts_db = sum([diff_counts[coll]['DB'] for coll in diff_counts if diff_counts[coll]['DB'] >= 0])
     # see if we have negative counts
-    negative_counts = any([diff_counts[coll]['DB'] < 0 for coll in diff_counts])
-    inconsistent_counts = any([diff_counts[coll]['DB'] != diff_counts[coll]['ES'] for coll in diff_counts])
-    if negative_counts:
+    # allow negative counts, but make note of, for the following types
+    purged_types = ['tracking_item']
+    negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
+    inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
+    if negative_types:
+        negative_str = ', '.join(negative_types)
         check.status = 'FAIL'
-        check.summary = 'One or more DB item counts has decreased in the past day'
+        check.summary = 'DB counts decreased in the past day for %s' % negative_str
         check.description = ('Positive numbers represent an increase in counts. '
                              'Some DB counts have decreased!')
-    elif inconsistent_counts:
+    elif inconsistent_types:
         check.status = 'WARN'
         check.summary = 'Change in DB counts does not match search result for new items'
         check.description = ('Positive numbers represent an increase in counts. '
@@ -600,6 +606,7 @@ def change_in_item_counts(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'There are %s new items in the past day' % total_counts_db
         check.description = check.summary + '. Positive numbers represent an increase in counts.'
+    check.description += ' Excluded types: %s' % ', '.join(purged_types)
     return check
 
 
@@ -837,4 +844,63 @@ def new_or_updated_items(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.summary = 'No newly submitted or modified Experiments or ExperimentSets since last reset'
+    return check
+
+@check_function()
+def clean_up_webdev_wfrs(connection, **kwargs):
+
+    def patch_wfr_and_log(wfr, full_output):
+        uuid = wfr['uuid']
+        patch_json = {'uuid': uuid, 'status': 'deleted'}
+        # no need to patch again
+        if uuid in full_output['success']:
+            return
+        try:
+            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys,
+                                    ff_env=connection.ff_env)
+        except Exception as exc:
+            # log something about str(exc)
+            full_output['failure'].append('%s. %s' % (uuid, str(exc)))
+        else:
+            # successful patch
+            full_output['success'].append(uuid)
+
+    check = init_check_res(connection, 'clean_up_webdev_wfrs')
+    check.full_output = {'success': [], 'failure': []}
+
+    # input for test pseudo hi-c-processing-bam
+    response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
+                                     key=connection.ff_keys, ff_env=connection.ff_env)
+    wfrlist = response['workflow_run_inputs']
+    for entry in wfrlist:
+        patch_wfr_and_log(entry, check.full_output)
+
+    wfrlist = response['workflow_run_outputs']
+    for entry in wfrlist:
+         patch_wfr_and_log(entry, check.full_output)
+
+    # input for test md5 and bwa-mem
+    response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
+                                     key=connection.ff_keys, ff_env=connection.ff_env)
+    wfrlist = response['workflow_run_inputs']
+    for entry in wfrlist:
+        patch_wfr_and_log(entry, check.full_output)
+
+    # input for test md5 and bwa-mem
+    response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
+                                     key=connection.ff_keys, ff_env=connection.ff_env)
+    wfrlist = response['workflow_run_inputs']
+    for entry in wfrlist:
+        patch_wfr_and_log(entry, check.full_output)
+
+    if check.full_output['failure']:
+        check.status = 'WARN'
+        check.summary = 'One or more WFR patches failed'
+    else:
+        check.status = 'PASS'
+        if check.full_output['success']:
+            check.summary = 'All WFR patches successful'
+        else:
+            check.summary = 'No WFR patches run'
+
     return check

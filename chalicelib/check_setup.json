@@ -163,14 +163,10 @@
     },
     "repsets_have_bio_reps": {
         "title": "Replicate experiment sets with replicate number issues",
-        "group": "Audit checks",
+        "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -179,7 +175,7 @@
     },
     "tier1_metadata_present": {
         "title": "Tier 1 Biosamples with Missing Metadata",
-        "group": "Audit checks",
+        "group": "Badge checks",
         "schedule": {
             "morning_checks": {
                 "mastertest": {
@@ -195,14 +191,10 @@
     },
     "exp_has_raw_files": {
         "title": "Experiments missing raw files",
-        "group": "Audit checks",
+        "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -214,11 +206,19 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
-                },
-                "hotseat": {
+                }
+            }
+        }
+    },
+    "consistent_replicate_info": {
+        "title": "Replicate Experiment Sets with inconsistent replicate information",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -251,6 +251,18 @@
     },
     "check_status_mismatch": {
         "title": "Experiment Sets containing Items with mismatch status",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_validation_errors": {
+        "title": "Search for Validation Errors",
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
@@ -608,6 +620,42 @@
         "group": "System checks",
         "schedule": {
             "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "clean_up_webdev_wfrs": {
+        "title": "Clean up webdev workflows runs",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "purge_download_tracking_items": {
+        "title": "Purge Download Tracking Items",
+        "group": "Cleanup checks",
+        "schedule": {
+            "ten_min_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_long_running_ec2s": {
+        "title": "Check Long-Running EC2s",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
