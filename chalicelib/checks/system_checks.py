@@ -532,12 +532,12 @@ def process_download_tracking_items(connection, **kwargs):
         return check
     range_cache = {}
     # duration we want to consolidate range queries over
-    # search older entries since range_consolidation_hrs * 2to avoid duplication
+    # search older entries since range_consolidation_hrs * 2 to avoid duplication
     range_consolidation_hrs = 1
     cons_date = (datetime.datetime.utcnow() -
                  datetime.timedelta(hours=range_consolidation_hrs * 2)).strftime('%Y-%m-%dT%H\:%M')
     range_search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
-                                  '&download_tracking.is_visualization=true&sort=-date_created',
+                                  '&download_tracking.range_query=true&sort=-date_created',
                                   '&status=released&q=last_modified.date_modified:>=', cons_date])
     cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     for tracking in cons_query:
@@ -588,10 +588,16 @@ def process_download_tracking_items(connection, **kwargs):
         dl_info = tracking['download_tracking']
 
         ### TEMPORARY
-        ### SKIP ITEMS WITH download_tracking.request_headers
-        if dl_info.get('request_headers'):
+        ### SKIP ITEMS WITH ANY OF THE FOLLOWING IN USER_AGENT
+        # ALSO SET CHECK STATUS TO WARN TO LET US KNOW
+        ua_to_skip = ['igv', 'java', 'python-']
+        if any(to_skip in dl_info['user_agent'].lower() for to_skip in ua_to_skip):
+            check.status = 'WARN'
             continue
 
+        # remove request_headers, which may contain sensitive information
+        if 'request_headers' in dl_info:
+            del dl_info['request_headers']
         geo_info = ip_cache[dl_info['remote_ip']]
         dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
         patch_body = {'status': 'released', 'download_tracking': dl_info}
@@ -614,11 +620,9 @@ def process_download_tracking_items(connection, **kwargs):
                         break
                 if patch_body['status'] != 'deleted':
                     range_cache[range_key].append(parsed_date)
-                    dl_info['is_visualization'] = True
             else:
                 # set the upper limit for for range queries to consolidate
                 range_cache[range_key] = [parsed_date]
-                dl_info['is_visualization'] = True
         ff_utils.patch_metadata(patch_body, tracking['uuid'],
                                 key=connection.ff_keys, ff_env=connection.ff_env)
         counts['proc'] += 1
@@ -626,7 +630,8 @@ def process_download_tracking_items(connection, **kwargs):
             counts['released'] += 1
         else:
             counts['deleted'] += 1
-    check.status = 'PASS'
+    if check.status != 'WARN':
+        check.status = 'PASS'
     check.summary = 'Successfully processed %s download tracking items' % counts['proc']
     check.description = '%s. Released %s items and deleted %s items' % (check.summary, counts['released'], counts['deleted'])
     return check
