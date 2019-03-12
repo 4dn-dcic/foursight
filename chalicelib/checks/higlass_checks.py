@@ -148,11 +148,8 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         connection: The connection to Fourfront.
         **kwargs, which may include:
             file_accession (optional, default=None): Only generate a viewconf for the given file acccession.
-<<<<<<< HEAD
             patch_files (optional, default-False): If True, this will create
               HiGlass viewconfigs and patch the files to link them.
-=======
->>>>>>> generate_view_configs
 
     Returns:
         check results object.
@@ -194,7 +191,6 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
             accession = hg_file["accession"]
             genome_assembly = hg_file["genome_assembly"]
             static_content = hg_file.get("static_content", [])
-            description = hg_file["description"]
 
             if genome_assembly not in target_files_by_ga:
                 target_files_by_ga[genome_assembly] = {}
@@ -239,23 +235,11 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         if time_expired:
             break
 
-<<<<<<< HEAD
         if ga not in reference_files_by_ga:
-=======
-        if ga not in ref_files_by_ga:  # reference files not found
->>>>>>> generate_view_configs
             continue
         ref_files = reference_files_by_ga[ga]
 
-        print(target_files_by_ga)
-
-<<<<<<< HEAD
         for file_accession, static_content_section in target_files_by_ga[ga].items():
-=======
-        ref_files = ref_files_by_ga[ga]
-
-        for file_accession, file_info in target_files_by_ga[ga].items():
->>>>>>> generate_view_configs
             # If we've taken more than 270 seconds to complete, break immediately
             if time.time() - start_time > 270:
                 time_expired = True
@@ -268,11 +252,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
             # Post a new Higlass viewconf using the file list
             higlass_title = "{acc} - Higlass Viewconfig".format(acc=file_accession)
 
-<<<<<<< HEAD
             post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession,], ff_auth, headers, higlass_title)
-=======
-            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers, higlass_title)
->>>>>>> generate_view_configs
 
             if post_viewconf_results["error"]:
                 action_logs['failed_to_create_viewconf'][file_accession] = post_viewconf_results["error"]
@@ -298,11 +278,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
     check.full_output = action_logs
 
     file_count = sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
-<<<<<<< HEAD
     check.summary = "Created Higlass viewconfs for {completed} out of {possible} files".format(
-=======
-    action.progress = "Created Higlass viewconfs for {completed} out of {possible} files".format(
->>>>>>> generate_view_configs
         completed=len(action_logs["new_view_confs_by_file"].keys()),
         possible=file_count
     )
