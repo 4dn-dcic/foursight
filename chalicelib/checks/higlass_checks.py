@@ -327,19 +327,19 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             kwargs['expset_accession'] : ff_utils.get_metadata(kwargs['expset_accession'], key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
         }
     else:
-        fields_to_include = "&field=" + "&field=".join(
-            (
-                "accession",
-                "static_content",
-                "processed_files.accession",
-                "processed_files.genome_assembly",
-                "processed_files.higlass_uid",
-                "experiments_in_set.processed_files.accession",
-                "experiments_in_set.processed_files.genome_assembly",
-                "experiments_in_set.processed_files.higlass_uid",
-                "description",
-            )
-        )
+        fields_to_include = ""
+        for new_field in (
+            "accession",
+            "static_content",
+            "processed_files.accession",
+            "processed_files.genome_assembly",
+            "processed_files.higlass_uid",
+            "experiments_in_set.processed_files.accession",
+            "experiments_in_set.processed_files.genome_assembly",
+            "experiments_in_set.processed_files.higlass_uid",
+            "description",
+        ):
+            fields_to_include += "&field=" + new_field
 
         # Include ExpSets whose Processed Files have higlass_uid
         processed_expsets_query = '/search/?type=ExperimentSetReplicate&processed_files.higlass_uid%21=No+value' + fields_to_include
@@ -579,14 +579,14 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     else:
         # Otherwise search for all relevant Experiment Sets
         # get the fields you need to include
-        fields_to_include = "&field=" + "&field=".join(
-            (
-                "accession",
-                "other_processed_files",
-                "experiments_in_set",
-                "description",
-            )
-        )
+        fields_to_include = ""
+        for new_field in (
+            "accession",
+            "other_processed_files",
+            "experiments_in_set",
+            "description",
+        ):
+            fields_to_include += "&field=" + new_field
 
         expects_by_accession = {}
 
@@ -869,9 +869,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
         "proc": ['mcool', 'bg', 'bw', 'bed', 'bigbed'],
     }
 
-    valid_types_raw = ['chromsizes', 'beddb']
-    valid_types_proc = ['mcool', 'bg', 'bw', 'bed', 'bigbed']
-    all_valid_types = valid_types_raw + valid_types_proc
+    all_valid_types = valid_filetypes["raw"] + valid_filetypes["proc"]
 
     files_to_be_reg = {}
     not_found_upload_key = []
@@ -912,8 +910,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
         if file_cat == "raw":
             type_filter = '&type=FileReference'
         else:
-            typenames = ['FileProcessed', 'FileVistrack']
-            type_filter = '&type=' + '&type='.join(typenames)
+            type_filter = '&type=FileProcessed' + '&type=FileVistrack'
 
         # Build a file format filter
         file_format_filter = "?file_format.file_format=" + filetypes_to_use[0] + "&file_format.file_format=".join(filetypes_to_use[1:])
@@ -925,18 +922,17 @@ def files_not_registered_with_higlass(connection, **kwargs):
         search_query += '&status!=uploading&status!=to+be+uploaded+by+workflow&status!=upload+failed'
 
         # Only request the necessary fields
-        search_query += "&field=".join(
-            (
-                "accession",
-                "genome_assembly",
-                "file_format",
-                "higlass_uuid",
-                "uuid",
-                "file_format",
-                "extra_files",
-                "upload_key",
-            )
-        )
+        for new_field in (
+            "accession",
+            "genome_assembly",
+            "file_format",
+            "higlass_uuid",
+            "uuid",
+            "extra_files",
+            "upload_key",
+        ):
+            search_query += "&field=" + new_field
+
         # Add the query
         search_queries_by_type[file_cat] = search_query
 
