@@ -225,10 +225,6 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
     headers = {'Content-Type': 'application/json',
                'Accept': 'application/json'}
 
-    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
-    start_time = time.time()
-    time_expired = False
-
     # these are the files we care about
     # loop by genome_assembly
     for ga in target_files_by_ga:
@@ -244,10 +240,6 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
             if time.time() - start_time > 270:
                 time_expired = True
                 break
-
-            # If a particular accession was chosen, skip the others
-            if kwargs['file_accession'] and file_accession != kwargs['file_accession']:
-                continue
 
             # Post a new Higlass viewconf using the file list
             higlass_title = "{acc} - Higlass Viewconfig".format(acc=file_accession)
@@ -283,7 +275,6 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         possible=file_count
     )
     check.description = check.summary
-    check.allow_action = False
     return check
 
 @check_function(expset_accession=None)
