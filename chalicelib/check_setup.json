@@ -291,7 +291,7 @@
     },
     "files_not_registered_with_higlass": {
         "title": "Files not registered with higlass",
-        "group": "Metadata checks",
+        "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
                 "data": {
@@ -620,6 +620,66 @@
         "group": "System checks",
         "schedule": {
             "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_files_for_higlass_viewconf": {
+        "title": "Generate Higlass ViewConigs for Files",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_higlass_viewconf": {
+        "title": "Create HiGlass viewconfs for Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "files_not_registered_with_higlass": {
+        "title": "Files not Registered with Higlass",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "find_cypress_test_items_to_purge": {
+        "title": "Find Cypress Test files to Purge",
+        "group": "Cleanup checks",
+        "schedule": {
+            "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
