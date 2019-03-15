@@ -261,6 +261,18 @@
             }
         }
     },
+    "check_opf_status_mismatch": {
+        "title": "Experiment Sets containing Other Processed Files with mismatched status",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "check_validation_errors": {
         "title": "Search for Validation Errors",
         "group": "Audit checks",
