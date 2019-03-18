@@ -278,8 +278,8 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "all": {"primary": true},
+                "all": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
