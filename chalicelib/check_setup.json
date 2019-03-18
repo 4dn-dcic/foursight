@@ -273,6 +273,18 @@
             }
         }
     },
+    "validate_entrez_geneids": {
+        "title": "Check for problem Entrez Gene IDs in Gene records",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "all": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "identify_files_without_filesize": {
         "title": "Files without filesize",
         "group": "Metadata checks",
