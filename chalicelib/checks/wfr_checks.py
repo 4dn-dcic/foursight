@@ -29,7 +29,7 @@ def md5run_status_extra_file(connection, **kwargs):
     check.status = 'PASS'
 
     # Build the query
-    query = '?type=File&extra_files.status=uploading&extra_files.status=upload+failed'
+    query = '/search/?type=File&extra_files.status=uploading&extra_files.status=upload+failed'
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -61,7 +61,8 @@ def md5run_status(connection, **kwargs):
     my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
 
     check.action = "md5run_start"
-    check.brief_output = ""
+    check.allow_action = True
+    check.brief_output = "Result Summary"
     check.full_output = {}
     check.status = 'PASS'
 
@@ -115,7 +116,7 @@ def md5run_status(connection, **kwargs):
             continue
 
         run_time = kwargs.get('run_hours')
-        md5_report = wfr_utils.get_wfr_out(a_file, "md5", my_auth, md_qc=True, run=run_time)
+        md5_report = wfr_utils.get_wfr_out(a_file, "md5", my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
             continue
@@ -132,7 +133,7 @@ def md5run_status(connection, **kwargs):
 
     if no_s3_file:
         check.summary = 'Some files are pending upload'
-        check.brief_output = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
+        check.brief_output = '\n' + str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
         check.full_output['files_pending_upload'] = no_s3_file
 
     if running:
@@ -175,31 +176,15 @@ def md5run_start(connection, **kwargs):
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > 280:
+            action.description = 'Did not complete, due to time limitations, rerun the check and action'
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_file': a_file['@id']}
         wfr_setup = wfr_utils.step_settings('md5', 'no_organism', attributions)
-        wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, tag="")
-
-
-
-
-
-
-        bucket = connection.ff_s3.outfile_bucket if 'FileProcessed' in hit['@type'] else connection.ff_s3.raw_file_bucket
-        head_info = connection.ff_s3.does_key_exist(hit['upload_key'], bucket)
-        if not head_info:
-            action_logs['s3_file_not_found'].append(hit['accession'])
-        else:
-            patch_data = {'file_size': head_info['ContentLength']}
-            try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
-            except Exception as e:
-                acc_and_error = '\n'.join([hit['accession'], str(e)])
-                action_logs['patch_failure'].append(acc_and_error)
-            else:
-                action_logs['patch_success'].append(hit['accession'])
-    action.status = 'DONE'
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        action_logs['started_runs'].append(url)
     action.output = action_logs
+    action.status = 'DONE'
     return action
