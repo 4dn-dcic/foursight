@@ -736,9 +736,9 @@
         }
     },
     "md5run_status_extra_file" : {
-        "title": "User Submitter Extra Files",
+        "title": "md5run-extrafiles",
         "group": "Pipeline checks",
-        "shcedule": {
+        "schedule": {
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
@@ -748,9 +748,22 @@
         }
     },
     "md5run_status" : {
+
         "title": "md5run",
         "group": "Pipeline checks",
-        "shcedule": {
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastqc_status" : {
+        "title": "fastqc",
+        "group": "Pipeline checks",
+        "schedule": {
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},

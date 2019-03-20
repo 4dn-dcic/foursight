@@ -19,6 +19,12 @@ import time
 import boto3
 
 
+# TODO: Collect required items and do a combined get request (or get_es_metadata)
+# TODO:
+# TODO:
+
+lambda_limit = 280  # 300 - 20 sec
+
 @check_function()
 def md5run_status_extra_file(connection, **kwargs):
     """Searches for extra files that are uploaded to s3, but not went though md5 run.
@@ -42,7 +48,7 @@ def md5run_status_extra_file(connection, **kwargs):
         return check
 
 
-@check_function(file_type='File', lab_title=None, start_date=None, run_hours=24)
+@check_function(file_type='File', lab_title=None, start_date=None)
 def md5run_status(connection, **kwargs):
     """Searches for files that are uploaded to s3, but not went though md5 run.
     This check makes certain assumptions
@@ -99,7 +105,7 @@ def md5run_status(connection, **kwargs):
     for a_file in res:
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
-        if (now-start).seconds > 280:
+        if (now-start).seconds > lambda_limit:
             break
         # find bucket
         if 'FileProcessed' in a_file['@type']:
@@ -115,7 +121,6 @@ def md5run_status(connection, **kwargs):
             no_s3_file.append(file_id)
             continue
 
-        run_time = kwargs.get('run_hours')
         md5_report = wfr_utils.get_wfr_out(a_file, "md5", my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
@@ -175,7 +180,7 @@ def md5run_start(connection, **kwargs):
 
     for a_target in targets:
         now = datetime.utcnow()
-        if (now-start).seconds > 280:
+        if (now-start).seconds > lambda_limit:
             action.description = 'Did not complete, due to time limitations, rerun the check and action'
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
@@ -189,7 +194,8 @@ def md5run_start(connection, **kwargs):
     action.status = 'DONE'
     return action
 
-@check_function(lab_title=None, start_date=None, run_hours=24)
+
+@check_function(lab_title=None, start_date=None)
 def fastqc_status(connection, **kwargs):
     """Searches for fastq files that don't have fastqc
 
@@ -232,8 +238,12 @@ def fastqc_status(connection, **kwargs):
     running = []
 
     for a_fastq in res:
+        # lambda has a time limit (300sec), kill before it is reached so we get some results
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            break
         file_id = a_fastq['accession']
-        report = get_wfr_out(file_id, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
+        report = wfr_utils.get_wfr_out(file_id, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
             continue
@@ -267,3 +277,35 @@ def fastqc_status(connection, **kwargs):
     check.brief_output = check.brief_output.strip()
     return check
 
+
+@action_function(start_fastqc=True, start_qc=True)
+def fastqc_start(connection, **kwargs):
+    """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'fastqc_start')
+    action_logs = {'runs_started': [], 'runs_errored': []}
+    my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
+    # get latest results from identify_files_without_filesize
+    fastqc_check = init_check_res(connection, 'fastqc_status')
+    fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    targets = []
+    if kwargs.get('start_fastqc'):
+        targets.extend(fastqc_check_result.get('missing_fastqc', []))
+    if kwargs.get('start_qc'):
+        targets.extend(fastqc_check_result.get('missing_qc', []))
+
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete, due to time limitations, rerun the check and action'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        inp_f = {'input_fastq': a_file['@id']}
+        wfr_setup = wfr_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        action_logs['started_runs'].append(url)
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
