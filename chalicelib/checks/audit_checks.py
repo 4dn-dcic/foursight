@@ -480,14 +480,18 @@ def check_opf_status_mismatch(connection, **kwargs):
     opf_set_results = ff_utils.search_metadata(opf_set, ff_env=connection.ff_env)
     opf_exp_results = ff_utils.search_metadata(opf_exp, ff_env=connection.ff_env)
     results = opf_set_results + opf_exp_results
-    files = 'search/?type=FileProcessed&field=status'
-    file_results = ff_utils.search_metadata(files + '&experiment_sets.uuid!=No+value', ff_env=connection.ff_env)
-    file_results += ff_utils.search_metadata(files + '&experiments.uuid!=No+value', ff_env=connection.ff_env)
-    file_results += ff_utils.search_metadata(files + '&status=deleted&status=replaced&experiment_sets.uuid!=No+value',
-                                             ff_env=connection.ff_env)
-    file_results += ff_utils.search_metadata(files + '&status=deleted&status=replaced&experiments.uuid!=No+value',
-                                             ff_env=connection.ff_env)
-    status_dict = {f['@id']: f['status'] for f in file_results}
+    # extract file uuids
+    files = []
+    for result in results:
+        if result.get('other_processed_files'):
+            for case in result['other_processed_files']:
+                files.extend([i['uuid'] for i in case['files']])
+        if result.get('experiments_in_set'):
+            for exp in result['experiments_in_set']:
+                for case in exp['other_processed_files']:
+                    files.extend([i['uuid'] for i in case['files']])
+    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, ff_env=ffenv)
+    status_dict = {f['uuid']: f['properties']['status'] for f in resp}
     check.full_output = {}
     for result in results:
         titles = [item['title'] for item in result.get('other_processed_files', [])]
@@ -496,14 +500,14 @@ def check_opf_status_mismatch(connection, **kwargs):
         titles = list(set(titles))
         problem_dict = {}
         for title in titles:
-            file_list = [item['@id'] for fileset in result.get('other_processed_files', [])
+            file_list = [item for fileset in result.get('other_processed_files', [])
                          for item in fileset['files'] if fileset['title'] == title]
-            file_list.extend([item['@id'] for exp in result.get('experiments_in_set', [])
+            file_list.extend([item for exp in result.get('experiments_in_set', [])
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
-            statuses = set([status_dict[f] for f in file_list])
+            statuses = set([status_dict[f['uuid']] for f in file_list])
             if len(statuses) > 1:
-                problem_dict[title] = {f: status_dict[f] for f in file_list}
+                problem_dict[title] = {f['@id']: status_dict[f['uuid']] for f in file_list}
             elif 'release' not in result['status'] and (
                 STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
             ):
