@@ -12,6 +12,29 @@ import datetime
 import json
 
 
+STATUS_LEVEL = {
+    'released': 3,
+    'archived': 3,
+    'current': 3,
+    'revoked': 3,
+    'released to project': 3,
+    'pre-release': 3,
+    'restricted': 3,
+    'planned': 2,
+    'archived to project': 2,
+    'in review by lab': 1,
+    'submission in progress': 1,
+    'to be uploaded by workflow': 1,
+    'uploading': 1,
+    'uploaded': 1,
+    'upload failed': 1,
+    'draft': 1,
+    'deleted': 0,
+    'replaced': 0,
+    'obsolete': 0,
+}
+
+
 @check_function()
 def biosource_cell_line_value(connection, **kwargs):
     '''
@@ -348,31 +371,8 @@ def check_status_mismatch(connection, **kwargs):
     ffkey = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)
 
     MIN_CHUNK_SIZE = 200
-
     # embedded sub items should have an equal or greater level
     # than that of the item in which they are embedded
-    STATUS_LEVEL = {
-        'released': 3,
-        'archived': 3,
-        'current': 3,
-        'revoked': 3,
-        'released to project': 3,
-        'pre-release': 3,
-        'restricted': 3,
-        'planned': 2,
-        'archived to project': 2,
-        'in review by lab': 1,
-        'submission in progress': 1,
-        'to be uploaded by workflow': 1,
-        'uploading': 1,
-        'uploaded': 1,
-        'upload failed': 1,
-        'draft': 1,
-        'deleted': 0,
-        'replaced': 0,
-        'obsolete': 0,
-    }
-
     id2links = {}
     id2status = {}
     id2item = {}
@@ -465,6 +465,74 @@ def check_status_mismatch(connection, **kwargs):
         check.status = 'PASS'
         check.summary = "NO MISMATCHES FOUND"
         check.description = 'all statuses present and correct'
+    return check
+
+
+@check_function(id_list=None)
+def check_opf_status_mismatch(connection, **kwargs):
+    '''
+    Check to make sure that collections of other_processed_files don't have
+    status mismatches. Specifically, checks that (1) all files in an
+    other_processed_files collection have the same status; and (2) the status of
+    the experiment set is on the same status level or higher than the status of
+    files in the other_processed_files collection (e.g., if the other_processed_files
+    were released when the experiment set is in review by lab.)
+    '''
+    check = init_check_res(connection, 'check_opf_status_mismatch')
+
+    opf_set = ('search/?type=ExperimentSet&other_processed_files.title%21=No+value&field=status'
+               '&field=other_processed_files&field=experiments_in_set.other_processed_files')
+    opf_exp = ('search/?type=ExperimentSet&other_processed_files.title=No+value'
+               '&experiments_in_set.other_processed_files.title%21=No+value'
+               '&field=experiments_in_set.other_processed_files&field=status')
+    opf_set_results = ff_utils.search_metadata(opf_set, ff_env=connection.ff_env)
+    opf_exp_results = ff_utils.search_metadata(opf_exp, ff_env=connection.ff_env)
+    results = opf_set_results + opf_exp_results
+    # extract file uuids
+    files = []
+    for result in results:
+        if result.get('other_processed_files'):
+            for case in result['other_processed_files']:
+                files.extend([i['uuid'] for i in case['files']])
+        if result.get('experiments_in_set'):
+            for exp in result['experiments_in_set']:
+                for case in exp['other_processed_files']:
+                    files.extend([i['uuid'] for i in case['files']])
+    # get metadata for files, to collect status
+    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, ff_env=connection.ff_env)
+    status_dict = {f['uuid']: f['properties']['status'] for f in resp}
+    check.full_output = {}
+    for result in results:
+        titles = [item['title'] for item in result.get('other_processed_files', [])]
+        titles.extend([item['title'] for exp in result.get('experiments_in_set', [])
+                       for item in exp.get('other_processed_files', [])])
+        titles = list(set(titles))
+        problem_dict = {}
+        for title in titles:
+            file_list = [item for fileset in result.get('other_processed_files', [])
+                         for item in fileset['files'] if fileset['title'] == title]
+            file_list.extend([item for exp in result.get('experiments_in_set', [])
+                              for fileset in exp['other_processed_files']
+                              for item in fileset['files'] if fileset['title'] == title])
+            statuses = set([status_dict[f['uuid']] for f in file_list])
+            if len(statuses) > 1:  # status mismatch in opf collection
+                problem_dict[title] = {f['@id']: status_dict[f['uuid']] for f in file_list}
+            elif 'release' not in result['status'] and (
+                STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
+            ):  # if ExpSet not released, and opf collection has higher status
+                problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
+        if problem_dict:
+            check.full_output[result['@id']] = problem_dict
+    if check.full_output:
+        check.brief_output = list(check.full_output.keys())
+        check.status = 'WARN'
+        check.summary = 'Other processed files with status mismatches found'
+        check.description = ('{} Experiment Sets found with status mismatches in '
+                             'other processed files'.format(len(check.brief_output)))
+    else:
+        check.status = "PASS"
+        check.summary = 'All other processed files have matching statuses'
+        check.description = 'No Experiment Sets found with status mismatches in other processed files'
     return check
 
 
