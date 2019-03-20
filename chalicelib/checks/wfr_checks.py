@@ -9,6 +9,7 @@ from dcicutils import ff_utils
 from dcicutils import s3Utils
 
 from .. import wfr_utils
+from .. import wfrset_utils
 
 import requests
 import sys
@@ -186,7 +187,7 @@ def md5run_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_file': a_file['@id']}
-        wfr_setup = wfr_utils.step_settings('md5', 'no_organism', attributions)
+        wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         action_logs['started_runs'].append(url)
@@ -302,7 +303,7 @@ def fastqc_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfr_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
+        wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         action_logs['started_runs'].append(url)
