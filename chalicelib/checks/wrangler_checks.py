@@ -288,6 +288,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     action.output = action_log
     return action
 
+
 @check_function()
 def item_counts_by_type(connection, **kwargs):
     def process_counts(count_str):
@@ -652,6 +653,7 @@ def new_or_updated_items(connection, **kwargs):
         check.summary = 'No newly submitted or modified Experiments or ExperimentSets since last reset'
     return check
 
+
 @check_function()
 def clean_up_webdev_wfrs(connection, **kwargs):
 
@@ -683,7 +685,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     wfrlist = response['workflow_run_outputs']
     for entry in wfrlist:
-         patch_wfr_and_log(entry, check.full_output)
+        patch_wfr_and_log(entry, check.full_output)
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
@@ -709,4 +711,55 @@ def clean_up_webdev_wfrs(connection, **kwargs):
         else:
             check.summary = 'No WFR patches run'
 
+    return check
+
+
+@check_function()
+def validate_entrez_geneids(connection, **kwargs):
+    ''' query ncbi to see if geneids are valid
+    '''
+    check = init_check_res(connection, 'validate_entrez_geneids')
+    problems = {}
+    timeouts = 0
+    search_query = 'search/?type=Gene&limit=all&field=geneid'
+    genes = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    if not genes:
+        check.status = "FAIL"
+        check.description = "Could not retrieve gene records from fourfront"
+        return check
+    geneids = [g.get('geneid') for g in genes]
+
+    query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
+    for gid in geneids:
+        if timeouts > 5:
+            check.status = "FAIL"
+            check.description = "Too many ncbi timeouts. Maybe they're down."
+            return check
+        gquery = query.format(id=gid)
+        # make 3 attempts to query gene at ncbi
+        for count in range(3):
+            resp = requests.get(gquery)
+            if resp.status_code == 200:
+                break
+            if resp.status_code == 429:
+                time.sleep(0.334)
+                continue
+            if count == 2:
+                timeouts += 1
+                problems[gid] = 'ncbi timeout'
+        try:
+            rtxt = resp.text
+        except AttributeError:
+            problems[gid] = 'empty response'
+        else:
+            if rtxt.startswith('Error'):
+                problems[gid] = 'not a valid geneid'
+    if problems:
+        check.summary = "{} problematic entrez gene ids.".format(len(problems))
+        check.brief_output = problems
+        check.description = "Problematic Gene IDs found"
+        check.status = "WARN"
+    else:
+        check.status = "PASS"
+        check.description = "GENE IDs are all valid"
     return check
