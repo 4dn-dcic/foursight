@@ -721,7 +721,7 @@ def validate_entrez_geneids(connection, **kwargs):
     check = init_check_res(connection, 'validate_entrez_geneids')
     problems = {}
     timeouts = 0
-    search_query = 'search/?type=Gene&limit=all'
+    search_query = 'search/?type=Gene&limit=all&field=geneid'
     genes = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     if not genes:
         check.status = "FAIL"
@@ -755,8 +755,8 @@ def validate_entrez_geneids(connection, **kwargs):
             if rtxt.startswith('Error'):
                 problems[gid] = 'not a valid geneid'
     if problems:
-        check.brief_output = "{} problematic entrez gene ids.".format(len(problems))
-        check.full_output = problems
+        check.summary = "{} problematic entrez gene ids.".format(len(problems))
+        check.brief_output = problems
         check.description = "Problematic Gene IDs found"
         check.status = "WARN"
     else:
