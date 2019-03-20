@@ -490,7 +490,7 @@ def check_opf_status_mismatch(connection, **kwargs):
             for exp in result['experiments_in_set']:
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
-    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, ff_env=ffenv)
+    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, ff_env=connection.ff_env)
     status_dict = {f['uuid']: f['properties']['status'] for f in resp}
     check.full_output = {}
     for result in results:
