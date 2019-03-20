@@ -289,199 +289,6 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     return action
 
 
-@check_function(confirm_on_higlass=False, filetype='all', higlass_server=None)
-def files_not_registered_with_higlass(connection, **kwargs):
-    """
-    Used to check registration of files on higlass and also register them
-    through the patch_file_higlass_uid action.
-    If confirm_on_higlass is True, check each file by making a request to the
-    higlass server. Otherwise, just look to see if a higlass_uid is present in
-    the metadata.
-    The filetype arg allows you to specify which filetypes to operate on.
-    Must be one of: 'all', 'mcool', 'bg', 'bw', 'beddb', 'chromsizes'.
-    'chromsizes' and 'beddb' are from the raw files bucket; all other filetypes
-    are from the processed files bucket.
-    higlass_server may be passed in if you want to use a server other than
-    higlass.4dnucleome.org.
-    Since 'chromsizes' file defines the coordSystem (assembly) used to register
-    other files in higlass, these go first. Since we are using python 3.6, it will
-    """
-    check = init_check_res(connection, 'files_not_registered_with_higlass')
-    check.status = "FAIL"
-    check.description = "not able to get data from fourfront"
-    # keep track of mcool, bg, and bw files separately
-    valid_types_raw = ['chromsizes', 'beddb']
-    valid_types_proc = ['mcool', 'bg', 'bw', 'bed']
-    all_valid_types = valid_types_raw + valid_types_proc
-    files_to_be_reg = {}
-    not_found_upload_key = []
-    not_found_s3 = []
-    no_genome_assembly = []
-    if kwargs['filetype'] != 'all' and kwargs['filetype'] not in all_valid_types:
-        check.description = check.summary = "Filetype must be one of: %s" % (all_valid_types + ['all'])
-        return check
-    reg_filetypes = all_valid_types if kwargs['filetype'] == 'all' else [kwargs['filetype']]
-    check.action = "patch_file_higlass_uid"
-    higlass_key = connection.ff_s3.get_higlass_key()
-    # can overwrite higlass server, if desired. The default higlass key is always used
-    higlass_server = kwargs['higlass_server'] if kwargs['higlass_server'] else higlass_key['server']
-    # run the check
-    for ftype in reg_filetypes:
-        files_to_be_reg[ftype] = []
-        if ftype in valid_types_raw:
-            typenames = ['FileReference']
-            typebucket = connection.ff_s3.raw_file_bucket
-        else:
-            typenames = ['FileProcessed', 'FileVistrack']
-            typebucket = connection.ff_s3.outfile_bucket
-        typestr = 'type=' + '&type='.join(typenames)
-        search_query = 'search/?file_format.file_format=%s&%s' % (ftype, typestr)
-        # status filtering on the search
-        search_query += '&status!=uploading&status!=to+be+uploaded+by+workflow&status!=upload+failed'
-        possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-        for procfile in possibly_reg:
-            if 'genome_assembly' not in procfile:
-                no_genome_assembly.append(procfile['accession'])
-                continue
-            file_info = {
-                'accession': procfile['accession'],
-                'uuid': procfile['uuid'],
-                'file_format': procfile['file_format'].get('file_format'),
-                'higlass_uid': procfile.get('higlass_uid'),
-                'genome_assembly': procfile['genome_assembly']
-            }
-            # bg files use an bw file from extra files to register
-            # bed files use a beddb file from extra files to regiser
-            # don't FAIL if the bg is missing the bw, however
-            # mcool and bw files use themselves
-            type2extra = {'bg': 'bw', 'bed': 'beddb'}
-            if ftype in type2extra:
-                for extra in procfile.get('extra_files', []):
-                    # check if there is a higlass type file in extra with upload key
-                    if extra['file_format'].get('display_title') == type2extra[ftype] and 'upload_key' in extra:
-                        # check if it has a status to skip (not all extra files has status)
-                        if not extra.get('status', '') in ['uploading', 'upload failed', 'to be uploaded by workflow']:
-                            file_info['upload_key'] = extra['upload_key']
-                        break
-                if 'upload_key' not in file_info:  # bw or beddb file not found
-                    continue
-            else:
-                if 'upload_key' in procfile:
-                    file_info['upload_key'] = procfile['upload_key']
-                else:
-                    not_found_upload_key.append(file_info['accession'])
-                    continue
-            # make sure file exists on s3
-            if not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket):
-                not_found_s3.append(file_info)
-                continue
-            # check for higlass_uid and, if confirm_on_higlass is True, check higlass.4dnucleome.org
-            if file_info.get('higlass_uid'):
-                if kwargs['confirm_on_higlass'] is True:
-                    higlass_get = higlass_server + '/api/v1/tileset_info/?d=%s' % file_info['higlass_uid']
-                    hg_res = requests.get(higlass_get)
-                    # what should I check from the response?
-                    if hg_res.status_code >= 400:
-                        files_to_be_reg[ftype].append(file_info)
-                    elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
-                        files_to_be_reg[ftype].append(file_info)
-            else:
-                files_to_be_reg[ftype].append(file_info)
-
-    check.full_output = {'files_not_registered': files_to_be_reg,
-                         'files_without_upload_key': not_found_upload_key,
-                         'files_not_found_on_s3': not_found_s3,
-                         'files_missing_genome_assembly': no_genome_assembly}
-    if no_genome_assembly or not_found_upload_key or not_found_s3:
-        check.status = "FAIL"
-        check.summary = check.description = "Some files cannot be registed. See full_output"
-    else:
-        check.status = 'PASS'
-    file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
-    if file_count != 0:
-        check.status = 'WARN'
-    if check.summary:
-        check.summary += '. %s files ready for registration' % file_count
-        check.description += '. %s files ready for registration. Run with confirm_on_higlass=True to check against the higlass server' % file_count
-    else:
-        check.summary = '%s files ready for registration' % file_count
-        check.description = check.summary + '. Run with confirm_on_higlass=True to check against the higlass server'
-    check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
-    check.allow_action = True  # allows the action to be run
-    return check
-
-
-@action_function()
-def patch_file_higlass_uid(connection, **kwargs):
-    action = init_action_res(connection, 'patch_file_higlass_uid')
-    action_logs = {'patch_failure': [], 'patch_success': [],
-                   'registration_failure': [], 'registration_success': 0}
-    # get latest results
-    higlass_check = init_check_res(connection, 'files_not_registered_with_higlass')
-    if kwargs.get('called_by', None):
-        higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
-    else:
-        higlass_check_result = higlass_check.get_primary_result()
-
-    higlass_key = connection.ff_s3.get_higlass_key()
-    # get the desired server
-    if higlass_check_result['kwargs'].get('higlass_server'):
-        higlass_server = higlass_check_result['kwargs']['higlass_server']
-    else:
-        higlass_server = higlass_key['server']
-    authentication = (higlass_key['key'], higlass_key['secret'])
-    headers = {'Content-Type': 'application/json',
-               'Accept': 'application/json'}
-    to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
-    for ftype, hits in to_be_registered.items():
-        for hit in hits:
-            payload = {'coordSystem': hit['genome_assembly']}
-            if ftype == 'chromsizes':
-                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
-                payload['filetype'] = 'chromsizes-tsv'
-                payload['datatype'] = 'chromsizes'
-            elif ftype == 'beddb':
-                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
-                payload['filetype'] = 'beddb'
-                payload['datatype'] = 'gene-annotation'
-            elif ftype == 'mcool':
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
-                payload['filetype'] = 'cooler'
-                payload['datatype'] = 'matrix'
-            elif ftype in ['bg', 'bw']:
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
-                payload['filetype'] = 'bigwig'
-                payload['datatype'] = 'vector'
-            elif ftype == 'bed':
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
-                payload['filetype'] = 'beddb'
-                payload['datatype'] = 'bedlike'
-            # register with previous higlass_uid if already there
-            if hit.get('higlass_uid'):
-                payload['uuid'] = hit['higlass_uid']
-            res = requests.post(higlass_server + '/api/v1/link_tile/',
-                                data=json.dumps(payload), auth=authentication,
-                                headers=headers)
-            # update the metadata file as well, if uid wasn't already present or changed
-            if res.status_code == 201:
-                action_logs['registration_success'] += 1
-                res_uuid = res.json()['uuid']  # this is higlass uuid, not Fourfront
-                if 'higlass_uid' not in hit or hit['higlass_uid'] != res_uuid:
-                    patch_data = {'higlass_uid': res_uuid}
-                    try:
-                        ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
-                    except Exception as e:
-                        acc_and_error = '\n'.join([hit['accession'], str(e)])
-                        action_logs['patch_failure'].append(acc_and_error)
-                    else:
-                        action_logs['patch_success'].append(hit['accession'])
-            else:
-                action_logs['registration_failure'].append(hit['accession'])
-    action.status = 'DONE'
-    action.output = action_logs
-    return action
-
-
 @check_function()
 def item_counts_by_type(connection, **kwargs):
     def process_counts(count_str):
@@ -846,6 +653,7 @@ def new_or_updated_items(connection, **kwargs):
         check.summary = 'No newly submitted or modified Experiments or ExperimentSets since last reset'
     return check
 
+
 @check_function()
 def clean_up_webdev_wfrs(connection, **kwargs):
 
@@ -877,7 +685,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     wfrlist = response['workflow_run_outputs']
     for entry in wfrlist:
-         patch_wfr_and_log(entry, check.full_output)
+        patch_wfr_and_log(entry, check.full_output)
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
@@ -903,4 +711,55 @@ def clean_up_webdev_wfrs(connection, **kwargs):
         else:
             check.summary = 'No WFR patches run'
 
+    return check
+
+
+@check_function()
+def validate_entrez_geneids(connection, **kwargs):
+    ''' query ncbi to see if geneids are valid
+    '''
+    check = init_check_res(connection, 'validate_entrez_geneids')
+    problems = {}
+    timeouts = 0
+    search_query = 'search/?type=Gene&limit=all&field=geneid'
+    genes = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    if not genes:
+        check.status = "FAIL"
+        check.description = "Could not retrieve gene records from fourfront"
+        return check
+    geneids = [g.get('geneid') for g in genes]
+
+    query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
+    for gid in geneids:
+        if timeouts > 5:
+            check.status = "FAIL"
+            check.description = "Too many ncbi timeouts. Maybe they're down."
+            return check
+        gquery = query.format(id=gid)
+        # make 3 attempts to query gene at ncbi
+        for count in range(3):
+            resp = requests.get(gquery)
+            if resp.status_code == 200:
+                break
+            if resp.status_code == 429:
+                time.sleep(0.334)
+                continue
+            if count == 2:
+                timeouts += 1
+                problems[gid] = 'ncbi timeout'
+        try:
+            rtxt = resp.text
+        except AttributeError:
+            problems[gid] = 'empty response'
+        else:
+            if rtxt.startswith('Error'):
+                problems[gid] = 'not a valid geneid'
+    if problems:
+        check.summary = "{} problematic entrez gene ids.".format(len(problems))
+        check.brief_output = problems
+        check.description = "Problematic Gene IDs found"
+        check.status = "WARN"
+    else:
+        check.status = "PASS"
+        check.description = "GENE IDs are all valid"
     return check
