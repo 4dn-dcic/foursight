@@ -188,3 +188,82 @@ def md5run_start(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     return action
+
+@check_function(lab_title=None, start_date=None, run_hours=24)
+def fastqc_status(connection, **kwargs):
+    """Searches for fastq files that don't have fastqc
+
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'fastqc_status')
+    my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
+
+    check.action = "fastqc_start"
+    check.allow_action = True
+    check.brief_output = "Result Summary"
+    check.full_output = {}
+    check.status = 'PASS'
+
+    # Build the query (skip to be uploaded by workflow)
+    query = "/search/?type=FileFastq&quality_metric.uuid=No+value&status=pre-release&status=released&status=released%20to%20project&status=uploaded"
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'Nothing to see, move along'
+        return check
+
+    # missing run
+    missing_fastqc = []
+    # if there is a successful run but no qc
+    missing_qc = []
+    running = []
+
+    for a_fastq in res:
+        file_id = a_fastq['accession']
+        report = get_wfr_out(file_id, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
+        if report['status'] == 'running':
+            running.append(file_id)
+            continue
+        # Most probably the trigger did not work, and we run it manually
+        if report['status'] != 'complete':
+            missing_fastqc.append(file_id)
+            continue
+        # There is a successful run, but no qc, previously happened when a file was reuploaded.
+        if report['status'] == 'complete':
+            missing_qc.append(file_id)
+            continue
+
+    if running:
+        check.summary = 'Some files are running'
+        check.brief_output += '\n' + str(len(running)) + ' files are still running.'
+        check.full_output['files_running_fastqc'] = running
+
+    if missing_fastqc:
+        check.summary = 'Some files are missing fastqc runs'
+        check.brief_output += '\n' + str(len(missing_fastqc)) + ' files lack a successful fastqc run'
+        check.full_output['files_without_fastqc'] = missing_fastqc
+        check.status = 'WARN'
+
+    if missing_qc:
+        check.summary = 'Some files are missing fastqc runs'
+        check.brief_output += '\n' + str(len(missing_qc)) + ' files have successful run but no qc'
+        check.full_output['files_without_qc'] = missing_qc
+        check.status = 'WARN'
+
+    check.summary = check.summary.strip()
+    check.brief_output = check.brief_output.strip()
+    return check
+
