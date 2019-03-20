@@ -470,6 +470,14 @@ def check_status_mismatch(connection, **kwargs):
 
 @check_function(id_list=None)
 def check_opf_status_mismatch(connection, **kwargs):
+    '''
+    Check to make sure that collections of other_processed_files don't have
+    status mismatches. Specifically, checks that (1) all files in an
+    other_processed_files collection have the same status; and (2) the status of
+    the experiment set is on the same status level or higher than the status of
+    files in the other_processed_files collection (e.g., if the other_processed_files
+    were released when the experiment set is in review by lab.)
+    '''
     check = init_check_res(connection, 'check_opf_status_mismatch')
 
     opf_set = ('search/?type=ExperimentSet&other_processed_files.title%21=No+value&field=status'
@@ -490,6 +498,7 @@ def check_opf_status_mismatch(connection, **kwargs):
             for exp in result['experiments_in_set']:
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
+    # get metadata for files, to collect status
     resp =  ff_utils.get_es_metadata(files, chunk_size=1000, ff_env=connection.ff_env)
     status_dict = {f['uuid']: f['properties']['status'] for f in resp}
     check.full_output = {}
@@ -506,11 +515,11 @@ def check_opf_status_mismatch(connection, **kwargs):
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
             statuses = set([status_dict[f['uuid']] for f in file_list])
-            if len(statuses) > 1:
+            if len(statuses) > 1:  # status mismatch in opf collection
                 problem_dict[title] = {f['@id']: status_dict[f['uuid']] for f in file_list}
             elif 'release' not in result['status'] and (
                 STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
-            ):
+            ):  # if ExpSet not released, and opf collection has higher status
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
         if problem_dict:
             check.full_output[result['@id']] = problem_dict
