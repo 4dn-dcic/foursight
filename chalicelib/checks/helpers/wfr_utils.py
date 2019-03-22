@@ -150,17 +150,14 @@ def get_attribution(file_json):
     cont_labs = []
     if file_json.get('contributing_labs'):
         cont_labs = [i['@id'] for i in file_json['contributing_labs']]
-
     appendFDN = True
     if attributions['lab'] == '/labs/4dn-dcic-lab/':
         appendFDN = False
-
     if cont_labs:
         if appendFDN:
             cont_labs.append('/labs/4dn-dcic-lab/')
             cont_labs = list(set(cont_labs))
         attributions['contributing_labs'] = cont_labs
-
     else:
         if appendFDN:
             cont_labs = ['/labs/4dn-dcic-lab/']
