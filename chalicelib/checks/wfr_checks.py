@@ -105,6 +105,7 @@ def md5run_status(connection, **kwargs):
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
+            check.brief_output.append('did not complete checking all')
             break
         # find bucket
         if 'FileProcessed' in a_file['@type']:
@@ -184,7 +185,7 @@ def md5run_start(connection, **kwargs):
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
-            action.description = 'Did not complete, due to time limitations, rerun the check and action'
+            action.description = 'Did not complete action due to time limitations'
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
@@ -244,6 +245,7 @@ def fastqc_status(connection, **kwargs):
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
+            check.brief_output.append('did not complete checking all')
             break
         file_id = a_fastq['accession']
         report = wfr_utils.get_wfr_out(file_id, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
@@ -303,7 +305,7 @@ def fastqc_start(connection, **kwargs):
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
-            action.description = 'Did not complete, due to time limitations, rerun the check and action'
+            action.description = 'Did not complete action due to time limitations'
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
@@ -315,3 +317,92 @@ def fastqc_start(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     return action
+
+
+@check_function(lab_title=None, start_date=None)
+def in_situ_hic_status(connection, **kwargs):
+    """Searches for fastq files that don't have fastqc
+
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'fastqc_status')
+    my_auth = connection.ff_keys
+
+    check.action = "fastqc_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+
+    exp_type = 'in situ Hi-C'
+
+    # Build the query
+    query = "/search/?experiments_in_set.experiment_type={}".format(exp_type) + \
+            "&experimentset_type=replicate&type=ExperimentSetReplicate" + \
+            "&status=pre-release&status=released&status=released%20to%20project"
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+
+    # missing run
+    missing_run = []
+    # still running
+    running = []
+
+    for a_set in res:
+        # lambda has a time limit (300sec), kill before it is reached so we get some results
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            break
+
+        file_id = a_fastq['accession']
+        report = wfr_utils.get_wfr_out(file_id, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
+        if report['status'] == 'running':
+            running.append(file_id)
+            continue
+        # Most probably the trigger did not work, and we run it manually
+        if report['status'] != 'complete':
+            missing_fastqc.append(file_id)
+            continue
+        # There is a successful run, but no qc, previously happened when a file was reuploaded.
+        if report['status'] == 'complete':
+            missing_qc.append(file_id)
+            continue
+
+    if running:
+        check.summary = 'Some files are running'
+        check.brief_output.append(str(len(running)) + ' files are still running.')
+        check.full_output['files_running_fastqc'] = running
+
+    if missing_fastqc:
+        check.allow_action = True
+        check.summary = 'Some files are missing fastqc runs'
+        check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
+        check.full_output['files_without_fastqc'] = missing_fastqc
+        check.status = 'WARN'
+
+    if missing_qc:
+        check.allow_action = True
+        check.summary = 'Some files are missing fastqc runs'
+        check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
+        check.full_output['files_without_qc'] = missing_qc
+        check.status = 'WARN'
+
+    check.summary = check.summary.strip()
+    if not check.brief_output:
+        check.brief_output = ['All Good!']
+    return check
