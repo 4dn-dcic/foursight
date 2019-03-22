@@ -192,7 +192,7 @@ def md5run_start(connection, **kwargs):
 
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
-        action_logs['started_runs'].append(url)
+        action_logs['runs_started'].append(url)
     action.output = action_logs
     action.status = 'DONE'
     return action

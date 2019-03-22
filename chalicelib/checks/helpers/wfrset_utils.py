@@ -8,7 +8,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     }
     """
     genome = ""
-    mapper = {'human': 'GRCh38', 'mouse': 'GRCm38', 'fruit-fly': 'dm6', 'chicken': 'galGal5'}
+    mapper = {'human': 'GRCh38',
+              'mouse': 'GRCm38',
+              'fruit-fly': 'dm6',
+              'chicken': 'galGal5'}
     genome = mapper.get(my_organism)
 
     out_n = "This is an output file of the Hi-C processing pipeline"
@@ -18,13 +21,11 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     wf_dict = [{
         'app_name': 'md5',
-        'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
-        'parameters': {}
+        'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6'
     },
         {
         'app_name': 'fastqc-0-11-4-1',
-        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9',
-        'parameters': {}
+        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
     },
         {
         'app_name': 'bwa-mem',
@@ -147,9 +148,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bedGraphToBigWig",
         "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
-        "parameters": {},
         "overwrite_input_extra": False
-    },
+        },
         {"app_name": "encode-chipseq",
          "workflow_uuid": "5b44ce1b-0347-40a6-bc9c-f39fb5d7bce3",
          'custom_pf_fields': {
@@ -198,7 +198,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "password": "",
         "log_bucket": "tibanna-output",
         "key_name": "4dn-encode"
-        },
+        }
     if not template.get('parameters'):
         template['parameters'] = {}
     if template.get('custom_pf_fields'):
