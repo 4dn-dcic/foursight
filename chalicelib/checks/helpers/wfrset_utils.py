@@ -190,12 +190,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     template['config'] = {
         "ebs_type": "gp2",
         "spot_instance": True,
-        "json_bucket": "4dn-aws-pipeline-run-json",
         "ebs_iops": "",
-        "shutdown_min": "now",
-        "copy_to_s3": True,
-        "launch_instance": True,
-        "password": "",
         "log_bucket": "tibanna-output",
         "key_name": "4dn-encode"
         }
