@@ -67,7 +67,6 @@ def md5run_status(connection, **kwargs):
     my_auth = connection.ff_keys
 
     check.action = "md5run_start"
-    check.allow_action = True
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -144,6 +143,7 @@ def md5run_status(connection, **kwargs):
         check.full_output['files_running_md5'] = running
 
     if missing_md5:
+        check.allow_action = True
         check.summary = 'Some files are missing md5 runs'
         print(check.brief_output)
         msg = str(len(missing_md5)) + ' files lack a successful md5 run'
@@ -152,6 +152,7 @@ def md5run_status(connection, **kwargs):
         check.status = 'WARN'
 
     if not_switched_status:
+        check.allow_action = True
         check.summary += ' Some files are have wrong status with a successful run'
         msg = str(len(not_switched_status)) + ' files are have wrong status with a successful run'
         check.brief_output.append(msg)
@@ -212,7 +213,6 @@ def fastqc_status(connection, **kwargs):
     my_auth = connection.ff_keys
 
     check.action = "fastqc_start"
-    check.allow_action = True
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -265,12 +265,14 @@ def fastqc_status(connection, **kwargs):
         check.full_output['files_running_fastqc'] = running
 
     if missing_fastqc:
+        check.allow_action = True
         check.summary = 'Some files are missing fastqc runs'
         check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
         check.full_output['files_without_fastqc'] = missing_fastqc
         check.status = 'WARN'
 
     if missing_qc:
+        check.allow_action = True
         check.summary = 'Some files are missing fastqc runs'
         check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
         check.full_output['files_without_qc'] = missing_qc
@@ -287,7 +289,7 @@ def fastqc_start(connection, **kwargs):
     """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
     action = init_action_res(connection, 'fastqc_start')
-    action_logs = {'runs_started': [], 'runs_errored': []}
+    action_logs = {'runs_started': []}
     my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
     # get latest results from identify_files_without_filesize
     fastqc_check = init_check_res(connection, 'fastqc_status')
@@ -309,7 +311,7 @@ def fastqc_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
-        action_logs['started_runs'].append(url)
+        action_logs['runs_started'].append(url)
     action.output = action_logs
     action.status = 'DONE'
     return action
