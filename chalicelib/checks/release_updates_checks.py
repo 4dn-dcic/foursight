@@ -7,7 +7,7 @@ from ..utils import (
     parse_datetime_to_utc
 )
 from dcicutils import ff_utils
-from ..google_utils import GoogleAPISyncer
+from .helpers.google_utils import GoogleAPISyncer
 import copy
 import itertools
 import datetime

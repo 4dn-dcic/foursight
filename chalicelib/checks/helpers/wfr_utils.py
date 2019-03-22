@@ -1,5 +1,11 @@
 from dcicutils import ff_utils
+from dcicutils import s3Utils
 from datetime import datetime
+from operator import itemgetter
+import json
+
+# check at the end
+# check extract_file_info has 4 arguments
 
 # wfr_name, accepted versions, expected run time
 workflow_details = [['md5', ['0.0.4', '0.2.6'], 12],
@@ -128,3 +134,97 @@ def get_attribution(file_json):
         else:
             pass
     return attributions
+
+
+def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
+    """Takes file id, and creates info dict for tibanna"""
+    my_s3_util = s3Utils(env=env)
+    raw_bucket = my_s3_util.raw_file_bucket
+    out_bucket = my_s3_util.outfile_bucket
+    """Creates the formatted dictionary for files.
+    """
+    # start a dictionary
+    template = {"workflow_argument_name": arg_name}
+    if rename:
+        change_from = rename[0]
+        change_to = rename[1]
+    # if it is list of items, change the structure
+    if isinstance(obj_id, list):
+        object_key = []
+        uuid = []
+        buckets = []
+        for obj in obj_id:
+            metadata = ff_utils.get_metadata(obj, key=auth)
+            object_key.append(metadata['display_title'])
+            uuid.append(metadata['uuid'])
+            # get the bucket
+            if 'FileProcessed' in metadata['@type']:
+                my_bucket = out_bucket
+            else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                my_bucket = raw_bucket
+            buckets.append(my_bucket)
+        # check bucket consistency
+        try:
+            assert len(list(set(buckets))) == 1
+        except AssertionError:
+            print('Files from different buckets', obj_id)
+            return
+        template['object_key'] = object_key
+        template['uuid'] = uuid
+        template['bucket_name'] = buckets[0]
+        if rename:
+            template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+
+    # if obj_id is a string
+    else:
+        metadata = ff_utils.get_metadata(obj_id, key=auth)
+        template['object_key'] = metadata['display_title']
+        template['uuid'] = metadata['uuid']
+        # get the bucket
+        if 'FileProcessed' in metadata['@type']:
+            my_bucket = out_bucket
+        else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+            my_bucket = raw_bucket
+        template['bucket_name'] = my_bucket
+        if rename:
+            template['rename'] = template['object_key'].replace(change_from, change_to)
+    return template
+
+
+def run_json(input_files, env, input_json, run_name):
+    my_s3_util = s3Utils(env=env)
+    out_bucket = my_s3_util.outfile_bucket
+    """Creates the trigger json that is used by foufront endpoint.
+    """
+    input_json['input_files'] = input_files
+    input_json['output_bucket'] = out_bucket
+    input_json["_tibanna"] = {
+        "env": env,
+        "run_type": input_json['app_name'],
+        "run_id": run_name}
+    return input_json
+
+
+def run_missing_wfr(input_json, input_files, run_name, auth, env):
+    all_inputs = []
+    for arg, files in input_files.items():
+        inp = extract_file_info(files, arg, auth, env)
+        all_inputs.append(inp)
+    # small tweak to get bg2bw working
+    all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
+
+    my_s3_util = s3Utils(env=env)
+    out_bucket = my_s3_util.outfile_bucket
+    """Creates the trigger json that is used by foufront endpoint.
+    """
+    input_json['input_files'] = input_files
+    input_json['output_bucket'] = out_bucket
+    input_json["_tibanna"] = {
+        "env": env,
+        "run_type": input_json['app_name'],
+        "run_id": run_name}
+    result = json.dumps(input_json, indent=4)
+    print(result)
+    e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
+    url = json.loads(e['input'])['_tibanna']['url']
+    return url

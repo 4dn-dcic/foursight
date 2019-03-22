@@ -5,6 +5,6 @@ omit =
     deploy.py
     test.py
     app.py
-    ./chalicelib/google_utils.py
+    ./chalicelib/checks/helpers/*
     ./chalicelib/*_checks.py
     ./chalicelib/templates/*

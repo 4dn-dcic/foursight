@@ -1,7 +1,12 @@
 # Step Settings
-def step_settings(step_name, my_organism, attribution, at=True):
+def step_settings(step_name, my_organism, attribution, overwrite=None):
     """Return a setting dict for given step, and modify variables in
-    output files; genome assembly, file_type, desc, contributing lab."""
+    output files; genome assembly, file_type, desc, contributing lab.
+    overwrite is a dictionary, if given will overwrite keys in resulting template
+    overwrite = {'config': {"a": "b"},
+                 'parameters': {'c': "d"}
+                    }
+    """
     genome = ""
     mapper = {'human': 'GRCh38', 'mouse': 'GRCm38', 'fruit-fly': 'dm6', 'chicken': 'galGal5'}
     genome = mapper.get(my_organism)
@@ -12,18 +17,18 @@ def step_settings(step_name, my_organism, attribution, at=True):
     # int_n_rep = "This is an intermediate file in the Repliseq processing pipeline"
 
     wf_dict = [{
-        'wf_name': 'md5',
-        'wf_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
+        'app_name': 'md5',
+        'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
         'parameters': {}
     },
         {
-        'wf_name': 'fastqc-0-11-4-1',
-        'wf_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9',
+        'app_name': 'fastqc-0-11-4-1',
+        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9',
         'parameters': {}
     },
         {
-        'wf_name': 'bwa-mem',
-        'wf_uuid': '3feedadc-50f9-4bb4-919b-09a8b731d0cc',
+        'app_name': 'bwa-mem',
+        'workflow_uuid': '3feedadc-50f9-4bb4-919b-09a8b731d0cc',
         'parameters': {"nThreads": 16},
         'custom_pf_fields': {
             'out_bam': {
@@ -32,8 +37,8 @@ def step_settings(step_name, my_organism, attribution, at=True):
                 'description': int_n}
         }},
         {
-        'wf_name': 'hi-c-processing-bam',
-        'wf_uuid': '023bfb3e-9a8b-42b9-a9d4-216079526f68',
+        'app_name': 'hi-c-processing-bam',
+        'workflow_uuid': '023bfb3e-9a8b-42b9-a9d4-216079526f68',
         'parameters': {"nthreads_merge": 16, "nthreads_parse_sort": 16},
         'custom_pf_fields': {
             'annotated_bam': {
@@ -46,8 +51,8 @@ def step_settings(step_name, my_organism, attribution, at=True):
                 'description': out_n}
         }},
         {
-        'wf_name': 'hi-c-processing-pairs',
-        'wf_uuid': 'c9e0e6f7-b0ed-4a42-9466-cadc2dd84df0',
+        'app_name': 'hi-c-processing-pairs',
+        'workflow_uuid': 'c9e0e6f7-b0ed-4a42-9466-cadc2dd84df0',
         'parameters': {"nthreads": 1, "maxmem": "32g"},
         'custom_pf_fields': {
             'cooler_normvector': {
@@ -68,8 +73,8 @@ def step_settings(step_name, my_organism, attribution, at=True):
                 'description': out_n}
         }},
         {
-        'wf_name': 'hi-c-processing-pairs-nore',
-        'wf_uuid': 'c19ee11e-9d5a-454f-af50-600a0cf990b6',
+        'app_name': 'hi-c-processing-pairs-nore',
+        'workflow_uuid': 'c19ee11e-9d5a-454f-af50-600a0cf990b6',
         'parameters': {"nthreads": 1, "maxmem": "32g"},
         'custom_pf_fields': {
             'cooler_normvector': {
@@ -90,8 +95,8 @@ def step_settings(step_name, my_organism, attribution, at=True):
                 'description': out_n}
         }},
         {
-        'wf_name': 'hi-c-processing-pairs-nonorm',
-        'wf_uuid': 'bd6e25ea-f368-4758-a821-d30e0b5a4100',
+        'app_name': 'hi-c-processing-pairs-nonorm',
+        'workflow_uuid': 'bd6e25ea-f368-4758-a821-d30e0b5a4100',
         'parameters': {"nthreads": 1, "maxmem": "32g"},
         'custom_pf_fields': {
             'hic': {
@@ -108,8 +113,8 @@ def step_settings(step_name, my_organism, attribution, at=True):
                 'description': out_n}
         }},
         {
-        'wf_name': 'hi-c-processing-pairs-nore-nonorm',
-        'wf_uuid': '05b62bba-7bfa-46cc-8d8e-3d37f4feb8bd',
+        'app_name': 'hi-c-processing-pairs-nore-nonorm',
+        'workflow_uuid': '05b62bba-7bfa-46cc-8d8e-3d37f4feb8bd',
         'parameters': {"nthreads": 1, "maxmem": "32g"},
         'custom_pf_fields': {
             'hic': {
@@ -126,8 +131,8 @@ def step_settings(step_name, my_organism, attribution, at=True):
                 'description': out_n}
         }},
         {
-        'wf_name': 'repliseq-parta',
-        'wf_uuid': '4459a4d8-1bd8-4b6a-b2cc-2506f4270a34',
+        'app_name': 'repliseq-parta',
+        'workflow_uuid': '4459a4d8-1bd8-4b6a-b2cc-2506f4270a34',
         "parameters": {"nthreads": 4, "memperthread": "2G"},
         'custom_pf_fields': {
             'filtered_sorted_deduped_bam': {
@@ -140,38 +145,13 @@ def step_settings(step_name, my_organism, attribution, at=True):
                 'description': 'read counts per 5 kb bin, unfiltered, unnormalized'}
         }},
         {
-        "wf_name": "bedGraphToBigWig",
-        "wf_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
+        "app_name": "bedGraphToBigWig",
+        "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
         "parameters": {},
-        "config": {
-            "instance_type": "t2.micro",
-            "EBS_optimized": False,
-            "ebs_size": 10,
-            "ebs_type": "gp2",
-            "json_bucket": "4dn-aws-pipeline-run-json",
-            "ebs_iops": "",
-            "shutdown_min": "now",
-            "password": "",
-            "log_bucket": "tibanna-output",
-            "key_name": "4dn-encode"
-        },
         "overwrite_input_extra": False
     },
-        {"wf_name": "encode-chipseq",
-         "wf_uuid": "5b44ce1b-0347-40a6-bc9c-f39fb5d7bce3",
-         "parameters": {},
-         "config": {
-             "ebs_size": 0,
-             "ebs_type": "gp2",
-             "json_bucket": "4dn-aws-pipeline-run-json",
-             "EBS_optimized": False,
-             "ebs_iops": "",
-             "shutdown_min": "now",
-             "instance_type": "",
-             "key_name": "4dn-encode",
-             "password": "",
-             "log_bucket": "tibanna-output"
-         },
+        {"app_name": "encode-chipseq",
+         "workflow_uuid": "5b44ce1b-0347-40a6-bc9c-f39fb5d7bce3",
          'custom_pf_fields': {
              'chip.sig_fc': {
                  'genome_assembly': genome,
@@ -187,21 +167,8 @@ def step_settings(step_name, my_organism, attribution, at=True):
                  'description': 'ChIP-seq QC json'}
          }
          },
-        {"wf_name": "encode-atacseq",
-         "wf_uuid": "6fb021e9-858c-4561-8ce1-e0adc673e0b5",
-         "parameters": {},
-         "config": {
-             "ebs_size": 0,
-             "ebs_type": "gp2",
-             "json_bucket": "4dn-aws-pipeline-run-json",
-             "EBS_optimized": True,
-             "ebs_iops": "",
-             "shutdown_min": "now",
-             "instance_type": "c4.4xlarge",
-             "key_name": "4dn-encode",
-             "password": "",
-             "log_bucket": "tibanna-output"
-         },
+        {"app_name": "encode-atacseq",
+         "workflow_uuid": "6fb021e9-858c-4561-8ce1-e0adc673e0b5",
          'custom_pf_fields': {
              'atac.sig_fc': {
                  'genome_assembly': genome,
@@ -219,10 +186,27 @@ def step_settings(step_name, my_organism, attribution, at=True):
          }
     ]
 
-    template = [i for i in wf_dict if i['wf_name'] == step_name][0]
-
+    template = [i for i in wf_dict if i['app_name'] == step_name][0]
+    template['config'] = {
+        "ebs_type": "gp2",
+        "spot_instance": True,
+        "json_bucket": "4dn-aws-pipeline-run-json",
+        "ebs_iops": "",
+        "shutdown_min": "now",
+        "copy_to_s3": True,
+        "launch_instance": True,
+        "password": "",
+        "log_bucket": "tibanna-output",
+        "key_name": "4dn-encode"
+        },
+    if not template.get('parameters'):
+        template['parameters'] = {}
     if template.get('custom_pf_fields'):
         for a_file in template['custom_pf_fields']:
             template['custom_pf_fields'][a_file].update(attribution)
     template['wfr_meta'] = attribution
+    if overwrite:
+        for a_key in overwrite:
+            for a_spec in overwrite[a_key]:
+                template[a_key][a_spec] = overwrite[a_key][a_spec]
     return template
