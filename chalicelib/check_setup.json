@@ -699,22 +699,6 @@
             }
         }
     },
-    "files_not_registered_with_higlass": {
-        "title": "Files not Registered with Higlass",
-        "group": "Higlass checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "webdev": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "find_cypress_test_items_to_purge": {
         "title": "Find Cypress Test files to Purge",
         "group": "Cleanup checks",
