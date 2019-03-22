@@ -296,9 +296,9 @@ def fastqc_start(connection, **kwargs):
     fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
     targets = []
     if kwargs.get('start_fastqc'):
-        targets.extend(fastqc_check_result.get('missing_fastqc', []))
+        targets.extend(fastqc_check_result.get('files_without_fastqc', []))
     if kwargs.get('start_qc'):
-        targets.extend(fastqc_check_result.get('missing_qc', []))
+        targets.extend(fastqc_check_result.get('files_without_qc', []))
 
     for a_target in targets:
         now = datetime.utcnow()
