@@ -1,4 +1,4 @@
-from __future__ import print_function, unicode_literals
+from datetime import datetime
 from ..utils import (
     check_function,
     init_check_res,
@@ -8,23 +8,22 @@ from ..utils import (
 from dcicutils import ff_utils
 from dcicutils import s3Utils
 
-from .. import wfr_utils
-from .. import wfrset_utils
+from .helpers import wfr_utils
+from .helpers import wfrset_utils
 
-import requests
-import sys
-import json
-from datetime import datetime
-
-import time
-import boto3
+# import requests
+# import sys
+# import json
+# import time
+# import boto3
 
 
 # TODO: Collect required items and do a combined get request (or get_es_metadata)
 # TODO:
 # TODO:
 
-lambda_limit = 280  # 300 - 20 sec
+lambda_limit = 270  # 300 - 30 sec
+
 
 @check_function()
 def md5run_status_extra_file(connection, **kwargs):
@@ -32,7 +31,7 @@ def md5run_status_extra_file(connection, **kwargs):
     no action is associated, we don't have any case so far.
     Will be implemented if this check gets WARN"""
     check = init_check_res(connection, 'md5run_status_extra_file')
-    my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
+    my_auth = connection.ff_keys
     check.status = 'PASS'
 
     # Build the query
@@ -40,11 +39,11 @@ def md5run_status_extra_file(connection, **kwargs):
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
-        check.summary = 'Nothing to see, move along'
+        check.summary = 'All Good!'
         return check
     else:
         check.status = 'WARN'
-        check.brief_output = 'There are user submitted extra files without md5runs'
+        check.brief_output = ['There are user submitted extra files without md5runs']
         check.full_output = {'extra_files_missing_md5': [i['accession'] for i in res]}
         return check
 
@@ -65,11 +64,11 @@ def md5run_status(connection, **kwargs):
     """
     start = datetime.utcnow()
     check = init_check_res(connection, 'md5run_status')
-    my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
+    my_auth = connection.ff_keys
 
     check.action = "md5run_start"
     check.allow_action = True
-    check.brief_output = "Result Summary"
+    check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
 
@@ -90,7 +89,7 @@ def md5run_status(connection, **kwargs):
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
-        check.summary = 'Nothing to see, move along'
+        check.summary = 'All Good!'
         return check
 
     # if there are files, make sure they are not on s3
@@ -121,45 +120,46 @@ def md5run_status(connection, **kwargs):
         if not head_info:
             no_s3_file.append(file_id)
             continue
-
-        md5_report = wfr_utils.get_wfr_out(a_file, "md5", my_auth, md_qc=True)
+        md5_report = wfr_utils.get_wfr_out(file_id, "md5", my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
-            continue
-
         # Most probably the trigger did not work, and we run it manually
-        if md5_report['status'] != 'complete':
+        elif md5_report['status'] != 'complete':
             missing_md5.append(file_id)
-            continue
-
         # There is a successful run, but status is not switched, happens when a file is reuploaded.
-        if md5_report['status'] == 'complete':
+        elif md5_report['status'] == 'complete':
             not_switched_status.append(file_id)
-            continue
-
+    print(check.brief_output)
     if no_s3_file:
         check.summary = 'Some files are pending upload'
-        check.brief_output = '\n' + str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
+        msg = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
+        print(msg)
+        check.brief_output.append(msg)
         check.full_output['files_pending_upload'] = no_s3_file
 
     if running:
         check.summary = 'Some files are running md5run'
-        check.brief_output += '\n' + str(len(running)) + ' files are still running md5run.'
+        msg = str(len(running)) + ' files are still running md5run.'
+        check.brief_output.append(msg)
         check.full_output['files_running_md5'] = running
 
     if missing_md5:
         check.summary = 'Some files are missing md5 runs'
-        check.brief_output += '\n' + str(len(missing_md5)) + ' files lack a successful md5 run'
+        print(check.brief_output)
+        msg = str(len(missing_md5)) + ' files lack a successful md5 run'
+        check.brief_output.append(msg)
         check.full_output['files_without_md5run'] = missing_md5
         check.status = 'WARN'
 
     if not_switched_status:
         check.summary += ' Some files are have wrong status with a successful run'
-        check.brief_output += '\n' + str(len(not_switched_status)) + ' files are have wrong status with a successful run'
+        msg = str(len(not_switched_status)) + ' files are have wrong status with a successful run'
+        check.brief_output.append(msg)
         check.full_output['files_with_run_and_wrong_status'] = not_switched_status
         check.status = 'WARN'
+    if not check.brief_output:
+        check.brief_output = ['All Good!', ]
     check.summary = check.summary.strip()
-    check.brief_output = check.brief_output.strip()
     return check
 
 
@@ -168,17 +168,18 @@ def md5run_start(connection, **kwargs):
     """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
     action = init_action_res(connection, 'md5run_start')
-    action_logs = {'runs_started': [], 'runs_errored': []}
-    my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
+    action_logs = {'runs_started': []}
+    my_auth = connection.ff_keys
     # get latest results from identify_files_without_filesize
     md5run_check = init_check_res(connection, 'md5run_status')
     md5run_check_result = md5run_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    action_logs['check_output'] = md5run_check_result
     targets = []
     if kwargs.get('start_missing'):
-        targets.extend(md5run_check_result.get('missing_md5', []))
+        targets.extend(md5run_check_result.get('files_without_md5run', []))
     if kwargs.get('start_not_switched'):
         targets.extend(md5run_check_result.get('files_with_run_and_wrong_status', []))
-
+    action_logs['targets'] = targets
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -188,6 +189,7 @@ def md5run_start(connection, **kwargs):
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_file': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
+
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         action_logs['started_runs'].append(url)
@@ -207,11 +209,11 @@ def fastqc_status(connection, **kwargs):
     """
     start = datetime.utcnow()
     check = init_check_res(connection, 'fastqc_status')
-    my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
+    my_auth = connection.ff_keys
 
     check.action = "fastqc_start"
     check.allow_action = True
-    check.brief_output = "Result Summary"
+    check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
 
@@ -229,7 +231,7 @@ def fastqc_status(connection, **kwargs):
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
-        check.summary = 'Nothing to see, move along'
+        check.summary = 'All Good!'
         return check
 
     # missing run
@@ -259,23 +261,24 @@ def fastqc_status(connection, **kwargs):
 
     if running:
         check.summary = 'Some files are running'
-        check.brief_output += '\n' + str(len(running)) + ' files are still running.'
+        check.brief_output.append(str(len(running)) + ' files are still running.')
         check.full_output['files_running_fastqc'] = running
 
     if missing_fastqc:
         check.summary = 'Some files are missing fastqc runs'
-        check.brief_output += '\n' + str(len(missing_fastqc)) + ' files lack a successful fastqc run'
+        check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
         check.full_output['files_without_fastqc'] = missing_fastqc
         check.status = 'WARN'
 
     if missing_qc:
         check.summary = 'Some files are missing fastqc runs'
-        check.brief_output += '\n' + str(len(missing_qc)) + ' files have successful run but no qc'
+        check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
         check.full_output['files_without_qc'] = missing_qc
         check.status = 'WARN'
 
     check.summary = check.summary.strip()
-    check.brief_output = check.brief_output.strip()
+    if not check.brief_output:
+        check.brief_output = ['All Good!']
     return check
 
 
