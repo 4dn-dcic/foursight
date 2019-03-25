@@ -229,6 +229,7 @@ def get_wfr_out(file_id, wfr_name, auth, versions=[], md_qc=False, run=None):
 
 
 def get_attribution(file_json):
+    """give file response in embedded frame and extract attribution info"""
     attributions = {
         'lab': file_json['lab']['@id'],
         'award': file_json['award']['@id']
@@ -370,9 +371,7 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
     attributions = {}
     # check pairing for the first file, and assume all same
     paired = ""
-
     rep_resp = my_rep_set['experiments_in_set']
-    lab = [my_rep_set['lab']['@id']]
     enzymes = []
     organisms = []
     total_f_size = 0
@@ -420,6 +419,10 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
             if paired != 'Yes':
                 file_dict[exp_resp['accession']].append((f1, f2))
 
+            # get attributions for the first file
+            if not attributions:
+                attributions = get_attribution(file_resp)
+
     # get the organism
     if len(list(set(organisms))) == 1:
         organism = organisms[0]
@@ -437,8 +440,14 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
     if re_nz.get(organism):
         enz_file = re_nz[organism].get(enz)
     else:
-        print('no enzyme information for the organism {}'.format(organism))
         enz_file = None
 
-    return report, organism, enz, bwa, chrsize, enz_file, int(total_f_size / (1024 * 1024 * 1024)), lab
-
+    f_size = int(total_f_size / (1024 * 1024 * 1024))
+    refs = {'pairing': paired,
+            'organism': organism,
+            'enzyme': enz,
+            'bwa_ref': bwa,
+            'chrsize_ref': chrsize,
+            'enz_ref': enz_file,
+            'f_size': str(f_size)+'GB'}
+    return file_dict, refs, attributions
