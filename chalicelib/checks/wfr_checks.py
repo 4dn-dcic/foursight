@@ -343,6 +343,8 @@ def in_situ_hic_status(connection, **kwargs):
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
+    print(query)
+    print(len(res))
     if not res:
         check.summary = 'All Good!'
         return check
@@ -362,9 +364,9 @@ def in_situ_hic_status(connection, **kwargs):
         set_acc = a_set['accession']
         part3 = 'ready'
         # references dict content
-        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab
-        exp_files, attributions, refs = wfr_utils.find_pairs(a_set, my_auth)
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size'], refs['lab']])
+        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
+        exp_files, refs, attributions = wfr_utils.find_fastq_info(a_set, my_auth)
+        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref'] or not refs['enz_ref']:
             set_summary += "| skipped - no enz/chrsize/bwa"
@@ -500,7 +502,7 @@ def hic_start(connection, **kwargs):
     action_logs = {'runs_started': []}
     my_auth = connection.ff_keys
     # get latest results from identify_files_without_filesize
-    fastqc_check = init_check_res(connection, 'fastqc_status')
+    hic_check = init_check_res(connection, 'in_situ_hic_status')
     fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
     targets = []
     if kwargs.get('start_fastqc'):

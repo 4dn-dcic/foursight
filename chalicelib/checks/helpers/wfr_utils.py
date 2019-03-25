@@ -342,7 +342,7 @@ def build_exp_type_query(exp_type, kwargs):
     pre_query += "".join(["&status=" + i for i in statuses])
     # for some cases we don't have a defined complete processing tag
     if versions:
-        pre_query += "".join(["&copleted_processes!=" + i for i in versions])
+        pre_query += "".join(["&completed_processes!=" + i for i in versions])
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
