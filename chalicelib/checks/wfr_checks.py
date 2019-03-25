@@ -339,6 +339,8 @@ def in_situ_hic_status(connection, **kwargs):
     check.status = 'PASS'
 
     exp_type = 'in situ Hi-C'
+    # completion tag
+    tag = wfr_utils.accepted_versions[exp_type][-1]
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -431,6 +433,12 @@ def in_situ_hic_status(connection, **kwargs):
                 inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
                 run_setting = wfrset_utils.step_settings('hi-c-processing-bam', organism, attributions)
                 missing_run.append(['step2', run_setting, inp_f, exp])
+        if part3 is not 'ready':
+            if missing_run:
+                set_summary += "| missing step 1/2"
+            elif running:
+                set_summary += "| running step 1/2"
+
         if part3 is 'ready':
             # if we made it to this step, there should be files in set_pairs
             assert set_pairs
@@ -443,88 +451,46 @@ def in_situ_hic_status(connection, **kwargs):
             # if successful
             if step3_result['status'] == 'complete':
                 set_summary += '| completed runs'
-
                 patch_data = {set_acc: [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]}
                 complete['patch_opf'].append(patch_data)
-                tag = "HiC_Pipeline_0.2.5"
                 complete['add_tag'] = tag
             # if still running
             elif step3_result['status'] == 'running':
                 running.append(['step3', set_acc])
-                part3 = 'not done'
+                set_summary += "| running step3"
             # if run is not successful
             else:
-                print(a_set['accession'], 'is missing Part3')
-                if add_wfr:
-                    # RUN PART 3
-                    inp_f = {'input_pairs': set_pairs, 'chromsizes': refs['chrsize_ref']}
-                    if recipe_no in [0,2,4]:
-                        inp_f['restriction_file'] = enz_ref
-                    run_missing_wfr(step_settings(step3, organism, attributions), inp_f, a_set['accession'], my_auth, my_env)
-        if part3 is not 'done':
-            set_summary += "| missing/running runs"
-            check.brief_output.append(set_summary)
+                set_summary += "| missing step3"
+                inp_f = {'input_pairs': set_pairs,
+                         'chromsizes': refs['chrsize_ref'],
+                         'restriction_file': refs['enz_ref']}
+                run_setting = wfrset_utils.step_settings('hi-c-processing-pairs', organism, attributions)
+                missing_run.append(['step3', run_setting, inp_f, set_acc])
+
+        check.brief_output.append(set_summary)
+        if running:
             check.full_output['running_runs'].append({'set_acc': running})
+        if missing_run:
             check.full_output['needs_runs'].append({'set_acc': missing_run})
-            continue
-    print(completed)
-    print(completed_acc)
+        # if made it till the end
+        assert not running
+        assert not missing_run
+        if complete.get('add_tag'):
+            check.full_output['completed_runs'].append({'set_acc': complete})
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    for a_set in res:
-        # lambda has a time limit (300sec), kill before it is reached so we get some results
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            break
-
-        file_id = a_fastq['accession']
-        report = wfr_utils.get_wfr_out(file_id, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
-        if report['status'] == 'running':
-            running.append(file_id)
-            continue
-        # Most probably the trigger did not work, and we run it manually
-        if report['status'] != 'complete':
-            missing_fastqc.append(file_id)
-            continue
-        # There is a successful run, but no qc, previously happened when a file was reuploaded.
-        if report['status'] == 'complete':
-            missing_qc.append(file_id)
-            continue
-
-    if running:
-        check.summary = 'Some files are running'
-        check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['files_running_fastqc'] = running
-
-    if missing_fastqc:
-        check.allow_action = True
-        check.summary = 'Some files are missing fastqc runs'
-        check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
-        check.full_output['files_without_fastqc'] = missing_fastqc
+    if check.full_output['running_runs']:
+        check.summary = ' running|'
         check.status = 'WARN'
-
-    if missing_qc:
-        check.allow_action = True
-        check.summary = 'Some files are missing fastqc runs'
-        check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
-        check.full_output['files_without_qc'] = missing_qc
+    if check.full_output['skipped']:
+        check.summary += ' skipped|'
         check.status = 'WARN'
-
-    check.summary = check.summary.strip()
-    if not check.brief_output:
-        check.brief_output = ['All Good!']
+    if check.full_output['needs_runs']:
+        check.summary += ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
     return check
+
