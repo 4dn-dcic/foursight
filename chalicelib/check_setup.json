@@ -652,7 +652,7 @@
         }
     },
     "check_files_for_higlass_viewconf": {
-        "title": "Generate Higlass ViewConigs for Files",
+        "title": "Generate Higlass ViewConfigs for Files",
         "group": "Higlass checks",
         "schedule": {
             "hourly_checks": {
@@ -668,7 +668,7 @@
         }
     },
     "check_expsets_processedfiles_for_higlass_viewconf": {
-        "title": "Create HiGlass viewconfs for Experiment Sets",
+        "title": "Create HiGlass viewconfs for Experiment Sets - Processed Files",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
@@ -683,8 +683,8 @@
             }
         }
     },
-    "files_not_registered_with_higlass": {
-        "title": "Files not Registered with Higlass",
+    "check_expsets_otherprocessedfiles_for_higlass_viewconf": {
+        "title": "Create HiGlass viewconfs for Experiment Sets - Supplementary Files",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
@@ -738,6 +738,43 @@
     "check_long_running_ec2s": {
         "title": "Check Long-Running EC2s",
         "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "md5run_status_extra_file" : {
+        "title": "md5run-extrafiles",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "md5run_status" : {
+
+        "title": "md5run",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastqc_status" : {
+        "title": "fastqc",
+        "group": "Pipeline checks",
         "schedule": {
             "morning_checks": {
                 "data": {
