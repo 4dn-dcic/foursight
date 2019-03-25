@@ -391,13 +391,14 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
 
     # Generate check response
     check.full_output['target_files'] = target_files_by_ga
-    check.status = 'PASS'
 
     if not target_files_by_ga:
         # nothing new to generate
         check.summary = check.description = "No new view configs to generate"
+        check.status = 'PASS'
     else:
         check.summary = "Ready to generate {higlass_count} Higlass view configs for {exp_sets} Experiment Sets".format(higlass_count=higlass_count, exp_sets=expset_count)
+        check.status = 'WARN'
         check.description = check.summary + ". See full_output for details."
         check.allow_action = True
     return check
@@ -688,14 +689,15 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     # check announces success
     check.full_output['filegroups_to_update'] = all_filegroups_to_update
     check.full_output['expsets_to_update'] = expsets_to_update
-    check.status = 'PASS'
 
     if not all_filegroups_to_update:
         # nothing new to generate
         check.summary = check.description = "No new view configs to generate"
+        check.status = 'PASS'
     else:
         check.summary = "Ready to generate {file_count} Higlass view configs for {exp_sets} Experiment Set".format(file_count=higlass_view_count, exp_sets=len(expsets_to_update))
         check.description = check.summary + ". See full_output for details."
+        check.status = 'WARN'
         check.allow_action = True
     return check
 
@@ -926,7 +928,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             "accession",
             "genome_assembly",
             "file_format",
-            "higlass_uuid",
+            "higlass_uid",
             "uuid",
             "extra_files",
             "upload_key",
@@ -1016,7 +1018,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                          'files_missing_genome_assembly': no_genome_assembly}
     if no_genome_assembly or not_found_upload_key or not_found_s3:
         check.status = "FAIL"
-        check.summary = check.description = "Some files cannot be registed. See full_output"
+        check.summary = check.description = "Some files cannot be registed. See full_output."
     else:
         check.status = 'PASS'
 
@@ -1024,12 +1026,20 @@ def files_not_registered_with_higlass(connection, **kwargs):
     if file_count != 0:
         check.status = 'WARN'
     if check.summary:
-        check.summary += '. %s files ready for registration' % file_count
-        check.description += '. %s files ready for registration.' % file_count
+        if file_count != 0:
+            check.summary += ' %s files ready for registration' % file_count
+            check.description += ' %s files ready for registration.' % file_count
+        elif check.status == 'PASS':
+            check.summary += ' All files are registered.'
+            check.description += ' All files are registered.'
+        else:
+            check.summary += ' No files to register.'
+            check.description += ' No files to register.'
+
         if not kwargs['confirm_on_higlass']:
             check.description += "Run with confirm_on_higlass=True to check against the higlass server"
     else:
-        check.summary = '%s files ready for registration' % file_count
+        check.summary = ' %s files ready for registration' % file_count
         check.description = check.summary
         if not kwargs['confirm_on_higlass']:
             check.description += "Run with confirm_on_higlass=True to check against the higlass server"
