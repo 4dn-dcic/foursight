@@ -198,16 +198,17 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
             target_files_by_ga[genome_assembly][accession] = static_content
 
     check.full_output['target_files'] = target_files_by_ga
-    check.status = 'PASS'
 
     if not target_files_by_ga:
         # nothing new to generate
         check.summary = check.description = "No new view configs to generate"
+        check.status = 'PASS'
     else:
         all_files = sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
         check.summary = "Ready to generate %s Higlass view configs" % all_files
         check.description = check.summary + ". See full_output for details."
         check.allow_action = True
+        check.status = 'WARN'
     return check
 
 @action_function(file_accession=None)
