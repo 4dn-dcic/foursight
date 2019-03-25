@@ -8,27 +8,82 @@ import json
 # check extract_file_info has 4 arguments
 
 # wfr_name, accepted versions, expected run time
-workflow_details = [['md5', ['0.0.4', '0.2.6'], 12],
-                    ['fastqc-0-11-4-1', ['0.2.0'], 50],
-                    ['bwa-mem', ['0.2.6'], 50],
-                    ['pairsqc-single', ['0.2.5', '0.2.6'], 100],
-                    ['hi-c-processing-bam', ['0.2.6'], 50],
-                    ['hi-c-processing-pairs', ['0.2.6', '0.2.7'], 200],
-                    ['hi-c-processing-pairs-nore', ['0.2.6'], 200],
-                    ['hi-c-processing-pairs-nonorm', ['0.2.6'], 200],
-                    ['hi-c-processing-pairs-nore-nonorm', ['0.2.6'], 200],
-                    ['repliseq-parta', ['v13.1', 'v14', 'v16'], 200],
-                    ['bedGraphToBigWig', ['v4'], 24],
-                    ['bedtobeddb', ['v2'], 24],
-                    ['encode-chipseq-aln-chip', ['1.1.1'], 200],
-                    ['encode-chipseq-aln-ctl', ['1.1.1'], 200],
-                    ['encode-chipseq-postaln', ['1.1.1'], 200],
-                    ['encode-atacseq-aln', ['1.1.1'], 200],
-                    ['encode-atacseq-postaln', ['1.1.1'], 200],
-                    ['mergebed', ['v1'], 200]
-                    ]
+workflow_details = {
+    "md5": {
+        "run_time": 12,
+        "accepted_versions": ["0.0.4", "0.2.6"]
+    },
+    "fastqc-0-11-4-1": {
+        "run_time": 50,
+        "accepted_versions": ["0.2.0"]
+    },
+    "bwa-mem": {
+        "run_time": 50,
+        "accepted_versions": ["0.2.6"]
+    },
+    "pairsqc-single": {
+        "run_time": 100,
+        "accepted_versions": ["0.2.5", "0.2.6"]
+    },
+    "hi-c-processing-bam": {
+        "run_time": 50,
+        "accepted_versions": ["0.2.6"]
+    },
+    "hi-c-processing-pairs": {
+        "run_time": 200,
+        "accepted_versions": ["0.2.6", "0.2.7"]
+    },
+    "hi-c-processing-pairs-nore": {
+        "run_time": 200,
+        "accepted_versions": ["0.2.6"]
+    },
+    "hi-c-processing-pairs-nonorm": {
+        "run_time": 200,
+        "accepted_versions": ["0.2.6"]
+    },
+    "hi-c-processing-pairs-nore-nonorm": {
+        "run_time": 200,
+        "accepted_versions": ["0.2.6"]
+    },
+    "repliseq-parta": {
+        "run_time": 200,
+        "accepted_versions": ["v13.1", "v14", "v16"]
+    },
+    "bedGraphToBigWig": {
+        "run_time": 24,
+        "accepted_versions": ["v4"]
+    },
+    "bedtobeddb": {
+        "run_time": 24,
+        "accepted_versions": ["v2"]
+    },
+    "encode-chipseq-aln-chip": {
+        "run_time": 200,
+        "accepted_versions": ["1.1.1"]
+    },
+    "encode-chipseq-aln-ctl": {
+        "run_time": 200,
+        "accepted_versions": ["1.1.1"]
+    },
+    "encode-chipseq-postaln": {
+        "run_time": 200,
+        "accepted_versions": ["1.1.1"]
+    },
+    "encode-atacseq-aln": {
+        "run_time": 200,
+        "accepted_versions": ["1.1.1"]
+    },
+    "encode-atacseq-postaln": {
+        "run_time": 200,
+        "accepted_versions": ["1.1.1"]
+    },
+    "mergebed": {
+        "run_time": 200,
+        "accepted_versions": ["v1"]
+    }
+}
 
-
+# accepted versions for completed pipelines
 accepted_versions = {
     'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     'dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
@@ -40,6 +95,9 @@ accepted_versions = {
     'Repli-seq':     ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
+
+
+    'ChIP-seq': ['ENCODE_CHIP_Pipeline_1.1.1'],
     'single cell Repli-seq': [''],
     'cryomilling TCC': [''],
     'single cell Hi-C': [''],
@@ -50,7 +108,7 @@ accepted_versions = {
     'PLAC-seq': [''],
     'Hi-ChIP': [''],
     'DAM-ID seq': [''],
-    'ChIP-seq': [''],
+
     'RNA-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
@@ -76,12 +134,14 @@ def get_wfr_out(file_id, wfr_name, auth, versions=[], md_qc=False, run=None):
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    if wfr_name not in workflow_details:
+        assert wfr_name in workflow_details
     # get default accepted versions if not provided
     if not versions:
-        versions = [i[1] for i in workflow_details if i[0] == wfr_name][0]
+        versions = workflow_details[wfr_name]['accepted_versions']
     # get default run out time
     if not run:
-        run = [i[2] for i in workflow_details if i[0] == wfr_name][0]
+        run = workflow_details[wfr_name]['run_time']
     emb_file = ff_utils.get_metadata(file_id, key=auth)
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
