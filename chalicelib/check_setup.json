@@ -746,5 +746,42 @@
                 }
             }
         }
+    },
+    "md5run_status_extra_file" : {
+        "title": "md5run-extrafiles",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "md5run_status" : {
+
+        "title": "md5run",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastqc_status" : {
+        "title": "fastqc",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
