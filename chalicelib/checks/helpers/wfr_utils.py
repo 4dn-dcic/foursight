@@ -325,3 +325,94 @@ def build_exp_type_query(exp_type, kwargs):
     if lab:
         pre_query += '&lab.display_title=' + lab
     return pre_query
+
+
+def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
+    """Find fastq files from experiment set, exclude miseq by default
+    expects my_rep_set to be set response in frame object (search result)
+    will check if files are paired or not, and if paired will give list of lists for each exp
+    if not paired, with just give list of files per experiment.
+
+    result is 3 dictionaries
+    - file dict  { exp1 : [file1, file2, file3, file4]}  # unpaired
+      file dict  { exp1 : [ [file1, file2], [file3, file4]]} # paired
+    - refs keys  {pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab}
+    - attributions
+    """
+    file_dict = {}
+    refs = {}
+    attributions = {}
+    # check pairing for the first file, and assume all same
+    paired = ""
+
+    rep_resp = my_rep_set['experiments_in_set']
+    lab = [my_rep_set['lab']['@id']]
+    enzymes = []
+    organisms = []
+    total_f_size = 0
+    for exp in rep_resp:
+        exp_resp = exp
+        file_dict[exp['accession']] = []
+        if not organisms:
+            biosample = exp['biosample']
+            organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
+            if len(organisms) != 1:
+                print('multiple organisms in set', my_rep_set['accession'])
+                break
+        exp_files = exp['files']
+        enzyme = exp.get('digestion_enzyme')
+        if enzyme:
+            enzymes.append(enzyme['display_title'])
+
+        for fastq_file in exp_files:
+            file_resp = ff_utils.get_metadata(fastq_file['uuid'], key=auth)
+            if file_resp.get('file_size'):
+                total_f_size += file_resp['file_size']
+            # skip pair no 2
+            if file_resp.get('paired_end') == '2':
+                continue
+            # exclude miseq
+            if exclude_miseq:
+                if file_resp.get('instrument') == 'Illumina MiSeq':
+                    continue
+            # check that file has a pair
+            f1 = file_resp['@id']
+            f2 = ""
+            # assign pairing info
+            if not paired:
+                try:
+                    relations = file_resp['related_files']
+                    paired_files = [relation['file']['@id'] for relation in relations if relation['relationship_type'] == 'paired with']
+                    assert len(paired_files) == 1
+                    f2 = paired_files[0]
+                    paired = "Yes"
+                except:
+                    paired = "No"
+
+            if paired == 'No':
+                file_dict[exp_resp['accession']].append(f1)
+            if paired != 'Yes':
+                file_dict[exp_resp['accession']].append((f1, f2))
+
+    # get the organism
+    if len(list(set(organisms))) == 1:
+        organism = organisms[0]
+    else:
+        organism = None
+
+    # get the enzyme
+    if len(list(set(enzymes))) == 1:
+        enz = enzymes[0]
+    else:
+        enz = None
+
+    bwa = bwa_index.get(organism)
+    chrsize = chr_size.get(organism)
+    if re_nz.get(organism):
+        enz_file = re_nz[organism].get(enz)
+    else:
+        print('no enzyme information for the organism {}'.format(organism))
+        enz_file = None
+
+    return report, organism, enz, bwa, chrsize, enz_file, int(total_f_size / (1024 * 1024 * 1024)), lab
+

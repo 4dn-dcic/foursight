@@ -292,7 +292,7 @@ def fastqc_start(connection, **kwargs):
     start = datetime.utcnow()
     action = init_action_res(connection, 'fastqc_start')
     action_logs = {'runs_started': []}
-    my_auth = ff_utils.get_authentication_with_server({}, ff_env=connection.ff_env)
+    my_auth = connection.ff_keys
     # get latest results from identify_files_without_filesize
     fastqc_check = init_check_res(connection, 'fastqc_status')
     fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
@@ -331,13 +331,10 @@ def in_situ_hic_status(connection, **kwargs):
     start = datetime.utcnow()
     check = init_check_res(connection, 'in_situ_hic_status')
     my_auth = connection.ff_keys
-    my_env = connection.ff_env
-
     check.action = "hic_start"
     check.brief_output = []
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []]
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
     check.status = 'PASS'
-
     exp_type = 'in situ Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
@@ -398,7 +395,7 @@ def in_situ_hic_status(connection, **kwargs):
                     # add part 1
                     inp_f = {'fastq1': pair[0], 'fastq2': pair[1], 'bwa_index': refs['bwa_ref']}
                     name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
-                    run_setting = wfrset_utils.step_settings('bwa-mem', organism, attributions)
+                    run_setting = wfrset_utils.step_settings('bwa-mem', refs['organism'], attributions)
                     missing_run.append(['step1', run_setting, inp_f, name_tag])
             # stop progress to part2 and 3
             if part1 is not 'ready':
@@ -409,7 +406,7 @@ def in_situ_hic_status(connection, **kwargs):
             # make sure all input bams went through same last step2
             all_step2s = []
             for bam in exp_bams:
-                step2_result = get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
+                step2_result = wfrset_utils.get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -431,7 +428,7 @@ def in_situ_hic_status(connection, **kwargs):
                 part3 = 'not ready'
                 # Add part2
                 inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
-                run_setting = wfrset_utils.step_settings('hi-c-processing-bam', organism, attributions)
+                run_setting = wfrset_utils.step_settings('hi-c-processing-bam', refs['organism'], attributions)
                 missing_run.append(['step2', run_setting, inp_f, exp])
         if part3 is not 'ready':
             if missing_run:
@@ -445,7 +442,7 @@ def in_situ_hic_status(connection, **kwargs):
             # make sure all input bams went through same last step3
             all_step3s = []
             for a_pair in set_pairs:
-                step3_result = get_wfr_out(a_pair, step3, my_auth, ['0.2.6'])
+                step3_result = wfr_utils.get_wfr_out(a_pair, 'hi-c-processing-pairs', my_auth)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             assert len(list(set(all_step3s))) == 1
             # if successful
@@ -464,7 +461,7 @@ def in_situ_hic_status(connection, **kwargs):
                 inp_f = {'input_pairs': set_pairs,
                          'chromsizes': refs['chrsize_ref'],
                          'restriction_file': refs['enz_ref']}
-                run_setting = wfrset_utils.step_settings('hi-c-processing-pairs', organism, attributions)
+                run_setting = wfrset_utils.step_settings('hi-c-processing-pairs', refs['organism'], attributions)
                 missing_run.append(['step3', run_setting, inp_f, set_acc])
 
         check.brief_output.append(set_summary)
@@ -494,3 +491,35 @@ def in_situ_hic_status(connection, **kwargs):
         check.allow_action = True
     return check
 
+
+@action_function(start_runs=True, patch_completed=True)
+def hic_start(connection, **kwargs):
+    """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'hic_start')
+    action_logs = {'runs_started': []}
+    my_auth = connection.ff_keys
+    # get latest results from identify_files_without_filesize
+    fastqc_check = init_check_res(connection, 'fastqc_status')
+    fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    targets = []
+    if kwargs.get('start_fastqc'):
+        targets.extend(fastqc_check_result.get('files_without_fastqc', []))
+    if kwargs.get('start_qc'):
+        targets.extend(fastqc_check_result.get('files_without_qc', []))
+
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        inp_f = {'input_fastq': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        action_logs['runs_started'].append(url)
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
