@@ -331,12 +331,11 @@ def in_situ_hic_status(connection, **kwargs):
     start = datetime.utcnow()
     check = init_check_res(connection, 'in_situ_hic_status')
     my_auth = connection.ff_keys
+    my_env = connection.ff_env
 
     check.action = "hic_start"
     check.brief_output = []
-    check.full_output = {'skipped': [],
-                         'needs_runs': [],
-                         'needs_finish': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []]
     check.status = 'PASS'
 
     exp_type = 'in situ Hi-C'
@@ -357,20 +356,21 @@ def in_situ_hic_status(connection, **kwargs):
         missing_run = []
         # still running
         running = []
-
-        set_acc = a_set['accession']
+        # if all runs are complete, add the patch info for processed files and tag
+        complete = {'patch_opf': [],
+                    'add_tag': ''}
         set_summary = ""
-        part3 = 'done'
+        set_acc = a_set['accession']
+        part3 = 'ready'
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab
-        exp_files, refs = wfr_utils.find_pairs(a_set, my_auth)
+        exp_files, attributions, refs = wfr_utils.find_pairs(a_set, my_auth)
         set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size'], refs['lab']])
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref'] or not refs['enz_ref']:
             set_summary += "| skipped - no enz/chrsize/bwa"
             check.brief_output.append(set_summary)
-            check.full_output['skipped'].append([set_acc, 'skipped - no enz/chrsize/bwa'])
-            check.status = 'WARN'
+            check.full_output['skipped'].append({set_acc: 'skipped - no enz/chrsize/bwa'})
             continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
@@ -379,116 +379,94 @@ def in_situ_hic_status(connection, **kwargs):
                 continue
             # Check Part 1 and See if all are okay
             exp_bams = []
-            part1 = 'done'
-            part2 = 'done'
+            part1 = 'ready'
+            part2 = 'ready'
             for pair in exp_files[exp]:
-                step1_result = wfr_utils.get_wfr_out(pair[0], 'bwa-mem', my_auth, ['0.2.6'])
+                step1_result = wfr_utils.get_wfr_out(pair[0], 'bwa-mem', my_auth)
                 # if successful
                 if step1_result['status'] == 'complete':
-                    exp_bams.append(step1_result['bam'])
-                    continue
+                    exp_bams.append(step1_result['out_bam'])
                 # if still running
                 elif step1_result['status'] == 'running':
-                    part1 = 'not done'
-                    print('part1 still running')
-                    continue
+                    part1 = 'not ready'
+                    running.append(['step1', exp, pair])
                 # if run is not successful
                 else:
-                    part1 = 'not done'
-                    if add_wfr:
-                        # RUN PART 1
-                        inp_f = {'fastq1':pair[0], 'fastq2':pair[1], 'bwa_index':bwa_ref}
-                        name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
-                        run_missing_wfr(step_settings('bwa-mem', organism, attributions), inp_f, name_tag, my_auth, my_env)
-            # stop progress to part2
-            if part1 is not 'done':
-                print(exp, 'has missing Part1 runs')
+                    part1 = 'not ready'
+                    # add part 1
+                    inp_f = {'fastq1': pair[0], 'fastq2': pair[1], 'bwa_index': refs['bwa_ref']}
+                    name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
+                    run_setting = wfrset_utils.step_settings('bwa-mem', organism, attributions)
+                    missing_run.append(['step1', run_setting, inp_f, name_tag])
+            # stop progress to part2 and 3
+            if part1 is not 'ready':
                 part2 = 'not ready'
                 part3 = 'not ready'
+                # skip part 2 checks
                 continue
-            print(exp, 'part1 complete')
-
-            #make sure all input bams went through same last step2
+            # make sure all input bams went through same last step2
             all_step2s = []
             for bam in exp_bams:
-                step2_result = get_wfr_out(bam, 'hi-c-processing-bam', my_auth, ['0.2.6'])
-                all_step2s.append((step2_result['status'],step2_result.get('bam')))
-            if len(list(set(all_step2s))) != 1:
-                print('inconsistent step2 run for input bams')
-                # this run will be repeated if add_wfr
-                step2_result['status'] = 'inconsistent run'
-
-            #check if part 2 is run already, it not start the run
-            # if successful
+                step2_result = get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
+                all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
+            # all bams should have same wfr
+            assert len(list(set(all_step2s))) == 1
+            # check if part 2 run already
             if step2_result['status'] == 'complete':
-                set_pairs.append(step2_result['pairs'])
-                if add_pc:
-                    add_preliminary_processed_files(exp, [step2_result['bam'],step2_result['pairs']], my_auth)
-                print(exp, 'part2 complete')
+                # accumulate pairs files for step3
+                set_pairs.append(step2_result['filtered_pairs'])
+                # add files for experiment opf
+                patch_data = {exp: [step2_result['annotated_bam'], step2_result['filtered_pairs']]}
+                complete['patch_opf'].append(patch_data)
                 continue
             # if still running
             elif step2_result['status'] == 'running':
-                part2 = 'not done'
                 part3 = 'not ready'
-                print(exp, 'part2 still running')
+                running.append(['step2', exp])
                 continue
             # if run is not successful
             else:
-                part2 = 'not done'
                 part3 = 'not ready'
-                print(exp, 'is missing Part2')
+                # Add part2
+                inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
+                run_setting = wfrset_utils.step_settings('hi-c-processing-bam', organism, attributions)
+                missing_run.append(['step2', run_setting, inp_f, exp])
+        if part3 is 'ready':
+            # if we made it to this step, there should be files in set_pairs
+            assert set_pairs
+            # make sure all input bams went through same last step3
+            all_step3s = []
+            for a_pair in set_pairs:
+                step3_result = get_wfr_out(a_pair, step3, my_auth, ['0.2.6'])
+                all_step3s.append((step3_result['status'], step3_result.get('mcool')))
+            assert len(list(set(all_step3s))) == 1
+            # if successful
+            if step3_result['status'] == 'complete':
+                set_summary += '| completed runs'
+
+                patch_data = {set_acc: [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]}
+                complete['patch_opf'].append(patch_data)
+                tag = "HiC_Pipeline_0.2.5"
+                complete['add_tag'] = tag
+            # if still running
+            elif step3_result['status'] == 'running':
+                running.append(['step3', set_acc])
+                part3 = 'not done'
+            # if run is not successful
+            else:
+                print(a_set['accession'], 'is missing Part3')
                 if add_wfr:
-                    # RUN PART 2
-                    inp_f = {'input_bams':exp_bams, 'chromsize':chrsize_ref}
-                    run_missing_wfr(step_settings('hi-c-processing-bam', organism, attributions), inp_f, exp, my_auth, my_env)
-
-
+                    # RUN PART 3
+                    inp_f = {'input_pairs': set_pairs, 'chromsizes': refs['chrsize_ref']}
+                    if recipe_no in [0,2,4]:
+                        inp_f['restriction_file'] = enz_ref
+                    run_missing_wfr(step_settings(step3, organism, attributions), inp_f, a_set['accession'], my_auth, my_env)
         if part3 is not 'done':
-            print('Part3 not ready')
+            set_summary += "| missing/running runs"
+            check.brief_output.append(set_summary)
+            check.full_output['running_runs'].append({'set_acc': running})
+            check.full_output['needs_runs'].append({'set_acc': missing_run})
             continue
-        if not set_pairs:
-            print('no pairs can be produced from this set')
-            continue
-
-        #make sure all input bams went through same last step3
-        all_step3s = []
-        for a_pair in set_pairs:
-            step3_result = get_wfr_out(a_pair, step3, my_auth, ['0.2.6'])
-            all_step3s.append((step3_result['status'], step3_result.get('mcool')))
-        if len(list(set(all_step3s))) != 1:
-            print('inconsistent step3 run for input pairs')
-            # this run will be repeated if add_wfr
-            step3_result['status'] = 'inconsistent run'
-        #check if part 3 is run already, it not start the run
-        # if successful
-        if step3_result['status'] == 'complete':
-            completed += 1
-            completed_acc.append(a_set['accession'])
-            #add competed flag to experiment
-            if add_tag:
-                ff_utils.patch_metadata({"completed_processes":["HiC_Pipeline_0.2.5"]}, obj_id=a_set['accession'] , key=my_auth)
-            # add processed files to set
-            if add_pc:
-                add_preliminary_processed_files(a_set['accession'],
-                                                [step3_result['pairs'],
-                                                 step3_result['hic'],
-                                                 step3_result['mcool']],
-                                                my_auth)
-            print(a_set['accession'], 'part3 complete')
-        # if still running
-        elif step3_result['status'] == 'running':
-            print('part3 still running')
-            continue
-        # if run is not successful
-        else:
-            print(a_set['accession'], 'is missing Part3')
-            if add_wfr:
-                # RUN PART 3
-                inp_f = {'input_pairs':set_pairs, 'chromsizes':chrsize_ref}
-                if recipe_no in [0,2,4]:
-                    inp_f['restriction_file'] = enz_ref
-                run_missing_wfr(step_settings(step3, organism, attributions), inp_f, a_set['accession'], my_auth, my_env)
-
     print(completed)
     print(completed_acc)
 
