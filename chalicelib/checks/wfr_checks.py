@@ -326,31 +326,22 @@ def in_situ_hic_status(connection, **kwargs):
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'fastqc_status')
+    check = init_check_res(connection, 'in_situ_hic_status')
     my_auth = connection.ff_keys
 
-    check.action = "fastqc_start"
+    check.action = "hic_start"
     check.brief_output = []
-    check.full_output = {}
+    check.full_output = {'skipped': [],
+                         'needs_runs': [],
+                         'needs_finish': []}
     check.status = 'PASS'
 
     exp_type = 'in situ Hi-C'
-
-    # Build the query
-    query = "/search/?experiments_in_set.experiment_type={}".format(exp_type) + \
-            "&experimentset_type=replicate&type=ExperimentSetReplicate" + \
-            "&status=pre-release&status=released&status=released%20to%20project"
-    # add date
-    s_date = kwargs.get('start_date')
-    if s_date:
-        query += '&date_created.from=' + s_date
-    # add lab
-    lab = kwargs.get('lab_title')
-    if lab:
-        query += '&lab.display_title=' + lab
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -358,10 +349,163 @@ def in_situ_hic_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    # missing run
-    missing_run = []
-    # still running
-    running = []
+    for a_set in res:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            break
+        # missing run
+        missing_run = []
+        # still running
+        running = []
+
+        set_acc = a_set['accession']
+        set_summary = ""
+        part3 = 'done'
+        # references dict content
+        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab
+        exp_files, refs = wfr_utils.find_pairs(a_set, my_auth)
+        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size'], refs['lab']])
+        # skip if missing reference
+        if not refs['bwa_ref'] or not refs['chrsize_ref'] or not refs['enz_ref']:
+            set_summary += "| skipped - no enz/chrsize/bwa"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append([set_acc, 'skipped - no enz/chrsize/bwa'])
+            check.status = 'WARN'
+            continue
+        set_pairs = []
+        # cycle through the experiments, skip the ones without usable files
+        for exp in exp_files.keys():
+            if not exp_files.get(exp):
+                continue
+            # Check Part 1 and See if all are okay
+            exp_bams = []
+            part1 = 'done'
+            part2 = 'done'
+            for pair in exp_files[exp]:
+                step1_result = wfr_utils.get_wfr_out(pair[0], 'bwa-mem', my_auth, ['0.2.6'])
+                # if successful
+                if step1_result['status'] == 'complete':
+                    exp_bams.append(step1_result['bam'])
+                    continue
+                # if still running
+                elif step1_result['status'] == 'running':
+                    part1 = 'not done'
+                    print('part1 still running')
+                    continue
+                # if run is not successful
+                else:
+                    part1 = 'not done'
+                    if add_wfr:
+                        # RUN PART 1
+                        inp_f = {'fastq1':pair[0], 'fastq2':pair[1], 'bwa_index':bwa_ref}
+                        name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
+                        run_missing_wfr(step_settings('bwa-mem', organism, attributions), inp_f, name_tag, my_auth, my_env)
+            # stop progress to part2
+            if part1 is not 'done':
+                print(exp, 'has missing Part1 runs')
+                part2 = 'not ready'
+                part3 = 'not ready'
+                continue
+            print(exp, 'part1 complete')
+
+            #make sure all input bams went through same last step2
+            all_step2s = []
+            for bam in exp_bams:
+                step2_result = get_wfr_out(bam, 'hi-c-processing-bam', my_auth, ['0.2.6'])
+                all_step2s.append((step2_result['status'],step2_result.get('bam')))
+            if len(list(set(all_step2s))) != 1:
+                print('inconsistent step2 run for input bams')
+                # this run will be repeated if add_wfr
+                step2_result['status'] = 'inconsistent run'
+
+            #check if part 2 is run already, it not start the run
+            # if successful
+            if step2_result['status'] == 'complete':
+                set_pairs.append(step2_result['pairs'])
+                if add_pc:
+                    add_preliminary_processed_files(exp, [step2_result['bam'],step2_result['pairs']], my_auth)
+                print(exp, 'part2 complete')
+                continue
+            # if still running
+            elif step2_result['status'] == 'running':
+                part2 = 'not done'
+                part3 = 'not ready'
+                print(exp, 'part2 still running')
+                continue
+            # if run is not successful
+            else:
+                part2 = 'not done'
+                part3 = 'not ready'
+                print(exp, 'is missing Part2')
+                if add_wfr:
+                    # RUN PART 2
+                    inp_f = {'input_bams':exp_bams, 'chromsize':chrsize_ref}
+                    run_missing_wfr(step_settings('hi-c-processing-bam', organism, attributions), inp_f, exp, my_auth, my_env)
+
+
+        if part3 is not 'done':
+            print('Part3 not ready')
+            continue
+        if not set_pairs:
+            print('no pairs can be produced from this set')
+            continue
+
+        #make sure all input bams went through same last step3
+        all_step3s = []
+        for a_pair in set_pairs:
+            step3_result = get_wfr_out(a_pair, step3, my_auth, ['0.2.6'])
+            all_step3s.append((step3_result['status'], step3_result.get('mcool')))
+        if len(list(set(all_step3s))) != 1:
+            print('inconsistent step3 run for input pairs')
+            # this run will be repeated if add_wfr
+            step3_result['status'] = 'inconsistent run'
+        #check if part 3 is run already, it not start the run
+        # if successful
+        if step3_result['status'] == 'complete':
+            completed += 1
+            completed_acc.append(a_set['accession'])
+            #add competed flag to experiment
+            if add_tag:
+                ff_utils.patch_metadata({"completed_processes":["HiC_Pipeline_0.2.5"]}, obj_id=a_set['accession'] , key=my_auth)
+            # add processed files to set
+            if add_pc:
+                add_preliminary_processed_files(a_set['accession'],
+                                                [step3_result['pairs'],
+                                                 step3_result['hic'],
+                                                 step3_result['mcool']],
+                                                my_auth)
+            print(a_set['accession'], 'part3 complete')
+        # if still running
+        elif step3_result['status'] == 'running':
+            print('part3 still running')
+            continue
+        # if run is not successful
+        else:
+            print(a_set['accession'], 'is missing Part3')
+            if add_wfr:
+                # RUN PART 3
+                inp_f = {'input_pairs':set_pairs, 'chromsizes':chrsize_ref}
+                if recipe_no in [0,2,4]:
+                    inp_f['restriction_file'] = enz_ref
+                run_missing_wfr(step_settings(step3, organism, attributions), inp_f, a_set['accession'], my_auth, my_env)
+
+    print(completed)
+    print(completed_acc)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     for a_set in res:
         # lambda has a time limit (300sec), kill before it is reached so we get some results

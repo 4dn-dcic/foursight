@@ -303,3 +303,25 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
     e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
     url = json.loads(e['input'])['_tibanna']['url']
     return url
+
+
+def build_exp_type_query(exp_type, kwargs):
+    assert exp_type in accepted_versions
+    statuses = ['pre-release', 'released', 'released to project']
+    versions = accepted_versions[exp_type]
+    # Build the query
+    pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
+    pre_query += "&experiments_in_set.experiment_type={}".format(exp_type)
+    pre_query += "".join(["&status=" + i for i in statuses])
+    # for some cases we don't have a defined complete processing tag
+    if versions:
+        pre_query += "".join(["&copleted_processes!=" + i for i in versions])
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        pre_query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        pre_query += '&lab.display_title=' + lab
+    return pre_query
