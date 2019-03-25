@@ -192,7 +192,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "spot_instance": True,
         "ebs_iops": "",
         "log_bucket": "tibanna-output",
-        "key_name": "4dn-encode"
+        "key_name": "4dn-encode",
+        "public_postrun_json": True
         }
     if not template.get('parameters'):
         template['parameters'] = {}
