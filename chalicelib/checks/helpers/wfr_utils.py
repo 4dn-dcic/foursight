@@ -120,6 +120,32 @@ accepted_versions = {
     'TCC': [''],
     }
 
+# Reference Files
+bwa_index = {"human": "4DNFIZQZ39L9",
+             "mouse": "4DNFI823LSI8",
+             "fruit-fly": '4DNFIO5MGY32',
+             "chicken": "4DNFIVGRYVQF"}
+
+chr_size = {"human": "4DNFI823LSII",
+            "mouse": "4DNFI3UBJ3HZ",
+            "fruit-fly": '4DNFIBEEN92C',
+            "chicken": "4DNFIQFZW4DX"}
+
+re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
+                   'DpnII': '/files-reference/4DNFIBNAPW3O/',
+                   'HindIII': '/files-reference/4DNFI823MBKE/',
+                   'NcoI': '/files-reference/4DNFI3HVU2OD/'
+                   },
+         "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
+                   'DpnII': '/files-reference/4DNFI3HVC1SE/',
+                   "HindIII": '/files-reference/4DNFI6V32T9J/'
+                   },
+         "fruit-fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
+                       },
+         "chicken": {"HindIII": '/files-reference/4DNFITPCJFWJ/'
+                     }
+         }
+
 
 def get_wfr_out(file_id, wfr_name, auth, versions=[], md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
