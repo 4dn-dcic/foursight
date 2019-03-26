@@ -774,32 +774,31 @@ def users_with_pending_lab(connection, **kwargs):
     mismatch_users = []
     # do not look for deleted/replaced users
     search_q = '/search/?type=User&pending_lab!=No+value&frame=object'
-    search_res = ff_utils.search_metadata(search_q, key=connection.ff_keys, env=connection.ff_env)
+    search_res = ff_utils.search_metadata(search_q, key=connection.ff_keys, ff_env=connection.ff_env)
     for res in search_res:
-        user_fields = ['uuid', 'email', 'pending_lab', 'lab',
-                       'title', 'job_title']
-        user_append = {k: res.get(k) for k in []}
+        user_fields = ['uuid', 'email', 'pending_lab', 'lab', 'title', 'job_title']
+        user_append = {k: res.get(k) for k in user_fields}
         check.full_output.append(user_append)
         # Fail if we have a pending lab and lab that do not match
-        if user_append['pending_lab'] != user_append['lab']:
+        if user_append['lab'] and user_append['pending_lab'] != user_append['lab']:
             check.status = 'FAIL'
-            mismatch_users.append(user_fields['uuid'])
+            mismatch_users.append(user_append['uuid'])
             continue
         # cache the lab and PI contact info
-        if user_fields['pending_lab'] not in cached_items:
+        if user_append['pending_lab'] not in cached_items:
             to_cache = {}
-            pending_meta = ff_utils.get_metadata(user_fields['pending_lab'], key=connection.ff_keys,
-                                                 env=connection.ff_env, add_on='frame=object')
+            pending_meta = ff_utils.get_metadata(user_append['pending_lab'], key=connection.ff_keys,
+                                                 ff_env=connection.ff_env, add_on='frame=object')
             to_cache['lab_title'] = pending_meta['display_title']
             if 'pi' in pending_meta:
                 pi_meta = ff_utils.get_metadata(pending_meta['pi'], key=connection.ff_keys,
-                                                env=connection.ff_env, add_on='frame=object')
+                                                ff_env=connection.ff_env, add_on='frame=object')
                 to_cache['lab_PI_email'] = pi_meta['email']
                 to_cache['lab_PI_title'] = pi_meta['title']
-            cached_items[user_fields['pending_lab']] = to_cache
+            cached_items[user_append['pending_lab']] = to_cache
         # now use the cache to fill fields
         for lab_field in ['lab_title', 'lab_PI_email', 'lab_PI_title']:
-            user_fields[lab_field] = cached_items[user_fields['pending_lab']].get(lab_field)
+            user_append[lab_field] = cached_items[user_append['pending_lab']].get(lab_field)
 
     if check.full_output:
         check.summary = 'Users found with pending_lab.'
@@ -808,7 +807,7 @@ def users_with_pending_lab(connection, **kwargs):
             check.description = check.summary + '. Run the action to add lab and remove pending_lab'
             check.allow_action = True
             check.action_message = 'Will attempt to patch lab and remove pending_lab for %s users' % len(check.full_output)
-        if check.status = 'FAIL':
+        if check.status == 'FAIL':
             check.summary += '. Mismatches found for pending_lab and existing lab'
             check.description = check.summary + '. Resolve conflicts for mismatching users before running action. See brief_output'
             check.brief_output = mismatch_users
@@ -825,6 +824,7 @@ def finalize_user_pending_labs(connection, **kwargs):
     action.output = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
         patch_data = {'lab': user['pending_lab']}
+        # patch lab and delete pending_lab in one request
         try:
             ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
                                     ff_env=connection.ff_env, add_on='delete_fields=pending_lab')
