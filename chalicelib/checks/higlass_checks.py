@@ -37,7 +37,7 @@ def get_reference_files(connection):
         reference_files_by_ga[ref['genome_assembly']].append(ref['accession'])
     return reference_files_by_ga
 
-def post_viewconf_to_visualization_endpoint(connection, reference_files, files, ff_auth, headers, title="", description=""):
+def post_viewconf_to_visualization_endpoint(connection, reference_files, files, status, ff_auth, headers, title="", description=""):
     """
     Given the list of files, contact fourfront and generate a higlass view config.
     Then post the view config.
@@ -47,6 +47,7 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
         connection              : The connection to Fourfront.
         reference_files(dict)   : Reference files, stored by genome assembly (see get_reference_files)
         files(list)             : A list of file identifiers.
+        status(string)          : The status to set the HiGlass Item to.
         ff_auth(dict)           : Authorization needed to post to Fourfront.
         headers(dict)           : Header information needed to post to Fourfront.
         title(string, optional, default = "")       : Higlass view config title.
@@ -73,7 +74,8 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
         # Post the new view config.
         viewconf_description = {
             "genome_assembly": res.json()['new_genome_assembly'],
-            "viewconfig": view_conf
+            "viewconfig": view_conf,
+            "status": status
         }
 
         if description:
@@ -179,23 +181,41 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
 
         genome_assembly = file_resource["genome_assembly"]
         static_content = file_resource.get("static_content", [])
+        status = file_resource["status"]
+        track_title = ""
+        if "track_and_facet_info" in file_resource and "track_title" in file_resource["track_and_facet_info"]:
+            track_title = file_resource["track_and_facet_info"]["track_title"]
 
         target_files_by_ga[genome_assembly] = {}
-        target_files_by_ga[genome_assembly][accession] = static_content
+        target_files_by_ga[genome_assembly][accession] = {
+            "static_content" : static_content,
+            "status" : status,
+            "track_title" : track_title,
+        }
     else:
         # next, find the files we are interested in (exclude reference files and any with existing Higlass viewconfs.)
-        search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&field=accession&field=genome_assembly&field=static_content'
+        search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&field=accession&field=genome_assembly&field=static_content&field=status&field=track_and_facet_info.track_title'
+
         search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for hg_file in search_res:
             # Otherwise add the file to the todo list.
             accession = hg_file["accession"]
             genome_assembly = hg_file["genome_assembly"]
+            status = hg_file["status"]
             static_content = hg_file.get("static_content", [])
+
+            track_title = ""
+            if "track_and_facet_info" in hg_file and "track_title" in hg_file["track_and_facet_info"]:
+                track_title = hg_file["track_and_facet_info"]["track_title"]
 
             if genome_assembly not in target_files_by_ga:
                 target_files_by_ga[genome_assembly] = {}
 
-            target_files_by_ga[genome_assembly][accession] = static_content
+            target_files_by_ga[genome_assembly][accession] = {
+                "static_content" : static_content,
+                "status" : status,
+                "track_title" : track_title,
+            }
 
     check.full_output['target_files'] = target_files_by_ga
 
@@ -272,12 +292,20 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
             if kwargs['file_accession'] and file_accession != kwargs['file_accession']:
                 continue
 
-            static_content_section = target_files_by_ga[ga][ file_accession ]
+            static_content_section = file_info["static_content"]
+            # If the static_content has a higlass section, replace it with the uuid.
+            for sc in [sc for sc in static_content_section if sc['description'] == 'auto_generated_higlass_view_config']:
+                sc["content"] = sc["content"]["uuid"]
+
+            status = file_info["status"]
+            track_title = file_info["track_title"]
 
             # Post a new Higlass viewconf using the file list
-            higlass_title = "{acc} - Higlass Viewconfig".format(acc=file_accession)
+            higlass_title = "{acc}".format(acc=file_accession)
+            if file_info["track_title"]:
+                higlass_title += " - " + file_info["track_title"]
 
-            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], ff_auth, headers, higlass_title)
+            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, [file_accession], file_info["status"], ff_auth, headers, higlass_title)
 
             if post_viewconf_results["error"]:
                 action_logs['failed_to_create_viewconf'][file_accession] = post_viewconf_results["error"]
@@ -285,7 +313,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
 
             # Create a new static content section with the description = "auto_generated_higlass_view_config" and the new viewconf as the content
             # Patch the ExpSet static content
-            successful_patch, patch_error =  add_viewconf_static_content_to_file(connection, file_accession, post_viewconf_results["view_config_uuid"],
+            successful_patch, patch_error = add_viewconf_static_content_to_file(connection, file_accession, post_viewconf_results["view_config_uuid"],
             static_content_section,
             "tab:higlass")
 
@@ -339,6 +367,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             "experiments_in_set.processed_files.genome_assembly",
             "experiments_in_set.processed_files.higlass_uid",
             "description",
+            "status",
         ):
             fields_to_include += "&field=" + new_field
 
@@ -386,6 +415,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             "static_content" : expset.get("static_content", []),
             "files" : file_info["files"],
             "description": expset["description"],
+            "status" : expset["status"],
         }
         higlass_count += 1
         expset_count += 1
@@ -466,11 +496,14 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             files_for_viewconf = file_info["files"]
             static_content_section = file_info["static_content"]
 
-            higlass_title = "{acc} Processed Files".format(acc=expset_accession)
-            higlass_desc = file_info["description"] + ": " + ", ".join(files_for_viewconf)
+            higlass_title = "{acc} - {description}".format(
+                acc=expset_accession,
+                description=file_info["description"]
+            )
+            higlass_desc = "Files: " + ", ".join(files_for_viewconf)
 
             # Post a new Higlass viewconf using the file list
-            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, files_for_viewconf, ff_auth, headers, higlass_title, higlass_desc)
+            post_viewconf_results = post_viewconf_to_visualization_endpoint(connection, ref_files, files_for_viewconf, file_info["status"], ff_auth, headers, higlass_title, higlass_desc)
 
             if post_viewconf_results["error"]:
                 action_logs['failed_to_create_viewconf'][expset_accession] = post_viewconf_results["error"]
@@ -478,6 +511,11 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
 
             # Create a new static content section with the description = "auto_generated_higlass_view_config" and the new viewconf as the content
             # Patch the ExpSet static content
+
+            # If the static_content has a higlass section, replace it with the uuid.
+            for sc in [sc for sc in static_content_section if sc['description'] == 'auto_generated_higlass_view_config']:
+                sc["content"] = sc["content"]["uuid"]
+
             successful_patch, patch_error =  add_viewconf_static_content_to_file(connection, expset_accession, post_viewconf_results["view_config_uuid"],
             static_content_section,
             "tab:processed-files")
@@ -587,6 +625,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             "other_processed_files",
             "experiments_in_set",
             "description",
+            "status",
         ):
             fields_to_include += "&field=" + new_field
 
@@ -610,7 +649,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     check.full_output['reference_files'] = reference_files_by_ga
 
     # Create a helper function that finds files with higlass_uid and the genome assembly
-    def find_higlass_files(other_processed_files, filegroups_to_update, description):
+    def find_higlass_files(other_processed_files, filegroups_to_update, description, status):
         # For each ExpSet Other Processed Filegroup without a higlass_view_config
         for filegroup in [ fg for fg in other_processed_files if not fg.get("higlass_view_config", None) ]:
             genome_assembly = None
@@ -626,7 +665,8 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                         "genome_assembly": fil["genome_assembly"],
                         "files": [],
                         "type": filegroup["type"],
-                        "description": description
+                        "description": description,
+                        "status" : status,
                     }
 
                 # add file accessions to this group
@@ -644,7 +684,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         expset_titles = set()
         expset_titles_with_higlass = set()
         if "other_processed_files" in expset:
-            find_higlass_files(expset["other_processed_files"], filegroups_to_update, expset["description"])
+            find_higlass_files(expset["other_processed_files"], filegroups_to_update, expset["description"], expset["status"])
 
             expset_titles = { fg["title"] for fg in expset["other_processed_files"] }
 
@@ -654,7 +694,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         experiments_in_set_to_update = {}
         for experiment in expset.get("experiments_in_set", []):
             if "other_processed_files" in experiment:
-                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, expset["description"])
+                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, expset["description"], expset["status"])
 
         for title, info in experiments_in_set_to_update.items():
             # Skip the experiment's file if the higlass view has already been generated.
@@ -773,6 +813,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 connection,
                 reference_files,
                 data_files,
+                info["status"],
                 ff_auth,
                 headers,
                 higlass_title,
