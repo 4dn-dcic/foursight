@@ -963,7 +963,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
         search_query = 'search/' + file_format_filter + type_filter
 
         # Make sure it's published
-        search_query += '&status!=uploading&status!=to+be+uploaded+by+workflow&status!=upload+failed'
+        unpublished_statuses = (
+            "uploading",
+            "to be uploaded by workflow",
+            "upload failed",
+            "deleted",
+        )
+        search_query += "&status!=" + "&status!=".join([u.replace(" ","+") for u in unpublished_statuses])
 
         # Only request the necessary fields
         for new_field in (
@@ -1018,8 +1024,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
             # don't FAIL if the bg is missing the bw, however
             type2extra = {'bg': 'bw', 'bed': 'beddb'}
             if file_format in type2extra:
+                # Get the first extra file of the needed type that has an upload_key and has been published.
                 for extra in procfile.get('extra_files', []):
-                    if extra['file_format'].get('display_title') == type2extra[file_format] and 'upload_key' in extra:
+                    if extra['file_format'].get('display_title') == type2extra[file_format] \
+                        and 'upload_key' in extra \
+                        and extra["status"] not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
                         break
                 if 'upload_key' not in file_info:  # bw or beddb file not found
@@ -1036,7 +1045,6 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 "raw" : connection.ff_s3.raw_file_bucket,
                 "proc" : connection.ff_s3.outfile_bucket,
             }
-
             if not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[file_cat]):
                 not_found_s3.append(file_info)
                 continue
