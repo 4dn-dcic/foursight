@@ -333,6 +333,7 @@ def in_situ_hic_status(connection, **kwargs):
     my_auth = connection.ff_keys
     check.action = "hic_start"
     check.brief_output = []
+    check.summary = ""
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
     check.status = 'PASS'
     exp_type = 'in situ Hi-C'
@@ -367,6 +368,12 @@ def in_situ_hic_status(connection, **kwargs):
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs, attributions = wfr_utils.find_fastq_info(a_set, my_auth)
         set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        # if no files were found
+        if all(not value for value in exp_files.values()):
+            set_summary += "| skipped - no usable file"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref'] or not refs['enz_ref']:
             set_summary += "| skipped - no enz/chrsize/bwa"
@@ -375,9 +382,11 @@ def in_situ_hic_status(connection, **kwargs):
             continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
+        print(exp_files)
         for exp in exp_files.keys():
             if not exp_files.get(exp):
                 continue
+            print(exp)
             # Check Part 1 and See if all are okay
             exp_bams = []
             part1 = 'ready'
@@ -409,6 +418,7 @@ def in_situ_hic_status(connection, **kwargs):
             all_step2s = []
             for bam in exp_bams:
                 step2_result = wfrset_utils.get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
+                print(step2_result)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -440,6 +450,8 @@ def in_situ_hic_status(connection, **kwargs):
 
         if part3 is 'ready':
             # if we made it to this step, there should be files in set_pairs
+            print(set_acc)
+            print(set_pairs)
             assert set_pairs
             # make sure all input bams went through same last step3
             all_step3s = []
@@ -501,27 +513,28 @@ def hic_start(connection, **kwargs):
     action = init_action_res(connection, 'hic_start')
     action_logs = {'runs_started': []}
     my_auth = connection.ff_keys
-    # get latest results from identify_files_without_filesize
     hic_check = init_check_res(connection, 'in_situ_hic_status')
-    fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
     targets = []
-    if kwargs.get('start_fastqc'):
-        targets.extend(fastqc_check_result.get('files_without_fastqc', []))
-    if kwargs.get('start_qc'):
-        targets.extend(fastqc_check_result.get('files_without_qc', []))
-
-    for a_target in targets:
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            action.description = 'Did not complete action due to time limitations'
-            break
-        a_file = ff_utils.get_metadata(a_target, key=my_auth)
-        attributions = wfr_utils.get_attribution(a_file)
-        inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
-        # aws run url
-        action_logs['runs_started'].append(url)
+    # if kwargs.get('start_runs'):
+    #     missing_runs =
+    #     start_runs()
+    #     targets.extend(fastqc_check_result.get('files_without_fastqc', []))
+    # if kwargs.get('start_qc'):
+    #     targets.extend(fastqc_check_result.get('files_without_qc', []))
+    #
+    # for a_target in targets:
+    #     now = datetime.utcnow()
+    #     if (now-start).seconds > lambda_limit:
+    #         action.description = 'Did not complete action due to time limitations'
+    #         break
+    #     a_file = ff_utils.get_metadata(a_target, key=my_auth)
+    #     attributions = wfr_utils.get_attribution(a_file)
+    #     inp_f = {'input_fastq': a_file['@id']}
+    #     wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
+    #     url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+    #     # aws run url
+    #     action_logs['runs_started'].append(url)
     action.output = action_logs
     action.status = 'DONE'
     return action
