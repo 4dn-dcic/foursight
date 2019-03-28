@@ -259,8 +259,11 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
             "track_title" : track_title,
         }
     else:
-        # next, find the files we are interested in (exclude reference files and any with existing Higlass viewconfs.)
-        search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config'
+        # next, find the files we are interested in.
+        # - exclude reference files
+        # - exclude any with existing Higlass viewconfs
+        # - exclude read positions because those files are too large for Higlass to render
+        search_query = '/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&file_type!=read+positions'
 
         search_query += '&field=' + '&field='.join((
             'accession',
@@ -1096,6 +1099,9 @@ def files_not_registered_with_higlass(connection, **kwargs):
             "deleted",
         )
         search_query += "&status!=" + "&status!=".join([u.replace(" ","+") for u in unpublished_statuses])
+
+        # exclude read positions because those files are too large for Higlass to render
+        search_query += "&file_type!=read+positions"
 
         # Only request the necessary fields
         for new_field in (
