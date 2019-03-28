@@ -130,12 +130,28 @@ def get_viewconf_status(files):
 
     # The viewconf will be in "released to lab" status if any file:
     # - Lacks a status
-    # - Has a status not in "released" or "released to project"
-    if any([ f["accession"] for f in files if f.get("status", None) not in ("released", "released to project")]):
+    # - Has one of the "released to lab" statuses
+    # - Doesn't have a "released" or "released to project" status
+    released_to_lab = [
+        "uploading",
+        "uploaded",
+        "upload failed",
+        "deleted",
+        "replaced",
+        "revoked",
+        "archived",
+        "pre-release",
+        "to be uploaded by workflow"
+    ]
+    if any([ f["accession"] for f in files if f.get("status", None) in released_to_lab ]):
         return "released to lab"
 
     # If any file is in "released to project" the viewconf will also have that status.
-    if any([ f["accession"] for f in files if f["status"] == "released to project"]):
+    released_to_project = [
+        "released to project",
+        "archived to project",
+    ]
+    if any([ f["accession"] for f in files if f["status"] in released_to_project]):
         return "released to project"
 
     # All files are "released" so the viewconf is also released.
