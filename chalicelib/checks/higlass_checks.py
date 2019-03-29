@@ -784,6 +784,11 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                         "description": description,
                     }
 
+                # Every file has a status. Double check.
+                if accession not in statuses_lookup:
+                    info = ff_utils.get_metadata(accession, key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
+                    statuses_lookup[accession] = info["status"]
+
                 # add file accessions to this group
                 filegroups_to_update[title]["files"].append({
                     "accession" : accession,
@@ -1316,6 +1321,7 @@ def patch_file_higlass_uid(connection, **kwargs):
             # register with previous higlass_uid if already there
             if hit.get('higlass_uid'):
                 payload['uuid'] = hit['higlass_uid']
+
             res = requests.post(
                 higlass_server + '/api/v1/link_tile/',
                 data=json.dumps(payload),
