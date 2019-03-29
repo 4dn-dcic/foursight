@@ -5,13 +5,9 @@ from ..utils import (
     action_function,
     init_action_res
 )
-import requests
-import sys
-import json
-import datetime
-import boto3
 import random
 import time
+
 
 def test_function_unused():
     return
@@ -38,8 +34,8 @@ def test_random_nums(connection, **kwargs):
     check.action = 'add_random_test_nums'
     check.allow_action = True
     output = []
-    for i in range(random.randint(1,20)):
-        output.append(random.randint(1,100))
+    for i in range(random.randint(1, 20)):
+        output.append(random.randint(1, 100))
     check.full_output = output
     check.description = 'A test check'
     # sleep for 2 secs because this is used to test timing out
@@ -53,8 +49,8 @@ def test_random_nums_2(connection, **kwargs):
     check = init_check_res(connection, 'test_random_nums_2')
     check.status = 'IGNORE'
     output = []
-    for i in range(random.randint(1,20)):
-        output.append(random.randint(1,100))
+    for i in range(random.randint(1, 20)):
+        output.append(random.randint(1, 100))
     check.full_output = output
     check.description = 'A test check as well'
     return check
