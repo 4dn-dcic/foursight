@@ -471,7 +471,7 @@ def consistent_replicate_info(connection, **kwargs):
             vals = [stringify(exp_keys[exp].get(field)) for exp in exp_list]
             if field == 'average_fragment_size' and 'None' not in vals:
                 int_vals = [int(val) for val in vals]
-                if max(int_vals) - min(int_vals) < 100:
+                if (max(int_vals) - min(int_vals))/(sum(int_vals)/len(int_vals)) < 0.25:
                     continue
             if len(set(vals)) > 1:
                 info_dict[field] = vals
