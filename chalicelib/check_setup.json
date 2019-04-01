@@ -747,6 +747,18 @@
             }
         }
     },
+    "users_with_pending_lab": {
+        "title": "Users with Pending Lab",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5run_status_extra_file" : {
         "title": "md5run-extrafiles",
         "group": "Pipeline checks",
@@ -795,11 +807,11 @@
             }
         }
     },
-    "users_with_pending_lab": {
-        "title": "Users with Pending Lab",
-        "group": "Metadata checks",
+    "dilution_hic_status" : {
+        "title": "fastqc",
+        "group": "Pipeline checks",
         "schedule": {
-            "morning_checks": {
+            "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []

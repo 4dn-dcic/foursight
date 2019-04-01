@@ -403,7 +403,7 @@ def in_situ_hic_status(connection, **kwargs):
                     # add part 1
                     inp_f = {'fastq1': pair[0], 'fastq2': pair[1], 'bwa_index': refs['bwa_ref']}
                     name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
-                    missing_run.append(['step1', ['bwa-mem', refs['organism']], inp_f, name_tag])
+                    missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
             # stop progress to part2 and 3
             if part1 is not 'ready':
                 part2 = 'not ready'
@@ -436,7 +436,7 @@ def in_situ_hic_status(connection, **kwargs):
                 part3 = 'not ready'
                 # Add part2
                 inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
-                missing_run.append(['step2', ['hi-c-processing-bam', refs['organism']], inp_f, exp])
+                missing_run.append(['step2', ['hi-c-processing-bam', refs['organism'], {}], inp_f, exp])
         if part3 is not 'ready':
             if missing_run:
                 set_summary += "| missing step 1/2"
@@ -471,7 +471,7 @@ def in_situ_hic_status(connection, **kwargs):
                 inp_f = {'input_pairs': set_pairs,
                          'chromsizes': refs['chrsize_ref'],
                          'restriction_file': refs['enz_ref']}
-                missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism']], inp_f, set_acc])
+                missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], {}], inp_f, set_acc])
 
         check.brief_output.append(set_summary)
         if running:
@@ -509,6 +509,222 @@ def hic_start(connection, **kwargs):
     action_logs = {'runs_started': []}
     my_auth = connection.ff_keys
     hic_check = init_check_res(connection, 'in_situ_hic_status')
+    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    targets = []
+    # if kwargs.get('start_runs'):
+    #     missing_runs =
+    #     start_runs()
+    #     targets.extend(fastqc_check_result.get('files_without_fastqc', []))
+    # if kwargs.get('start_qc'):
+    #     targets.extend(fastqc_check_result.get('files_without_qc', []))
+    #
+    # for a_target in targets:
+    #     now = datetime.utcnow()
+    #     if (now-start).seconds > lambda_limit:
+    #         action.description = 'Did not complete action due to time limitations'
+    #         break
+    #     a_file = ff_utils.get_metadata(a_target, key=my_auth)
+    #     attributions = wfr_utils.get_attribution(a_file)
+    #     inp_f = {'input_fastq': a_file['@id']}
+    #     wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
+    #     url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+    #     # aws run url
+    #     action_logs['runs_started'].append(url)
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def dilution_hic_status(connection, **kwargs):
+    """Searches for fastq files that don't have fastqc
+
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'dilution_hic_status')
+    my_auth = connection.ff_keys
+    check.action = "dilution_hic_start"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.status = 'PASS'
+    exp_type = 'dilution Hi-C'
+    # completion tag
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+
+    for a_set in res[:1]:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            break
+        # missing run
+        missing_run = []
+        # still running
+        running = []
+        # if all runs are complete, add the patch info for processed files and tag
+        complete = {'patch_opf': [],
+                    'add_tag': ''}
+        set_summary = ""
+        set_acc = a_set['accession']
+        part3 = 'ready'
+        # references dict content
+        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
+        exp_files, refs = wfr_utils.find_fastq_info(a_set, my_auth)
+        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        # if no files were found
+        if all(not value for value in exp_files.values()):
+            set_summary += "| skipped - no usable file"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # skip if missing reference
+        if not refs['bwa_ref'] or not refs['chrsize_ref'] or not refs['enz_ref']:
+            set_summary += "| skipped - no enz/chrsize/bwa"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no enz/chrsize/bwa'})
+            continue
+        set_pairs = []
+        # cycle through the experiments, skip the ones without usable files
+        print('all exp files', exp_files)
+
+        for exp in exp_files.keys():
+            if not exp_files.get(exp):
+                continue
+            print(exp)
+            # Check Part 1 and See if all are okay
+            exp_bams = []
+            part1 = 'ready'
+            part2 = 'ready'
+            for pair in exp_files[exp]:
+                step1_result = wfr_utils.get_wfr_out(pair[0], 'bwa-mem', my_auth)
+                # if successful
+                if step1_result['status'] == 'complete':
+                    exp_bams.append(step1_result['out_bam'])
+                # if still running
+                elif step1_result['status'] == 'running':
+                    part1 = 'not ready'
+                    running.append(['step1', exp, pair])
+                # if run is not successful
+                else:
+                    part1 = 'not ready'
+                    # add part 1
+                    inp_f = {'fastq1': pair[0], 'fastq2': pair[1], 'bwa_index': refs['bwa_ref']}
+                    name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
+                    missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
+            # stop progress to part2 and 3
+            if part1 is not 'ready':
+                part2 = 'not ready'
+                part3 = 'not ready'
+                # skip part 2 checks
+                continue
+            # make sure all input bams went through same last step2
+            all_step2s = []
+            for bam in exp_bams:
+                step2_result = wfr_utils.get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
+                print(step2_result)
+                all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
+            # all bams should have same wfr
+            assert len(list(set(all_step2s))) == 1
+            # check if part 2 run already
+            if step2_result['status'] == 'complete':
+                # accumulate pairs files for step3
+                set_pairs.append(step2_result['filtered_pairs'])
+                # add files for experiment opf
+                patch_data = {exp: [step2_result['annotated_bam'], step2_result['filtered_pairs']]}
+                complete['patch_opf'].append(patch_data)
+                continue
+            # if still running
+            elif step2_result['status'] == 'running':
+                part3 = 'not ready'
+                running.append(['step2', exp])
+                continue
+            # if run is not successful
+            else:
+                part3 = 'not ready'
+                # Add part2
+                inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
+                missing_run.append(['step2', ['hi-c-processing-bam', refs['organism'], {}], inp_f, exp])
+        if part3 is not 'ready':
+            if missing_run:
+                set_summary += "| missing step 1/2"
+            elif running:
+                set_summary += "| running step 1/2"
+        print()
+        print('done with step 1 2')
+        if part3 is 'ready':
+            # if we made it to this step, there should be files in set_pairs
+            print(set_acc)
+            print(set_pairs)
+            assert set_pairs
+            # make sure all input bams went through same last step3
+            all_step3s = []
+            for a_pair in set_pairs:
+                step3_result = wfr_utils.get_wfr_out(a_pair, 'hi-c-processing-pairs', my_auth)
+                all_step3s.append((step3_result['status'], step3_result.get('mcool')))
+            assert len(list(set(all_step3s))) == 1
+            # if successful
+            if step3_result['status'] == 'complete':
+                set_summary += '| completed runs'
+                patch_data = {set_acc: [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]}
+                complete['patch_opf'].append(patch_data)
+                complete['add_tag'] = tag
+            # if still running
+            elif step3_result['status'] == 'running':
+                running.append(['step3', set_acc])
+                set_summary += "| running step3"
+            # if run is not successful
+            else:
+                set_summary += "| missing step3"
+                inp_f = {'input_pairs': set_pairs,
+                         'chromsizes': refs['chrsize_ref'],
+                         'restriction_file': refs['enz_ref']}
+                missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], {}], inp_f, set_acc])
+        check.brief_output.append(set_summary)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        # if made it till the end
+        if complete.get('add_tag'):
+            assert not running
+            assert not missing_run
+            check.full_output['completed_runs'].append({set_acc: complete})
+    if check.full_output['running_runs']:
+        check.summary = ' running|'
+        check.status = 'WARN'
+    if check.full_output['skipped']:
+        check.summary += ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def dilution_hic_start(connection, **kwargs):
+    """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'dilution_hic_start')
+    action_logs = {'runs_started': []}
+    my_auth = connection.ff_keys
+    hic_check = init_check_res(connection, 'dilution_hic_status')
     hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
     targets = []
     # if kwargs.get('start_runs'):

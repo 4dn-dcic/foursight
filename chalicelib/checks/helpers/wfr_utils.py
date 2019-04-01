@@ -85,7 +85,7 @@ workflow_details = {
 
 # accepted versions for completed pipelines
 accepted_versions = {
-    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     'dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     'micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
@@ -392,20 +392,24 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
             # check that file has a pair
             f1 = file_resp['@id']
             f2 = ""
-            # assign pairing info
+            # assign pairing info by the first file
             if not paired:
                 try:
                     relations = file_resp['related_files']
                     paired_files = [relation['file']['@id'] for relation in relations
                                     if relation['relationship_type'] == 'paired with']
                     assert len(paired_files) == 1
-                    f2 = paired_files[0]
                     paired = "Yes"
                 except:
                     paired = "No"
+
             if paired == 'No':
                 file_dict[exp_resp['accession']].append(f1)
             elif paired == 'Yes':
+                f2 = paired_files = [relation['file']['@id'] for relation in relations
+                                     if relation['relationship_type'] == 'paired with']
+                assert len(paired_files) == 1
+                f2 = paired_files[0]
                 file_dict[exp_resp['accession']].append((f1, f2))
     # get the organism
     if len(list(set(organisms))) == 1:
