@@ -553,7 +553,9 @@ def process_download_tracking_items(connection, **kwargs):
     ip_cache = {}
     time_limit = 270  # 4.5 minutes
     # list of strings used to flag user_agent as a bot. By no means complete
-    bot_strings = ['bot', 'crawl', 'slurp', 'spider', 'mediapartners', 'ltx71']
+    bot_agents = ['bot', 'crawl', 'slurp', 'spider', 'mediapartners', 'ltx71']
+    # list of user_agents we always consider range_query=True
+    range_query_agents = ['igv', 'java', 'python-requests']
     t0 = time.time()  # keep track of how start time
 
     # batch large groups of tracking items at once to save time with geocoder
@@ -586,25 +588,20 @@ def process_download_tracking_items(connection, **kwargs):
         if round(time.time() - t0, 2) > time_limit:
             break
         dl_info = tracking['download_tracking']
-
-        ### TEMPORARY
-        ### SKIP ITEMS WITH ANY OF THE FOLLOWING IN USER_AGENT
-        # ALSO SET CHECK STATUS TO WARN TO LET US KNOW
-        ua_to_skip = ['igv', 'java', 'python-']
-        if any(to_skip in dl_info['user_agent'].lower() for to_skip in ua_to_skip):
-            check.status = 'WARN'
-            continue
-
         # remove request_headers, which may contain sensitive information
         if 'request_headers' in dl_info:
             del dl_info['request_headers']
         geo_info = ip_cache[dl_info['remote_ip']]
         dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
         patch_body = {'status': 'released', 'download_tracking': dl_info}
-
-        if (any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_strings)
+        # delete items from bot user agents
+        if (any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_agents)
             and dl_info['user_uuid'] == 'anonymous'):
             patch_body['status'] = 'deleted'
+        # set range_query=True for select user agents
+        if (any(ua_str in dl_info['user_agent'].lower() for ua_str in range_query_agents)):
+            dl_info['range_query'] = True
+        # deduplicate range query requests by ip/filename/user_agent/user_uuid
         if patch_body['status'] != 'deleted' and dl_info['range_query'] is True:
             range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
                                    dl_info['user_agent'], dl_info['user_uuid']])
