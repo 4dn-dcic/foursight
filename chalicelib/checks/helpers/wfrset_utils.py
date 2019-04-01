@@ -52,72 +52,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'description': out_n}
         }},
         {
-        'app_name': 'hi-c-processing-pairs',
-        'workflow_uuid': 'c9e0e6f7-b0ed-4a42-9466-cadc2dd84df0',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
+        'wf_name': 'hi-c-processing-pairs',
+        'wf_uuid': '4dn-dcic-lab:wf-hi-c-processing-pairs-0.2.7',
+        'parameters': {"nthreads": 4,
+                       "maxmem": "32g",
+                       "no_balance": False
+                       },
         'custom_pf_fields': {
             'cooler_normvector': {
                 'genome_assembly': genome,
                 'file_type': 'juicebox norm vector',
                 'description': out_n},
-            'hic': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'mcool': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'merged_pairs': {
-                'genome_assembly': genome,
-                'file_type': 'contact list-combined',
-                'description': out_n}
-        }},
-        {
-        'app_name': 'hi-c-processing-pairs-nore',
-        'workflow_uuid': 'c19ee11e-9d5a-454f-af50-600a0cf990b6',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
-        'custom_pf_fields': {
-            'cooler_normvector': {
-                'genome_assembly': genome,
-                'file_type': 'juicebox norm vector',
-                'description': out_n},
-            'hic': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'mcool': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'merged_pairs': {
-                'genome_assembly': genome,
-                'file_type': 'contact list-combined',
-                'description': out_n}
-        }},
-        {
-        'app_name': 'hi-c-processing-pairs-nonorm',
-        'workflow_uuid': 'bd6e25ea-f368-4758-a821-d30e0b5a4100',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
-        'custom_pf_fields': {
-            'hic': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'mcool': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'merged_pairs': {
-                'genome_assembly': genome,
-                'file_type': 'contact list-combined',
-                'description': out_n}
-        }},
-        {
-        'app_name': 'hi-c-processing-pairs-nore-nonorm',
-        'workflow_uuid': '05b62bba-7bfa-46cc-8d8e-3d37f4feb8bd',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
-        'custom_pf_fields': {
             'hic': {
                 'genome_assembly': genome,
                 'file_type': 'contact matrix',
@@ -182,8 +127,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                  'genome_assembly': genome,
                  'file_type': 'qc',
                  'description': 'ATAC-seq QC json'}
-         }
-         }
+         }},
+        {
+        "wf_name": "mergebed",
+        "wf_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
+        "parameters": {"sortv": "0"},
+        'custom_pf_fields': {
+            'merged_bed': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Merged file, positions of aligned reads in bed format, one line per read mate'}
+            }
+        }
     ]
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
@@ -192,8 +147,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "spot_instance": True,
         "ebs_iops": "",
         "log_bucket": "tibanna-output",
-        "key_name": "4dn-encode",
-        "public_postrun_json": True
+        "key_name": "4dn-encode"
         }
     if not template.get('parameters'):
         template['parameters'] = {}
