@@ -763,7 +763,7 @@
         "title": "md5run",
         "group": "Pipeline checks",
         "schedule": {
-            "morning_checks": {
+            "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -775,7 +775,19 @@
         "title": "fastqc",
         "group": "Pipeline checks",
         "schedule": {
-            "morning_checks": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "in_situ_hic_status" : {
+        "title": "fastqc",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []

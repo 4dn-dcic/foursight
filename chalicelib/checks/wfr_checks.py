@@ -129,11 +129,9 @@ def md5run_status(connection, **kwargs):
         # There is a successful run, but status is not switched, happens when a file is reuploaded.
         elif md5_report['status'] == 'complete':
             not_switched_status.append(file_id)
-    print(check.brief_output)
     if no_s3_file:
         check.summary = 'Some files are pending upload'
         msg = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
-        print(msg)
         check.brief_output.append(msg)
         check.full_output['files_pending_upload'] = no_s3_file
 
@@ -146,7 +144,6 @@ def md5run_status(connection, **kwargs):
     if missing_md5:
         check.allow_action = True
         check.summary = 'Some files are missing md5 runs'
-        print(check.brief_output)
         msg = str(len(missing_md5)) + ' files lack a successful md5 run'
         check.brief_output.append(msg)
         check.full_output['files_without_md5run'] = missing_md5
@@ -219,7 +216,8 @@ def fastqc_status(connection, **kwargs):
     check.status = 'PASS'
 
     # Build the query (skip to be uploaded by workflow)
-    query = "/search/?type=FileFastq&quality_metric.uuid=No+value&status=pre-release&status=released&status=released%20to%20project&status=uploaded"
+    query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
+             "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -344,13 +342,11 @@ def in_situ_hic_status(connection, **kwargs):
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
-    print(query)
-    print(len(res))
     if not res:
         check.summary = 'All Good!'
         return check
 
-    for a_set in res:
+    for a_set in res[:1]:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
             break
@@ -366,7 +362,7 @@ def in_situ_hic_status(connection, **kwargs):
         part3 = 'ready'
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
-        exp_files, refs, attributions = wfr_utils.find_fastq_info(a_set, my_auth)
+        exp_files, refs = wfr_utils.find_fastq_info(a_set, my_auth)
         set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
         # if no files were found
         if all(not value for value in exp_files.values()):
@@ -382,7 +378,8 @@ def in_situ_hic_status(connection, **kwargs):
             continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
-        print(exp_files)
+        print('all exp files', exp_files)
+
         for exp in exp_files.keys():
             if not exp_files.get(exp):
                 continue
@@ -406,8 +403,7 @@ def in_situ_hic_status(connection, **kwargs):
                     # add part 1
                     inp_f = {'fastq1': pair[0], 'fastq2': pair[1], 'bwa_index': refs['bwa_ref']}
                     name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
-                    run_setting = wfrset_utils.step_settings('bwa-mem', refs['organism'], attributions)
-                    missing_run.append(['step1', run_setting, inp_f, name_tag])
+                    missing_run.append(['step1', ['bwa-mem', refs['organism']], inp_f, name_tag])
             # stop progress to part2 and 3
             if part1 is not 'ready':
                 part2 = 'not ready'
@@ -417,7 +413,7 @@ def in_situ_hic_status(connection, **kwargs):
             # make sure all input bams went through same last step2
             all_step2s = []
             for bam in exp_bams:
-                step2_result = wfrset_utils.get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
+                step2_result = wfr_utils.get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
                 print(step2_result)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
@@ -440,14 +436,14 @@ def in_situ_hic_status(connection, **kwargs):
                 part3 = 'not ready'
                 # Add part2
                 inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
-                run_setting = wfrset_utils.step_settings('hi-c-processing-bam', refs['organism'], attributions)
-                missing_run.append(['step2', run_setting, inp_f, exp])
+                missing_run.append(['step2', ['hi-c-processing-bam', refs['organism']], inp_f, exp])
         if part3 is not 'ready':
             if missing_run:
                 set_summary += "| missing step 1/2"
             elif running:
                 set_summary += "| running step 1/2"
-
+        print()
+        print('done with step 1 2')
         if part3 is 'ready':
             # if we made it to this step, there should be files in set_pairs
             print(set_acc)
@@ -475,19 +471,18 @@ def in_situ_hic_status(connection, **kwargs):
                 inp_f = {'input_pairs': set_pairs,
                          'chromsizes': refs['chrsize_ref'],
                          'restriction_file': refs['enz_ref']}
-                run_setting = wfrset_utils.step_settings('hi-c-processing-pairs', refs['organism'], attributions)
-                missing_run.append(['step3', run_setting, inp_f, set_acc])
+                missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism']], inp_f, set_acc])
 
         check.brief_output.append(set_summary)
         if running:
-            check.full_output['running_runs'].append({'set_acc': running})
+            check.full_output['running_runs'].append({set_acc: running})
         if missing_run:
-            check.full_output['needs_runs'].append({'set_acc': missing_run})
+            check.full_output['needs_runs'].append({set_acc: missing_run})
         # if made it till the end
-        assert not running
-        assert not missing_run
         if complete.get('add_tag'):
-            check.full_output['completed_runs'].append({'set_acc': complete})
+            assert not running
+            assert not missing_run
+            check.full_output['completed_runs'].append({set_acc: complete})
 
     if check.full_output['running_runs']:
         check.summary = ' running|'
