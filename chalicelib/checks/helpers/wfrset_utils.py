@@ -52,7 +52,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'description': out_n}
         }},
         {
-        'wf_name': 'hi-c-processing-pairs',
+        'app_name': 'hi-c-processing-pairs',
         'wf_uuid': '4dn-dcic-lab:wf-hi-c-processing-pairs-0.2.7',
         'parameters': {"nthreads": 4,
                        "maxmem": "32g",
@@ -129,7 +129,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                  'description': 'ATAC-seq QC json'}
          }},
         {
-        "wf_name": "mergebed",
+        "app_name": "mergebed",
         "wf_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
         "parameters": {"sortv": "0"},
         'custom_pf_fields': {
