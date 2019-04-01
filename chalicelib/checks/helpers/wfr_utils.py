@@ -215,7 +215,6 @@ def get_wfr_out(file_id, wfr_name, auth, versions=[], md_qc=False, run=None):
                 out_files['status'] = 'complete'
                 return out_files
             else:
-                print('no output file was found, maybe this run is a qc?')
                 return {'status': "no file found"}
     # if status is error
     elif run_status == 'error':
@@ -282,11 +281,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
                 my_bucket = raw_bucket
             buckets.append(my_bucket)
         # check bucket consistency
-        try:
-            assert len(list(set(buckets))) == 1
-        except AssertionError:
-            print('Files from different buckets', obj_id)
-            return
+        assert len(list(set(buckets))) == 1
         template['object_key'] = object_key
         template['uuid'] = uuid
         template['bucket_name'] = buckets[0]
@@ -312,7 +307,6 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 def run_missing_wfr(input_json, input_files, run_name, auth, env):
     all_inputs = []
     for arg, files in input_files.items():
-        print(arg, files)
         inp = extract_file_info(files, arg, auth, env)
         all_inputs.append(inp)
     # tweak to get bg2bw working
@@ -360,15 +354,13 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
     will check if files are paired or not, and if paired will give list of lists for each exp
     if not paired, with just give list of files per experiment.
 
-    result is 3 dictionaries
+    result is 2 dictionaries
     - file dict  { exp1 : [file1, file2, file3, file4]}  # unpaired
       file dict  { exp1 : [ [file1, file2], [file3, file4]]} # paired
     - refs keys  {pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab}
-    - attributions
     """
     file_dict = {}
     refs = {}
-    attributions = {}
     # check pairing for the first file, and assume all same
     paired = ""
     rep_resp = my_rep_set['experiments_in_set']
@@ -381,14 +373,11 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
         if not organisms:
             biosample = exp['biosample']
             organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
-            if len(organisms) != 1:
-                print('multiple organisms in set', my_rep_set['accession'])
-                break
+            assert len(organisms) == 1
         exp_files = exp['files']
         enzyme = exp.get('digestion_enzyme')
         if enzyme:
             enzymes.append(enzyme['display_title'])
-
         for fastq_file in exp_files:
             file_resp = ff_utils.get_metadata(fastq_file['uuid'], key=auth)
             if file_resp.get('file_size'):
@@ -407,22 +396,17 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
             if not paired:
                 try:
                     relations = file_resp['related_files']
-                    paired_files = [relation['file']['@id'] for relation in relations if relation['relationship_type'] == 'paired with']
+                    paired_files = [relation['file']['@id'] for relation in relations
+                                    if relation['relationship_type'] == 'paired with']
                     assert len(paired_files) == 1
                     f2 = paired_files[0]
                     paired = "Yes"
                 except:
                     paired = "No"
-
             if paired == 'No':
                 file_dict[exp_resp['accession']].append(f1)
-            if paired != 'Yes':
+            elif paired == 'Yes':
                 file_dict[exp_resp['accession']].append((f1, f2))
-
-            # get attributions for the first file
-            if not attributions:
-                attributions = get_attribution(file_resp)
-
     # get the organism
     if len(list(set(organisms))) == 1:
         organism = organisms[0]
@@ -450,4 +434,4 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
             'chrsize_ref': chrsize,
             'enz_ref': enz_file,
             'f_size': str(f_size)+'GB'}
-    return file_dict, refs, attributions
+    return file_dict, refs
