@@ -347,7 +347,7 @@ def dilution_hic_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    for a_set in res[:5]:
+    for a_set in res:
         now = datetime.utcnow()
 
         print(a_set['accession'], (now-start).seconds)
