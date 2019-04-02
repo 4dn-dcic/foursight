@@ -59,10 +59,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                        "no_balance": False
                        },
         'custom_pf_fields': {
-            'cooler_normvector': {
-                'genome_assembly': genome,
-                'file_type': 'juicebox norm vector',
-                'description': out_n},
             'hic': {
                 'genome_assembly': genome,
                 'file_type': 'contact matrix',
