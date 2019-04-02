@@ -3,7 +3,7 @@ from dcicutils import s3Utils
 from datetime import datetime
 from operator import itemgetter
 import json
-import wfrset_utils
+from . import wfrset_utils
 
 # check at the end
 # check extract_file_info has 4 arguments
@@ -407,6 +407,7 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
             if paired == 'No':
                 file_dict[exp_resp['accession']].append(f1)
             elif paired == 'Yes':
+                relations = file_resp['related_files']
                 f2 = paired_files = [relation['file']['@id'] for relation in relations
                                      if relation['relationship_type'] == 'paired with']
                 assert len(paired_files) == 1
