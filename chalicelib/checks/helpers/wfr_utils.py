@@ -448,7 +448,7 @@ def patch_complete_data(patch_data, auth):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', ]
+    attr_keys = ['fastq1', 'input_pairs', 'input_bams']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -456,6 +456,8 @@ def start_missing_run(run_info, auth, env):
     for attr_key in attr_keys:
         if attr_key in inputs:
             attr_file = inputs[attr_key]
+            if isinstance(attr_file, list):
+                attr_file = attr_file[0]
             break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])

@@ -760,7 +760,7 @@
         }
     },
     "md5run_status_extra_file" : {
-        "title": "md5run-extrafiles",
+        "title": "2- md5run extrafiles",
         "group": "Pipeline checks",
         "schedule": {
             "morning_checks": {
@@ -772,7 +772,7 @@
         }
     },
     "md5run_status" : {
-        "title": "md5run",
+        "title": "1- md5run",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -784,7 +784,7 @@
         }
     },
     "fastqc_status" : {
-        "title": "fastqc",
+        "title": "3- fastqc",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -796,7 +796,7 @@
         }
     },
     "in_situ_hic_status" : {
-        "title": "hic-in situ",
+        "title": "4- in situ hic",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -808,7 +808,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "hic-dilution",
+        "title": "5- dilution hic",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {

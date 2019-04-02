@@ -22,7 +22,7 @@ from .helpers import wfrset_utils
 # TODO:
 # TODO:
 
-lambda_limit = 270  # 300 - 30 sec
+lambda_limit = 250  # 300 - 30 sec
 
 
 @check_function()
@@ -342,12 +342,16 @@ def dilution_hic_status(connection, **kwargs):
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
+    print(len(res))
     if not res:
         check.summary = 'All Good!'
         return check
 
-    for a_set in res:
+    for a_set in res[:5]:
         now = datetime.utcnow()
+
+        print(a_set['accession'], (now-start).seconds)
+
         if (now-start).seconds > lambda_limit:
             break
         # missing run
