@@ -3,6 +3,7 @@ from dcicutils import s3Utils
 from datetime import datetime
 from operator import itemgetter
 import json
+import wfrset_utils
 
 # check at the end
 # check extract_file_info has 4 arguments
@@ -439,3 +440,28 @@ def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
             'enz_ref': enz_file,
             'f_size': str(f_size)+'GB'}
     return file_dict, refs
+
+
+def patch_complete_data(patch_data, auth):
+    return
+
+
+def start_missing_run(run_info, auth):
+    attr_keys = ['fastq1', ]
+    run_settings = run_info[1]
+    inputs = run_info[2]
+    name_tag = run_info[3]
+    # find file to use for attribution
+    for attr_key in attr_keys:
+        if attr_key in inputs:
+            attr_file = inputs[attr_key]
+            break
+    attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
+    settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
+    print(settings)
+
+
+
+
+
+    return

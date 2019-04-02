@@ -442,12 +442,8 @@ def in_situ_hic_status(connection, **kwargs):
                 set_summary += "| missing step 1/2"
             elif running:
                 set_summary += "| running step 1/2"
-        print()
-        print('done with step 1 2')
         if part3 is 'ready':
             # if we made it to this step, there should be files in set_pairs
-            print(set_acc)
-            print(set_pairs)
             assert set_pairs
             # make sure all input bams went through same last step3
             all_step3s = []
@@ -660,12 +656,9 @@ def dilution_hic_status(connection, **kwargs):
                 set_summary += "| missing step 1/2"
             elif running:
                 set_summary += "| running step 1/2"
-        print()
-        print('done with step 1 2')
+
         if part3 is 'ready':
             # if we made it to this step, there should be files in set_pairs
-            print(set_acc)
-            print(set_pairs)
             assert set_pairs
             # make sure all input bams went through same last step3
             all_step3s = []
@@ -722,30 +715,54 @@ def dilution_hic_start(connection, **kwargs):
     """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
     action = init_action_res(connection, 'dilution_hic_start')
-    action_logs = {'runs_started': []}
     my_auth = connection.ff_keys
     hic_check = init_check_res(connection, 'dilution_hic_status')
     hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
-    targets = []
-    # if kwargs.get('start_runs'):
-    #     missing_runs =
-    #     start_runs()
-    #     targets.extend(fastqc_check_result.get('files_without_fastqc', []))
-    # if kwargs.get('start_qc'):
-    #     targets.extend(fastqc_check_result.get('files_without_qc', []))
-    #
-    # for a_target in targets:
-    #     now = datetime.utcnow()
-    #     if (now-start).seconds > lambda_limit:
-    #         action.description = 'Did not complete action due to time limitations'
-    #         break
-    #     a_file = ff_utils.get_metadata(a_target, key=my_auth)
-    #     attributions = wfr_utils.get_attribution(a_file)
-    #     inp_f = {'input_fastq': a_file['@id']}
-    #     wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
-    #     url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
-    #     # aws run url
-    #     action_logs['runs_started'].append(url)
-    action.output = action_logs
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = hic_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = hic_check_result.get('completed_runs')
+
+    started_runs = 0
+    patched_md = 0
+
+    action.description = ""
+    action_log = {}
+    if missing_runs:
+        action_log['started_runs'] = []
+        for a_case in missing_runs:
+            now = datetime.utcnow()
+            if (now-start).seconds > lambda_limit:
+                action.description = 'Did not complete action due to time limitations'
+                break
+            acc = list(a_case.keys())[0]
+            for a_run in a_case[acc]:
+                started_runs += 1
+                wfr_utils.start_missing_run(a_run, my_auth)
+                log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
+                action_log['started_runs'].append(log_message)
+
+    if patch_meta:
+        action_log['patched_meta'] = []
+        for a_completed_info in patch_meta:
+            now = datetime.utcnow()
+            if (now-start).seconds > lambda_limit:
+                action.description = 'Did not complete action due to time limitations'
+                break
+            patched_md += 1
+            wfr_utils.patch_complete_data(a_completed_info, my_auth)
+            log_message = a_run.keys()[0] + ' completed processing'
+            action_log['patched_meta'].append(log_message)
+
+    # did we complete without running into time limit
+    if not action.description:
+        if missing_runs:
+            action.description += 'started runs |'
+        if patch_meta:
+            action.description += 'completed patches |'
+
+    action.output = action_log
     action.status = 'DONE'
     return action
