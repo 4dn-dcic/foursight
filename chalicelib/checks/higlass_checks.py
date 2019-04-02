@@ -227,12 +227,6 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
     reference_files_by_ga = get_reference_files(connection)
     check.full_output['reference_files'] = reference_files_by_ga
 
-    # if we don't have two reference files for each genome_assembly, fail
-    if any([len(reference_files_by_ga[ga]) != 2 for ga in reference_files_by_ga]):
-        check.status = 'FAIL'
-        check.summary = check.description = "Could not find two reference files for each genome_assembly. See full_output"
-        return check
-
     target_files_by_ga = {}
 
     # If the file is specified, use that instead.
@@ -598,11 +592,15 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             files_for_viewconf = file_info["files"]
             static_content_section = file_info["static_content"]
 
-            higlass_title = "{acc} - {description}".format(
-                acc=expset_accession,
-                description=file_info["description"]
+            higlass_title = "{acc} - Processed files".format(
+                acc=expset_accession
             )
-            higlass_desc = "Files: " + ", ".join([ f["accession"] for f in files_for_viewconf ])
+
+            higlass_desc = "{acc} ({description}): {files}".format(
+                acc=expset_accession,
+                description=file_info["description"],
+                files=", ".join([ f["accession"] for f in files_for_viewconf ]),
+            )
 
             # Post a new Higlass viewconf using the file list
             post_viewconf_results = post_viewconf_to_visualization_endpoint(
@@ -736,6 +734,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             "lab.uuid",
             "award.uuid",
             "contributing_labs.uuid",
+            "description",
         ):
             fields_to_include += "&field=" + new_field
 
@@ -764,7 +763,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     check.full_output['reference_files'] = reference_files_by_ga
 
     # Create a helper function that finds files with higlass_uid and the genome assembly
-    def find_higlass_files(other_processed_files, filegroups_to_update, description, statuses_lookup):
+    def find_higlass_files(other_processed_files, filegroups_to_update, statuses_lookup):
         # For each ExpSet Other Processed Filegroup without a higlass_view_config
         for filegroup in [ fg for fg in other_processed_files if not fg.get("higlass_view_config", None) ]:
             genome_assembly = None
@@ -775,13 +774,13 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             for fil in [ f for f in filegroup["files"] if f.get("higlass_uid", None) ]:
                 higlass_file_found = True
                 accession = fil["accession"]
+
                 # Create new entry and copy genome assembly and filegroup type
                 if not title in filegroups_to_update:
                     filegroups_to_update[title] = {
                         "genome_assembly": fil["genome_assembly"],
                         "files": [],
                         "type": filegroup["type"],
-                        "description": description,
                     }
 
                 # Every file has a status. Double check.
@@ -807,7 +806,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         expset_titles = set()
         expset_titles_with_higlass = set()
         if "other_processed_files" in expset:
-            find_higlass_files(expset["other_processed_files"], filegroups_to_update, expset["description"], file_statuses)
+            find_higlass_files(expset["other_processed_files"], filegroups_to_update, file_statuses)
 
             expset_titles = { fg["title"] for fg in expset["other_processed_files"] }
 
@@ -817,7 +816,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         experiments_in_set_to_update = {}
         for experiment in expset.get("experiments_in_set", []):
             if "other_processed_files" in experiment:
-                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, expset["description"], file_statuses)
+                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, file_statuses)
 
         for title, info in experiments_in_set_to_update.items():
             # Skip the experiment's file if the higlass view has already been generated.
@@ -831,6 +830,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 filegroups_to_update[title] = {
                     "genome_assembly": info["genome_assembly"],
                     "files": [],
+                    "type": info["type"],
                 }
 
             # Add the files to the existing filegroup
@@ -844,6 +844,7 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 "award" : expset["award"]["uuid"],
                 "contributing_labs": expset.get("contributing_labs", []),
                 "lab" : expset["lab"]["uuid"],
+                "description" : expset["description"],
                 "other_processed_files" : filegroups_info,
             }
 
@@ -924,6 +925,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         lab = expsets_to_update[accession]["lab"]
         contributing_labs = expsets_to_update[accession]["contributing_labs"]
         award = expsets_to_update[accession]["award"]
+        expset_description = expsets_to_update[accession]["description"]
 
         # Look in the filegroups we need to update for that ExpSet
         new_viewconfs = {}
@@ -938,8 +940,17 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
             # Create the Higlass Viewconf and get the uuid
             data_files = info["files"]
+
+            #- title: <expset accession> - <title of opf)
             higlass_title = "{acc} - {title}".format(acc=accession, title=title)
-            higlass_desc = "Files :" + ", ".join([ f["accession"] for f in data_files ])
+
+            #- description: Supplementary files (<description of opf> 250 kb binned files) for 4DNES7QSJV2E (<description of the experiment> Dam_only DamID of RPE Tier 2 cells – cells were transduced with virus expressing Dam, gDNA was harvested after 4 days and processed for DamID-seq): 4DNFIRR2GRSY, 4DNFIPSIHU36
+            higlass_desc = "Supplementary Files ({opf_desc}) for {acc} ({exp_desc}): {files}".format(
+                opf_desc = title,
+                acc = accession,
+                exp_desc = expset_description,
+                files=", ".join([ f["accession"] for f in data_files ])
+            )
 
             post_viewconf_results =  post_viewconf_to_visualization_endpoint(
                 connection,
