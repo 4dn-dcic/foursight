@@ -796,7 +796,7 @@
         }
     },
     "in_situ_hic_status" : {
-        "title": "fastqc",
+        "title": "in situ hic",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -808,7 +808,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "fastqc",
+        "title": "dilution hic",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
