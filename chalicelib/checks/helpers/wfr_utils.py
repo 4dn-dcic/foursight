@@ -447,7 +447,7 @@ def patch_complete_data(patch_data, auth):
     return
 
 
-def start_missing_run(run_info, auth):
+def start_missing_run(run_info, auth, env):
     attr_keys = ['fastq1', ]
     run_settings = run_info[1]
     inputs = run_info[2]
@@ -459,10 +459,5 @@ def start_missing_run(run_info, auth):
             break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
-    print(settings)
-
-
-
-
-
-    return
+    url = run_missing_wfr(settings, inputs, name_tag, auth, env)
+    return url

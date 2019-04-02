@@ -560,7 +560,7 @@ def dilution_hic_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    for a_set in res[:1]:
+    for a_set in res[:2]:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
             break
@@ -592,12 +592,9 @@ def dilution_hic_status(connection, **kwargs):
             continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
-        print('all exp files', exp_files)
-
         for exp in exp_files.keys():
             if not exp_files.get(exp):
                 continue
-            print(exp)
             # Check Part 1 and See if all are okay
             exp_bams = []
             part1 = 'ready'
@@ -628,7 +625,6 @@ def dilution_hic_status(connection, **kwargs):
             all_step2s = []
             for bam in exp_bams:
                 step2_result = wfr_utils.get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
-                print(step2_result)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -716,6 +712,7 @@ def dilution_hic_start(connection, **kwargs):
     start = datetime.utcnow()
     action = init_action_res(connection, 'dilution_hic_start')
     my_auth = connection.ff_keys
+    my_env = connection.ff_env
     hic_check = init_check_res(connection, 'dilution_hic_status')
     hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
     missing_runs = []
@@ -734,15 +731,18 @@ def dilution_hic_start(connection, **kwargs):
         action_log['started_runs'] = []
         for a_case in missing_runs:
             now = datetime.utcnow()
+
+            print((now-start).seconds)
+
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations'
                 break
             acc = list(a_case.keys())[0]
             for a_run in a_case[acc]:
                 started_runs += 1
-                wfr_utils.start_missing_run(a_run, my_auth)
+                url = wfr_utils.start_missing_run(a_run, my_auth, my_env)
                 log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
-                action_log['started_runs'].append(log_message)
+                action_log['started_runs'].append([log_message, url])
 
     if patch_meta:
         action_log['patched_meta'] = []
