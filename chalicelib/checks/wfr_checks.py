@@ -754,9 +754,6 @@ def in_situ_hic_start(connection, **kwargs):
         action_log['started_runs'] = []
         for a_case in missing_runs:
             now = datetime.utcnow()
-
-            print((now-start).seconds)
-
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations'
                 break
