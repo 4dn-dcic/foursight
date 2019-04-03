@@ -511,7 +511,6 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             "files" : file_info["files"],
             "lab" : expset["lab"]["uuid"],
             "static_content" : expset.get("static_content", []),
-            "status" : expset["status"],
         }
         higlass_count += 1
         expset_count += 1
