@@ -663,6 +663,10 @@
                 "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -679,6 +683,10 @@
                 "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -693,6 +701,10 @@
                     "dependencies": []
                 },
                 "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
