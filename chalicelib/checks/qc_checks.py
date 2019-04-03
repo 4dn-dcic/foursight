@@ -56,7 +56,7 @@ def identify_files_without_qc_summary(connection, **kwargs):
 @action_function()
 def patch_quality_metric_summary(connection, **kwargs):
     action = init_action_res(connection, 'patch_quality_metric_summary')
-    action_logs = {'patch_failure': [], 'patch_success': []}
+    action_logs = {'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary
     filesize_check = init_check_res(connection, 'identify_files_without_qc_summary')
     filesize_check_result = filesize_check.get_result_by_uuid(kwargs['called_by'])
@@ -68,6 +68,9 @@ def patch_quality_metric_summary(connection, **kwargs):
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
             action_logs['patch_success'].append(hit['accession'])
+        else:
+            acc_and_format = '\n'.join([hit['accession'], hit['file_format'])
+            action_logs['skipping_format'].append(acc_and_format)
     action.status = 'DONE'
     action.output = action_logs
     return action
