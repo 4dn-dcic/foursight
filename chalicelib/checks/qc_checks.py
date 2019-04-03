@@ -41,7 +41,7 @@ def identify_files_without_qc_summary(connection, **kwargs):
     for hit in file_hits:
         if round(time.time() - t0, 2) > time_limit:
             break
-        if hit.get('quality_metric') and hit.get('quality_metric_summary') is None:
+        if hit.get('quality_metric') and not hit.get('quality_metric_summary', ''):
             hit_dict = {
                 'accession': hit.get('accession'),
                 'uuid': hit.get('uuid'),
