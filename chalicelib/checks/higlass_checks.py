@@ -995,7 +995,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         # The other_processed_files section has been updated. Patch the changes.
         try:
             # Make sure all higlass_view_config fields just show the uuid.
-            for g in expsets_to_update[accession]["other_processed_files"]:
+            for g in [ group for group in expsets_to_update[accession]["other_processed_files"] if "higlass_view_config" in group ]:
                 if isinstance(g["higlass_view_config"], dict):
                     uuid = g["higlass_view_config"]["uuid"]
                     g["higlass_view_config"] = uuid
