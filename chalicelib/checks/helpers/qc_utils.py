@@ -14,18 +14,18 @@ def calculate_qc_metric_pairsqc(file_uuid, key):
     def tooltip(numVal):
         return "Percent of total reads (=%s)" % million(numVal)
     qc_summary.append({"title": "Filtered Reads",
-                                          "value": quality_metric["Total reads"],
+                                          "value": str(quality_metric["Total reads"]),
                                           "numberType": "integer"}) 
     qc_summary.append({"title": "Cis reads (>20kb)",
-                                          "value": percent(quality_metric["Cis reads (>20kb)"]),
+                                          "value": str(percent(quality_metric["Cis reads (>20kb)"])),
                                           "tooltip": tooltip(quality_metric["Cis reads (>20kb)"]),
                                           "numberType": "percent"})
     qc_summary.append({"title": "Short cis reads",
-                                          "value": percent(quality_metric["Short cis reads (<20kb)"]),
+                                          "value": str(percent(quality_metric["Short cis reads (<20kb)"])),
                                           "tooltip": tooltip(quality_metric["Short cis reads (<20kb)"]),
                                           "numberType": "percent"})
     qc_summary.append({"title": "Trans Reads",
-                                          "value": percent(quality_metric["Trans reads"]),
+                                          "value": str(percent(quality_metric["Trans reads"])),
                                           "tooltip": tooltip(quality_metric["Trans reads"]),
                                           "numberType": "percent"})
     res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
