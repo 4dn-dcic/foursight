@@ -1,3 +1,19 @@
+from __future__ import print_function, unicode_literals
+from ..utils import (
+    check_function,
+    init_check_res,
+    action_function,
+    init_action_res
+)
+from dcicutils import ff_utils
+import requests
+import sys
+import json
+import datetime
+import time
+import boto3
+
+
 @check_function(file_type=None, status=None, file_format=None, search_add_on=None)
 def identify_files_without_qc_summary(connection, **kwargs):
     check = init_check_res(connection, 'identify_files_without_qc_summary')
@@ -69,7 +85,7 @@ def patch_quality_metric_summary(connection, **kwargs):
                 action_logs['patch_failure'].append(acc_and_error)
             action_logs['patch_success'].append(hit['accession'])
         else:
-            acc_and_format = '\n'.join([hit['accession'], hit['file_format'])
+            acc_and_format = '\n'.join([hit['accession'], hit['file_format']])
             action_logs['skipping_format'].append(acc_and_format)
     action.status = 'DONE'
     action.output = action_logs
