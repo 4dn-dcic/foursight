@@ -454,6 +454,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             "experiments_in_set.processed_files.accession",
             "experiments_in_set.processed_files.genome_assembly",
             "experiments_in_set.processed_files.higlass_uid",
+            "experiments_in_set.processed_files.status",
             "lab.uuid",
             "processed_files.accession",
             "processed_files.genome_assembly",
