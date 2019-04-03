@@ -839,9 +839,11 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         if filegroups_to_update:
             filegroups_info = expset.get("other_processed_files", [])
 
+            contributing_labs = [ c["uuid"] for c in expset.get("contributing_labs", []) ]
+
             expsets_to_update[accession] = {
                 "award" : expset["award"]["uuid"],
-                "contributing_labs": expset.get("contributing_labs", []),
+                "contributing_labs": contributing_labs,
                 "lab" : expset["lab"]["uuid"],
                 "description" : expset["description"],
                 "other_processed_files" : filegroups_info,
