@@ -5,6 +5,7 @@ from ..utils import (
     action_function,
     init_action_res
 )
+from .helpers import qc_utils
 from dcicutils import ff_utils
 import requests
 import sys
@@ -16,6 +17,8 @@ import boto3
 
 @check_function(file_type=None, status=None, file_format=None, search_add_on=None)
 def identify_files_without_qc_summary(connection, **kwargs):
+    t0 = time.time()  # keep track of how start time
+    time_limit = 270  # 4.5 minutes
     check = init_check_res(connection, 'identify_files_without_qc_summary')
     # must set this to be the function name of the action
     check.action = "qc_summary"
@@ -34,8 +37,10 @@ def identify_files_without_qc_summary(connection, **kwargs):
             addon = '&' + addon
         search_query += addon
     problem_files = []
-    file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
+    file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     for hit in file_hits:
+        if round(time.time() - t0, 2) > time_limit:
+            break
         if hit.get('quality_metric') and hit.get('quality_metric_summary') is None:
             hit_dict = {
                 'accession': hit.get('accession'),
@@ -46,7 +51,7 @@ def identify_files_without_qc_summary(connection, **kwargs):
                 'quality_metric': hit.get('quality_metric')
             }
             problem_files.append(hit_dict)
-    check.brief_output = '{} files with no quality metric summary'.format(len(problem_files))
+    check.summary = '{} files with no quality metric summary'.format(len(problem_files))
     check.full_output = problem_files
     if problem_files:
         check.status = 'WARN'
@@ -71,21 +76,25 @@ def identify_files_without_qc_summary(connection, **kwargs):
 
 @action_function()
 def patch_quality_metric_summary(connection, **kwargs):
+    t0 = time.time()  # keep track of how start time
+    time_limit = 270  # 4.5 minutes
     action = init_action_res(connection, 'patch_quality_metric_summary')
     action_logs = {'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary
     filesize_check = init_check_res(connection, 'identify_files_without_qc_summary')
     filesize_check_result = filesize_check.get_result_by_uuid(kwargs['called_by'])
     for hit in filesize_check_result.get('full_output', []):
-        if hit['file_format'] == 'pairs':
+        if round(time.time() - t0, 2) > time_limit:
+            break
+        if qc_utils.parse_formatstr(hit['file_format']) == 'pairs':
             try:
-                calculate_qc_metric_pairsqc(hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
+                qc_utils.calculate_qc_metric_pairsqc(hit['uuid'], key=connection.ff_keys)
+                action_logs['patch_success'].append(hit['accession'])
             except Exception as e:
-                acc_and_error = '\n'.join([hit['accession'], str(e)])
+                acc_and_error = ': '.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
-            action_logs['patch_success'].append(hit['accession'])
         else:
-            acc_and_format = '\n'.join([hit['accession'], hit['file_format']])
+            acc_and_format = ': '.join([hit['accession'], hit['file_format']])
             action_logs['skipping_format'].append(acc_and_format)
     action.status = 'DONE'
     action.output = action_logs
