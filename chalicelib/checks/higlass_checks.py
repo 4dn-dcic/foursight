@@ -363,7 +363,10 @@ def patch_files_for_higlass_viewconf(connection, check_full_output, file_accessi
         if time_expired:
             break
 
-        if ga not in ref_files_by_ga:  # reference files not found
+        if ga not in ref_files_by_ga:
+            # Note that we couldn't find the reference files.
+            for file_accession in target_files_by_ga[ga]:
+                action_logs['failed_to_create_viewconf'][file_accession] = "No reference files found for {ga}.".format(ga=ga)
             continue
 
         ref_files = ref_files_by_ga[ga]
@@ -578,7 +581,11 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         if time_expired:
             break
 
-        if ga not in ref_files_by_ga:
+        #if ga not in ref_files_by_ga:
+        if True:
+            # Note that we couldn't find the reference files.
+            for expset_accession in target_files[ga]:
+                action_logs['failed_to_create_viewconf'][expset_accession] = "No reference files found for {ga}.".format(ga=ga)
             continue
         ref_files = ref_files_by_ga[ga]
 
@@ -941,6 +948,11 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 break
 
             # Get the reference files for the genome assembly
+            if info["genome_assembly"] not in ref_files_by_ga:
+                # Note that we couldn't find the reference files.
+                action_logs['failed_to_create_viewconf'][accession] = "No reference files found for {ga}.".format(ga=info["genome_assembly"])
+                continue
+
             reference_files = ref_files_by_ga[ info["genome_assembly"] ]
 
             # Create the Higlass Viewconf and get the uuid
