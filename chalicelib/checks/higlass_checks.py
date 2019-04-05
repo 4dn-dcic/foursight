@@ -1026,6 +1026,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     action.output = action_logs
     return action
 
+
 @check_function(confirm_on_higlass=False, filetype='all', higlass_server=None)
 def files_not_registered_with_higlass(connection, **kwargs):
     """
@@ -1107,7 +1108,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             type_filter = '&type=FileProcessed' + '&type=FileVistrack'
 
         # Build a file format filter
-        file_format_filter = "?file_format.file_format=" + filetypes_to_use[0] + "&file_format.file_format=".join(filetypes_to_use[1:])
+        file_format_filter = "?file_format.file_format=" + "&file_format.file_format=".join(filetypes_to_use)
 
         # Build the query that finds all published files.
         search_query = 'search/' + file_format_filter + type_filter
@@ -1252,6 +1253,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.allow_action = True
     return check
 
+
 @action_function(file_accession=None)
 def patch_file_higlass_uid(connection, **kwargs):
     """ After running "files_not_registered_with_higlass",
@@ -1326,7 +1328,8 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'cooler'
                 payload['datatype'] = 'matrix'
-            elif ftype in ['bg', 'bw']:
+            elif ftype in ['bg', 'bw', 'bigbed']:
+                # bigbeds can be registered the same way as bigwigs
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
@@ -1334,6 +1337,10 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'bedlike'
+            else:
+                err_msg = 'No filetype case specified for %s' % ftype
+                action_logs['registration_failure'][hit['accession']] = err_msg
+                continue
             # register with previous higlass_uid if already there
             if hit.get('higlass_uid'):
                 payload['uuid'] = hit['higlass_uid']
@@ -1362,11 +1369,16 @@ def patch_file_higlass_uid(connection, **kwargs):
                     else:
                         action_logs['patch_success'].append(hit['accession'])
             else:
-                # Add reason for failure
-                action_logs['registration_failure'][hit['accession']] = res.json().get("error", res.status_code)
+                # Add reason for failure. res.json not available on 500 resp
+                try:
+                    err_msg = res.json().get("error", res.status_code)
+                except Exception:
+                    err_msg = res.status_code
+                action_logs['registration_failure'][hit['accession']] = err_msg
     action.status = 'DONE'
     action.output = action_logs
     return action
+
 
 @check_function()
 def find_cypress_test_items_to_purge(connection, **kwargs):
@@ -1404,6 +1416,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
         check.description = check.summary + ". See full_output for details."
         check.allow_action = True
     return check
+
 
 @action_function()
 def purge_cypress_items(connection, **kwargs):
