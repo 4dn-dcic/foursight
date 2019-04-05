@@ -203,29 +203,30 @@ def add_viewconf_static_content_to_file(connection, item_uuid, view_conf_uuid, s
         return False, str(e)
     return True, ""
 
-@check_function(file_accession=None)
+@check_function(file_accession=None, check_only=False)
 def check_files_for_higlass_viewconf(connection, **kwargs):
     """
-    Check to generate Higlass view configs on Fourfront for appropriate files
+    Check to generate Higlass view configs on Fourfront for appropriate files.
+    This will check AND act to create new files.
 
     Args:
         connection: The connection to Fourfront.
         **kwargs, which may include:
             file_accession (optional, default=None): Only generate a viewconf for the given file acccession.
+            check_only (optional, default=False): If True, do not act. Do not create a new Higlass view config.
 
     Returns:
         check results object.
     """
     check = init_check_res(connection, 'check_files_for_higlass_viewconf')
-    check.full_output = {
+    check_full_output = {
         "reference_files" : [],
         "target_files" : {},
     }
-    check.action = 'patch_files_for_higlass_viewconf'
 
     # first, find and cache the reference files
     reference_files_by_ga = get_reference_files(connection)
-    check.full_output['reference_files'] = reference_files_by_ga
+    check_full_output['reference_files'] = reference_files_by_ga
 
     target_files_by_ga = {}
 
@@ -280,7 +281,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
             track_title = ""
             if "track_and_facet_info" in hg_file and "track_title" in hg_file["track_and_facet_info"]:
                 track_title = hg_file["track_and_facet_info"]["track_title"]
-            contributing_labs = [ cl["uuid"] for cl in hg_file["contributing_labs"] ]
+            contributing_labs = [ cl["uuid"] for cl in hg_file.get("contributing_labs", []) ]
 
             if genome_assembly not in target_files_by_ga:
                 target_files_by_ga[genome_assembly] = {}
@@ -295,46 +296,53 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
                 "track_title" : track_title,
             }
 
-    check.full_output['target_files'] = target_files_by_ga
+    check_full_output['target_files'] = target_files_by_ga
 
     if not target_files_by_ga:
         # nothing new to generate
+        check.full_output = check_full_output
         check.summary = check.description = "No new view configs to generate"
         check.status = 'PASS'
+    elif kwargs["check_only"] == False:
+        # Pass check to action
+        action_result = patch_files_for_higlass_viewconf(connection, check_full_output, kwargs['file_accession'])
+
+        check.description = check.summary = "Created Higlass viewconfs for {completed} out of {possible} files".format(
+            completed=action_result["number_files_created"],
+            possible=action_result["total_files"]
+        )
+
+        check.status = "WARN"
+        if action_result["number_files_created"] >= action_result["total_files"]:
+            check.status = "DONE"
+
+        check.full_output = action_result["logs"]
     else:
         all_files = sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
-        check.summary = "Ready to generate %s Higlass view configs" % all_files
-        check.description = check.summary + ". See full_output for details."
+        check.full_output = check_full_output
+        check.summary = "Ready to generate %s Higlass view configs. Run with check_only=False when ready." % all_files
+        check.description = check.summary + " See full_output for details."
         check.allow_action = True
         check.status = 'WARN'
     return check
 
-@action_function(file_accession=None)
-def patch_files_for_higlass_viewconf(connection, **kwargs):
+def patch_files_for_higlass_viewconf(connection, check_full_output, file_accession_to_patch=None):
     """ Action that is used with generate_higlass_view_confs_files to actually
     POST new higlass view configs and PATCH the old files.
 
     Args:
         connection: The connection to Fourfront.
-        **kwargs, which may include:
-            file_accession(string, optional, default=None): Only generate a viewconf for the given file acccession.
+        check_full_output (dict): The results of the check.
+        file_accession(string, optional, default=None): Only generate a viewconf for the given file acccession.
 
     Returns:
         A check/action object.
     """
-    action = init_action_res(connection, 'patch_files_for_higlass_viewconf')
     action_logs = {
         'new_view_confs_by_file': {},
         'failed_to_create_viewconf' : {},
         'failed_to_patch_file' : {},
     }
-
-    # get latest results
-    gen_check = init_check_res(connection, 'check_files_for_higlass_viewconf')
-    if kwargs.get('called_by', None):
-        gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
-    else:
-        gen_check_result = gen_check.get_primary_result()
 
     # make the fourfront auth key (in basic auth format)
     ff_auth = (connection.ff_keys['key'], connection.ff_keys['secret'])
@@ -342,7 +350,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
                'Accept': 'application/json'}
 
     # pointer to the reference files (by genome_assembly)
-    ref_files_by_ga = gen_check_result['full_output'].get('reference_files', {})
+    ref_files_by_ga = check_full_output.get('reference_files', {})
 
     # Checks expire after 280 seconds, so keep track of how long this task has lasted.
     start_time = time.time()
@@ -350,7 +358,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
 
     # these are the files we care about
     # loop by genome_assembly
-    target_files_by_ga = gen_check_result['full_output'].get('target_files', {})
+    target_files_by_ga = check_full_output.get('target_files', {})
     for ga in target_files_by_ga:
         if time_expired:
             break
@@ -367,7 +375,7 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
                 break
 
             # If a particular accession was chosen, skip the others
-            if kwargs['file_accession'] and file_accession != kwargs['file_accession']:
+            if file_accession_to_patch and file_accession != file_accession_to_patch:
                 continue
 
             static_content_section = file_info["static_content"]
@@ -412,16 +420,11 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
 
             action_logs['new_view_confs_by_file'][file_accession] = post_viewconf_results["view_config_uuid"]
 
-    action.status = 'DONE'
-    action.output = action_logs
-
-    target_files_by_ga = gen_check_result['full_output'].get('target_files', {})
-    file_count = sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
-    action.progress = "Created Higlass viewconfs for {completed} out of {possible} files".format(
-        completed=len(action_logs["new_view_confs_by_file"].keys()),
-        possible=file_count
-    )
-    return action
+    return {
+        "logs": action_logs,
+        "number_files_created" : len(action_logs["new_view_confs_by_file"].keys()),
+        "total_files": sum([len(target_files_by_ga[ga]) for ga in target_files_by_ga])
+    }
 
 @check_function(expset_accession=None)
 def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
