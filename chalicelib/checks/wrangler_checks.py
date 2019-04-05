@@ -764,8 +764,10 @@ def validate_entrez_geneids(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(scope='all')
 def users_with_pending_lab(connection, **kwargs):
+    """Define comma seperated emails in scope
+    if you want to work on a subset of all the results"""
     check = init_check_res(connection, 'users_with_pending_lab')
     check.action = 'finalize_user_pending_labs'
     check.full_output = []
@@ -773,7 +775,15 @@ def users_with_pending_lab(connection, **kwargs):
     cached_items = {}  # store labs/PIs for performance
     mismatch_users = []
     # do not look for deleted/replaced users
+    scope = kwargs.get('scope')
     search_q = '/search/?type=User&pending_lab!=No+value&frame=object'
+    # want to see all results or a subset defined by the scope
+    if scope == 'all':
+        pass
+    else:
+        emails = [mail.strip() for mail in scope.split(',')]
+        for an_email in emails:
+            search_q += '&email=' + an_email
     search_res = ff_utils.search_metadata(search_q, key=connection.ff_keys, ff_env=connection.ff_env)
     for res in search_res:
         user_fields = ['uuid', 'email', 'pending_lab', 'lab', 'title', 'job_title']
