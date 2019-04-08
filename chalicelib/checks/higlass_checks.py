@@ -305,7 +305,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         check.status = 'PASS'
     elif kwargs["check_only"] == False:
         # Pass check to action
-        action_result = patch_files_for_higlass_viewconf(connection, check_full_output, kwargs['file_accession'])
+        action_result = patch_files_for_higlass_viewconf(connection, check_full_output, time.time(), kwargs['file_accession'])
 
         check.description = check.summary = "Created Higlass viewconfs for {completed} out of {possible} files".format(
             completed=action_result["number_files_created"],
@@ -326,13 +326,14 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         check.status = 'WARN'
     return check
 
-def patch_files_for_higlass_viewconf(connection, check_full_output, file_accession_to_patch=None):
+def patch_files_for_higlass_viewconf(connection, check_full_output, start_time=None, file_accession_to_patch=None):
     """ Action that is used with generate_higlass_view_confs_files to actually
     POST new higlass view configs and PATCH the old files.
 
     Args:
         connection: The connection to Fourfront.
         check_full_output (dict): The results of the check.
+        start_time (number, optional, default=None): Time since the check started. This function stops before foursight times it out.
         file_accession(string, optional, default=None): Only generate a viewconf for the given file acccession.
 
     Returns:
@@ -353,7 +354,8 @@ def patch_files_for_higlass_viewconf(connection, check_full_output, file_accessi
     ref_files_by_ga = check_full_output.get('reference_files', {})
 
     # Checks expire after 280 seconds, so keep track of how long this task has lasted.
-    start_time = time.time()
+    if not start_time:
+        start_time = time.time()
     time_expired = False
 
     # these are the files we care about
