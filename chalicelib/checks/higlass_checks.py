@@ -224,6 +224,9 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         "target_files" : {},
     }
 
+    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    start_time = time.time()
+
     # first, find and cache the reference files
     reference_files_by_ga = get_reference_files(connection)
     check_full_output['reference_files'] = reference_files_by_ga
@@ -305,7 +308,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         check.status = 'PASS'
     elif kwargs["check_only"] == False:
         # Pass check to action
-        action_result = patch_files_for_higlass_viewconf(connection, check_full_output, time.time(), kwargs['file_accession'])
+        action_result = patch_files_for_higlass_viewconf(connection, check_full_output, start_time, kwargs['file_accession'])
 
         check.description = check.summary = "Created Higlass viewconfs for {completed} out of {possible} files".format(
             completed=action_result["number_files_created"],
@@ -314,7 +317,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
 
         check.status = "WARN"
         if action_result["number_files_created"] >= action_result["total_files"]:
-            check.status = "DONE"
+            check.status = "PASS"
 
         check.full_output = action_result["logs"]
     else:
