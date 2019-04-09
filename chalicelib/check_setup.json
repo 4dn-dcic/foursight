@@ -673,7 +673,13 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {
+                        "primary": true,
+                        "search_queries" : [
+                            "&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&file_type!=read+positions",
+                            "&tags!=higlass_reference&last_modified.date_modified.from=<get_primary_result>"
+                        ]
+                    },
                     "dependencies": []
                 },
                 "webdev": {
@@ -681,7 +687,13 @@
                     "dependencies": []
                 },
                 "hotseat": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {
+                        "primary": true,
+                        "search_queries" : [
+                            "&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&file_type!=read+positions",
+                            "&tags!=higlass_reference&last_modified.date_modified.from=<get_primary_action_completed_date>"
+                        ]
+                    },
                     "dependencies": []
                 }
             }
@@ -693,7 +705,16 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {
+                        "primary": true,
+                        "search_queries": [
+                            "&processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config",
+                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config",
+                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.last_modified.date_modified.from=<get_primary_action_completed_date>",
+                            "&processed_files.higlass_uid%21=No+value&last_modified.date_modified.from=<get_primary_action_completed_date>",
+                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.processed_files.last_modified.date_modified.from=<get_primary_action_completed_date>"
+                        ]
+                    },
                     "dependencies": []
                 },
                 "webdev": {
@@ -701,7 +722,16 @@
                     "dependencies": []
                 },
                 "hotseat": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {
+                        "primary": true,
+                        "search_queries": [
+                            "&processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config",
+                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config",
+                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.last_modified.date_modified.from=<get_primary_result>",
+                            "&processed_files.higlass_uid%21=No+value&last_modified.date_modified.from=<get_primary_result>",
+                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.processed_files.last_modified.date_modified.from=<get_primary_result>"
+                        ]
+                    },
                     "dependencies": []
                 }
             }
