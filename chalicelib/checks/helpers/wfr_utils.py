@@ -148,15 +148,15 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
          }
 
 
-def get_wfr_out(file_id, wfr_name, auth, versions=[], md_qc=False, run=None):
+def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
     does not have any file_format output, so they will simply return 'complete'
     args:
-     file_id: accession/uuid/alias of file
+     emb_file: embedded frame file info
      wfr_name: base name without version
-     auth: connection ff_keys
+     all_wfrs : all releated wfrs in embedded frame
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
@@ -169,7 +169,6 @@ def get_wfr_out(file_id, wfr_name, auth, versions=[], md_qc=False, run=None):
     # get default run out time
     if not run:
         run = workflow_details[wfr_name]['run_time']
-    emb_file = ff_utils.get_metadata(file_id, key=auth)
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
     run_status = 'did not run'
@@ -195,7 +194,7 @@ def get_wfr_out(file_id, wfr_name, auth, versions=[], md_qc=False, run=None):
     my_workflows = sorted(my_workflows, key=lambda k: k['run_hours'])
     last_wfr = [i for i in my_workflows if i['run_type'] == wfr_name][0]
     # get metadata for the last wfr
-    wfr = ff_utils.get_metadata(last_wfr['uuid'], key=auth)
+    wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
     run_duration = last_wfr['run_hours']
     run_status = wfr['run_status']
 
@@ -349,7 +348,7 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
-def find_fastq_info(my_rep_set, all_items, auth, exclude_miseq=True):
+def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True):
     """Find fastq files from experiment set, exclude miseq by default
     expects my_rep_set to be set response in frame object (search result)
     will check if files are paired or not, and if paired will give list of lists for each exp
@@ -380,7 +379,7 @@ def find_fastq_info(my_rep_set, all_items, auth, exclude_miseq=True):
         if enzyme:
             enzymes.append(enzyme['display_title'])
         for fastq_file in exp_files:
-            file_resp = ff_utils.get_metadata(fastq_file['uuid'], key=auth)
+            file_resp = [i for i in fastq_files if i['uuid'] == fastq_file['uuid']][0]
             if file_resp.get('file_size'):
                 total_f_size += file_resp['file_size']
             # skip pair no 2
@@ -408,8 +407,8 @@ def find_fastq_info(my_rep_set, all_items, auth, exclude_miseq=True):
                 file_dict[exp_resp['accession']].append(f1)
             elif paired == 'Yes':
                 relations = file_resp['related_files']
-                f2 = paired_files = [relation['file']['@id'] for relation in relations
-                                     if relation['relationship_type'] == 'paired with']
+                paired_files = [relation['file']['@id'] for relation in relations
+                                if relation['relationship_type'] == 'paired with']
                 assert len(paired_files) == 1
                 f2 = paired_files[0]
                 file_dict[exp_resp['accession']].append((f1, f2))
@@ -473,11 +472,12 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
     for a_set in res:
         # get all related items
         all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='object',
+                                                           store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['experiment_relation',
                                                                          'biosample_relation',
                                                                          'references'])
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
 
         print(a_set['accession'], (now-start).seconds)
@@ -496,7 +496,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
         part3 = 'ready'
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
-        exp_files, refs = find_fastq_info(a_set, all_items, my_auth)
+        exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
         set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
         # if no files were found
         if all(not value for value in exp_files.values()):
@@ -520,7 +520,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             part1 = 'ready'
             part2 = 'ready'
             for pair in exp_files[exp]:
-                step1_result = get_wfr_out(pair[0], 'bwa-mem', my_auth)
+                pair_resp = [i for i in all_items['file_fastq'] if i['uuid'] == pair[0]]
+                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     exp_bams.append(step1_result['out_bam'])
@@ -544,7 +545,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             # make sure all input bams went through same last step2
             all_step2s = []
             for bam in exp_bams:
-                step2_result = get_wfr_out(bam, 'hi-c-processing-bam', my_auth)
+                step2_result = get_wfr_out(bam, 'hi-c-processing-bam', all_wfrs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -579,7 +580,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             # make sure all input bams went through same last step3
             all_step3s = []
             for a_pair in set_pairs:
-                step3_result = get_wfr_out(a_pair, 'hi-c-processing-pairs', my_auth)
+                step3_result = get_wfr_out(a_pair, 'hi-c-processing-pairs', all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             assert len(list(set(all_step3s))) == 1
             # if successful
