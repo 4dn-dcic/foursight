@@ -613,17 +613,17 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             assert not missing_run
             check.full_output['completed_runs'].append({set_acc: complete})
     if check.full_output['running_runs']:
-        check.summary = ' running|'
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
         check.status = 'WARN'
     if check.full_output['skipped']:
-        check.summary += ' skipped|'
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
         check.status = 'WARN'
     if check.full_output['needs_runs']:
-        check.summary += ' missing|'
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
         check.status = 'WARN'
         check.allow_action = True
     if check.full_output['completed_runs']:
-        check.summary += ' completed|'
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
         check.status = 'WARN'
         check.allow_action = True
     return check

@@ -332,6 +332,7 @@ def dilution_hic_status(connection, **kwargs):
     check.action = "dilution_hic_start"
     check.brief_output = []
     check.summary = ""
+    check.description = "run missing steps and add processing results to processed files, match set status"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
     check.status = 'PASS'
     exp_type = 'dilution Hi-C'
@@ -430,6 +431,7 @@ def in_situ_hic_status(connection, **kwargs):
     check = init_check_res(connection, 'in_situ_hic_status')
     my_auth = connection.ff_keys
     check.action = "in_situ_hic_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
