@@ -16,7 +16,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     out_n = "This is an output file of the Hi-C processing pipeline"
     int_n = "This is an intermediate file in the HiC processing pipeline"
-    out_n_rep = "This is an output file of the RepliSeq processing pipeline"
     # int_n_rep = "This is an intermediate file in the Repliseq processing pipeline"
 
     wf_dict = [{
@@ -80,7 +79,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'filtered_sorted_deduped_bam': {
                 'genome_assembly': genome,
                 'file_type': 'alignment',
-                'description': out_n_rep},
+                'description': 'This is an output file of the RepliSeq processing pipeline'},
             'count_bg': {
                 'genome_assembly': genome,
                 'file_type': 'counts',

@@ -442,31 +442,6 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True):
     return file_dict, refs
 
 
-def patch_complete_data(patch_data, auth):
-    return
-
-
-def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'input_pairs', 'input_bams']
-    run_settings = run_info[1]
-    inputs = run_info[2]
-    name_tag = run_info[3]
-    # find file to use for attribution
-    for attr_key in attr_keys:
-        if attr_key in inputs:
-            attr_file = inputs[attr_key]
-            if isinstance(attr_file, list):
-                attr_file = attr_file[0]
-            break
-    attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
-    settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
-    try:
-        url = run_missing_wfr(settings, inputs, name_tag, auth, env)
-        return url
-    except Exception as e:
-        return e
-
-
 def check_hic(res, my_auth, tag, check, start, lambda_limit):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
@@ -555,8 +530,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
                 # accumulate pairs files for step3
                 set_pairs.append(step2_result['filtered_pairs'])
                 # add files for experiment opf
-                patch_data = {exp: [step2_result['annotated_bam'], step2_result['filtered_pairs']]}
-                complete['patch_opf'].append(patch_data)
+                patch_data = [step2_result['annotated_bam'], step2_result['filtered_pairs']]
+                complete['patch_opf'].append([exp, patch_data])
                 continue
             # if still running
             elif step2_result['status'] == 'running':
@@ -588,9 +563,9 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             # if successful
             if step3_result['status'] == 'complete':
                 set_summary += '| completed runs'
-                patch_data = {set_acc: [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]}
-                complete['patch_opf'].append(patch_data)
-                complete['add_tag'] = tag
+                patch_data = [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]
+                complete['patch_opf'].append([set_acc, patch_data])
+                complete['add_tag'] = [set_acc, tag]
             # if still running
             elif step3_result['status'] == 'running':
                 running.append(['step3', set_acc])
@@ -611,7 +586,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
         if complete.get('add_tag'):
             assert not running
             assert not missing_run
-            check.full_output['completed_runs'].append({set_acc: complete})
+            check.full_output['completed_runs'].append(complete)
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
         check.status = 'WARN'
@@ -627,3 +602,36 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
         check.status = 'WARN'
         check.allow_action = True
     return check
+
+
+def patch_complete_data_protocol_1(patch_data, auth):
+    """Protocol 1: move files to processed_files field, and match the status to exp/set."""
+    if not patch_data.get('patch_opf'):
+        return 'no content in patch_opf, skipping'
+    for a_case in patch_data['patch_opf']:
+        host, files = a_case[0], a_case[1]
+
+
+
+    return
+
+
+def start_missing_run(run_info, auth, env):
+    attr_keys = ['fastq1', 'input_pairs', 'input_bams']
+    run_settings = run_info[1]
+    inputs = run_info[2]
+    name_tag = run_info[3]
+    # find file to use for attribution
+    for attr_key in attr_keys:
+        if attr_key in inputs:
+            attr_file = inputs[attr_key]
+            if isinstance(attr_file, list):
+                attr_file = attr_file[0]
+            break
+    attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
+    settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
+    try:
+        url = run_missing_wfr(settings, inputs, name_tag, auth, env)
+        return url
+    except Exception as e:
+        return e
