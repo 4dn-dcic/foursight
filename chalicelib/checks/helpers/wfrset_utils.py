@@ -151,6 +151,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         for a_file in template['custom_pf_fields']:
             template['custom_pf_fields'][a_file].update(attribution)
     template['wfr_meta'] = attribution
+    template['custom_qc_fields'] = attribution
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:
