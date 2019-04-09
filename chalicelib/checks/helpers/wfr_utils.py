@@ -349,7 +349,7 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
-def find_fastq_info(my_rep_set, auth, exclude_miseq=True):
+def find_fastq_info(my_rep_set, all_items, auth, exclude_miseq=True):
     """Find fastq files from experiment set, exclude miseq by default
     expects my_rep_set to be set response in frame object (search result)
     will check if files are paired or not, and if paired will give list of lists for each exp
@@ -468,9 +468,16 @@ def start_missing_run(run_info, auth, env):
         return e
 
 
-
 def check_hic(res, my_auth, tag, check, start, lambda_limit):
+    """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
+        # get all related items
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+                                                           store_frame='object',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['experiment_relation',
+                                                                         'biosample_relation',
+                                                                         'references'])
         now = datetime.utcnow()
 
         print(a_set['accession'], (now-start).seconds)
@@ -489,7 +496,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
         part3 = 'ready'
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
-        exp_files, refs = find_fastq_info(a_set, my_auth)
+        exp_files, refs = find_fastq_info(a_set, all_items, my_auth)
         set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
         # if no files were found
         if all(not value for value in exp_files.values()):
