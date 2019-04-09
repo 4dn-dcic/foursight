@@ -391,7 +391,7 @@ def dilution_hic_start(connection, **kwargs):
                 if url.startswith('http'):
                     action_log['started_runs'].append([log_message, url])
                 else:
-                    action_log['started_runs'].append([log_message, url])
+                    action_log['failed_runs'].append([log_message, url])
 
     if patch_meta:
         action_log['patched_meta'] = []
