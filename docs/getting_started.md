@@ -3,7 +3,7 @@
 Foursight provides insight into your application (namely, Fourfront) using AWS infrastructure.
 
 ## The big picture
-Foursight is a Chalice application, which essentially means it is a combination of AWS Lambda functions that are linked to different endpoints through API gateway. It allows for scheduling of lambdas through Cloud Watch. Using Chalice makes it easy to deploy all these different resources with cohesive settings. Currently, Foursight is written for **Python 3.6**.
+Foursight is a Chalice application, which essentially means it is a combination of AWS Lambda functions that are linked to different endpoints through API gateway. It allows for scheduling of lambdas through Cloud Watch. Using Chalice makes it easy to deploy all these different resources with cohesive settings. Currently, Foursight is written for **Python 3.6**. You may encounter errors if running on previous Python versions.
 
 Foursight itself is based around the concepts of 'checks', which operate on the server(s) you set it up with. Each check is supposed to do some small-ish amount of computation, record results, and then store itself using AWS S3. The endpoints for the Chalice application (defined in app.py) determine the which checks are called, when results are fetched, and the associated scheduling. It also builds a simple front end using Jinja2 to visualize check results, though if you if you love JSON, viewing the endpoints directly is completely fine.
 

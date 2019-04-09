@@ -313,6 +313,22 @@
             }
         }
     },
+    "identify_files_without_qc_summary": {
+        "title": "Files without quality metric summary",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "files_not_registered_with_higlass": {
         "title": "Files not registered with higlass",
         "group": "Higlass checks",
@@ -663,6 +679,10 @@
                 "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -679,6 +699,10 @@
                 "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -693,6 +717,10 @@
                     "dependencies": []
                 },
                 "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
