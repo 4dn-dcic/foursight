@@ -520,7 +520,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             part1 = 'ready'
             part2 = 'ready'
             for pair in exp_files[exp]:
-                pair_resp = [i for i in all_items['file_fastq'] if i['uuid'] == pair[0]]
+                pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
                 step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
@@ -545,7 +545,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             # make sure all input bams went through same last step2
             all_step2s = []
             for bam in exp_bams:
-                step2_result = get_wfr_out(bam, 'hi-c-processing-bam', all_wfrs)
+                bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
+                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -580,7 +581,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             # make sure all input bams went through same last step3
             all_step3s = []
             for a_pair in set_pairs:
-                step3_result = get_wfr_out(a_pair, 'hi-c-processing-pairs', all_wfrs)
+                a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
+                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             assert len(list(set(all_step3s))) == 1
             # if successful
