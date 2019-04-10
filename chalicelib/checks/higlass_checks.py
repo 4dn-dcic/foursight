@@ -1179,7 +1179,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 for extra in procfile.get('extra_files', []):
                     if extra['file_format'].get('display_title') == type2extra[file_format] \
                         and 'upload_key' in extra \
-                        and extra["status"] not in unpublished_statuses:
+                        and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
                         break
                 if 'upload_key' not in file_info:  # bw or beddb file not found
@@ -1404,10 +1404,11 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     # Note the number of items ready to purge
     num_viewconfigs = len(check.full_output['items_to_purge'])
-    check.status = 'PASS'
+    check.status = 'WARN'
 
     if num_viewconfigs == 0:
         check.summary = check.description = "No new items to purge."
+        check.status = 'PASS'
     else:
         check.summary = "Ready to purge %s items" % num_viewconfigs
         check.description = check.summary + ". See full_output for details."
