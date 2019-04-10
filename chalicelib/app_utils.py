@@ -748,6 +748,7 @@ def run_check_runner(runner_input):
                     queue = get_sqs_queue()
                     # pass the run_uuid so that the action is part of run group
                     send_sqs_messages(queue, run_env, [to_send], uuid=run_uuid)
+                    print('-RUN-> Automatically queued action: %s' % (to_send))
         delete_message_and_propogate(runner_input, receipt)
     else:
         print('-RUN-> Recovered: %s' % (run_name))
