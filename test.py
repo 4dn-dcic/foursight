@@ -522,6 +522,45 @@ class TestCheckRunner(FSTest):
             self.assertTrue('post' in res_compare[check_name] and 'prior' in res_compare[check_name])
             self.assertTrue(res_compare[check_name]['prior'] != res_compare[check_name]['post'])
 
+    def test_check_runner_queue_action(self):
+        # queue a check with queue_action=True kwarg, meaning the associated
+        # action will automatically be queued after completion
+        # Get baseline results to compare to
+        check = utils.init_check_res(self.connection, 'test_random_nums')
+        baseline_check_uuid = check.get_latest_result()['uuid']
+        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        baseline_action_uuid = action.get_latest_result()['uuid']
+        to_send = ['test_checks/test_random_nums', {'primary': True, 'queue_action': True}, []]
+        # send the check to the queue and invoke the runner
+        utils.send_sqs_messages(self.queue, self.environ, [to_send])
+        utils.invoke_check_runner({'sqs_url': self.queue.url})
+        # both check and action separately must make it through queue
+        error_count = 0
+        # wait for queue to empty for the check
+        while True:
+            time.sleep(1)
+            sqs_attrs = utils.get_sqs_attributes(self.queue.url)
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            if vis_messages == 0 and invis_messages == 0:
+                final_check_res = check.get_latest_result()
+                final_action_res = action.get_latest_result()
+                final_check_uuid = final_check_res['uuid']
+                if final_check_uuid > baseline_check_uuid and final_action_res['uuid'] > baseline_action_uuid:
+                    break
+            else:
+                error_count += 1
+            if error_count > 300:  # test should fail
+                print('Could not find an empty foursight-test-queue.')
+                self.assertTrue(False)
+        import pdb; pdb.set_trace()
+        # action should have check uuid as 'called_by' kwarg
+        self.assertTrue(final_action_res['kwargs']['called_by'] == final_check_uuid)
+        # action should have the same uuid and _run_info.run_id as check uuid,
+        # since it is in the same queue group
+        self.assertTrue(final_action_res['uuid'] == final_check_uuid)
+        self.assertTrue(final_action_res['kwargs']['_run_info']['run_id'] == final_check_uuid)
+
     def test_get_sqs_attributes(self):
         # bad sqs url
         bad_sqs_attrs = utils.get_sqs_attributes('not_a_queue')
