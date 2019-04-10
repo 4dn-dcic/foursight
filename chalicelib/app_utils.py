@@ -734,21 +734,21 @@ def run_check_runner(runner_input):
             run_kwargs['uuid'] = run_uuid
         run_kwargs['_run_info'] = {'run_id': run_uuid, 'receipt': receipt, 'sqs_url': sqs_url}
         run_result = run_check_or_action(connection, run_name, run_kwargs)
-        is_check = type(run_result).__name__ == 'CheckResult'  # was the run a check
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
-        print('-RUN-> Finished: %s' % (run_name))
-        # if a check was run, invoke the associated action if kwargs['queue_action']
-        if is_check and run_result.kwargs['queue_action'] is True:
+        # invoke the associated action if kwargs['queue_action']
+        # ensure that it's a check by checking for 'full_output' key
+        if 'full_output' in run_result and run_result['kwargs']['queue_action'] is True:
             # must also have check.action and check.allow_action set
-            if run_result.allow_action and run_result.action:
-                action_str = get_action_strings(specific_action=run_result.action)
+            if run_result['allow_action'] and run_result['action']:
+                action_str = get_action_strings(specific_action=run_result['action'])
                 if action_str:
-                    action_kwargs = {'called_by': run_result.kwargs['uuid']}
+                    action_kwargs = {'called_by': run_result['kwargs']['uuid']}
                     to_send = [action_str, action_kwargs, []]  # no dependencies
                     queue = get_sqs_queue()
                     # pass the run_uuid so that the action is part of run group
                     send_sqs_messages(queue, run_env, [to_send], uuid=run_uuid)
-                    print('-RUN-> Automatically queued action: %s' % (to_send))
+                    print('-RUN-> Queued action: %s' % (to_send))
+        print('-RUN-> Finished: %s' % (run_name))
         delete_message_and_propogate(runner_input, receipt)
     else:
         print('-RUN-> Recovered: %s' % (run_name))
