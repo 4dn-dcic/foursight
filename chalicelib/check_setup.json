@@ -785,7 +785,7 @@
         "title": "Purge Download Tracking Items",
         "group": "Cleanup checks",
         "schedule": {
-            "ten_min_checks": {
+            "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
