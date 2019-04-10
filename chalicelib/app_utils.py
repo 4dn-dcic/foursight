@@ -716,27 +716,39 @@ def run_check_runner(runner_input):
         # if not a valid check str, remove the item from the SQS
         delete_message_and_propogate(runner_input, receipt)
         return
-    [run_env, run_uuid, check_name, check_kwargs, check_deps] = check_list
+    [run_env, run_uuid, run_name, run_kwargs, run_deps] = check_list
     # find information from s3 about completed checks in this run
-    # actual id stored in s3 has key: <run_uuid>/<check_name>
-    if check_deps and isinstance(check_deps, list):
+    # actual id stored in s3 has key: <run_uuid>/<run_name>
+    if run_deps and isinstance(run_deps, list):
         already_run = collect_run_info(run_uuid)
-        deps_w_uuid = ['/'.join([run_uuid, dep]) for dep in check_deps]
+        deps_w_uuid = ['/'.join([run_uuid, dep]) for dep in run_deps]
         finished_dependencies = set(deps_w_uuid).issubset(already_run)
         if not finished_dependencies:
-            print('-RUN-> Not ready for: %s' % (check_name))
+            print('-RUN-> Not ready for: %s' % (run_name))
     else:
         finished_dependencies = True
     connection = init_connection(run_env)
     if finished_dependencies:
         # add the run uuid as the uuid to kwargs so that checks will coordinate
-        if 'uuid' not in check_kwargs:
-            check_kwargs['uuid'] = run_uuid
-        check_kwargs['_run_info'] = {'run_id': run_uuid, 'receipt': receipt, 'sqs_url': sqs_url}
-        run_result = run_check_or_action(connection, check_name, check_kwargs)
+        if 'uuid' not in run_kwargs:
+            run_kwargs['uuid'] = run_uuid
+        run_kwargs['_run_info'] = {'run_id': run_uuid, 'receipt': receipt, 'sqs_url': sqs_url}
+        run_result = run_check_or_action(connection, run_name, run_kwargs)
+        is_check = type(run_result).__name__ == 'CheckResult'  # was the run a check
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
-        print('-RUN-> Finished: %s' % (check_name))
+        print('-RUN-> Finished: %s' % (run_name))
+        # if a check was run, invoke the associated action if kwargs['queue_action']
+        if is_check and run_result.kwargs['queue_action'] is True:
+            # must also have check.action and check.allow_action set
+            if run_result.allow_action and run_result.action:
+                action_str = get_action_strings(specific_action=run_result.action)
+                if action_str:
+                    action_kwargs = {'called_by': run_result.kwargs['uuid']}
+                    to_send = [action_str, action_kwargs, []]  # no dependencies
+                    queue = get_sqs_queue()
+                    # pass the run_uuid so that the action is part of run group
+                    send_sqs_messages(queue, run_env, [to_send], uuid=run_uuid)
         delete_message_and_propogate(runner_input, receipt)
     else:
-        print('-RUN-> Recovered: %s' % (check_name))
+        print('-RUN-> Recovered: %s' % (run_name))
         recover_message_and_propogate(runner_input, receipt)

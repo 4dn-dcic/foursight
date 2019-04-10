@@ -293,7 +293,7 @@ def parse_datetime_to_utc(time_str, manual_format=None):
 def convert_camel_to_snake(name):
     """
     Convert a given CamelCase string to snake_case
-    Credit: https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case 
+    Credit: https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -309,7 +309,7 @@ def invoke_check_runner(runner_input):
     """
     client = boto3.client('lambda')
     # InvocationType='Event' makes asynchronous
-    # try/except while async invokes are problematics
+    # try/except while async invokes are problematic
     try:
         response = client.invoke(
             FunctionName=get_stage_info()['runner_name'],
@@ -392,12 +392,22 @@ def collect_run_info(run_uuid):
     return set(complete)
 
 
-def send_sqs_messages(queue, environ, check_vals):
+def send_sqs_messages(queue, environ, check_vals, uuid=None):
     """
-    Send the messages to the queue. Check_vals are entries within a check_group
+    Send messages to SQS queue. Check_vals are entries within a check_group.
+    Optionally, provide a uuid that will be queued as the uuid for the run; if
+    not provided, datetime.utcnow is used
+
+    Args:
+        queue: boto3 sqs resource (from get_sqs_queue)
+        environ (str): foursight environment name
+        check_vals (list): list of formatted check vals, like those from
+            check_utils.get_check_schedule
+        uuid (str): optional string uuid
     """
     # uuid used as the MessageGroupId
-    uuid = datetime.utcnow().isoformat()
+    if not uuid:
+        uuid = datetime.utcnow().isoformat()
     # append environ and uuid as first elements to all check_vals
     proc_vals = [[environ, uuid] + val for val in check_vals]
     for val in proc_vals:

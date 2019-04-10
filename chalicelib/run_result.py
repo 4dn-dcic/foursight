@@ -292,11 +292,13 @@ class CheckResult(RunResult):
             self.status = 'ERROR'
             self.description = 'Malformed status; look at Foursight check definition.'
         # if there's a set uuid field, use that instead of curr utc time
-        # kwargs should **always** have uuid and some value of primary
+        # kwargs should ALWAYS have uuid, primary, and queue_action
         if 'uuid' not in self.kwargs:
             self.kwargs['uuid'] = datetime.datetime.utcnow().isoformat()
         if 'primary' not in self.kwargs:
             self.kwargs['primary'] = False
+        if 'queue_action' not in self.kwargs:
+            self.kwargs['queue_action'] = False
         # if this was triggered from the check_runner, store record of the run
         if '_run_info' in self.kwargs and 'run_id' in self.kwargs['_run_info']:
             self.record_run_info()

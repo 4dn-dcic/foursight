@@ -265,7 +265,7 @@ def get_grouped_check_results(connection):
 
 def run_check_or_action(connection, check_str, check_kwargs):
     """
-    Does validation of proviced check_str, it's module, and kwargs.
+    Does validation of provided check_str, it's module, and kwargs.
     Determines by decorator whether the method is a check or action, then runs
     it. All errors are taken care of within the running of the check/action.
 

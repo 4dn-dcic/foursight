@@ -656,13 +656,13 @@
         }
     },
     "process_download_tracking_items": {
-        "title": "Process download tracking items",
+        "title": "Process Download Tracking Items",
         "group": "System checks",
         "schedule": {
             "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
+                    "dependencies": ["purge_download_tracking_items"]
                 }
             }
         }
