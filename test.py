@@ -892,7 +892,7 @@ class TestCheckUtils(FSTest):
         # make sure runtime is in kwargs and pop it
         self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
         check_res.get('kwargs').pop('runtime_seconds')
-        self.assertTrue(check_res.get('kwargs') == {'primary': True, 'uuid': test_uuid})
+        self.assertTrue(check_res.get('kwargs') == {'primary': True, 'uuid': test_uuid, 'queue_action': False})
         primary_uuid = check_res.get('uuid')
         time.sleep(5)
         primary_res = check.get_primary_result()
@@ -904,7 +904,7 @@ class TestCheckUtils(FSTest):
         latest_uuid = check_res.get('uuid')
         self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
         check_res.get('kwargs').pop('runtime_seconds')
-        self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid})
+        self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid, 'queue_action': False})
         # latest res will be more recent than primary res now
         latest_res = check.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == latest_uuid)
@@ -1019,15 +1019,15 @@ class TestUtils(FSTest):
         self.assertTrue(isinstance(runtime, float))
         self.assertTrue('_run_info' not in kwargs_default)
         uuid = kwargs_default.get('uuid')
-        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid, 'primary': False})
+        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid, 'primary': False, 'queue_action': False})
         kwargs_add = self.test_function_dummy(bcd=234).get('kwargs')
         self.assertTrue('runtime_seconds' in kwargs_add)
         kwargs_add.pop('runtime_seconds')
-        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid, 'primary': False})
+        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid, 'primary': False, 'queue_action': False})
         kwargs_override = self.test_function_dummy(abc=234, primary=True).get('kwargs')
         self.assertTrue('runtime_seconds' in kwargs_override)
         kwargs_override.pop('runtime_seconds')
-        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid, 'primary': True})
+        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid, 'primary': True, 'queue_action': False})
 
     def test_handle_kwargs(self):
         default_kwargs = {'abc': 123, 'bcd': 234}
