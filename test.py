@@ -553,7 +553,6 @@ class TestCheckRunner(FSTest):
             if error_count > 300:  # test should fail
                 print('Could not find an empty foursight-test-queue.')
                 self.assertTrue(False)
-        import pdb; pdb.set_trace()
         # action should have check uuid as 'called_by' kwarg
         self.assertTrue(final_action_res['kwargs']['called_by'] == final_check_uuid)
         # action should have the same uuid and _run_info.run_id as check uuid,
