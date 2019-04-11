@@ -348,7 +348,7 @@ def dilution_hic_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    check = wfr_utils.check_hic(res[:2], my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit)
     return check
 
 
@@ -402,9 +402,14 @@ def dilution_hic_start(connection, **kwargs):
                 action.description = 'Did not complete action due to time limitations'
                 break
             patched_md += 1
-            wfr_utils.patch_complete_data_protocol_1(a_completed_info, my_auth)
-            log_message = a_run.keys()[0] + ' completed processing'
-            action_log['patched_meta'].append(log_message)
+            error = wfr_utils.patch_complete_data(a_completed_info, my_auth)
+            if not error:
+                log_message = a_run.keys()[0] + ' completed processing'
+                action_log['patched_meta'].append(log_message)
+            else:
+                log_message = a_run.keys()[0] + error
+                action_log['patched_meta'].append(log_message)
+
 
     # did we complete without running into time limit
     if not action.description:

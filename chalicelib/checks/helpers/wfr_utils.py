@@ -465,7 +465,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
         running = []
         # if all runs are complete, add the patch info for processed files and tag
         complete = {'patch_opf': [],
-                    'add_tag': ''}
+                    'add_tag': []}
         set_summary = ""
         set_acc = a_set['accession']
         part3 = 'ready'
@@ -604,16 +604,66 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
     return check
 
 
-def patch_complete_data_protocol_1(patch_data, auth):
-    """Protocol 1: move files to processed_files field, and match the status to exp/set."""
+def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
+    """If move to pc is set to true, if the exp_set or exp status is not released/to project
+    it will move the files to processed_files"""
+    titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
+              "repliseq": "Repli-Seq Pipeline - Preliminary Files",
+              'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
+              'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files"}
+    """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return 'no content in patch_opf, skipping'
+    if not patch_data.get('add_tag'):
+        return 'no tag info, skipping'
+
+    pc_set_title = titles[pipeline_type]
+
+    # # collect all items that we need from database
+    # set_acc = patch_data['add_tag'][0]
+    # fetch_items = [i[0] for i in patch_data['patch_opf']]
+    # if set_acc not in fetch_items:
+    #     fetch_items.append(set_acc)
+    #
+    # all_resp = ff_utils.get_es_metadata()
+
     for a_case in patch_data['patch_opf']:
-        host, files = a_case[0], a_case[1]
+        acc, list_pc = a_case[0], a_case[1]
+        resp = ff_utils.get_metadata(acc, auth)
+        # check if these items are in processed files field
+        ex_pc = resp.get('processed_files')
+        if ex_pc:
+            ex_pc_ids = [i['@id'] for i in ex_pc]
+            common = list(set(ex_pc_ids) & set(list_pc))
+            if common:
+                return 'some files ({}) are already in processed_files filed for {}'.format(common, acc)
+        # check if these items are in other processed files field
+        ex_opc = resp.get('other_processed_files')
+        if ex_opc:
+            # make sure the title is not already There
+            all_existing_titles = [a['title'] for a in ex_opc]
+            if pc_set_title in all_existing_titles:
+                return 'opc using same title already exists for {}'.format(acc)
+            ex_opc_ids = [i['@id'] for a in ex_opc for i in a['files']]
+            common = list(set(ex_opc_ids) & set(list_pc))
+            if common:
+                return 'some files ({}) are already in other_processed_files filed for {}'.format(common, acc)
+
+        # if move_to_pc is true, add them to processed_files
 
 
+        # we need raw to get the existing piece, to patch back with the new ones
+        if ex_opc:
+            patch_val = ff_utils.get_metadata(acc, key=auth, add_on='frame=raw').get('other_processed_files')
+        else:
+            patch_val = []
 
-    return
+        new_data = {'title': pc_set_title,
+                    'type': 'preliminary',
+                    'files': list_pc}
+        patch_val.append(new_data)
+        patch_body = {'other_processed_files': patch_val}
+        ff_utils.patch_metadata(patch_body, obj_id=acc, key=auth)
 
 
 def start_missing_run(run_info, auth, env):
