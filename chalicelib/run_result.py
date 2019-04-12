@@ -334,19 +334,6 @@ class ActionResult(RunResult):
         }
 
 
-    def record_action_run(self, uuid):
-        """
-        Record the run of the action by writing an s3 object in the check
-        directory that called it. Leverage 'check_name' and 'called_by' kwargs
-        to do this; the value of the item is the text path of formatted result
-        of the action
-        """
-        rec_key = '/'.join([self.kwargs['check_name'], 'action_records', self.kwargs['called_by']])
-        rec_body = ''.join([self.name, '/', uuid, self.extension])
-        resp = self.s3_connection.put_object(rec_key, rec_body)
-        return resp is not None
-
-
     def store_result(self):
         # normalize status, probably not the optimal place to do this
         if self.status.upper() not in ['DONE', 'FAIL', 'PEND']:
@@ -364,14 +351,8 @@ class ActionResult(RunResult):
             return formatted
         # action results are always stored as 'primary' and 'latest' and can be
         # fetched with the get_latest_result method.
-        formatted = self.store_formatted_result(self.kwargs['uuid'], formatted, True)
-        # store the record that the action was run
-        stored_record = self.record_action_run(self.kwargs['uuid'])
-        # inform cloudwatch if the record failed
-        if not stored_record:
-            print('-ACTION-> storing record failed for %s' %
-                  ''.join([self.name, '/', uuid, self.extension]))
-        return formatted
+        return self.store_formatted_result(self.kwargs['uuid'], formatted, True)
+
 
 
 ### Utility functions for check_result

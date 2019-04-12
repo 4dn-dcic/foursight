@@ -427,6 +427,8 @@ def process_view_result(connection, res, is_admin):
         res['admin_output'] = trim_output(res['admin_output'])
     else:
         res['admin_output'] = None
+
+    ### ACTION LOGIC ###
     # if this check has already run an action, display that. Otherwise, allow
     # action to be run.
     # For now also get the latest result for the checks action
@@ -443,12 +445,16 @@ def process_view_result(connection, res, is_admin):
                 except AttributeError:
                     pass
                 assc_action = connection.s3_connection.get_object(assc_action_key)
-                if assc_action:
+                # If assc_action_key is written but assc_action is None, then
+                # it most likely means the action is still running
+                if assc_action is not None:
                     # json.loads followed by json.dumps handles binary storage in s3
                     res['assc_action'] = json.dumps(json.loads(assc_action), indent=4)
-                    # don't allow the action to be run again from this check
-                    del res['action']
-                    res['allow_action'] = False
+                else:
+                    res['assc_action'] = 'Associated action is processing.'
+                # don't allow the action to be run again from this check
+                del res['action']
+                res['allow_action'] = False
             latest_action = action.get_latest_result()
             if latest_action:
                 res['latest_action'] = json.dumps(latest_action, indent=4)
@@ -873,6 +879,22 @@ def run_check_runner(runner_input):
         if 'uuid' not in run_kwargs:
             run_kwargs['uuid'] = run_uuid
         run_kwargs['_run_info'] = {'run_id': run_uuid, 'receipt': receipt, 'sqs_url': sqs_url}
+        # if this is an action, ensure we have not already written an action record
+        if 'check_name' in run_kwargs and 'called_by' in run_kwargs:
+            rec_key = '/'.join([run_kwargs['check_name'], 'action_records', run_kwargs['called_by']])
+            found_rec = connection.s3_connection.get_object(rec_key)
+            if found_rec is not None:
+                # the action record has been written. Abort and propogate
+                print('-RUN-> Found existing action record: %s. Skipping' % rec_key)
+                delete_message_and_propogate(runner_input, receipt)
+                return
+            else:
+                # make a action record before running the action
+                # action name is the second part of run_name
+                act_name = run_name.split('/')[-1]
+                rec_body = ''.join([act_name, '/', run_uuid, '.json'])
+                connection.s3_connection.put_object(rec_key, rec_body)
+                print('-RUN-> Wrote action record: %s' % rec_key)
         run_result = run_check_or_action(connection, run_name, run_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
         # invoke the associated action if kwargs['queue_action']
