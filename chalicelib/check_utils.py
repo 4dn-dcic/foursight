@@ -176,8 +176,9 @@ def get_schedule_names():
 def get_check_title_from_setup(check_name):
     """
     Return a title of a check from CHECK_SETUP
+    If not found, just return check_name
     """
-    return CHECK_SETUP.get(check_name, {}).get("title", "No title")
+    return CHECK_SETUP.get(check_name, {}).get("title", check_name)
 
 
 def get_check_schedule(schedule_name):

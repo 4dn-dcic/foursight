@@ -115,7 +115,7 @@ class RunResult(object):
         """
         all_results = []
         s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix)
+        relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix, records_only=True)
         for n in range(len(relevant_checks)):
             check = relevant_checks[n]
             if check.startswith(s3_prefix) and check.endswith(self.extension):
@@ -139,7 +139,6 @@ class RunResult(object):
         record_key = '/'.join([run_id, self.name])
         resp = s3_connection.put_object(record_key, json.dumps(self.status))
         return resp is not None
-
 
 
     def get_result_history(self, start, limit, after_date=None):
@@ -335,6 +334,19 @@ class ActionResult(RunResult):
         }
 
 
+    def record_action_run(self, uuid):
+        """
+        Record the run of the action by writing an s3 object in the check
+        directory that called it. Leverage 'check_name' and 'called_by' kwargs
+        to do this; the value of the item is the text path of formatted result
+        of the action
+        """
+        rec_key = '/'.join([self.kwargs['check_name'], 'action_records', self.kwargs['called_by']])
+        rec_body = ''.join([self.name, '/', uuid, self.extension])
+        resp = self.s3_connection.put_object(rec_key, rec_body)
+        return resp is not None
+
+
     def store_result(self):
         # normalize status, probably not the optimal place to do this
         if self.status.upper() not in ['DONE', 'FAIL', 'PEND']:
@@ -352,8 +364,14 @@ class ActionResult(RunResult):
             return formatted
         # action results are always stored as 'primary' and 'latest' and can be
         # fetched with the get_latest_result method.
-        return self.store_formatted_result(self.kwargs['uuid'], formatted, True)
-
+        formatted = self.store_formatted_result(self.kwargs['uuid'], formatted, True)
+        # store the record that the action was run
+        stored_record = self.record_action_run(self.kwargs['uuid'])
+        # inform cloudwatch if the record failed
+        if not stored_record:
+            print('-ACTION-> storing record failed for %s' %
+                  ''.join([self.name, '/', uuid, self.extension]))
+        return formatted
 
 
 ### Utility functions for check_result

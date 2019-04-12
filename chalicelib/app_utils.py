@@ -390,7 +390,14 @@ def get_load_time():
 def process_view_result(connection, res, is_admin):
     """
     Do some processing on the content of one check result (res arg, a dict)
-    Processes timestamp string, trims output fields, and adds action info
+    Processes timestamp string, trims output fields, and adds action info.
+
+    For action info, if the check has an action, try to find the associated
+    action by looking for '<check name>/action_records<check uuid>' object in
+    s3. The contents will be the path to the action. If found, display as
+    the "associated action" and disabled further runs of the action from the
+    check. Otherwise, allow runs of the action. For now, always show latest
+    action as well.
     """
     # first check to see if res is just a string, meaning
     # the check didn't execute properly
@@ -420,10 +427,28 @@ def process_view_result(connection, res, is_admin):
         res['admin_output'] = trim_output(res['admin_output'])
     else:
         res['admin_output'] = None
-    # get the latest result for the checks action, if present
+    # if this check has already run an action, display that. Otherwise, allow
+    # action to be run.
+    # For now also get the latest result for the checks action
+    # TODO: replace latest_action with action history
     if res.get('action'):
         action = init_action_res(connection, res.get('action'))
         if action:
+            action_record_key = '/'.join([res['name'], 'action_records', res['uuid']])
+            assc_action_key = connection.s3_connection.get_object(action_record_key)
+            if assc_action_key:
+                # data is probably bytes
+                try:
+                    assc_action_key = assc_action_key.decode()
+                except AttributeError:
+                    pass
+                assc_action = connection.s3_connection.get_object(assc_action_key)
+                if assc_action:
+                    # json.loads followed by json.dumps handles binary storage in s3
+                    res['assc_action'] = json.dumps(json.loads(assc_action), indent=4)
+                    # don't allow the action to be run again from this check
+                    del res['action']
+                    res['allow_action'] = False
             latest_action = action.get_latest_result()
             if latest_action:
                 res['latest_action'] = json.dumps(latest_action, indent=4)
@@ -767,7 +792,7 @@ def queue_action(environ, action, params={}, deps=[], uuid=None):
 def send_single_to_queue(environ, to_send, uuid):
     """
     Send a single formatted check/action to SQS for given environ. Pass
-    the given uuid to send_sqs_messages
+    the given uuid to send_sqs_messages. Invoke a single check runner lambda
 
     Args:
         environ (str): Foursight environment name
@@ -778,7 +803,10 @@ def send_single_to_queue(environ, to_send, uuid):
         str: uuid of the queued run (from send_single_to_queue)
     """
     queue = get_sqs_queue()
-    return send_sqs_messages(queue, environ, [to_send], uuid=uuid)
+    queued_uuid = send_sqs_messages(queue, environ, [to_send], uuid=uuid)
+    # kick off a single check runner lambda
+    invoke_check_runner({'sqs_url': queue.url})
+    return queued_uuid
 
 
 def run_check_runner(runner_input):

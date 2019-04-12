@@ -51,6 +51,9 @@
                     {% if check.get('admin_output') and is_admin %}
                         {{toggle_output(check['admin_output'], environment + '-' + check['name'] + '-admin', 'Toggle admin output')}}
                     {% endif %}
+                    {% if check.get('assc_action') %}
+                        {{toggle_output(check['assc_action'], environment + '-' + check['name'] + '-assc-action', 'Toggle associated action')}}
+                    {% endif %}
                     {% if check.get('latest_action') %}
                         {{toggle_output(check['latest_action'], environment + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
                     {% endif %}
