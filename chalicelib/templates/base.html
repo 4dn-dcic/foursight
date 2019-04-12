@@ -56,6 +56,7 @@
                     {% endif %}
                     {% if check.get('action') and is_admin %}
                         <form class="commonstyle own-line" action={{"/api/view_run/" + environment + '/' + check['action'] + '/action'}} method="GET">
+                            <input type="hidden" name="check_name" value={{check['name']}} />
                             <input type="hidden" name="called_by" value={{check['kwargs']['uuid']}} />
                             {% if not check.get('allow_action') %}
                                 <button id={{"action-" + check['name'] + "-" + check['kwargs']['uuid']}} class="btn btn-warning btn-sm" disabled>
@@ -88,7 +89,7 @@
                             {% endfor %}
                             {% if is_admin %}
                                 <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit">
-                                    Run check
+                                    Queue check
                                 </button>
                             {% endif %}
                         </form>
@@ -251,10 +252,10 @@
         {% if running_checks != '0' or queued_checks != '0' %}
             <div class='center-element'>
                 <span style='margin-right:10px; color:#777'>
-                    {{'Running checks: ' + running_checks}}
+                    {{'Running: ' + running_checks}}
                 </span>
                 <span style='color:#777'>
-                    {{'Queued checks: ' + queued_checks}}
+                    {{'Queued: ' + queued_checks}}
                 </span>
             </div>
         {% endif %}

@@ -167,8 +167,8 @@ def action_function(*default_args, **default_kwargs):
             signal.signal(signal.SIGALRM, partial(timeout_handler, partials))
             signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
             try:
-                if 'called_by' not in kwargs:
-                    raise BadCheckOrAction('Action is missing called_by in its kwargs.')
+                if 'check_name' not in kwargs or 'called_by' not in kwargs:
+                    raise BadCheckOrAction('Action is missing check_name/called_by in its kwargs.')
                 action = func(*args, **kwargs)
                 validate_run_result(action, is_check=False)
             except Exception as e:
@@ -404,6 +404,9 @@ def send_sqs_messages(queue, environ, check_vals, uuid=None):
         check_vals (list): list of formatted check vals, like those from
             check_utils.get_check_schedule
         uuid (str): optional string uuid
+
+    Returns:
+        str: uuid of queued messages
     """
     # uuid used as the MessageGroupId
     if not uuid:
@@ -412,6 +415,7 @@ def send_sqs_messages(queue, environ, check_vals, uuid=None):
     proc_vals = [[environ, uuid] + val for val in check_vals]
     for val in proc_vals:
         response = queue.send_message(MessageBody=json.dumps(val))
+    return uuid
 
 
 def get_sqs_attributes(sqs_url):
