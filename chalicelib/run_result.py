@@ -166,13 +166,12 @@ class RunResult(object):
         for n in range(len(all_keys)):
             s3_res = self.get_s3_object(all_keys[n])
             # order: status <str>, summary <str>, kwargs <dict>, is check? (boolean)
-            # it's a check if it has 'full_output' and 'brief_output'
             # handle records that might be malformed
             res_val = [
                 s3_res.get('status', 'Not found'),
                 s3_res.get('summary', None),
                 s3_res.get('kwargs', {}),
-                'full_output' in s3_res and 'brief_output' in s3_res
+                s3_res.get('type') == 'check' or 'full_output' in s3_res
             ]
             # kwargs to remove from the history results. these will not be displayed
             for remove_key in ['_run_info']:
@@ -281,7 +280,8 @@ class CheckResult(RunResult):
             'action': self.action,
             'allow_action': self.allow_action,
             'action_message': self.action_message,
-            'kwargs': self.kwargs
+            'kwargs': self.kwargs,
+            'type': 'check'
         }
 
 
@@ -330,7 +330,8 @@ class ActionResult(RunResult):
             'status': self.status.upper(),
             'uuid': uuid,
             'output': self.output,
-            'kwargs': self.kwargs
+            'kwargs': self.kwargs,
+            'type': 'action'
         }
 
 

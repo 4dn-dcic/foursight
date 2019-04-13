@@ -897,9 +897,8 @@ def run_check_runner(runner_input):
                 print('-RUN-> Wrote action record: %s' % rec_key)
         run_result = run_check_or_action(connection, run_name, run_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
-        # invoke the associated action if kwargs['queue_action']
-        # ensure that it's a check by checking for 'full_output' key
-        if 'full_output' in run_result and run_result['kwargs']['queue_action'] is True:
+        # invoke action if running a check and it has kwargs['queue_action']
+        if run_result['type'] == 'check' and run_result['kwargs']['queue_action'] is True:
             # must also have check.action and check.allow_action set
             if run_result['allow_action'] and run_result['action']:
                 action_params = {'check_name': run_result['name'],
