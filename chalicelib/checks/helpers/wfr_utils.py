@@ -649,7 +649,6 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
         # set it back to finalize_user_pending_labs
         if source_status in ['released', 'released to project']:
             move_to_pc = False
-
         # if move_to_pc is true, add them to processed_files
         if move_to_pc:
             # at this step we expect processed_files field to be empty
@@ -693,7 +692,7 @@ def start_missing_run(run_info, auth, env):
     return url
 
 
-def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start):
+def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False):
     started_runs = 0
     patched_md = 0
     action.description = ""
@@ -705,7 +704,7 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start):
             print((now-start).seconds)
 
             if (now-start).seconds > lambda_limit:
-                action.description = 'Did not complete action due to time limitations'
+                action.description = 'Did not complete action due to time limitations.'
                 break
             acc = list(a_case.keys())[0]
             for a_run in a_case[acc]:
@@ -721,23 +720,22 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start):
         for a_completed_info in patch_meta:
             now = datetime.utcnow()
             if (now-start).seconds > lambda_limit:
-                action.description = 'Did not complete action due to time limitations'
+                action.description = 'Did not complete action due to time limitations.'
                 break
             patched_md += 1
-            error = patch_complete_data(a_completed_info, my_auth)
+            error = patch_complete_data(a_completed_info, my_auth, move_to_pc=move_to_pc)
             if not error:
                 log_message = a_run.keys()[0] + ' completed processing'
                 action_log['patched_meta'].append(log_message)
             else:
                 log_message = a_run.keys()[0] + error
-                action_log['patched_meta'].append(log_message)
+                action_log['failed_meta'].append(log_message)
 
     # did we complete without running into time limit
-    if not action.description:
-        if missing_runs:
-            action.description += 'started runs | '
-        if patch_meta:
-            action.description += 'completed patches |'
+    for k in action_log:
+        if action_log[k]:
+            add_desc = "| {}: {} ".format(k, str(len(action_log[k])))
+            action.description += add_desc
 
     action.output = action_log
     action.status = 'DONE'

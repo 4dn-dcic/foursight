@@ -335,7 +335,7 @@ def dilution_hic_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
 
-    action = wfr_utils.tart_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -386,5 +386,5 @@ def in_situ_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.tart_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
