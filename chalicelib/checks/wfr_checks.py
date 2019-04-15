@@ -340,7 +340,6 @@ def dilution_hic_status(connection, **kwargs):
     tag = wfr_utils.accepted_versions[exp_type][-1]
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
-
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     print(len(res))
@@ -368,9 +367,9 @@ def dilution_hic_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
 
+    process_hic_tasks(missing_runs, patch_data, action, my_auth)
     started_runs = 0
     patched_md = 0
-
     action.description = ""
     action_log = {}
     if missing_runs:
@@ -378,9 +377,7 @@ def dilution_hic_start(connection, **kwargs):
         action_log['failed_runs'] = []
         for a_case in missing_runs:
             now = datetime.utcnow()
-
             print((now-start).seconds)
-
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations'
                 break
@@ -393,7 +390,6 @@ def dilution_hic_start(connection, **kwargs):
                     action_log['started_runs'].append([log_message, url])
                 else:
                     action_log['failed_runs'].append([log_message, url])
-
     if patch_meta:
         action_log['patched_meta'] = []
         for a_completed_info in patch_meta:

@@ -616,17 +616,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
         return 'no content in patch_opf, skipping'
     if not patch_data.get('add_tag'):
         return 'no tag info, skipping'
-
     pc_set_title = titles[pipeline_type]
-
-    # # collect all items that we need from database
-    # set_acc = patch_data['add_tag'][0]
-    # fetch_items = [i[0] for i in patch_data['patch_opf']]
-    # if set_acc not in fetch_items:
-    #     fetch_items.append(set_acc)
-    #
-    # all_resp = ff_utils.get_es_metadata()
-
     for a_case in patch_data['patch_opf']:
         # exp/set acc, and list of files to add
         acc, list_pc = a_case[0], a_case[1]
@@ -649,34 +639,35 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             common = list(set(ex_opc_ids) & set(list_pc))
             if common:
                 return 'some files ({}) are already in other_processed_files filed for {}'.format(common, acc)
-
         source_status = resp['status']
-        # if move_to_pc is set to true, but the source status is released/to project, set it back to finalize_user_pending_labs
+        # if move_to_pc is set to true, but the source status is released/to project
+        # set it back to finalize_user_pending_labs
         if source_status in ['released', 'released to project']:
             move_to_pc = False
+
         # if move_to_pc is true, add them to processed_files
         if move_to_pc:
             # at this step we expect processed_files field to be empty
-            # if the same files were in this field already, we should have caught that earlier in the scirpt
-            # when we compared the existing values to the list we want to patch
-            # if there are a
             if ex_pc_ids:
-                patch_val.
-
-
-
-        # we need raw to get the existing piece, to patch back with the new ones
-        if ex_opc:
-            patch_val = ff_utils.get_metadata(acc, key=auth, add_on='frame=raw').get('other_processed_files')
+                return 'expected processed_files to be empty: {}'.format(acc)
+            # patch the processed files field
+            ff_utils.patch_metadata({'processed_files': list_pc}, obj_id=acc, key=auth)
+            return
+        # if not move_to_pc, add files to opf with proper title
         else:
-            patch_val = []
+            # we need raw to get the existing piece, to patch back with the new ones
+            if ex_opc:
+                patch_val = ff_utils.get_metadata(acc, key=auth, add_on='frame=raw').get('other_processed_files', [])
+            else:
+                patch_val = []
 
-        new_data = {'title': pc_set_title,
-                    'type': 'preliminary',
-                    'files': list_pc}
-        patch_val.append(new_data)
-        patch_body = {'other_processed_files': patch_val}
-        ff_utils.patch_metadata(patch_body, obj_id=acc, key=auth)
+            new_data = {'title': pc_set_title,
+                        'type': 'preliminary',
+                        'files': list_pc}
+            patch_val.append(new_data)
+            patch_body = {'other_processed_files': patch_val}
+            ff_utils.patch_metadata(patch_body, obj_id=acc, key=auth)
+            return
 
 
 def start_missing_run(run_info, auth, env):
