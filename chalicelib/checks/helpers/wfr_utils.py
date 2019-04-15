@@ -323,9 +323,12 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
-    e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
-    url = json.loads(e['input'])['_tibanna']['url']
-    return url
+    try:
+        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
+        url = json.loads(e['input'])['_tibanna']['url']
+        return url
+    except Exception as e:
+        return str(e)
 
 
 def build_exp_type_query(exp_type, kwargs):
@@ -686,11 +689,8 @@ def start_missing_run(run_info, auth, env):
             break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
-    try:
-        url = run_missing_wfr(settings, inputs, name_tag, auth, env)
-        return url
-    except Exception as e:
-        return e
+    url = run_missing_wfr(settings, inputs, name_tag, auth, env)
+    return url
 
 
 def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start):
