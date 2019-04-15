@@ -831,7 +831,7 @@ def finalize_user_pending_labs(connection, **kwargs):
     action = init_action_res(connection, 'finalize_user_pending_labs')
     pending_users_check = init_check_res(connection, 'users_with_pending_lab')
     check_res = pending_users_check.get_result_by_uuid(kwargs['called_by'])
-    action.output = {'patch_failure': [], 'patch_success': []}
+    action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
         patch_data = {'lab': user['pending_lab']}
         # patch lab and delete pending_lab in one request
