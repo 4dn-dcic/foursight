@@ -1,8 +1,8 @@
-from dcicutils import ff_utils
-from dcicutils import s3Utils
+
+import json
+from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
-import json
 from . import wfrset_utils
 
 # check at the end
@@ -628,9 +628,10 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     # all_resp = ff_utils.get_es_metadata()
 
     for a_case in patch_data['patch_opf']:
+        # exp/set acc, and list of files to add
         acc, list_pc = a_case[0], a_case[1]
         resp = ff_utils.get_metadata(acc, auth)
-        # check if these items are in processed files field
+        # check if these items are in existing processed files field
         ex_pc = resp.get('processed_files')
         if ex_pc:
             ex_pc_ids = [i['@id'] for i in ex_pc]
@@ -649,7 +650,19 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             if common:
                 return 'some files ({}) are already in other_processed_files filed for {}'.format(common, acc)
 
+        source_status = resp['status']
+        # if move_to_pc is set to true, but the source status is released/to project, set it back to finalize_user_pending_labs
+        if source_status in ['released', 'released to project']:
+            move_to_pc = False
         # if move_to_pc is true, add them to processed_files
+        if move_to_pc:
+            # at this step we expect processed_files field to be empty
+            # if the same files were in this field already, we should have caught that earlier in the scirpt
+            # when we compared the existing values to the list we want to patch
+            # if there are a
+            if ex_pc_ids:
+                patch_val.
+
 
 
         # we need raw to get the existing piece, to patch back with the new ones
