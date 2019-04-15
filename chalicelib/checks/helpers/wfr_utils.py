@@ -1,9 +1,11 @@
-
 import json
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
 from . import wfrset_utils
+
+lambda_limit = 3000
+
 
 # check at the end
 # check extract_file_info has 4 arguments
@@ -689,3 +691,54 @@ def start_missing_run(run_info, auth, env):
         return url
     except Exception as e:
         return e
+
+
+def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start):
+    started_runs = 0
+    patched_md = 0
+    action.description = ""
+    action_log = {'started_runs': [], 'failed_runs': [], 'patched_meta': [], 'failed_meta': []}
+    if missing_runs:
+        for a_case in missing_runs:
+            now = datetime.utcnow()
+
+            print((now-start).seconds)
+
+            if (now-start).seconds > lambda_limit:
+                action.description = 'Did not complete action due to time limitations'
+                break
+            acc = list(a_case.keys())[0]
+            for a_run in a_case[acc]:
+                started_runs += 1
+                url = start_missing_run(a_run, my_auth, my_env)
+                log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
+                if url.startswith('http'):
+                    action_log['started_runs'].append([log_message, url])
+                else:
+                    action_log['failed_runs'].append([log_message, url])
+    if patch_meta:
+        action_log['patched_meta'] = []
+        for a_completed_info in patch_meta:
+            now = datetime.utcnow()
+            if (now-start).seconds > lambda_limit:
+                action.description = 'Did not complete action due to time limitations'
+                break
+            patched_md += 1
+            error = patch_complete_data(a_completed_info, my_auth)
+            if not error:
+                log_message = a_run.keys()[0] + ' completed processing'
+                action_log['patched_meta'].append(log_message)
+            else:
+                log_message = a_run.keys()[0] + error
+                action_log['patched_meta'].append(log_message)
+
+    # did we complete without running into time limit
+    if not action.description:
+        if missing_runs:
+            action.description += 'started runs | '
+        if patch_meta:
+            action.description += 'completed patches |'
+
+    action.output = action_log
+    action.status = 'DONE'
+    return action

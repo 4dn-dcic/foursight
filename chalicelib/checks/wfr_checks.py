@@ -7,22 +7,10 @@ from ..utils import (
 )
 from dcicutils import ff_utils
 from dcicutils import s3Utils
-
 from .helpers import wfr_utils
 from .helpers import wfrset_utils
 
-# import requests
-# import sys
-# import json
-# import time
-# import boto3
-
-
-# TODO: Collect required items and do a combined get request (or get_es_metadata)
-# TODO:
-# TODO:
-
-lambda_limit = 3000  # 300 - 30 sec
+lambda_limit = wfr_utils.lambda_limit
 
 
 @check_function()
@@ -55,7 +43,6 @@ def md5run_status(connection, **kwargs):
     -all files that have a status<= uploaded, went through md5run
     -all files status uploading/upload failed, and no s3 file are pending, and skipped by this check.
     if you change status manually, it might fail to show up in this checkself.
-
     Keyword arguments:
     file_type -- limit search to a file type, i.e. FileFastq (default=File)
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
@@ -65,12 +52,10 @@ def md5run_status(connection, **kwargs):
     start = datetime.utcnow()
     check = init_check_res(connection, 'md5run_status')
     my_auth = connection.ff_keys
-
     check.action = "md5run_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-
     # Build the query
     query = '/search/?status=uploading&status=upload failed'
     # add file type
@@ -84,23 +69,19 @@ def md5run_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
-
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-
     # if there are files, make sure they are not on s3
     no_s3_file = []
     running = []
     missing_md5 = []
     not_switched_status = []
-
     my_s3_util = s3Utils(env=connection.ff_env)
     raw_bucket = my_s3_util.raw_file_bucket
     out_bucket = my_s3_util.outfile_bucket
-
     for a_file in res:
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
@@ -134,13 +115,11 @@ def md5run_status(connection, **kwargs):
         msg = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
         check.brief_output.append(msg)
         check.full_output['files_pending_upload'] = no_s3_file
-
     if running:
         check.summary = 'Some files are running md5run'
         msg = str(len(running)) + ' files are still running md5run.'
         check.brief_output.append(msg)
         check.full_output['files_running_md5'] = running
-
     if missing_md5:
         check.allow_action = True
         check.summary = 'Some files are missing md5 runs'
@@ -148,7 +127,6 @@ def md5run_status(connection, **kwargs):
         check.brief_output.append(msg)
         check.full_output['files_without_md5run'] = missing_md5
         check.status = 'WARN'
-
     if not_switched_status:
         check.allow_action = True
         check.summary += ' Some files are have wrong status with a successful run'
@@ -200,7 +178,6 @@ def md5run_start(connection, **kwargs):
 @check_function(lab_title=None, start_date=None)
 def fastqc_status(connection, **kwargs):
     """Searches for fastq files that don't have fastqc
-
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
@@ -209,12 +186,10 @@ def fastqc_status(connection, **kwargs):
     start = datetime.utcnow()
     check = init_check_res(connection, 'fastqc_status')
     my_auth = connection.ff_keys
-
     check.action = "fastqc_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
@@ -226,19 +201,16 @@ def fastqc_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
-
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-
     # missing run
     missing_fastqc = []
     # if there is a successful run but no qc
     missing_qc = []
     running = []
-
     for a_fastq in res:
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
@@ -258,26 +230,22 @@ def fastqc_status(connection, **kwargs):
         if report['status'] == 'complete':
             missing_qc.append(file_id)
             continue
-
     if running:
         check.summary = 'Some files are running'
         check.brief_output.append(str(len(running)) + ' files are still running.')
         check.full_output['files_running_fastqc'] = running
-
     if missing_fastqc:
         check.allow_action = True
         check.summary = 'Some files are missing fastqc runs'
         check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
         check.full_output['files_without_fastqc'] = missing_fastqc
         check.status = 'WARN'
-
     if missing_qc:
         check.allow_action = True
         check.summary = 'Some files are missing fastqc runs'
         check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
         check.full_output['files_without_qc'] = missing_qc
         check.status = 'WARN'
-
     check.summary = check.summary.strip()
     if not check.brief_output:
         check.brief_output = ['All Good!']
@@ -367,62 +335,13 @@ def dilution_hic_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
 
-    process_hic_tasks(missing_runs, patch_data, action, my_auth)
-    started_runs = 0
-    patched_md = 0
-    action.description = ""
-    action_log = {}
-    if missing_runs:
-        action_log['started_runs'] = []
-        action_log['failed_runs'] = []
-        for a_case in missing_runs:
-            now = datetime.utcnow()
-            print((now-start).seconds)
-            if (now-start).seconds > lambda_limit:
-                action.description = 'Did not complete action due to time limitations'
-                break
-            acc = list(a_case.keys())[0]
-            for a_run in a_case[acc]:
-                started_runs += 1
-                url = wfr_utils.start_missing_run(a_run, my_auth, my_env)
-                log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
-                if url.startswith('http'):
-                    action_log['started_runs'].append([log_message, url])
-                else:
-                    action_log['failed_runs'].append([log_message, url])
-    if patch_meta:
-        action_log['patched_meta'] = []
-        for a_completed_info in patch_meta:
-            now = datetime.utcnow()
-            if (now-start).seconds > lambda_limit:
-                action.description = 'Did not complete action due to time limitations'
-                break
-            patched_md += 1
-            error = wfr_utils.patch_complete_data(a_completed_info, my_auth)
-            if not error:
-                log_message = a_run.keys()[0] + ' completed processing'
-                action_log['patched_meta'].append(log_message)
-            else:
-                log_message = a_run.keys()[0] + error
-                action_log['patched_meta'].append(log_message)
-
-
-    # did we complete without running into time limit
-    if not action.description:
-        if missing_runs:
-            action.description += 'started runs | '
-        if patch_meta:
-            action.description += 'completed patches |'
-
-    action.output = action_log
-    action.status = 'DONE'
+    action = wfr_utils.tart_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
 
 
 @check_function(lab_title=None, start_date=None)
 def in_situ_hic_status(connection, **kwargs):
     """Searches for fastq files that don't have fastqc
-
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
@@ -448,7 +367,6 @@ def in_situ_hic_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-
     check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit)
     return check
 
@@ -468,45 +386,5 @@ def in_situ_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-
-    started_runs = 0
-    patched_md = 0
-
-    action.description = ""
-    action_log = {}
-    if missing_runs:
-        action_log['started_runs'] = []
-        for a_case in missing_runs:
-            now = datetime.utcnow()
-            if (now-start).seconds > lambda_limit:
-                action.description = 'Did not complete action due to time limitations'
-                break
-            acc = list(a_case.keys())[0]
-            for a_run in a_case[acc]:
-                started_runs += 1
-                url = wfr_utils.start_missing_run(a_run, my_auth, my_env)
-                log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
-                action_log['started_runs'].append([log_message, url])
-
-    if patch_meta:
-        action_log['patched_meta'] = []
-        for a_completed_info in patch_meta:
-            now = datetime.utcnow()
-            if (now-start).seconds > lambda_limit:
-                action.description = 'Did not complete action due to time limitations'
-                break
-            patched_md += 1
-            wfr_utils.patch_complete_data(a_completed_info, my_auth)
-            log_message = a_run.keys()[0] + ' completed processing'
-            action_log['patched_meta'].append(log_message)
-
-    # did we complete without running into time limit
-    if not action.description:
-        if missing_runs:
-            action.description += 'started runs |'
-        if patch_meta:
-            action.description += 'completed patches |'
-
-    action.output = action_log
-    action.status = 'DONE'
+    action = wfr_utils.tart_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
