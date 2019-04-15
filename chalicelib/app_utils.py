@@ -258,12 +258,20 @@ def view_run_action(environ, action, params):
     params = query_params_to_literals(params)
     queued_uuid = queue_action(environ, action, params)
     # redirect to calling check view page with a 302 so it isn't cached
-    # if we can't, redirect to the action JSON view page
     if 'check_name' in params and 'called_by' in params:
         check_detail = '/'.join([params['check_name'], params['called_by']])
         resp_headers = {'Location': '/'.join(['/api/view', environ, check_detail])}
     else:
-        resp_headers = {'Location': '/'.join(['/api/checks', environ, action, queued_uuid])}
+        # no check so cannot redirect
+        act_path = '/'.join(['/api/checks', action, queued_uuid])
+        return Response(
+            body = {
+                'status': 'success',
+                'details': 'Action is queued. When finished, view at: %s' % act_path,
+                'environment': environ
+            },
+            status_code = 200
+        )
     return Response(
         status_code=302,
         body=json.dumps(resp_headers),
@@ -451,7 +459,7 @@ def process_view_result(connection, res, is_admin):
                     # json.loads followed by json.dumps handles binary storage in s3
                     res['assc_action'] = json.dumps(json.loads(assc_action), indent=4)
                 else:
-                    res['assc_action'] = 'Associated action is processing.'
+                    res['assc_action'] = 'Associated action has not finished.'
                 # don't allow the action to be run again from this check
                 del res['action']
                 res['allow_action'] = False

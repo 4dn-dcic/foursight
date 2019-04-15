@@ -77,6 +77,7 @@ class TestFSConnection(FSTest):
         self.assertTrue(formatted_res.get('status') == 'IGNORE')
         self.assertTrue(formatted_res.get('summary') == 'Unittest check')
         self.assertTrue(formatted_res.get('description') == 'Unittest check')
+        self.assertTrue(formatted_res.get('type') == 'check')
         # set a bad status on purpose
         test_check.status = "BAD_STATUS"
         check_res = test_check.store_result()
@@ -139,16 +140,21 @@ class TestAppRoutes(FSTest):
         self.assertTrue('<!DOCTYPE html>' in res.body)
         self.assertTrue('Foursight' in res.body)
         self.assertTrue('Not logged in as admin' in res.body)
-        # run with a check
+        # run a check, which redirects to future check result
         res2 = app_utils.view_run_check(self.environ, 'indexing_progress', {})
         self.assertTrue(res2.status_code == 302)
         self.assertTrue('/api/view/' + self.environ + '/indexing_progress/' in res2.body)
-        # running with an check brings you to that check
-        # run with an action
-        res3 = app_utils.view_run_action(self.environ, 'add_random_test_nums', {})
+        # get check uuid from res location
+        chk_uuid = res2.headers['Location'].split('/')[-1]
+        # running action w/ an check brings you to the action bound to a check
+        act_kwargs = {'check_name': 'indexing_progress', 'called_by': chk_uuid}
+        res3 = app_utils.view_run_action(self.environ, 'add_random_test_nums', act_kwargs)
         self.assertTrue(res3.status_code == 302)
-        self.assertTrue('/api/view/' + self.environ in res3.body)
-        # lastly, check with is_admin
+        self.assertTrue(res3.body == res2.body)
+        # running action w/o check info gives 200 with action info
+        res4 = app_utils.view_run_action(self.environ, 'add_random_test_nums', {})
+        self.assertTrue(res4.status_code == 200)
+        self.assertTrue('Action is queued.' in res4.body['details'])
         res = app_utils.view_foursight(self.environ, True) # is_admin
         self.assertTrue(res.status_code == 200)
         self.assertTrue('Currently logged in as admin' in res.body)
@@ -553,6 +559,8 @@ class TestCheckRunner(FSTest):
             if error_count > 300:  # test should fail
                 print('Could not find an empty foursight-test-queue.')
                 self.assertTrue(False)
+        # action should have correct check_name
+        self.assertTrue(final_action_res['kwargs']['check_name']) == 'test_random_nums'
         # action should have check uuid as 'called_by' kwarg
         self.assertTrue(final_action_res['kwargs']['called_by'] == final_check_uuid)
         # action should have the same uuid and _run_info.run_id as check uuid,
@@ -623,6 +631,7 @@ class TestCheckResult(FSTest):
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
         check.status = 'ERROR'
         res = check.store_result()
+        self.assertTrue(res.get('type') == 'check')
         err_uuid = res['uuid']
         closest_res_no_error = check.get_closest_result(diff_mins=0)
         self.assertTrue(err_uuid > closest_res_no_error['uuid'])
@@ -702,6 +711,7 @@ class TestActionResult(FSTest):
         res = action.store_result()
         self.assertTrue(res.get('status') == 'PEND')
         self.assertTrue(res.get('output') is None)
+        self.assertTrue(res.get('type') == 'action')
         self.assertTrue('uuid' in res.get('kwargs'))
         action.kwargs = {'do_not_store': True}
         unstored_res = action.store_result() # will not update latest result
@@ -913,7 +923,7 @@ class TestCheckUtils(FSTest):
 
         # with an action
         action = utils.init_action_res(self.connection, 'add_random_test_nums')
-        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True, 'uuid': test_uuid, 'called_by': latest_uuid}, [] ,'xxx']
+        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True, 'uuid': test_uuid, 'check_name': 'test_random_nums', 'called_by': latest_uuid}, [] ,'xxx']
         action_res = check_utils.run_check_or_action(self.connection, test_info_2[0], test_info_2[1])
         self.assertTrue(isinstance(action_res, dict))
         self.assertTrue('name' in action_res)
@@ -922,7 +932,7 @@ class TestCheckUtils(FSTest):
         # pop runtime_seconds kwarg
         self.assertTrue('runtime_seconds' in action_res['kwargs'])
         action_res['kwargs'].pop('runtime_seconds')
-        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid, 'called_by': latest_uuid})
+        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid, 'check_name': 'test_random_nums', 'called_by': latest_uuid})
         latest_uuid = action_res.get('uuid')
         time.sleep(3)
         latest_res = action.get_latest_result()
@@ -951,15 +961,15 @@ class TestCheckUtils(FSTest):
         self.assertTrue('by zero' in ''.join(check_res['full_output']))
         self.assertTrue(check_res['description'] == 'Check failed to run. See full output.')
 
-    def test_run_action_no_called_by(self):
+    def test_run_action_no_check_name_called_by(self):
         action_res = check_utils.run_check_or_action(self.connection, 'test_checks/test_action_error', {})
         self.assertTrue(action_res['status'] == 'FAIL')
         # this output is a list
-        self.assertTrue('Action is missing called_by in its kwargs' in ''.join(action_res['output']))
+        self.assertTrue('Action is missing check_name/called_by in its kwargs' in ''.join(action_res['output']))
         self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
 
     def test_run_action_exception(self):
-        action_res = check_utils.run_check_or_action(self.connection, 'test_checks/test_action_error', {'called_by': None})
+        action_res = check_utils.run_check_or_action(self.connection, 'test_checks/test_action_error', {'check_name': '', 'called_by': None})
         self.assertTrue(action_res['status'] == 'FAIL')
         # this output is a list
         self.assertTrue('by zero' in ''.join(action_res['output']))
