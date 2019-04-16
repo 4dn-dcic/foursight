@@ -4,7 +4,7 @@ from datetime import datetime
 from operator import itemgetter
 from . import wfrset_utils
 
-lambda_limit = 3000
+lambda_limit = 260
 
 
 # check at the end
