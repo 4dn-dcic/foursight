@@ -565,7 +565,8 @@ def micro_c_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                       move_to_pc=False, nore=True)
     return action
 
 
@@ -616,5 +617,6 @@ def dnase_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                       move_to_pc=False, nore=True)
     return action

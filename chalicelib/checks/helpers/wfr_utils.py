@@ -727,7 +727,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             return
 
 
-def start_missing_run(run_info, auth, env):
+def start_missing_hic_run(run_info, auth, env, nore=False, nonorm=True):
     attr_keys = ['fastq1', 'input_pairs', 'input_bams']
     run_settings = run_info[1]
     inputs = run_info[2]
@@ -745,7 +745,8 @@ def start_missing_run(run_info, auth, env):
     return url
 
 
-def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False):
+def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                    move_to_pc=False, nore=False, nonorm=True):
     started_runs = 0
     patched_md = 0
     action.description = ""
@@ -762,7 +763,7 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
             acc = list(a_case.keys())[0]
             for a_run in a_case[acc]:
                 started_runs += 1
-                url = start_missing_run(a_run, my_auth, my_env)
+                url = start_missing_hic_run(a_run, my_auth, my_env)
                 log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
                 if url.startswith('http'):
                     action_log['started_runs'].append([log_message, url])
