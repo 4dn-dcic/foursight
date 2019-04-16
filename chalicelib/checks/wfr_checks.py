@@ -567,4 +567,3 @@ def micro_c_start(connection, **kwargs):
         patch_meta = hic_check_result.get('completed_runs')
     action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
-
