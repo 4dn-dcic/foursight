@@ -870,5 +870,17 @@
                 }
             }
         }
+    },
+    "dnase_hic_status" : {
+        "title": "8- dnase-hic",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
