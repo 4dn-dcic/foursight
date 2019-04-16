@@ -106,7 +106,7 @@ accepted_versions = {
     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
-    # bwa mem
+    # bwa mem # handled manually for now
     'MARGI': [''],
     # Preliminary - Released to network
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
