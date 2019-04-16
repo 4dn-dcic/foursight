@@ -397,14 +397,12 @@ def pairsqc_start(connection, **kwargs):
         if not nz_num:
             action_logs['runs_failed'].append([a_target, max_distance])
             continue
-
-        parameters = {"enzyme": nz_num,
-                      "sample_name": a_target}
+        additional_setup = {'parameters': {"enzyme": nz_num, "sample_name": a_target}}
         # human does not need this parameter
         if max_distance:
-            parameters['max_distance'] = max_distance
+            additional_setup['parameters']['max_distance'] = max_distance
         inp_f = {'input_pairs': a_file['@id'], 'chromsizes': chrsize}
-        wfr_setup = wfrset_utils.step_settings('pairsqc-single', 'no_organism', attributions, parameters)
+        wfr_setup = wfrset_utils.step_settings('pairsqc-single', 'no_organism', attributions, overwrite=additional_setup)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
