@@ -221,7 +221,7 @@ def fastqc_status(connection, **kwargs):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_fastq['accession']
-        report = wfr_utils.get_wfr_out(file_id, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
+        report = wfr_utils.get_wfr_out(a_fastq, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
             continue
@@ -335,7 +335,7 @@ def pairsqc_status(connection, **kwargs):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_pairs['accession']
-        report = wfr_utils.get_wfr_out(file_id, 'pairsqc-single',  my_auth, md_qc=True)
+        report = wfr_utils.get_wfr_out(a_pairs, 'pairsqc-single',  my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
             continue
