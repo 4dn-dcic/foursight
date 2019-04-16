@@ -567,3 +567,54 @@ def micro_c_start(connection, **kwargs):
         patch_meta = hic_check_result.get('completed_runs')
     action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
+
+
+@check_function(lab_title=None, start_date=None)
+def dnase_hic_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'dnase_hic_status')
+    my_auth = connection.ff_keys
+    check.action = "dnase_hic_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.status = 'PASS'
+    exp_type = 'DNase Hi-C'
+    # completion tag
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit)
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def dnase_hic_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'dnase_hic_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    hic_check = init_check_res(connection, 'dnase_hic_status')
+    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = hic_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = hic_check_result.get('completed_runs')
+    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    return action
