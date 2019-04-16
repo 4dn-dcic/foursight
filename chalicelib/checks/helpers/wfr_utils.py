@@ -88,9 +88,13 @@ workflow_details = {
 
 # accepted versions for completed pipelines
 accepted_versions = {
+    # OFFICIAL
     'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # OFFICIAL
     'dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # PRELIMINARY, RELEASE TO NETWORK
     'micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # OFFICIAL
     'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     'capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
