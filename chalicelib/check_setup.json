@@ -823,8 +823,20 @@
             }
         }
     },
+    "pairsqc_status" : {
+        "title": "4- pairsqc",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "in_situ_hic_status" : {
-        "title": "4- in situ hic",
+        "title": "5- in situ hic",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -836,7 +848,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "5- dilution hic",
+        "title": "6- dilution hic",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
