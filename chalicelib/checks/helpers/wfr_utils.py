@@ -124,7 +124,6 @@ accepted_versions = {
     'sci-Hi-C': [''],
     'MC-3C': [''],
     'MC-Hi-C': [''],
-    'PLAC-seq': [''],
     'Hi-ChIP': [''],
     'DAM-ID seq': [''],
     'RNA-seq': [''],
