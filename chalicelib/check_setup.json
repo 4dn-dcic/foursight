@@ -788,7 +788,7 @@
         }
     },
     "md5run_status" : {
-        "title": "1- MD5run",
+        "title": "a) MD5run",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -800,7 +800,7 @@
         }
     },
     "md5run_status_extra_file" : {
-        "title": "2- MD5run extrafiles",
+        "title": "b) MD5run extrafiles",
         "group": "Pipeline checks",
         "schedule": {
             "morning_checks": {
@@ -812,7 +812,7 @@
         }
     },
     "fastqc_status" : {
-        "title": "3- FastQC",
+        "title": "c) FastQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -824,7 +824,7 @@
         }
     },
     "pairsqc_status" : {
-        "title": "4- PairsQC",
+        "title": "d) PairsQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -836,7 +836,7 @@
         }
     },
     "in_situ_hic_status" : {
-        "title": "5- in situ Hi-C",
+        "title": "e) in situ Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -848,7 +848,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "6- Dilution Hi-C",
+        "title": "f) Dilution Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -860,7 +860,7 @@
         }
     },
     "tcc_status" : {
-        "title": "7- TCC",
+        "title": "g) TCC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -872,7 +872,7 @@
         }
     },
     "dnase_hic_status" : {
-        "title": "8- DNAse Hi-C",
+        "title": "h) DNAse Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -884,7 +884,7 @@
         }
     },
     "capture_hic_status" : {
-        "title": "9- Capture Hi-C",
+        "title": "i) Capture Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -896,7 +896,7 @@
         }
     },
     "micro_c_status" : {
-        "title": "10- Micro-C",
+        "title": "j) Micro-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -908,7 +908,7 @@
         }
     },
     "chia_pet_status" : {
-        "title": "11- ChIA-PET",
+        "title": "k) ChIA-PET",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -920,7 +920,7 @@
         }
     },
     "trac_loop_status" : {
-        "title": "12- TrAC-loop",
+        "title": "l) TrAC-loop",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -932,7 +932,7 @@
         }
     },
     "plac_seq_status" : {
-        "title": "13- PLAC-seq",
+        "title": "m) PLAC-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
