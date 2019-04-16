@@ -149,6 +149,55 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                      }
          }
 
+# max_distance for species (used for pairsqc)
+max_size = {"human": None,
+            "mouse": 8.2,
+            "fruit-fly": 7.5,
+            "chicken": 8.2}
+
+# Restriction enzyme recognition site length`
+re_nz_sizes = {"HindIII": "6",
+               "DpnII": "4",
+               "MboI": "4",
+               "NcoI": "6"}
+
+
+def extract_nz_chr(acc, auth):
+    """Get RE nz recognition site length and chrsize file accession
+    used for pairsqc."""
+    exp_resp = ff_utils.get_metadata(acc, key=auth)
+    exp_type = exp_resp.get('experiment_type')
+    # get enzyme
+    nz_num = ""
+    nz = exp_resp.get('digestion_enzyme')
+    if nz:
+        nz_num = re_nz_sizes.get(nz['display_title'])
+    if nz_num:
+        pass
+    # Use 6 for Chiapet and all without nz (Soo & Burak)
+    elif exp_type in ['CHIA-pet', 'ChIA-PET', 'micro-C', 'DNase Hi-C', 'TrAC-loop']:
+        nz_num = '6'
+    else:
+        return (None, None, 'No enzyme or accepted exp type')
+    # get organism
+    biosample = exp_resp['biosample']
+    organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
+    chrsize = ''
+    if len(organisms) == 1:
+        chrsize = chr_size.get(organisms[0])
+    else:
+        # multiple organism biosample
+        return (None, None, 'Biosample contains multiple organism')
+    # if organism is not available return empty
+    if not chrsize:
+        msg = organisms[0] + ' does not have chrsize file'
+        return (None, None, msg)
+    # organism should be in max size dict
+    assert organisms[0] in max_size
+    max_distance = max_size.get(organisms[0])
+    # return result if both exist
+    return nz_num, chrsize, max_distance
+
 
 def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)

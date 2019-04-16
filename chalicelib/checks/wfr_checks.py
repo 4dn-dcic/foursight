@@ -291,13 +291,6 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-
-
-
-
-
-
-
 @check_function(lab_title=None, start_date=None)
 def pairsqc_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have pairsqc
@@ -331,7 +324,7 @@ def pairsqc_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
     # missing run
-    missing_fastqc = []
+    missing_pairsqc = []
     # if there is a successful run but no qc
     missing_qc = []
     running = []
@@ -346,9 +339,8 @@ def pairsqc_status(connection, **kwargs):
         if report['status'] == 'running':
             running.append(file_id)
             continue
-        # Most probably the trigger did not work, and we run it manually
         if report['status'] != 'complete':
-            missing_fastqc.append(file_id)
+            missing_pairsqc.append(file_id)
             continue
         # There is a successful run, but no qc, previously happened when a file was reuploaded.
         if report['status'] == 'complete':
@@ -357,12 +349,12 @@ def pairsqc_status(connection, **kwargs):
     if running:
         check.summary = 'Some files are running'
         check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['files_running_fastqc'] = running
-    if missing_fastqc:
+        check.full_output['files_running_pairsqc'] = running
+    if missing_pairsqc:
         check.allow_action = True
         check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
-        check.full_output['files_without_fastqc'] = missing_fastqc
+        check.brief_output.append(str(len(missing_pairsqc)) + ' files lack a successful pairsqc run')
+        check.full_output['files_without_pairsqc'] = missing_pairsqc
         check.status = 'WARN'
     if missing_qc:
         check.allow_action = True
@@ -376,21 +368,21 @@ def pairsqc_status(connection, **kwargs):
     return check
 
 
-@action_function(start_fastqc=True, start_qc=True)
-def fastqc_start(connection, **kwargs):
-    """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
+@action_function(start_pairsqc=True, start_qc=True)
+def pairsqc_start(connection, **kwargs):
+    """Start pairsqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'fastqc_start')
+    action = init_action_res(connection, 'pairsqc_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     # get latest results from identify_files_without_filesize
-    fastqc_check = init_check_res(connection, 'fastqc_status')
-    fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    pairsqc_check = init_check_res(connection, 'pairsqc_status')
+    pairsqc_check_result = pairsqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
     targets = []
-    if kwargs.get('start_fastqc'):
-        targets.extend(fastqc_check_result.get('files_without_fastqc', []))
+    if kwargs.get('start_pairsqc'):
+        targets.extend(pairsqc_check_result.get('files_without_pairsqc', []))
     if kwargs.get('start_qc'):
-        targets.extend(fastqc_check_result.get('files_without_qc', []))
+        targets.extend(pairsqc_check_result.get('files_without_qc', []))
 
     for a_target in targets:
         now = datetime.utcnow()
@@ -399,8 +391,20 @@ def fastqc_start(connection, **kwargs):
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
-        inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
+        exp_accs = a_file.get('source_experiments')
+        nz_num, chrsize, max_distance = wfr_utils.extract_nz_chr(exp_accs[0], my_auth)
+        # if there are missing info, max distance should have been replaced by the report
+        if not nz_num:
+            action_logs['runs_failed'].append([a_target, max_distance])
+            continue
+
+        parameters = {"enzyme": nz_num,
+                      "sample_name": a_target}
+        # human does not need this parameter
+        if max_distance:
+            parameters['max_distance'] = max_distance
+        inp_f = {'input_pairs': a_file['@id'], 'chromsizes': chrsize}
+        wfr_setup = wfrset_utils.step_settings('pairsqc-single', 'no_organism', attributions, parameters)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
@@ -412,25 +416,9 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @check_function(lab_title=None, start_date=None)
 def dilution_hic_status(connection, **kwargs):
-    """Searches for fastq files that don't have fastqc
-
+    """
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
@@ -463,7 +451,7 @@ def dilution_hic_status(connection, **kwargs):
 
 @action_function(start_runs=True, patch_completed=True)
 def dilution_hic_start(connection, **kwargs):
-    """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
     action = init_action_res(connection, 'dilution_hic_start')
     my_auth = connection.ff_keys
@@ -483,7 +471,7 @@ def dilution_hic_start(connection, **kwargs):
 
 @check_function(lab_title=None, start_date=None)
 def in_situ_hic_status(connection, **kwargs):
-    """Searches for fastq files that don't have fastqc
+    """
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
@@ -515,7 +503,7 @@ def in_situ_hic_status(connection, **kwargs):
 
 @action_function(start_runs=True, patch_completed=True)
 def in_situ_hic_start(connection, **kwargs):
-    """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
     action = init_action_res(connection, 'in_situ_hic_start')
     my_auth = connection.ff_keys
