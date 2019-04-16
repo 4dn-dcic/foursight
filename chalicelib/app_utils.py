@@ -436,7 +436,7 @@ def process_view_result(connection, res, is_admin):
     else:
         res['admin_output'] = None
 
-    ### ACTION LOGIC ###
+    ### LOGIC FOR VIEWING ACTION ###
     # if this check has already run an action, display that. Otherwise, allow
     # action to be run.
     # For now also get the latest result for the checks action
@@ -447,11 +447,7 @@ def process_view_result(connection, res, is_admin):
             action_record_key = '/'.join([res['name'], 'action_records', res['uuid']])
             assc_action_key = connection.s3_connection.get_object(action_record_key)
             if assc_action_key:
-                # data is probably bytes
-                try:
-                    assc_action_key = assc_action_key.decode()
-                except AttributeError:
-                    pass
+                assc_action_key = assc_action_key.decode()  # in bytes
                 assc_action = connection.s3_connection.get_object(assc_action_key)
                 # If assc_action_key is written but assc_action is None, then
                 # it most likely means the action is still running
@@ -803,7 +799,7 @@ def queue_action(environ, action, params={}, deps=[], uuid=None):
     return send_single_to_queue(environ, to_send, uuid)
 
 
-def send_single_to_queue(environ, to_send, uuid):
+def send_single_to_queue(environ, to_send, uuid, invoke_runner=True):
     """
     Send a single formatted check/action to SQS for given environ. Pass
     the given uuid to send_sqs_messages. Invoke a single check runner lambda
@@ -812,6 +808,7 @@ def send_single_to_queue(environ, to_send, uuid):
         environ (str): Foursight environment name
         to_send (list): check/action entry in form [check_str, params, deps]
         uuid (str): uuid to pass to run. If None, generate a new uuid
+        invoke_runner (bool): If True, invoke a check_runner lambda
 
     Returns:
         str: uuid of the queued run (from send_single_to_queue)
@@ -819,7 +816,8 @@ def send_single_to_queue(environ, to_send, uuid):
     queue = get_sqs_queue()
     queued_uuid = send_sqs_messages(queue, environ, [to_send], uuid=uuid)
     # kick off a single check runner lambda
-    invoke_check_runner({'sqs_url': queue.url})
+    if invoke_runner is True:
+        invoke_check_runner({'sqs_url': queue.url})
     return queued_uuid
 
 
@@ -864,12 +862,12 @@ def run_check_runner(runner_input):
     receipt = message.get('ReceiptHandle')
     if not body or not receipt:
         # if no messages recieved in 20 seconds of long polling, terminate
-        return
+        return None
     check_list = json.loads(body)
     if not isinstance(check_list, list) or len(check_list) != 5:
         # if not a valid check str, remove the item from the SQS
         delete_message_and_propogate(runner_input, receipt)
-        return
+        return None
     [run_env, run_uuid, run_name, run_kwargs, run_deps] = check_list
     # find information from s3 about completed checks in this run
     # actual id stored in s3 has key: <run_uuid>/<run_name>
@@ -895,7 +893,7 @@ def run_check_runner(runner_input):
                 # the action record has been written. Abort and propogate
                 print('-RUN-> Found existing action record: %s. Skipping' % rec_key)
                 delete_message_and_propogate(runner_input, receipt)
-                return
+                return None
             else:
                 # make a action record before running the action
                 # action name is the second part of run_name
@@ -922,6 +920,8 @@ def run_check_runner(runner_input):
                           % (run_result['action'], action_params))
         print('-RUN-> Finished: %s' % (run_name))
         delete_message_and_propogate(runner_input, receipt)
+        return run_result
     else:
         print('-RUN-> Recovered: %s' % (run_name))
         recover_message_and_propogate(runner_input, receipt)
+        return None
