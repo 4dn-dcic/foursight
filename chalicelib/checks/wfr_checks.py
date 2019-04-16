@@ -101,7 +101,7 @@ def md5run_status(connection, **kwargs):
         if not head_info:
             no_s3_file.append(file_id)
             continue
-        md5_report = wfr_utils.get_wfr_out(file_id, "md5", my_auth, md_qc=True)
+        md5_report = wfr_utils.get_wfr_out(a_file, "md5", my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
         # Most probably the trigger did not work, and we run it manually
