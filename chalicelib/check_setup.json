@@ -787,20 +787,8 @@
             }
         }
     },
-    "md5run_status_extra_file" : {
-        "title": "2- md5run extrafiles",
-        "group": "Pipeline checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "md5run_status" : {
-        "title": "1- md5run",
+        "title": "1- MD5run",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -811,8 +799,20 @@
             }
         }
     },
+    "md5run_status_extra_file" : {
+        "title": "2- MD5run extrafiles",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "fastqc_status" : {
-        "title": "3- fastqc",
+        "title": "3- FastQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -824,7 +824,7 @@
         }
     },
     "pairsqc_status" : {
-        "title": "4- pairsqc",
+        "title": "4- PairsQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -836,7 +836,7 @@
         }
     },
     "in_situ_hic_status" : {
-        "title": "5- in situ hic",
+        "title": "5- in situ Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -848,7 +848,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "6- dilution hic",
+        "title": "6- Dilution Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -859,8 +859,8 @@
             }
         }
     },
-    "micro_c_status" : {
-        "title": "7- micro-c",
+    "tcc_status" : {
+        "title": "7- TCC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -872,7 +872,67 @@
         }
     },
     "dnase_hic_status" : {
-        "title": "8- dnase-hic",
+        "title": "8- DNAse Hi-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "capture_hic_status" : {
+        "title": "9- Capture Hi-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "micro_c_status" : {
+        "title": "10- Micro-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "chia_pet_status" : {
+        "title": "11- ChIA-PET",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "trac_loop_status" : {
+        "title": "12- TrAC-loop",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "plac_seq_status" : {
+        "title": "13- PLAC-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
