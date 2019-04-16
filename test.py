@@ -32,9 +32,18 @@ try:
 except test_client.exceptions.PurgeQueueInProgress:
     print('Cannot purge test queue; purge already in progress')
 
+
 # thanks to Rob Kennedy on S.O. for this bit of code
 @contextmanager
 def captured_output():
+    """
+    Capture stdout and stderr
+    """
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
+
     new_out, new_err = StringIO(), StringIO()
     old_out, old_err = sys.stdout, sys.stderr
     try:
@@ -42,6 +51,7 @@ def captured_output():
         yield sys.stdout, sys.stderr
     finally:
         sys.stdout, sys.stderr = old_out, old_err
+
 
 class FSTest(unittest.TestCase):
     def setUp(self):
@@ -494,7 +504,7 @@ class TestCheckRunner(FSTest):
             self.assertTrue(res_compare[check_name]['prior'] != res_compare[check_name]['post'])
 
     def test_queue_check(self):
-        check = utils.init_check_res(self.connection.s3_connection, 'test_random_nums')
+        check = utils.init_check_res(self.connection, 'test_random_nums')
         run_uuid = app_utils.queue_check(self.environ, 'test_random_nums')
         # both check and action separately must make it through queue
         tries = 0
@@ -509,7 +519,7 @@ class TestCheckRunner(FSTest):
                 print('Could not find an empty foursight-test-queue.')
                 self.assertTrue(False)
         # get the check by run_uuid
-        run_check = check.get_result_by_uuid(self.connection, run_uuid)
+        run_check = check.get_result_by_uuid(run_uuid)
         self.assertTrue(run_check is not None)
         self.assertTrue(run_check['kwargs']['uuid'] == run_uuid)
 
@@ -609,20 +619,28 @@ class TestCheckRunner(FSTest):
 
         # ensure that the action_record was written correctly
         action_rec_key = '/'.join(['test_random_nums/action_records', run_uuid])
-        assc_action_key = connection.s3_connection.get_object(action_rec_key)
+        assc_action_key = self.connection.s3_connection.get_object(action_rec_key)
         self.assertTrue(assc_action_key is not None)
         assc_action_key = assc_action_key.decode()  # in bytes
-        # assc_action_key is the s3 path of the action, w/ uuid at end
-        self.assertTrue(assc_action_key.endswith(run_uuid))
+        # expect the contents of the action record to be s3 location of action
+        expected_key = ''.join([action.name, '/', run_uuid, action.extension])
+        self.assertTrue(assc_action_key == expected_key)
         # further actions cannot be run with the check
         act_kwargs = {'check_name': run_check['name'], 'called_by': run_check['uuid']}
-        to_send = ['test_checks/add_random_test_nums', act_kwargs, []]
-        with captured_output() as (out, err):
-            # invoke runner manually (without a lamba)
-            runner_res = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
-        read_out = out.getvalue().strip()
-        self.assertTrue('Found existing action record' in read_out)
-        self.assertTrue(run2_res is None)
+        tries = 0
+        test_success = False
+        while tries < 10 and not test_success:
+            tries += 1
+            to_send = ['test_checks/add_random_test_nums', act_kwargs, []]
+            app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
+            with captured_output() as (out, err):
+                # invoke runner manually (without a lamba)
+                runner_res = app_utils.run_check_runner({'sqs_url': self.queue.url})
+            read_out = out.getvalue().strip()
+            if 'Found existing action record' in read_out:
+                test_success = True
+        self.assertTrue(test_success)
+        self.assertTrue(runner_res is None)
 
     def test_get_sqs_attributes(self):
         # bad sqs url
