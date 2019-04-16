@@ -92,39 +92,47 @@ accepted_versions = {
     'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
     'dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
-    # PRELIMINARY, RELEASE TO NETWORK
-    'micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
+    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # OFFICIAL  # NO-RE
     'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # OFFICIAL  # NO-RE
     'capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network  # NO-RE
+    'micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network
+    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network
+    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    # bwa mem
+    'MARGI': [''],
+    # Preliminary - Released to network
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    # OFFICIAL - 1 STEP
     'Repli-seq':     ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    # Preliminary - Released to network
     'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    # OFFICIAL
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
-
-
-    'ChIP-seq': ['ENCODE_CHIP_Pipeline_1.1.1'],
+    # OFFICIAL
+    'ChIP-seq':      ['ENCODE_CHIP_Pipeline_1.1.1'],
     'single cell Repli-seq': [''],
     'cryomilling TCC': [''],
     'single cell Hi-C': [''],
     'sci-Hi-C': [''],
     'MC-3C': [''],
     'MC-Hi-C': [''],
-    'ChIA-PET': [''],
     'PLAC-seq': [''],
     'Hi-ChIP': [''],
     'DAM-ID seq': [''],
-
     'RNA-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
-    'MARGI': [''],
     'GAM': [''],
     'CUT&RUN': [''],
-    'TrAC-loop': [''],
     'TRIP': [''],
-    'TCC': [''],
     }
 
 # Reference Files
