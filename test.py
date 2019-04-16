@@ -629,7 +629,7 @@ class TestCheckRunner(FSTest):
         act_kwargs = {'check_name': run_check['name'], 'called_by': run_check['uuid']}
         tries = 0
         test_success = False
-        while tries < 10 and not test_success:
+        while tries < 20 and not test_success:
             tries += 1
             to_send = ['test_checks/add_random_test_nums', act_kwargs, []]
             app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
@@ -674,6 +674,7 @@ class TestCheckResult(FSTest):
         res = check.store_result()
         self.assertTrue('uuid' in res['kwargs'])
         self.assertTrue(res['kwargs']['primary'] == False)
+        self.assertTrue(res['type'] == 'check')
         # set the kwargs and store again
         prime_uuid = datetime.datetime.utcnow().isoformat()
         check.kwargs = {'primary': True, 'uuid': prime_uuid}
@@ -705,7 +706,6 @@ class TestCheckResult(FSTest):
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
         check.status = 'ERROR'
         res = check.store_result()
-        self.assertTrue(res.get('type') == 'check')
         err_uuid = res['uuid']
         closest_res_no_error = check.get_closest_result(diff_mins=0)
         self.assertTrue(err_uuid > closest_res_no_error['uuid'])
@@ -725,7 +725,6 @@ class TestCheckResult(FSTest):
         with self.assertRaises(Exception) as exc:
             error_check.get_closest_result(diff_hours=0, diff_mins=0)
         self.assertTrue('Could not find closest non-ERROR result' in str(exc.exception))
-
 
     def test_get_result_history(self):
         """
@@ -764,7 +763,6 @@ class TestCheckResult(FSTest):
         for chk in hist_after:
             chk_date = datetime.datetime.strptime(chk[2]['uuid'], '%Y-%m-%dT%H:%M:%S.%f')
             assert chk_date >= after_date
-
 
     def test_filename_to_datetime(self):
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
@@ -892,7 +890,6 @@ class TestCheckUtils(FSTest):
         okay_setup = {'indexing_progress': {'title': '', 'group': '', 'schedule': {'fake_sched': {'all': {}}}}}
         okay_validated = check_utils.validate_check_setup(okay_setup)
         self.assertTrue({'kwargs', 'dependencies'} <= set(okay_validated['indexing_progress']['schedule']['fake_sched']['all'].keys()))
-
 
     def test_get_action_strings(self):
         all_action_strings = check_utils.get_action_strings()
