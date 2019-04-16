@@ -189,7 +189,7 @@ def add_viewconf_static_content_to_file(connection, item_uuid, higlass_item_uuid
             reuse_existing = True
             break
 
-    # If there is no existing group, just add it.
+    # If there is no existing Higlass static content, add the new content to the existing static_content
     if not reuse_existing:
         patched_static_content = static_content_section + [new_sc_section]
 
@@ -212,7 +212,7 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
     Args:
         connection: The connection to Fourfront.
         **kwargs, which may include:
-            search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be searched.
+            search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be modified.
 
     Returns:
         check results object.
@@ -527,7 +527,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         Args:
             connection: The connection to Fourfront.
             **kwargs, which may include:
-                search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be searched.
+                search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be modified.
 
         Returns:
             check result object.
@@ -1276,7 +1276,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 for extra in procfile.get('extra_files', []):
                     if extra['file_format'].get('display_title') == type2extra[file_format] \
                         and 'upload_key' in extra \
-                        and extra["status"] not in unpublished_statuses:
+                        and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
                         break
                 if 'upload_key' not in file_info:  # bw or beddb file not found
@@ -1499,10 +1499,11 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     # Note the number of items ready to purge
     num_viewconfigs = len(check.full_output['items_to_purge'])
-    check.status = 'PASS'
+    check.status = 'WARN'
 
     if num_viewconfigs == 0:
         check.summary = check.description = "No new items to purge."
+        check.status = 'PASS'
     else:
         check.summary = "Ready to purge %s items" % num_viewconfigs
         check.description = check.summary + ". See full_output for details."
