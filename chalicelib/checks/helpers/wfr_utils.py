@@ -500,7 +500,7 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True):
     return file_dict, refs
 
 
-def check_hic(res, my_auth, tag, check, start, lambda_limit):
+def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -538,10 +538,15 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
         # skip if missing reference
-        if not refs['bwa_ref'] or not refs['chrsize_ref'] or not refs['enz_ref']:
-            set_summary += "| skipped - no enz/chrsize/bwa"
+        if not refs['bwa_ref'] or not refs['chrsize_ref']:
+            set_summary += "| skipped - no chrsize/bwa"
             check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no enz/chrsize/bwa'})
+            check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
+            continue
+        if not refs['enz_ref'] and not nore:
+            set_summary += "| skipped - no enz"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no enz'})
             continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
@@ -632,9 +637,13 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit):
             else:
                 set_summary += "| missing step3"
                 inp_f = {'input_pairs': set_pairs,
-                         'chromsizes': refs['chrsize_ref'],
-                         'restriction_file': refs['enz_ref']}
-                missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], {}], inp_f, set_acc])
+                         'chromsizes': refs['chrsize_ref']}
+                if not nore:
+                    inp_f['restriction_file'] = refs['enz_ref']
+                overwrite = {}
+                if nonorm:
+                    overwrite = {'parameters': {"no_balance": True}}
+                missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite], inp_f, set_acc])
         check.brief_output.append(set_summary)
         if running:
             check.full_output['running_runs'].append({set_acc: running})
@@ -727,7 +736,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             return
 
 
-def start_missing_hic_run(run_info, auth, env, nore=False, nonorm=True):
+def start_missing_hic_run(run_info, auth, env):
     attr_keys = ['fastq1', 'input_pairs', 'input_bams']
     run_settings = run_info[1]
     inputs = run_info[2]
@@ -745,8 +754,7 @@ def start_missing_hic_run(run_info, auth, env, nore=False, nonorm=True):
     return url
 
 
-def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
-                    move_to_pc=False, nore=False, nonorm=True):
+def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False):
     started_runs = 0
     patched_md = 0
     action.description = ""

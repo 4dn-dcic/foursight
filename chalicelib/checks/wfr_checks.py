@@ -546,7 +546,7 @@ def micro_c_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=False)
     return check
 
 
@@ -565,8 +565,7 @@ def micro_c_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
-                                       move_to_pc=False, nore=True)
+    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
 
 
@@ -598,7 +597,7 @@ def dnase_hic_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=False)
     return check
 
 
@@ -617,6 +616,5 @@ def dnase_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
-                                       move_to_pc=False, nore=True)
+    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
