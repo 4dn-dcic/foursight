@@ -27,6 +27,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
     },
         {
+        'app_name': 'pairsqc-single',
+        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3'
+    },
+        {
         'app_name': 'bwa-mem',
         'workflow_uuid': '3feedadc-50f9-4bb4-919b-09a8b731d0cc',
         'parameters': {"nThreads": 16},
