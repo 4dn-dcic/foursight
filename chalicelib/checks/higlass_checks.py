@@ -1689,10 +1689,17 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
             continue
 
         # Timestamp example:
-        # 2019-04-09T16:19:56.989781+00:00
-        # Cut off the timezone offset.
+        # Cut off the timezone and seconds offset.
+        completed_timestamp_raw = str.rfind action_result["output"]["completed_timestamp"][0:-6]
+
+        index = completed_timestamp_raw.rfind(".")
+        if index != -1:
+            completed_timestamp_formatted = completed_timestamp_raw[0:index]
+        else:
+            completed_timestamp_formatted = completed_timestamp_raw
+
         completed_timestamp_datetime = datetime.strptime(
-            action_result["output"]["completed_timestamp"][0:-6],
+            completed_timestamp_formatted,
             "%Y-%m-%dT%H:%M:%S.%f"
         )
 
