@@ -705,10 +705,6 @@
                     },
                     "dependencies": []
                 },
-                "webdev": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
                 "hotseat": {
                     "kwargs": {
                         "primary": true,
@@ -761,10 +757,6 @@
                             "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.processed_files.last_modified.date_modified.from=<get_primary_action_completed_date>"
                         ]
                     },
-                    "dependencies": []
-                },
-                "webdev": {
-                    "kwargs": {"primary": true},
                     "dependencies": []
                 },
                 "hotseat": {

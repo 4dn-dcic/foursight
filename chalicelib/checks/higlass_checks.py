@@ -257,8 +257,8 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         search_res = ff_utils.search_metadata(file_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
 
         # Collate the results into a dict of ExpSets, ordered by accession
-        for file in search_res:
-            files_by_accession[ file["accession"] ] = file
+        for found_file in search_res:
+            files_by_accession[ found_file["accession"] ] = found_file
 
     # Look through the search results for files to change.
     target_files_by_ga = {}
@@ -1688,8 +1688,19 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
         if "completed_timestamp" not in action_result["output"]:
             continue
 
-        # Get the timestamp the action completed. Cut it off to the day.
-        completed_timestamp = action_result["output"]["completed_timestamp"][:10]
+        # Timestamp example:
+        # 2019-04-09T16:19:56.989781+00:00
+        # Cut off the timezone offset.
+        completed_timestamp_datetime = datetime.strptime(
+            action_result["output"]["completed_timestamp"][0:-6],
+            "%Y-%m-%dT%H:%M:%S.%f"
+        )
+
+        # Convert to elastic search format, yyyy-mm-dd HH:MM
+        es_string = datetime.strftime(completed_timestamp_datetime, "%Y-%m-%d %H:%M")
+
+        # Get the timestamp the action completed.
+        completed_timestamp = es_string
 
         # Replace the key with the timestamp.
         search_query = search_query.replace(key, completed_timestamp)
