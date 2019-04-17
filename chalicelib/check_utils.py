@@ -208,7 +208,7 @@ def get_check_schedule(schedule_name):
 def get_check_results(connection, checks=[], use_latest=False):
     """
     Initialize check results for each desired check and get results stored
-    in s3, sorted by status and then alphabetically.
+    in s3, sorted by status and then alphabetically by title.
     May provide a list of string check names as `checks`; otherwise get all
     checks by default.
     By default, gets the 'primary' results. If use_latest is True, get the
@@ -228,7 +228,7 @@ def get_check_results(connection, checks=[], use_latest=False):
             check_results.append(found)
     # sort them by status and alphabetically by name
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
-    return sorted(check_results, key=lambda v: (stat_order.index(v['status']) if v['status'] in stat_order else 9, v['name'].lower()))
+    return sorted(check_results, key=lambda v: (stat_order.index(v['status']) if v['status'] in stat_order else 9, get_check_title_from_setup(v['name']).lower()))
 
 
 def get_grouped_check_results(connection):
