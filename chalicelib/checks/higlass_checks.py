@@ -734,7 +734,7 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
             existing_higlass_uuid = None
             sc_uuids = [ sc["content"] for sc in file_info["static_content"] if sc["location"] == "tab:processed-files"]
             if sc_uuids:
-                existing_higlass_uuid = sc_uuids[0]
+                existing_higlass_uuid = sc_uuids[0]["uuid"]
 
             # Create or update a HiglassItem based on these files.
             higlass_item_results = create_or_update_higlass_item(
