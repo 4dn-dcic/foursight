@@ -534,7 +534,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     """
     # Create the check
     check = init_check_res(connection, 'check_expsets_processedfiles_for_higlass_viewconf')
-    #check.action = 'patch_files_for_higlass_viewconf'
+    check.action = 'patch_expsets_processedfiles_for_higlass_viewconf'
     check.full_output = {}
 
     # Generate the terms each Experiment Set will return.
@@ -640,7 +640,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         )
 
     check.status = 'WARN'
-    check.description = check.summary + ". See full_output for details."
+    check.description = check.summary + "See full_output for details."
 
     if ready_to_generate_count <= 0:
         check.allow_action = False
