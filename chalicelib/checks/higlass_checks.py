@@ -1709,5 +1709,5 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
         completed_timestamp = es_string
 
         # Replace the key with the timestamp.
-        search_query = search_query.replace(key, completed_timestamp)
+        search_query = search_query.replace("<get_latest_action_completed_date>", completed_timestamp)
     return search_query
