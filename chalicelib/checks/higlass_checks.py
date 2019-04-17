@@ -1690,7 +1690,7 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
 
         # Timestamp example:
         # Cut off the timezone and seconds offset.
-        completed_timestamp_raw = str.rfind action_result["output"]["completed_timestamp"][0:-6]
+        completed_timestamp_raw = action_result["output"]["completed_timestamp"]
 
         index = completed_timestamp_raw.rfind(".")
         if index != -1:
@@ -1700,7 +1700,7 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
 
         completed_timestamp_datetime = datetime.strptime(
             completed_timestamp_formatted,
-            "%Y-%m-%dT%H:%M:%S.%f"
+            "%Y-%m-%dT%H:%M:%S"
         )
 
         # Convert to elastic search format, yyyy-mm-dd HH:MM
