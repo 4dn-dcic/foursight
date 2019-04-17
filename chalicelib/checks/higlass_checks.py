@@ -220,7 +220,10 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
 
     # Create the initial check
     check = init_check_res(connection, 'check_files_for_higlass_viewconf')
-    check.full_output = {}
+    check.full_output = {
+        "search_queries":[]
+    }
+    check.queries = []
     check.action = 'patch_files_for_higlass_viewconf'
 
     # Add the fields we want to return.
@@ -249,6 +252,8 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
     for query in search_queries:
         # Interpolate the timestamps, if needed
         query = interpolate_query_check_timestamps(connection, query, 'patch_files_for_higlass_viewconf', check)
+
+        check.full_output["search_queries"].append(query)
 
         # Add to base search
         file_search_query = "/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value" + query + fields_to_include
@@ -1671,22 +1676,16 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
         The new search_query.
     """
 
-    timestamp_substitutes = {
-        "<get_primary_action_completed_date>": lambda c : c.get_primary_result(),
-        "<get_latest_action_completed_date>": lambda c: c.get_latest_result(),
-    }
-    subs_found = [ k for k in timestamp_substitutes.keys() if k in search_query]
-
-    for key in subs_found:
+    if "<get_latest_action_completed_date>" in search_query:
         # Get the related action for this check
         action = init_action_res(connection, action_name)
-        action_result = timestamp_substitutes[key](action)
+        action_result = action.get_latest_result()
 
         if not action_result:
-            continue
+            return search_query
 
         if "completed_timestamp" not in action_result["output"]:
-            continue
+            return search_query
 
         # Timestamp example:
         # Cut off the timezone and seconds offset.
