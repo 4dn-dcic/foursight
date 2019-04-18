@@ -693,10 +693,11 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
-        return 'no content in patch_opf, skipping'
+        return ['no content in patch_opf, skipping']
     if not patch_data.get('add_tag'):
-        return 'no tag info, skipping'
+        return ['no tag info, skipping']
     pc_set_title = titles[pipeline_type]
+    log = []
     for a_case in patch_data['patch_opf']:
         # exp/set acc, and list of files to add
         acc, list_pc = a_case[0], a_case[1]
@@ -707,18 +708,21 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             ex_pc_ids = [i['@id'] for i in ex_pc]
             common = list(set(ex_pc_ids) & set(list_pc))
             if common:
-                return 'some files ({}) are already in processed_files filed for {}'.format(common, acc)
+                log.append('some files ({}) are already in processed_files filed for {}'.format(common, acc))
+                continue
         # check if these items are in other processed files field
         ex_opc = resp.get('other_processed_files')
         if ex_opc:
             # make sure the title is not already There
             all_existing_titles = [a['title'] for a in ex_opc]
             if pc_set_title in all_existing_titles:
-                return 'opc using same title already exists for {}'.format(acc)
+                log.append('opc using same title already exists for {}'.format(acc))
+                continue
             ex_opc_ids = [i['@id'] for a in ex_opc for i in a['files']]
             common = list(set(ex_opc_ids) & set(list_pc))
             if common:
-                return 'some files ({}) are already in other_processed_files filed for {}'.format(common, acc)
+                log.append('some files ({}) are already in other_processed_files filed for {}'.format(common, acc))
+                continue
         source_status = resp['status']
         # if move_to_pc is set to true, but the source status is released/to project
         # set it back to finalize_user_pending_labs
@@ -728,10 +732,10 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
         if move_to_pc:
             # at this step we expect processed_files field to be empty
             if ex_pc_ids:
-                return 'expected processed_files to be empty: {}'.format(acc)
+                log.append('expected processed_files to be empty: {}'.format(acc))
+                continue
             # patch the processed files field
             ff_utils.patch_metadata({'processed_files': list_pc}, obj_id=acc, key=auth)
-            return
         # if not move_to_pc, add files to opf with proper title
         else:
             # we need raw to get the existing piece, to patch back with the new ones
@@ -746,7 +750,12 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             patch_val.append(new_data)
             patch_body = {'other_processed_files': patch_val}
             ff_utils.patch_metadata(patch_body, obj_id=acc, key=auth)
-            return
+    # add the tag
+    set_acc = patch_data['add_tag'][0]
+    existing_tags = ff_utils.get_metadata(set_acc, auth).get('completed_processes', [])
+    new_tags = list(set(existing_tags.append(patch_data['add_tag'][1])))
+    ff_utils.patch_metadata({'completed_processes': new_tags}, set_acc, auth)
+    return log
 
 
 def start_missing_hic_run(run_info, auth, env):
@@ -804,7 +813,7 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
                 log_message = acc + ' completed processing'
                 action_log['patched_meta'].append(log_message)
             else:
-                log_message = acc + error
+                log_message = acc + ' ' + error
                 action_log['failed_meta'].append(log_message)
 
     # did we complete without running into time limit
