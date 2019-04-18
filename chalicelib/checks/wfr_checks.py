@@ -402,7 +402,10 @@ def pairsqc_start(connection, **kwargs):
         if max_distance:
             additional_setup['parameters']['max_distance'] = max_distance
         inp_f = {'input_pairs': a_file['@id'], 'chromsizes': chrsize}
-        wfr_setup = wfrset_utils.step_settings('pairsqc-single', 'no_organism', attributions, overwrite=additional_setup)
+        wfr_setup = wfrset_utils.step_settings('pairsqc-single',
+                                               'no_organism',
+                                               attributions,
+                                               overwrite=additional_setup)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
@@ -429,7 +432,7 @@ def in_situ_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'in situ Hi-C'
     # completion tag
@@ -480,7 +483,7 @@ def dilution_hic_status(connection, **kwargs):
     check.brief_output = []
     check.summary = ""
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'dilution Hi-C'
     # completion tag
@@ -533,7 +536,7 @@ def tcc_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'TCC'
     # completion tag
@@ -584,7 +587,7 @@ def dnase_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'DNase Hi-C'
     # completion tag
@@ -635,7 +638,7 @@ def capture_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'capture Hi-C'
     # completion tag
@@ -686,7 +689,7 @@ def micro_c_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'micro-C'
     # completion tag
@@ -737,7 +740,7 @@ def chia_pet_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'ChIA-PET'
     # completion tag
@@ -788,7 +791,7 @@ def trac_loop_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'TrAC-loop'
     # completion tag
@@ -839,7 +842,7 @@ def plac_seq_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'PLAC-seq'
     # completion tag
