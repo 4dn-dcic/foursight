@@ -778,8 +778,9 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             ff_utils.patch_metadata(patch_body, obj_id=acc, key=auth)
     # add the tag
     set_acc = patch_data['add_tag'][0]
+    new_tag = patch_data['add_tag'][1]
     existing_tags = ff_utils.get_metadata(set_acc, auth).get('completed_processes', [])
-    new_tags = list(set(existing_tags.append(patch_data['add_tag'][1])))
+    new_tags = list(set(existing_tags + [new_tag]))
     ff_utils.patch_metadata({'completed_processes': new_tags}, set_acc, auth)
     return log
 
