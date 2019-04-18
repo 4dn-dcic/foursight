@@ -210,7 +210,7 @@ def extract_nz_chr(acc, auth):
     return nz_num, chrsize, max_distance
 
 
-def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None):
+def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
@@ -218,11 +218,14 @@ def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None
     args:
      emb_file: embedded frame file info
      wfr_name: base name without version
+     key: authorization
      all_wfrs : all releated wfrs in embedded frame
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # you should provide key or all_wfrs
+    assert key or all_wfrs
     if wfr_name not in workflow_details:
         assert wfr_name in workflow_details
     # get default accepted versions if not provided
@@ -256,7 +259,10 @@ def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None
     my_workflows = sorted(my_workflows, key=lambda k: k['run_hours'])
     last_wfr = [i for i in my_workflows if i['run_type'] == wfr_name][0]
     # get metadata for the last wfr
-    wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
+    if all_wfrs:
+        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
+    else:
+        wfr = ff_utils.get_metadata(last_wfr['uuid'], key)
     run_duration = last_wfr['run_hours']
     run_status = wfr['run_status']
 
@@ -566,7 +572,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             part2 = 'ready'
             for pair in exp_files[exp]:
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     exp_bams.append(step1_result['out_bam'])
@@ -591,7 +597,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step2s = []
             for bam in exp_bams:
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
-                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs=all_wfrs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -627,7 +633,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             assert len(list(set(all_step3s))) == 1
             # if successful
@@ -787,17 +793,18 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
     if patch_meta:
         action_log['patched_meta'] = []
         for a_completed_info in patch_meta:
+            acc = a_completed_info['add_tag'][0]
             now = datetime.utcnow()
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations.'
                 break
             patched_md += 1
-            error = patch_complete_data(a_completed_info, my_auth, move_to_pc=move_to_pc)
+            error = patch_complete_data(a_completed_info, 'hic', my_auth, move_to_pc=move_to_pc)
             if not error:
-                log_message = a_run.keys()[0] + ' completed processing'
+                log_message = acc + ' completed processing'
                 action_log['patched_meta'].append(log_message)
             else:
-                log_message = a_run.keys()[0] + error
+                log_message = acc + error
                 action_log['failed_meta'].append(log_message)
 
     # did we complete without running into time limit

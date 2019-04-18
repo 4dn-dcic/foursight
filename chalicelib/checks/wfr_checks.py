@@ -101,7 +101,7 @@ def md5run_status(connection, **kwargs):
         if not head_info:
             no_s3_file.append(file_id)
             continue
-        md5_report = wfr_utils.get_wfr_out(a_file, "md5", my_auth, md_qc=True)
+        md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
         # Most probably the trigger did not work, and we run it manually
@@ -221,7 +221,7 @@ def fastqc_status(connection, **kwargs):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_fastq['accession']
-        report = wfr_utils.get_wfr_out(a_fastq, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
+        report = wfr_utils.get_wfr_out(a_fastq, 'fastqc-0-11-4-1',  key=my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
             continue
@@ -335,7 +335,7 @@ def pairsqc_status(connection, **kwargs):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_pairs['accession']
-        report = wfr_utils.get_wfr_out(a_pairs, 'pairsqc-single',  my_auth, md_qc=True)
+        report = wfr_utils.get_wfr_out(a_pairs, 'pairsqc-single',  key=my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
             continue
