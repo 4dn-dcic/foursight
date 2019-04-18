@@ -16,7 +16,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     out_n = "This is an output file of the Hi-C processing pipeline"
     int_n = "This is an intermediate file in the HiC processing pipeline"
-    out_n_rep = "This is an output file of the RepliSeq processing pipeline"
     # int_n_rep = "This is an intermediate file in the Repliseq processing pipeline"
 
     wf_dict = [{
@@ -26,6 +25,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'fastqc-0-11-4-1',
         'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
+    },
+        {
+        'app_name': 'pairsqc-single',
+        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3'
     },
         {
         'app_name': 'bwa-mem',
@@ -53,70 +56,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }},
         {
         'app_name': 'hi-c-processing-pairs',
-        'workflow_uuid': 'c9e0e6f7-b0ed-4a42-9466-cadc2dd84df0',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
-        'custom_pf_fields': {
-            'cooler_normvector': {
-                'genome_assembly': genome,
-                'file_type': 'juicebox norm vector',
-                'description': out_n},
-            'hic': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'mcool': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'merged_pairs': {
-                'genome_assembly': genome,
-                'file_type': 'contact list-combined',
-                'description': out_n}
-        }},
-        {
-        'app_name': 'hi-c-processing-pairs-nore',
-        'workflow_uuid': 'c19ee11e-9d5a-454f-af50-600a0cf990b6',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
-        'custom_pf_fields': {
-            'cooler_normvector': {
-                'genome_assembly': genome,
-                'file_type': 'juicebox norm vector',
-                'description': out_n},
-            'hic': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'mcool': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'merged_pairs': {
-                'genome_assembly': genome,
-                'file_type': 'contact list-combined',
-                'description': out_n}
-        }},
-        {
-        'app_name': 'hi-c-processing-pairs-nonorm',
-        'workflow_uuid': 'bd6e25ea-f368-4758-a821-d30e0b5a4100',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
-        'custom_pf_fields': {
-            'hic': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'mcool': {
-                'genome_assembly': genome,
-                'file_type': 'contact matrix',
-                'description': out_n},
-            'merged_pairs': {
-                'genome_assembly': genome,
-                'file_type': 'contact list-combined',
-                'description': out_n}
-        }},
-        {
-        'app_name': 'hi-c-processing-pairs-nore-nonorm',
-        'workflow_uuid': '05b62bba-7bfa-46cc-8d8e-3d37f4feb8bd',
-        'parameters': {"nthreads": 1, "maxmem": "32g"},
+        'workflow_uuid': '4dn-dcic-lab:wf-hi-c-processing-pairs-0.2.7',
+        'parameters': {"nthreads": 4,
+                       "maxmem": "32g",
+                       "max_split_cooler": 10,
+                       "no_balance": False
+                       },
         'custom_pf_fields': {
             'hic': {
                 'genome_assembly': genome,
@@ -139,7 +84,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'filtered_sorted_deduped_bam': {
                 'genome_assembly': genome,
                 'file_type': 'alignment',
-                'description': out_n_rep},
+                'description': 'This is an output file of the RepliSeq processing pipeline'},
             'count_bg': {
                 'genome_assembly': genome,
                 'file_type': 'counts',
@@ -182,8 +127,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                  'genome_assembly': genome,
                  'file_type': 'qc',
                  'description': 'ATAC-seq QC json'}
-         }
-         }
+         }},
+        {
+        "app_name": "mergebed",
+        "wf_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
+        "parameters": {"sortv": "0"},
+        'custom_pf_fields': {
+            'merged_bed': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Merged file, positions of aligned reads in bed format, one line per read mate'}
+            }
+        }
     ]
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
@@ -200,6 +155,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         for a_file in template['custom_pf_fields']:
             template['custom_pf_fields'][a_file].update(attribution)
     template['wfr_meta'] = attribution
+    template['custom_qc_fields'] = attribution
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:
