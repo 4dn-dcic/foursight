@@ -813,8 +813,7 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
                 log_message = acc + ' completed processing'
                 action_log['patched_meta'].append(log_message)
             else:
-                log_message = acc + ' ' + error
-                action_log['failed_meta'].append(log_message)
+                action_log['failed_meta'].append([acc, error])
 
     # did we complete without running into time limit
     for k in action_log:
