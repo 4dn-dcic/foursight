@@ -638,6 +638,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 set_summary += "| missing step 1/2"
             elif running:
                 set_summary += "| running step 1/2"
+            elif problematic_run:
+                set_summary += "| problem in step 1/2"
 
         if part3 is 'ready':
             # if we made it to this step, there should be files in set_pairs
@@ -661,6 +663,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 set_summary += "| running step3"
             # problematic runs with repeated fails
             elif step3_result['status'] == 'no complete run, too many errors':
+                set_summary += "| problems in step3"
                 problematic_run.append(['step3', set_acc])
             # if run is not successful
             else:
@@ -686,6 +689,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             assert not problematic_run
             assert not missing_run
             check.full_output['completed_runs'].append(complete)
+    # complete check values
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
         check.status = 'WARN'
