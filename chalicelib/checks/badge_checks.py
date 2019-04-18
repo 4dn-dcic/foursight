@@ -309,8 +309,8 @@ def tier1_metadata_present(connection, **kwargs):
                          'Tier1 biosamples no longer missing required metadata': to_remove,
                          'Biosamples with a tier1_metadata_missing badge that needs editing': to_edit}
     check.brief_output = missing
-    if to_add or to_remove or to_edit:
-        check.allow_action = True
+    # if to_add or to_remove or to_edit:
+    #     check.allow_action = True
     return check
 
 
