@@ -463,10 +463,150 @@ class TestCheckRunner(FSTest):
     stage_info = utils.get_stage_info()
     queue = utils.get_sqs_queue()
 
-    def test_queue_check_group(self):
-        # first, assure we have the right queue and runner names
+    def clear_queue_and_runners(self):
+        """
+        Ensure that the SQS queue is empty and give existing check runners
+        a chance to finish
+        """
+        tries = 0
+        found_clear = True
+        while tries < 10:
+            sqs_attrs = utils.get_sqs_attributes(self.queue.url)
+            vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
+            invis_messages = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
+            if vis_messages == 0 and invis_messages == 0:
+                # allow existing checks to terminate via long polling
+                if found_clear:
+                    break
+                time.sleep(12)
+                found_clear = True
+            elif invis_messages > 0:
+                # if orphaned messages are in the queue, eat them up
+                app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
+                tries += 1
+                found_clear = False
+                time.sleep(2)
+            else:
+                # wait less time to see if processing is finished
+                tries += 1
+                found_clear = False
+                time.sleep(2)
+        return found_clear
+
+    def test_queue_basics(self):
+        # ensure we have the right queue and runner names
         self.assertTrue(self.stage_info['queue_name'] == 'foursight-test-check_queue')
         self.assertTrue(self.stage_info['runner_name'] == 'foursight-dev-check_runner')
+
+    def test_check_runner_manually(self):
+        """
+        Queue a check and make sure it is run
+        Invoke run_check_runner manually, not via AWS lambda.
+        This test can fail if other self-propogating check runner sare hanging
+        around, so run this before other checks that queue
+        """
+        cleared = self.clear_queue_and_runners()
+        self.assertTrue(cleared)
+        check = run_result.CheckResult(self.connection.s3_connection, 'test_random_nums')
+        prior_res = check.get_latest_result()
+        # first, bad input
+        bad_res = app_utils.run_check_runner({'sqs_url': None})
+        self.assertTrue(bad_res is None)
+        # queue a check without invoking runner. Get resulting run uuid
+        to_send = ['test_checks/test_random_nums', {}, []]
+        tries = 0
+        test_success = False
+        while tries < 10 and not test_success:
+            tries += 1
+            run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
+            time.sleep(1)
+            with captured_output() as (out, err):
+                # invoke runner manually (without a lamba)
+                res = app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
+            read_out = out.getvalue().strip()
+            if res and res.get('uuid') == run_uuid:
+                # check the result from run_check_runner
+                self.assertTrue(res['name'] == 'test_random_nums')
+                self.assertTrue(res['uuid'] == run_uuid)
+                self.assertTrue('_run_info' in res['kwargs'])
+                self.assertTrue(res['kwargs']['_run_info']['run_id'] == run_uuid)
+                # check a couple things about printed runner output
+                self.assertTrue('%s (uuid)' % run_uuid in read_out)
+                self.assertTrue('Finished: test_checks/test_random_nums' in read_out)
+                test_success = True
+        self.assertTrue(test_success)
+        # check the stored result as well
+        post_res = check.get_result_by_uuid(run_uuid)
+        self.assertTrue(post_res is not None)
+        self.assertTrue('_run_info' in post_res['kwargs'])
+        self.assertTrue({'run_id', 'receipt', 'sqs_url'} <= set(post_res['kwargs']['_run_info'].keys()))
+        self.assertTrue(post_res['kwargs']['_run_info']['run_id'] == run_uuid)
+
+    def test_check_runner_manually_with_associated_action(self):
+        cleared = self.clear_queue_and_runners()
+        self.assertTrue(cleared)
+        # queue a check with queue_action=True kwarg, meaning the associated
+        # action will automatically be queued after completion
+        check = utils.init_check_res(self.connection, 'test_random_nums')
+        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        to_send = ['test_checks/test_random_nums', {'primary': True, 'queue_action': True}, []]
+        # send the check to the queue; the action will be queue automatically
+        run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
+        # both check and action separately must make it through queue
+        check_done = False
+        action_done = False
+        tries = 0
+        while (not check_done or not action_done) and tries < 20:
+            tries += 1
+            time.sleep(1)
+            app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
+            if not check_done:
+                latest_check_res = check.get_latest_result()
+                if latest_check_res and latest_check_res['uuid'] >= run_uuid:
+                    check_done = True
+            elif not action_done:
+                latest_act_res = action.get_latest_result()
+                if latest_act_res and latest_act_res['uuid'] >= run_uuid:
+                    action_done = True
+        self.assertTrue(check_done and action_done)
+        # get the check and action by run_uuid
+        run_check = check.get_result_by_uuid(run_uuid)
+        self.assertTrue(run_check is not None)
+        run_action = action.get_result_by_uuid(run_uuid)
+        self.assertTrue(run_action is not None)
+        # confirm some fields on final result
+        self.assertTrue(run_action['kwargs']['check_name']) == 'test_random_nums'
+        self.assertTrue(run_action['kwargs']['called_by'] == run_uuid)
+        self.assertTrue(run_action['kwargs']['_run_info']['run_id'] == run_uuid)
+
+        # ensure that the action_record was written correctly
+        action_rec_key = '/'.join(['test_random_nums/action_records', run_uuid])
+        assc_action_key = self.connection.s3_connection.get_object(action_rec_key)
+        self.assertTrue(assc_action_key is not None)
+        assc_action_key = assc_action_key.decode()  # in bytes
+        # expect the contents of the action record to be s3 location of action
+        expected_key = ''.join([action.name, '/', run_uuid, action.extension])
+        self.assertTrue(assc_action_key == expected_key)
+        # further actions cannot be run with the check
+        act_kwargs = {'check_name': run_check['name'], 'called_by': run_check['uuid']}
+        tries = 0
+        test_success = False
+        while tries < 10 and not test_success:
+            tries += 1
+            to_send = ['test_checks/add_random_test_nums', act_kwargs, []]
+            app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
+            time.sleep(1)
+            with captured_output() as (out, err):
+                # invoke runner manually (without a lamba) and do not propogate
+                runner_res = app_utils.run_check_runner({'sqs_url': self.queue.url},
+                                                        propogate=False)
+            read_out = out.getvalue().strip()
+            if 'Found existing action record' in read_out:
+                test_success = True
+        self.assertTrue(test_success)
+        self.assertTrue(runner_res is None)
+
+    def test_queue_check_group(self):
         # find the checks we will be using
         use_schedule = 'ten_min_checks'
         check_schedule = check_utils.get_check_schedule(use_schedule)
@@ -478,7 +618,7 @@ class TestCheckRunner(FSTest):
         finished_count = 0  # since queue attrs are approximate
         error_count = 0
         # wait for queue to empty
-        while finished_count < 3:
+        while finished_count < 2:
             time.sleep(1)
             sqs_attrs = utils.get_sqs_attributes(run_input.get('sqs_url'))
             vis_messages = int(sqs_attrs.get('ApproximateNumberOfMessages'))
@@ -487,7 +627,9 @@ class TestCheckRunner(FSTest):
                 finished_count += 1
             else:
                 error_count += 1
-            if error_count > 100:  # test should fail
+                # eat up residual messages
+                app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
+            if error_count > 60:  # test should fail
                 print('Could not find an empty foursight-test-queue.')
                 self.assertTrue(False)
         # queue should be empty. check results
@@ -515,7 +657,7 @@ class TestCheckRunner(FSTest):
                 break
             else:
                 tries += 1
-            if tries > 100:  # test should fail
+            if tries > 60:  # test should fail
                 print('Could not find an empty foursight-test-queue.')
                 self.assertTrue(False)
         # get the check by run_uuid
@@ -536,7 +678,7 @@ class TestCheckRunner(FSTest):
                 break
             else:
                 tries += 1
-            if tries > 100:  # test should fail
+            if tries > 60:  # test should fail
                 print('Could not find an empty foursight-test-queue.')
                 self.assertTrue(False)
         # get the action by run_uuid
@@ -545,103 +687,6 @@ class TestCheckRunner(FSTest):
         self.assertTrue(run_action['kwargs']['uuid'] == run_uuid)
         self.assertTrue(run_action['kwargs']['_run_info']['run_id'] == run_uuid)
         self.assertTrue('Action failed to run' in run_action['description'])
-
-    def test_run_check_runner_manually(self):
-        """
-        Queue a check and make sure it is run
-        Invoke run_check_runner manually, not via AWS lambda
-        """
-        check = run_result.CheckResult(self.connection.s3_connection, 'test_random_nums')
-        prior_res = check.get_latest_result()
-        # first, bad input
-        bad_res = app_utils.run_check_runner({'sqs_url': None})
-        self.assertTrue(bad_res is None)
-        # queue a check without invoking runner. Get resulting run uuid
-        to_send = ['test_checks/test_random_nums', {}, []]
-
-        tries = 0
-        test_success = False
-        while tries < 10 and not test_success:
-            tries += 1
-            run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
-            with captured_output() as (out, err):
-                # invoke runner manually (without a lamba)
-                res = app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
-            read_out = out.getvalue().strip()
-            if res and res.get('uuid') == run_uuid:
-                # check the result from run_check_runner
-                self.assertTrue(res['name'] == 'test_random_nums')
-                self.assertTrue(res['uuid'] == run_uuid)
-                self.assertTrue('_run_info' in res['kwargs'])
-                self.assertTrue(res['kwargs']['_run_info']['run_id'] == run_uuid)
-                # check a couple things about printed runner output
-                self.assertTrue('%s (uuid)' % run_uuid in read_out)
-                self.assertTrue('Finished: test_checks/test_random_nums' in read_out)
-                test_success = True
-        self.assertTrue(test_success)
-        # check the stored result as well
-        post_res = check.get_result_by_uuid(run_uuid)
-        self.assertTrue(post_res is not None)
-        self.assertTrue('_run_info' in post_res['kwargs'])
-        self.assertTrue({'run_id', 'receipt', 'sqs_url'} <= set(post_res['kwargs']['_run_info'].keys()))
-        self.assertTrue(post_res['kwargs']['_run_info']['run_id'] == run_uuid)
-
-    def test_check_runner_with_associated_action(self):
-        # queue a check with queue_action=True kwarg, meaning the associated
-        # action will automatically be queued after completion
-        check = utils.init_check_res(self.connection, 'test_random_nums')
-        action = utils.init_action_res(self.connection, 'add_random_test_nums')
-        to_send = ['test_checks/test_random_nums', {'primary': True, 'queue_action': True}, []]
-        # send the check to the queue and invoke the runner. Get the run uuid
-        run_uuid = utils.send_sqs_messages(self.queue, self.environ, [to_send])
-        utils.invoke_check_runner({'sqs_url': self.queue.url})
-        # both check and action separately must make it through queue
-        tries = 0
-        while True:
-            time.sleep(1)
-            latest_act_res = action.get_latest_result()
-            if latest_act_res and latest_act_res['uuid'] >= run_uuid:
-                break
-            else:
-                tries += 1
-            if tries > 100:  # test should fail
-                print('Could not find an empty foursight-test-queue.')
-                self.assertTrue(False)
-        # get the check and action by run_uuid
-        run_check = check.get_result_by_uuid(run_uuid)
-        self.assertTrue(run_check is not None)
-        run_action = action.get_result_by_uuid(run_uuid)
-        self.assertTrue(run_action is not None)
-        # confirm some fields on final result
-        self.assertTrue(run_action['kwargs']['check_name']) == 'test_random_nums'
-        self.assertTrue(run_action['kwargs']['called_by'] == run_uuid)
-        self.assertTrue(run_action['kwargs']['_run_info']['run_id'] == run_uuid)
-
-        # ensure that the action_record was written correctly
-        action_rec_key = '/'.join(['test_random_nums/action_records', run_uuid])
-        assc_action_key = self.connection.s3_connection.get_object(action_rec_key)
-        self.assertTrue(assc_action_key is not None)
-        assc_action_key = assc_action_key.decode()  # in bytes
-        # expect the contents of the action record to be s3 location of action
-        expected_key = ''.join([action.name, '/', run_uuid, action.extension])
-        self.assertTrue(assc_action_key == expected_key)
-        # further actions cannot be run with the check
-        act_kwargs = {'check_name': run_check['name'], 'called_by': run_check['uuid']}
-        tries = 0
-        test_success = False
-        while tries < 20 and not test_success:
-            tries += 1
-            to_send = ['test_checks/add_random_test_nums', act_kwargs, []]
-            app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
-            with captured_output() as (out, err):
-                # invoke runner manually (without a lamba)
-                runner_res = app_utils.run_check_runner({'sqs_url': self.queue.url},
-                                                        propogate=False)
-            read_out = out.getvalue().strip()
-            if 'Found existing action record' in read_out:
-                test_success = True
-        self.assertTrue(test_success)
-        self.assertTrue(runner_res is None)
 
     def test_get_sqs_attributes(self):
         # bad sqs url

@@ -859,13 +859,13 @@ def run_check_runner(runner_input, propogate=True):
         AttributeNames=['MessageGroupId'],
         MaxNumberOfMessages=1,
         VisibilityTimeout=300,
-        WaitTimeSeconds=20
+        WaitTimeSeconds=10
     )
     message = response.get('Messages', [{}])[0]
     body = message.get('Body')
     receipt = message.get('ReceiptHandle')
     if not body or not receipt:
-        # if no messages recieved in 20 seconds of long polling, terminate
+        # if no messages recieved in 10 seconds of long polling, terminate
         return None
     check_list = json.loads(body)
     if not isinstance(check_list, list) or len(check_list) != 5:
