@@ -324,10 +324,18 @@ def invoke_check_runner(runner_input):
     return response
 
 
-def delete_message_and_propogate(runner_input, receipt):
+def delete_message_and_propogate(runner_input, receipt, propogate=True):
     """
     Delete the message with given receipt from sqs queue and invoke the next
     lambda runner.
+
+    Args:
+        runner_input (dict): runner info, should minimally have 'sqs_url'
+        receipt (str): SQS message receipt
+        propogate (bool): if True (default), invoke another check runner lambda
+
+    Returns:
+        None
     """
     sqs_url = runner_input.get('sqs_url')
     if not sqs_url or not receipt:
@@ -337,10 +345,11 @@ def delete_message_and_propogate(runner_input, receipt):
         QueueUrl=sqs_url,
         ReceiptHandle=receipt
     )
-    invoke_check_runner(runner_input)
+    if propogate is True:
+        invoke_check_runner(runner_input)
 
 
-def recover_message_and_propogate(runner_input, receipt):
+def recover_message_and_propogate(runner_input, receipt, propogate=True):
     """
     Recover the message with given receipt to sqs queue and invoke the next
     lambda runner.
@@ -349,6 +358,14 @@ def recover_message_and_propogate(runner_input, receipt):
     available to the queue in that much time. This is a slight lag to allow
     dependencies to process.
     NOTE: VisibilityTimeout should be less than WaitTimeSeconds in run_check_runner
+
+    Args:
+        runner_input (dict): runner info, should minimally have 'sqs_url'
+        receipt (str): SQS message receipt
+        propogate (bool): if True (default), invoke another check runner lambda
+
+    Returns:
+        None
     """
     sqs_url = runner_input.get('sqs_url')
     if not sqs_url or not receipt:
@@ -359,7 +376,8 @@ def recover_message_and_propogate(runner_input, receipt):
         ReceiptHandle=receipt,
         VisibilityTimeout=15
     )
-    invoke_check_runner(runner_input)
+    if propogate is True:
+        invoke_check_runner(runner_input)
 
 
 def get_sqs_queue():

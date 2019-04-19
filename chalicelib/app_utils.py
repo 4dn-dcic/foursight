@@ -821,7 +821,7 @@ def send_single_to_queue(environ, to_send, uuid, invoke_runner=True):
     return queued_uuid
 
 
-def run_check_runner(runner_input):
+def run_check_runner(runner_input, propogate=True):
     """
     Run logic for a check runner. Used to run checks and actions.
 
@@ -845,6 +845,10 @@ def run_check_runner(runner_input):
 
     Args:
         runner_input (dict): body of SQS message
+        propogate (bool): if True (default), invoke another check runner lambda
+
+    Returns:
+        dict: run result if something was run, else None
     """
     sqs_url = runner_input.get('sqs_url')
     if not sqs_url:
@@ -866,7 +870,7 @@ def run_check_runner(runner_input):
     check_list = json.loads(body)
     if not isinstance(check_list, list) or len(check_list) != 5:
         # if not a valid check str, remove the item from the SQS
-        delete_message_and_propogate(runner_input, receipt)
+        delete_message_and_propogate(runner_input, receipt, propogate=propogate)
         return None
     [run_env, run_uuid, run_name, run_kwargs, run_deps] = check_list
     # find information from s3 about completed checks in this run
@@ -892,7 +896,7 @@ def run_check_runner(runner_input):
             if found_rec is not None:
                 # the action record has been written. Abort and propogate
                 print('-RUN-> Found existing action record: %s. Skipping' % rec_key)
-                delete_message_and_propogate(runner_input, receipt)
+                delete_message_and_propogate(runner_input, receipt, propogate=propogate)
                 return None
             else:
                 # make a action record before running the action
@@ -919,9 +923,9 @@ def run_check_runner(runner_input):
                     print('-RUN-> Queued action %s with kwargs: %s'
                           % (run_result['action'], action_params))
         print('-RUN-> Finished: %s' % (run_name))
-        delete_message_and_propogate(runner_input, receipt)
+        delete_message_and_propogate(runner_input, receipt, propogate=propogate)
         return run_result
     else:
         print('-RUN-> Recovered: %s' % (run_name))
-        recover_message_and_propogate(runner_input, receipt)
+        recover_message_and_propogate(runner_input, receipt, propogate=propogate)
         return None

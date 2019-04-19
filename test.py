@@ -558,25 +558,25 @@ class TestCheckRunner(FSTest):
         self.assertTrue(bad_res is None)
         # queue a check without invoking runner. Get resulting run uuid
         to_send = ['test_checks/test_random_nums', {}, []]
-        run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
+
         tries = 0
         test_success = False
         while tries < 10 and not test_success:
             tries += 1
-            res = app_utils.run_check_runner({'sqs_url': self.queue.url})
-            if res is None or res.get('uuid') != run_uuid:
-                # did not run or ran the wrong check
-                # queue again if SQS is empty
-                sqs_attrs = utils.get_sqs_attributes(self.queue.url)
-                invis = int(sqs_attrs.get('ApproximateNumberOfMessagesNotVisible'))
-                if invis == 0:
-                    run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
-            else:
+            run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
+            with captured_output() as (out, err):
+                # invoke runner manually (without a lamba)
+                res = app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
+            read_out = out.getvalue().strip()
+            if res and res.get('uuid') == run_uuid:
                 # check the result from run_check_runner
                 self.assertTrue(res['name'] == 'test_random_nums')
                 self.assertTrue(res['uuid'] == run_uuid)
                 self.assertTrue('_run_info' in res['kwargs'])
                 self.assertTrue(res['kwargs']['_run_info']['run_id'] == run_uuid)
+                # check a couple things about printed runner output
+                self.assertTrue('%s (uuid)' % run_uuid in read_out)
+                self.assertTrue('Finished: test_checks/test_random_nums' in read_out)
                 test_success = True
         self.assertTrue(test_success)
         # check the stored result as well
@@ -635,7 +635,8 @@ class TestCheckRunner(FSTest):
             app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
             with captured_output() as (out, err):
                 # invoke runner manually (without a lamba)
-                runner_res = app_utils.run_check_runner({'sqs_url': self.queue.url})
+                runner_res = app_utils.run_check_runner({'sqs_url': self.queue.url},
+                                                        propogate=False)
             read_out = out.getvalue().strip()
             if 'Found existing action record' in read_out:
                 test_success = True
