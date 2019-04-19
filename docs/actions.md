@@ -5,8 +5,9 @@ This is an advanced topic. Make sure that you've read the [getting started](./ge
 Actions are executable functions that are linked to checks. These are useful because, in some cases, you want to take action on an issue identified by a check. Actions provide an easy way to do that, as they are written very similarly to checks and can be executed from the Foursight UI. Whereas checks are meant to be purely observational and not change any data within the target web application, actions are meant to execute meaningful changes to some part of the application.
 
 Actions have a connection to the check result that was used to call them through the `check_name` and `called_by` key word arguments. These two kwargs are handled internally when queueing actions through the UI, but will need to be manually added to run actions from your local machine. **Both check_name and called_by are required for an action to run.**
-* **check_name** string name of the check used to call the action
-* **called_by** uuid of the check used to call the action
+* **check_name** string name of the check used to call the action.
+* **called_by** uuid of the check used to call the action.
+
 Using these kwargs allow you to easily get the correct run result from the check that called it. This effectively allows you to put any sort of data you want inside your check and be able to use that data within your action, as well.
 
 There are a few key requirements to keep in mind when writing an action:
