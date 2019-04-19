@@ -7,11 +7,11 @@ from ..utils import (
 )
 from dcicutils import ff_utils
 import requests
-import sys
 import json
 import datetime
 import time
-import boto3
+import itertools
+from fuzzywuzzy import fuzz
 
 
 @check_function(cmp_to_last=False)
@@ -814,7 +814,7 @@ def users_with_pending_lab(connection, **kwargs):
         check.summary = 'Users found with pending_lab.'
         if check.status == 'PASS':
             check.status = 'WARN'
-            check.description = check.summary + '. Run the action to add lab and remove pending_lab'
+            check.description = check.summary + ' Run the action to add lab and remove pending_lab'
             check.allow_action = True
             check.action_message = 'Will attempt to patch lab and remove pending_lab for %s users' % len(check.full_output)
         if check.status == 'FAIL':
@@ -845,3 +845,59 @@ def finalize_user_pending_labs(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def users_with_doppelganger(connection, **kwargs):
+    """Define comma seperated emails in scope
+    if you want to work on a subset of all the results"""
+    check = init_check_res(connection, 'users_with_doppelganger')
+    check.full_output = []
+    check.brief_output = []
+    check.status = 'PASS'
+    query = ('/search/?type=User&sort=display_title'
+             '&field=display_title&field=contact_email&field=preferred_email&field=email')
+    all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
+    # combine all emails for each user
+    for a_user in all_users:
+        mail_fields = ['email', 'contact_email', 'preferred_email']
+        user_mails = []
+        for f in mail_fields:
+            if a_user.get(f):
+                user_mails.append(a_user[f].lower())
+        a_user['all_mails'] = list(set(user_mails))
+    # go through each combination
+    combs = itertools.combinations(all_users, 2)
+    for comb in combs:
+        us1 = comb[0]
+        us2 = comb[1]
+        # is there a common email between the 2 users
+        common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
+        if common_mail:
+            msg = '{} and {} share mail(s) {}'.format(us1['display_title'],
+                                                      us2['display_title'],
+                                                      str(common_mail))
+            log = {'user1': [us1['display_title'], us1['uuid']],
+                   'user2': [us2['display_title'], us2['uuid']],
+                   'log': 'has shared email(s) {}'.format(str(common_mail))}
+            check.brief_output.append(msg)
+            check.full_output.append(log)
+        # if not compare names
+        else:
+            score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
+            if score > 85:
+                msg = '{} and {} are similar ({}/100)'.format(us1['display_title'],
+                                                              us2['display_title'],
+                                                              str(score))
+                log = {'user1': [us1['display_title'], us1['uuid']],
+                       'user2': [us2['display_title'], us2['uuid']],
+                       'log': 'has similar names ({}/100)'.format(str(common_mail))}
+                check.brief_output.append(msg)
+                check.full_output.append(log)
+
+    if check.full_output:
+        check.summary = 'Users with possible doppelgangers.'
+        check.status == 'WARN'
+    else:
+        check.summary = 'No users found with doppelgangers'
+    return check
