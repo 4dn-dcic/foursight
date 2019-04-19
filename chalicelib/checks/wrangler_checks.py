@@ -874,11 +874,12 @@ def users_with_doppelganger(connection, **kwargs):
         # is there a common email between the 2 users
         common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
         if common_mail:
-            msg = '{} and {} share mail(s) {}'.format(us1['display_title'],
-                                                      us2['display_title'],
-                                                      str(common_mail))
-            log = {'user1': [us1['display_title'], us1['uuid']],
-                   'user2': [us2['display_title'], us2['uuid']],
+            msg = '{:<20} and {:<20} share mail(s) {}'.format(
+                us1['display_title'],
+                us2['display_title'],
+                str(common_mail))
+            log = {'user1': [us1['display_title'], us1['@id']],
+                   'user2': [us2['display_title'], us2['@id']],
                    'log': 'has shared email(s) {}'.format(str(common_mail))}
             check.brief_output.append(msg)
             check.full_output.append(log)
@@ -886,12 +887,13 @@ def users_with_doppelganger(connection, **kwargs):
         else:
             score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
             if score > 85:
-                msg = '{} and {} are similar ({}/100)'.format(us1['display_title'],
-                                                              us2['display_title'],
-                                                              str(score))
-                log = {'user1': [us1['display_title'], us1['uuid']],
-                       'user2': [us2['display_title'], us2['uuid']],
-                       'log': 'has similar names ({}/100)'.format(str(common_mail))}
+                msg = '{:<20} and {:<20} are similar ({}/100)'.format(
+                    us1['display_title'],
+                    us2['display_title'],
+                    str(score))
+                log = {'user1': [us1['display_title'], us1['@id']],
+                       'user2': [us2['display_title'], us2['@id']],
+                       'log': 'has similar names ({}/100)'.format(str(score))}
                 check.brief_output.append(msg)
                 check.full_output.append(log)
 

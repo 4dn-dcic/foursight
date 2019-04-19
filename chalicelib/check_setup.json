@@ -787,6 +787,18 @@
             }
         }
     },
+    "users_with_doppelganger": {
+        "title": "Users with Doppelgangers",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5run_status" : {
         "title": "a) MD5run",
         "group": "Pipeline checks",
