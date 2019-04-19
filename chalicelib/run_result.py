@@ -16,7 +16,6 @@ class RunResult(object):
         self.extension = ".json"
         self.kwargs = {}
 
-
     def get_latest_result(self):
         """
         Returns the latest result (the last check run)
@@ -24,14 +23,12 @@ class RunResult(object):
         latest_key = ''.join([self.name, '/latest', self.extension])
         return self.get_s3_object(latest_key)
 
-
     def get_primary_result(self):
         """
         Returns the most recent primary result run (with 'primary'=True in kwargs)
         """
         primary_key = ''.join([self.name, '/primary', self.extension])
         return self.get_s3_object(primary_key)
-
 
     def get_closest_result(self, diff_hours=0, diff_mins=0, override_date=None):
         """
@@ -85,7 +82,6 @@ class RunResult(object):
                 tries += 1
         return match_res
 
-
     def get_s3_object(self, key):
         """
         Returns None if not present, otherwise returns a JSON parsed res.
@@ -100,14 +96,12 @@ class RunResult(object):
             return result
         return json_result
 
-
     def get_result_by_uuid(self, uuid):
         """
         Returns result if it can be found by its uuid, otherwise None.
         """
         result_key = ''.join([self.name, '/', uuid, self.extension])
         return self.get_s3_object(result_key)
-
 
     def get_all_results(self):
         """
@@ -127,7 +121,6 @@ class RunResult(object):
                 all_results.append(result)
         return all_results
 
-
     def record_run_info(self):
         """
         Add a record of the completed check to the foursight-runs bucket with name
@@ -140,7 +133,6 @@ class RunResult(object):
         resp = s3_connection.put_object(record_key, json.dumps(self.status))
         return resp is not None
 
-
     def get_result_history(self, start, limit, after_date=None):
         """
         Used to get the uuid, status, and kwargs for a specific check.
@@ -150,7 +142,6 @@ class RunResult(object):
         results after that point will be returned.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-
         all_keys = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
 
         # sort them from newest to oldest
@@ -179,7 +170,6 @@ class RunResult(object):
             results.append(res_val)
         return results
 
-
     def store_formatted_result(self, uuid, formatted, primary):
         """
         Store the result in s3. Always makes an entry with key equal to the
@@ -199,7 +189,6 @@ class RunResult(object):
             self.s3_connection.put_object(primary_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
-
 
     def filename_to_datetime(self, key):
         '''
@@ -260,7 +249,6 @@ class CheckResult(RunResult):
         self.action_message = 'Are you sure you want to run this action?'
         super().__init__(s3_connection, name)
 
-
     def format_result(self, uuid):
         # use summary as description if descrip is missing
         if self.summary and not self.description:
@@ -283,7 +271,6 @@ class CheckResult(RunResult):
             'kwargs': self.kwargs,
             'type': 'check'
         }
-
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this
@@ -309,7 +296,6 @@ class CheckResult(RunResult):
         return self.store_formatted_result(self.kwargs['uuid'], formatted, is_primary)
 
 
-
 class ActionResult(RunResult):
     """
     Inherits from RunResult and is meant to be used with actions
@@ -322,7 +308,6 @@ class ActionResult(RunResult):
         self.output = None
         super().__init__(s3_connection, name)
 
-
     def format_result(self, uuid):
         return {
             'name': self.name,
@@ -333,7 +318,6 @@ class ActionResult(RunResult):
             'kwargs': self.kwargs,
             'type': 'action'
         }
-
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this
@@ -354,6 +338,18 @@ class ActionResult(RunResult):
         # fetched with the get_latest_result method.
         return self.store_formatted_result(self.kwargs['uuid'], formatted, True)
 
+    def get_associated_check_result(self, kwargs):
+        """
+        Leverage required 'check_name' and 'called_by' kwargs to return
+        the check result from the associted check of this action.
+        This will throw a KeyError if the kwargs are missing, but that's okay,
+        since we want to enforce the new associated check/action model.
+        Must pass in the dict kwargs
+        """
+        assc_name = kwargs['check_name']
+        called_by = kwargs['called_by']
+        check = CheckResult(self.s3_connection, assc_name)
+        return check.get_result_by_uuid(called_by)
 
 
 ### Utility functions for check_result

@@ -196,6 +196,9 @@ You should not have to set it directly, but the `uuid` key word argument is very
 ### The 'primary' key word argument
 The Foursight UI will automatically display the latest run check that was run with the `primary` key word argument set to `True`. In most cases, this argument should be set when defining the key word arguments in `check_setup.json`; in some cases, you may want to set it during testing. Omitting this argument or setting its value to `False` will still cause the check to store its record in AWS S3 and overwrite the `latest` result for that check, but that result will not be shown on the UI.
 
+### The 'queue_action' key word argument
+This is a boolean kwarg that can be set to `True` to automatically queue the action associated with a check for running after the check is complete. This is best leveraged in the check setup for check/action combinations that you are confident in running without manual intervention. To queue an action, the check must have a valid `check.action` set and `check.allow_action` must be `True`.
+
 ## Handling exceptions in checks
 Foursight will automatically catch any exceptions when running check code and automatically log the traceback of the exception to the `full_output` field. In such a case, the status of the check will be set to `ERROR` and the kwargs it was run with will be stored. All of this data is made available from the UI to facilitate debugging of the checks. For this reason, it is usually not necessary to write general try/except blocks in your check unless you are handling specific exceptions relevant to your code.
 

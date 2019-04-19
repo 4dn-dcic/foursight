@@ -844,6 +844,9 @@ class TestActionResult(FSTest):
         self.assertTrue(res.get('description') == 'Malformed status; look at Foursight action definition.')
         self.assertTrue(res['kwargs']['abc'] == 123)
         self.assertTrue('uuid' in res.get('kwargs'))
+        # this action has no check_name/called_by kwargs, so expect KeyError
+        with self.assertRaises(KeyError) as exc:
+            action.get_associated_check_result(action.kwargs)
 
 
 class TestCheckUtils(FSTest):
@@ -1040,7 +1043,9 @@ class TestCheckUtils(FSTest):
 
         # with an action
         action = utils.init_action_res(self.connection, 'add_random_test_nums')
-        test_info_2 = ['test_checks/add_random_test_nums', {'primary': True, 'uuid': test_uuid, 'check_name': 'test_random_nums', 'called_by': latest_uuid}, [] ,'xxx']
+        act_kwargs = {'primary': True, 'uuid': test_uuid, 'check_name': 'test_random_nums',
+                      'called_by': latest_uuid}
+        test_info_2 = ['test_checks/add_random_test_nums', act_kwargs, [] ,'xxx']
         action_res = check_utils.run_check_or_action(self.connection, test_info_2[0], test_info_2[1])
         self.assertTrue(isinstance(action_res, dict))
         self.assertTrue('name' in action_res)
@@ -1057,6 +1062,12 @@ class TestCheckUtils(FSTest):
         output = latest_res.get('output')
         # output will differ for latest and primary res, since the checks differ
         self.assertTrue(output['latest'] != output['primary'])
+        # make sure the action can get its associated check result
+        assc_check = action.get_associated_check_result(act_kwargs)
+        self.assertTrue(assc_check is not None)
+        self.assertTrue(assc_check['name'] == act_kwargs['check_name'])
+        self.assertTrue(assc_check['uuid'] == act_kwargs['called_by'])
+
 
     def test_run_check_errors(self):
         bad_check_group = [

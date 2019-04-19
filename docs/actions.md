@@ -2,9 +2,12 @@
 
 This is an advanced topic. Make sure that you've read the [getting started](./getting_started.md) and [checks](./checks.md) documentation before going through this.
 
-Actions are executable functions that can be linked to checks. These are useful because, in some cases, you want to take action on an issue identified by a check. Actions provide an easy way to do that, as they are written very similarly to checks and can be executed from the Foursight UI. Whereas checks are meant to be purely observational and not change any data within the target web application, actions are meant to execute meaningful changes to some part of the application.
+Actions are executable functions that are linked to checks. These are useful because, in some cases, you want to take action on an issue identified by a check. Actions provide an easy way to do that, as they are written very similarly to checks and can be executed from the Foursight UI. Whereas checks are meant to be purely observational and not change any data within the target web application, actions are meant to execute meaningful changes to some part of the application.
 
-Actions have a connection to the check result that was used to call them through the `called_by` key word argument. Using this, you can get the specific results from a certain check. This allows you to put any sort of data you want inside your check and be able to use that data within your action, as well. Since actions should only ever be used from the UI (or command line, with `called_by` supplied), you can write your actions to use this system.
+Actions have a connection to the check result that was used to call them through the `check_name` and `called_by` key word arguments. These two kwargs are handled internally when queueing actions through the UI, but will need to be manually added to run actions from your local machine. **Both check_name and called_by are required for an action to run.**
+* **check_name** string name of the check used to call the action
+* **called_by** uuid of the check used to call the action
+Using these kwargs allow you to easily get the correct run result from the check that called it. This effectively allows you to put any sort of data you want inside your check and be able to use that data within your action, as well.
 
 There are a few key requirements to keep in mind when writing an action:
 * Action functions must always start with the `@action_function()` decorator.
@@ -47,13 +50,13 @@ def make_random_test_nums(connection, **kwargs):
     return check
 ```
 
-### The 'called_by' key word argument
-All actions are guaranteed to have the `called_by` key word argument; if they don't, the action will not run. This argument is the uuid of the check result that was used to call the action. A common operation within an action is to get the information of the check result that called it. This can be done like so, given a check with name `make_random_test_nums`:
+### The associated check
+As stated earlier, all actions run from the UI are guaranteed to have the `check_name` and `called_by` kwargs; if they don't, they will not run. These allow you to easily get the dictionary data that corresponds to the JSON of the associated check result using the `get_associated_check_result` method of the action.
 
 ```
-<inside an action>
-    my_check = init_check_res(connection, 'make_random_test_nums')
-    check_data = my_check.get_result_by_uuid(kwargs['called_by'])
+<inside an action, so kwargs are available>
+    action = init_action_res(connection, 'make_random_test_nums')
+    check_data = action.get_associated_check_result(kwargs)
 ```
 
 ### Writing the action
@@ -65,8 +68,7 @@ def add_random_nums(connection, **kwargs):
     action = init_action_res(connection, 'add_random_nums')
 
     # get the results from the check
-    check = init_check_res(connection, 'make_random_test_nums')
-    check_data = check.get_result_by_uuid(kwargs['called_by'])
+    check_data = action.get_associated_check_result(kwargs)
     nums = check_data.get('full_output', [])
 
     # add up the numbers from the check and add the kwarg 'offset' value
@@ -127,4 +129,4 @@ def make_random_test_nums(connection, **kwargs):
 ```
 
 ### Viewing action results
-The results of run actions can be seen using the `Toggle latest action` button in the linked check on the Foursight UI. This box will always show the most recent run of the linked action in JSON form.
+The results of run actions can be seen directly on the check result usingt the Foursight UI. If there has been an action run using the check result, a `Toggle associated action` button will appear that will show the result of the action. If an associated action has been run, you will not be able to run another action from the check result; to run a new action, you must first run the check again. In addition, a `Toggle latest action` button will also be displayed that shows the most recent action run -- this is not necessarily the action run from the check you are viewing!

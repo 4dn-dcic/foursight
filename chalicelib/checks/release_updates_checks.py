@@ -616,9 +616,7 @@ def data_release_updates(connection, **kwargs):
 @action_function()
 def publish_data_release_updates(connection, **kwargs):
     action = init_action_res(connection, 'publish_data_release_updates')
-    report_check = init_check_res(connection, 'data_release_updates')
-    report_uuid = kwargs['called_by']
-    report_result = report_check.get_result_by_uuid(report_uuid)
+    report_result = action.get_associated_check_result(kwargs)
     action.description = "Publish data release updates to Fourfront."
     updates_to_post = report_result.get('brief_output', {}).get('release_updates', [])
     section_to_post = report_result.get('brief_output', {}).get('static_section')
@@ -688,4 +686,3 @@ def sync_google_analytics_data(connection, **kwargs):
     check.status = 'PASS' if (len(action_logs['daily_created']) > 0 or len(action_logs['monthly_created']) > 0) else 'WARN'
     check.description = 'Created %s daily items and %s monthly Items.' % (str(len(action_logs['daily_created'])), str(len(action_logs['monthly_created'])))
     return check
-
