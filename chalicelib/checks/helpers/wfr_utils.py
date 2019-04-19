@@ -210,7 +210,7 @@ def extract_nz_chr(acc, auth):
     return nz_num, chrsize, max_distance
 
 
-def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None):
+def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
@@ -218,11 +218,14 @@ def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None
     args:
      emb_file: embedded frame file info
      wfr_name: base name without version
+     key: authorization
      all_wfrs : all releated wfrs in embedded frame
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # you should provide key or all_wfrs
+    assert key or all_wfrs
     if wfr_name not in workflow_details:
         assert wfr_name in workflow_details
     # get default accepted versions if not provided
@@ -254,9 +257,13 @@ def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None
     if not my_workflows:
         return {'status': "no workflow in file with accepted version"}
     my_workflows = sorted(my_workflows, key=lambda k: k['run_hours'])
-    last_wfr = [i for i in my_workflows if i['run_type'] == wfr_name][0]
+    same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
+    last_wfr = same_type_wfrs[0]
     # get metadata for the last wfr
-    wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
+    if all_wfrs:
+        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
+    else:
+        wfr = ff_utils.get_metadata(last_wfr['uuid'], key)
     run_duration = last_wfr['run_hours']
     run_status = wfr['run_status']
 
@@ -280,6 +287,10 @@ def get_wfr_out(emb_file, wfr_name, all_wfrs, versions=[], md_qc=False, run=None
                 return {'status': "no file found"}
     # if status is error
     elif run_status == 'error':
+        # are there too many failed runs
+        if len(same_type_wfrs) > 2:
+            return {'status': "no complete run, too many errors"}
+
         return {'status': "no complete run, errrored"}
     # if other statuses, started running
     elif run_duration < run:
@@ -528,6 +539,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
         missing_run = []
         # still running
         running = []
+        # problematic cases
+        problematic_run = []
         # if all runs are complete, add the patch info for processed files and tag
         complete = {'patch_opf': [],
                     'add_tag': []}
@@ -562,28 +575,29 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 continue
             # Check Part 1 and See if all are okay
             exp_bams = []
-            part1 = 'ready'
             part2 = 'ready'
             for pair in exp_files[exp]:
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     exp_bams.append(step1_result['out_bam'])
                 # if still running
                 elif step1_result['status'] == 'running':
-                    part1 = 'not ready'
+                    part2 = 'not ready'
                     running.append(['step1', exp, pair])
                 # if run is not successful
+                elif step1_result['status'] == "no complete run, too many errors":
+                    part2 = 'not ready'
+                    problematic_run.append(['step1', exp, pair])
                 else:
-                    part1 = 'not ready'
+                    part2 = 'not ready'
                     # add part 1
                     inp_f = {'fastq1': pair[0], 'fastq2': pair[1], 'bwa_index': refs['bwa_ref']}
                     name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
                     missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
             # stop progress to part2 and 3
-            if part1 is not 'ready':
-                part2 = 'not ready'
+            if part2 is not 'ready':
                 part3 = 'not ready'
                 # skip part 2 checks
                 continue
@@ -591,7 +605,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step2s = []
             for bam in exp_bams:
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
-                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs=all_wfrs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -608,6 +622,11 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 part3 = 'not ready'
                 running.append(['step2', exp])
                 continue
+            # problematic runs with repeated fails
+            elif step2_result['status'] == 'no complete run, too many errors':
+                part3 = 'not ready'
+                problematic_run.append(['step2', exp])
+                continue
             # if run is not successful
             else:
                 part3 = 'not ready'
@@ -619,6 +638,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 set_summary += "| missing step 1/2"
             elif running:
                 set_summary += "| running step 1/2"
+            elif problematic_run:
+                set_summary += "| problem in step 1/2"
 
         if part3 is 'ready':
             # if we made it to this step, there should be files in set_pairs
@@ -627,7 +648,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             assert len(list(set(all_step3s))) == 1
             # if successful
@@ -640,6 +661,10 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             elif step3_result['status'] == 'running':
                 running.append(['step3', set_acc])
                 set_summary += "| running step3"
+            # problematic runs with repeated fails
+            elif step3_result['status'] == 'no complete run, too many errors':
+                set_summary += "| problems in step3"
+                problematic_run.append(['step3', set_acc])
             # if run is not successful
             else:
                 set_summary += "| missing step3"
@@ -656,11 +681,15 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             check.full_output['running_runs'].append({set_acc: running})
         if missing_run:
             check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
         # if made it till the end
         if complete.get('add_tag'):
             assert not running
+            assert not problematic_run
             assert not missing_run
             check.full_output['completed_runs'].append(complete)
+    # complete check values
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
         check.status = 'WARN'
@@ -675,6 +704,9 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
         check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
         check.status = 'WARN'
         check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' with repeated fail|'
+        check.status = 'WARN'
     return check
 
 
@@ -687,10 +719,11 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
-        return 'no content in patch_opf, skipping'
+        return ['no content in patch_opf, skipping']
     if not patch_data.get('add_tag'):
-        return 'no tag info, skipping'
+        return ['no tag info, skipping']
     pc_set_title = titles[pipeline_type]
+    log = []
     for a_case in patch_data['patch_opf']:
         # exp/set acc, and list of files to add
         acc, list_pc = a_case[0], a_case[1]
@@ -701,18 +734,21 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             ex_pc_ids = [i['@id'] for i in ex_pc]
             common = list(set(ex_pc_ids) & set(list_pc))
             if common:
-                return 'some files ({}) are already in processed_files filed for {}'.format(common, acc)
+                log.append('some files ({}) are already in processed_files filed for {}'.format(common, acc))
+                continue
         # check if these items are in other processed files field
         ex_opc = resp.get('other_processed_files')
         if ex_opc:
             # make sure the title is not already There
             all_existing_titles = [a['title'] for a in ex_opc]
             if pc_set_title in all_existing_titles:
-                return 'opc using same title already exists for {}'.format(acc)
+                log.append('opc using same title already exists for {}'.format(acc))
+                continue
             ex_opc_ids = [i['@id'] for a in ex_opc for i in a['files']]
             common = list(set(ex_opc_ids) & set(list_pc))
             if common:
-                return 'some files ({}) are already in other_processed_files filed for {}'.format(common, acc)
+                log.append('some files ({}) are already in other_processed_files filed for {}'.format(common, acc))
+                continue
         source_status = resp['status']
         # if move_to_pc is set to true, but the source status is released/to project
         # set it back to finalize_user_pending_labs
@@ -722,10 +758,10 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
         if move_to_pc:
             # at this step we expect processed_files field to be empty
             if ex_pc_ids:
-                return 'expected processed_files to be empty: {}'.format(acc)
+                log.append('expected processed_files to be empty: {}'.format(acc))
+                continue
             # patch the processed files field
             ff_utils.patch_metadata({'processed_files': list_pc}, obj_id=acc, key=auth)
-            return
         # if not move_to_pc, add files to opf with proper title
         else:
             # we need raw to get the existing piece, to patch back with the new ones
@@ -740,7 +776,13 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
             patch_val.append(new_data)
             patch_body = {'other_processed_files': patch_val}
             ff_utils.patch_metadata(patch_body, obj_id=acc, key=auth)
-            return
+    # add the tag
+    set_acc = patch_data['add_tag'][0]
+    new_tag = patch_data['add_tag'][1]
+    existing_tags = ff_utils.get_metadata(set_acc, auth).get('completed_processes', [])
+    new_tags = list(set(existing_tags + [new_tag]))
+    ff_utils.patch_metadata({'completed_processes': new_tags}, set_acc, auth)
+    return log
 
 
 def start_missing_hic_run(run_info, auth, env):
@@ -787,18 +829,18 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
     if patch_meta:
         action_log['patched_meta'] = []
         for a_completed_info in patch_meta:
+            acc = a_completed_info['add_tag'][0]
             now = datetime.utcnow()
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations.'
                 break
             patched_md += 1
-            error = patch_complete_data(a_completed_info, my_auth, move_to_pc=move_to_pc)
+            error = patch_complete_data(a_completed_info, 'hic', my_auth, move_to_pc=move_to_pc)
             if not error:
-                log_message = a_run.keys()[0] + ' completed processing'
+                log_message = acc + ' completed processing'
                 action_log['patched_meta'].append(log_message)
             else:
-                log_message = a_run.keys()[0] + error
-                action_log['failed_meta'].append(log_message)
+                action_log['failed_meta'].append([acc, error])
 
     # did we complete without running into time limit
     for k in action_log:
