@@ -54,7 +54,7 @@ Just make sure to do your testing on the development stage of Foursight, which y
 ### Manual testing of your action
 Actions function very similarly to checks when run individually. In fact, testing them is completely the same; the only difference is the different output. Below is some code that would test an action called `patch_file_size` in the `wrangler_checks` module.
 
-**NOTE:** you must add some sort of `called_by` parameter to your `run_check_or_action` call to test an action. If your action doesn't leverage the `called_by` parameter specifically, you can give it whatever value you want.
+**NOTE:** you must add `check_name` and `called_by` parameters to your `run_check_or_action` call to test an action. If your action doesn't leverage these parameters specifically, you can give whatever value you want.
 
 **WARNING:** when manually running an action, be aware that it actually be executed on the given Foursight connection. For that reason, when in testing stages it is best to remove any impactful code within an action or insert a break point to have manual control.
 
@@ -62,13 +62,13 @@ Actions function very similarly to checks when run individually. In fact, testin
 >>> import app
 # create a Foursight connection to the 'mastertest' environment
 >>> connection = app.init_connection('mastertest')
->>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'called_by': None})
+>>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'check_name': None, 'called_by': None})
 # some possible output:
 {'name': 'patch_file_size','description': None, 'status': 'DONE',
 'uuid': '2018-01-16T19:14:34.025445', 'output': [] ...}
 
 # you can also run with kwargs...
->>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'called_by': 'some_uuid', 'some_arg': 'some_value'})
+>>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'check_name': 'some_check_name', 'called_by': 'some_uuid', 'some_arg': 'some_value'})
 ```
 
 ### Manual testing of your schedule

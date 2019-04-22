@@ -101,7 +101,7 @@ def md5run_status(connection, **kwargs):
         if not head_info:
             no_s3_file.append(file_id)
             continue
-        md5_report = wfr_utils.get_wfr_out(a_file, "md5", my_auth, md_qc=True)
+        md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
         # Most probably the trigger did not work, and we run it manually
@@ -147,9 +147,7 @@ def md5run_start(connection, **kwargs):
     action = init_action_res(connection, 'md5run_start')
     action_logs = {'runs_started': [], "runs_failed": []}
     my_auth = connection.ff_keys
-    # get latest results from identify_files_without_filesize
-    md5run_check = init_check_res(connection, 'md5run_status')
-    md5run_check_result = md5run_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    md5run_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     action_logs['check_output'] = md5run_check_result
     targets = []
     if kwargs.get('start_missing'):
@@ -221,7 +219,7 @@ def fastqc_status(connection, **kwargs):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_fastq['accession']
-        report = wfr_utils.get_wfr_out(a_fastq, 'fastqc-0-11-4-1',  my_auth, md_qc=True)
+        report = wfr_utils.get_wfr_out(a_fastq, 'fastqc-0-11-4-1',  key=my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
             continue
@@ -262,9 +260,7 @@ def fastqc_start(connection, **kwargs):
     action = init_action_res(connection, 'fastqc_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
-    # get latest results from identify_files_without_filesize
-    fastqc_check = init_check_res(connection, 'fastqc_status')
-    fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    fastqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
     if kwargs.get('start_fastqc'):
         targets.extend(fastqc_check_result.get('files_without_fastqc', []))
@@ -335,7 +331,7 @@ def pairsqc_status(connection, **kwargs):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_pairs['accession']
-        report = wfr_utils.get_wfr_out(a_pairs, 'pairsqc-single',  my_auth, md_qc=True)
+        report = wfr_utils.get_wfr_out(a_pairs, 'pairsqc-single',  key=my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
             continue
@@ -375,9 +371,7 @@ def pairsqc_start(connection, **kwargs):
     action = init_action_res(connection, 'pairsqc_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
-    # get latest results from identify_files_without_filesize
-    pairsqc_check = init_check_res(connection, 'pairsqc_status')
-    pairsqc_check_result = pairsqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    pairsqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
     if kwargs.get('start_pairsqc'):
         targets.extend(pairsqc_check_result.get('files_without_pairsqc', []))
@@ -402,7 +396,10 @@ def pairsqc_start(connection, **kwargs):
         if max_distance:
             additional_setup['parameters']['max_distance'] = max_distance
         inp_f = {'input_pairs': a_file['@id'], 'chromsizes': chrsize}
-        wfr_setup = wfrset_utils.step_settings('pairsqc-single', 'no_organism', attributions, overwrite=additional_setup)
+        wfr_setup = wfrset_utils.step_settings('pairsqc-single',
+                                               'no_organism',
+                                               attributions,
+                                               overwrite=additional_setup)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
@@ -429,7 +426,7 @@ def in_situ_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'in situ Hi-C'
     # completion tag
@@ -453,8 +450,7 @@ def in_situ_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'in_situ_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'in_situ_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -480,7 +476,7 @@ def dilution_hic_status(connection, **kwargs):
     check.brief_output = []
     check.summary = ""
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'dilution Hi-C'
     # completion tag
@@ -505,8 +501,7 @@ def dilution_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'dilution_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'dilution_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -533,7 +528,7 @@ def tcc_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'TCC'
     # completion tag
@@ -557,8 +552,7 @@ def tcc_start(connection, **kwargs):
     action = init_action_res(connection, 'tcc_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'tcc_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -584,7 +578,7 @@ def dnase_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'DNase Hi-C'
     # completion tag
@@ -608,8 +602,7 @@ def dnase_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'dnase_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'dnase_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -635,7 +628,7 @@ def capture_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'capture Hi-C'
     # completion tag
@@ -659,8 +652,7 @@ def capture_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'capture_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'capture_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -686,7 +678,7 @@ def micro_c_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'micro-C'
     # completion tag
@@ -710,8 +702,7 @@ def micro_c_start(connection, **kwargs):
     action = init_action_res(connection, 'micro_c_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'micro_c_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -737,7 +728,7 @@ def chia_pet_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'ChIA-PET'
     # completion tag
@@ -761,8 +752,7 @@ def chia_pet_start(connection, **kwargs):
     action = init_action_res(connection, 'chia_pet_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'chia_pet_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -788,7 +778,7 @@ def trac_loop_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'TrAC-loop'
     # completion tag
@@ -812,8 +802,7 @@ def trac_loop_start(connection, **kwargs):
     action = init_action_res(connection, 'trac_loop_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'trac_loop_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -839,7 +828,7 @@ def plac_seq_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': []}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'PLAC-seq'
     # completion tag
@@ -863,8 +852,7 @@ def plac_seq_start(connection, **kwargs):
     action = init_action_res(connection, 'plac_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'plac_seq_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
