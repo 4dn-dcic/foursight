@@ -868,7 +868,7 @@ def users_with_doppelganger(connection, **kwargs):
     if reset:
         ignored_cases = []
     else:
-        last_result = check.get_primary_result().get('full_output', {})
+        last_result = check.get_primary_result()
         # if last one was fail, find an earlier check with non-FAIL status
         it = 0
         while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
@@ -884,7 +884,7 @@ def users_with_doppelganger(connection, **kwargs):
                 check.status = 'ERROR'
                 return check
         # remove cases previously ignored
-        ignored_cases = last_result.get('ignore', [])
+        ignored_cases = last_result['full_output'].get('ignore', [])
 
     # ignore contains nested list with 2 elements, 2 user @id values that should be ignored
     check.full_output = {'result': [], 'ignore': []}
@@ -898,7 +898,7 @@ def users_with_doppelganger(connection, **kwargs):
         for an_email in emails:
             an_email = an_email.strip()
             if an_email:
-                query += '?email=' + an_email.strip()
+                query += '&email=' + an_email.strip()
     # get users
     all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
     # combine all emails for each user
@@ -919,7 +919,7 @@ def users_with_doppelganger(connection, **kwargs):
         # is there a common email between the 2 users
         common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
         if common_mail:
-            msg = '{:<18} and {:<18} share mail(s) {}'.format(
+            msg = '{} and {} share mail(s) {}'.format(
                 us1['display_title'],
                 us2['display_title'],
                 str(common_mail))
@@ -932,9 +932,7 @@ def users_with_doppelganger(connection, **kwargs):
         else:
             score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
             if score > 85:
-                if us1['display_title'] == 'Tomas Rodriguez':
-                    print(us2['display_title'])
-                msg = '{:<18} and {:<18} are similar ({:<3}/100)'.format(
+                msg = '{} and {} are similar ({}/100)'.format(
                     us1['display_title'],
                     us2['display_title'],
                     str(score))
