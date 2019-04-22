@@ -147,9 +147,7 @@ def md5run_start(connection, **kwargs):
     action = init_action_res(connection, 'md5run_start')
     action_logs = {'runs_started': [], "runs_failed": []}
     my_auth = connection.ff_keys
-    # get latest results from identify_files_without_filesize
-    md5run_check = init_check_res(connection, 'md5run_status')
-    md5run_check_result = md5run_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    md5run_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     action_logs['check_output'] = md5run_check_result
     targets = []
     if kwargs.get('start_missing'):
@@ -262,9 +260,7 @@ def fastqc_start(connection, **kwargs):
     action = init_action_res(connection, 'fastqc_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
-    # get latest results from identify_files_without_filesize
-    fastqc_check = init_check_res(connection, 'fastqc_status')
-    fastqc_check_result = fastqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    fastqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
     if kwargs.get('start_fastqc'):
         targets.extend(fastqc_check_result.get('files_without_fastqc', []))
@@ -375,9 +371,7 @@ def pairsqc_start(connection, **kwargs):
     action = init_action_res(connection, 'pairsqc_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
-    # get latest results from identify_files_without_filesize
-    pairsqc_check = init_check_res(connection, 'pairsqc_status')
-    pairsqc_check_result = pairsqc_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    pairsqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
     if kwargs.get('start_pairsqc'):
         targets.extend(pairsqc_check_result.get('files_without_pairsqc', []))
@@ -456,8 +450,7 @@ def in_situ_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'in_situ_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'in_situ_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -508,8 +501,7 @@ def dilution_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'dilution_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'dilution_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -560,8 +552,7 @@ def tcc_start(connection, **kwargs):
     action = init_action_res(connection, 'tcc_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'tcc_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -611,8 +602,7 @@ def dnase_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'dnase_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'dnase_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -662,8 +652,7 @@ def capture_hic_start(connection, **kwargs):
     action = init_action_res(connection, 'capture_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'capture_hic_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -713,8 +702,7 @@ def micro_c_start(connection, **kwargs):
     action = init_action_res(connection, 'micro_c_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'micro_c_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -764,8 +752,7 @@ def chia_pet_start(connection, **kwargs):
     action = init_action_res(connection, 'chia_pet_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'chia_pet_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -815,8 +802,7 @@ def trac_loop_start(connection, **kwargs):
     action = init_action_res(connection, 'trac_loop_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'trac_loop_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
@@ -866,8 +852,7 @@ def plac_seq_start(connection, **kwargs):
     action = init_action_res(connection, 'plac_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    hic_check = init_check_res(connection, 'plac_seq_status')
-    hic_check_result = hic_check.get_result_by_uuid(kwargs['called_by']).get('full_output', {})
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):

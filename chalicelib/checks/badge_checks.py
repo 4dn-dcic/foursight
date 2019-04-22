@@ -236,9 +236,7 @@ def repsets_have_bio_reps(connection, **kwargs):
 @action_function()
 def patch_badges_for_replicate_numbers(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_replicate_numbers')
-
-    rep_check = init_check_res(connection, 'repsets_have_bio_reps')
-    rep_check_result = rep_check.get_result_by_uuid(kwargs['called_by'])
+    rep_check_result = action.get_associated_check_result(kwargs)
 
     rep_keys = ['New replicate sets with replicate number issues',
                 'Replicate sets that no longer have replicate number issues',
@@ -317,9 +315,7 @@ def tier1_metadata_present(connection, **kwargs):
 @action_function()
 def patch_badges_for_tier1_metadata(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_tier1_metadata')
-
-    tier1_check = init_check_res(connection, 'tier1_metadata_present')
-    tier1_check_result = tier1_check.get_result_by_uuid(kwargs['called_by'])
+    tier1_check_result = action.get_associated_check_result(kwargs)
 
     tier1keys = ['New tier1 biosamples missing required metadata',
                  'Tier1 biosamples no longer missing required metadata',
@@ -393,9 +389,7 @@ def exp_has_raw_files(connection, **kwargs):
 @action_function()
 def patch_badges_for_raw_files(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_raw_files')
-
-    raw_check = init_check_res(connection, 'exp_has_raw_files')
-    raw_check_result = raw_check.get_result_by_uuid(kwargs['called_by'])
+    raw_check_result = action.get_associated_check_result(kwargs)
 
     raw_keys = ['Experiments newly missing raw files', 'Experiments no longer missing raw files']
 
@@ -529,9 +523,7 @@ def consistent_replicate_info(connection, **kwargs):
 @action_function()
 def patch_badges_for_inconsistent_replicate_info(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_inconsistent_replicate_info')
-
-    rep_info_check = init_check_res(connection, 'consistent_replicate_info')
-    rep_info_check_result = rep_info_check.get_result_by_uuid(kwargs['called_by'])
+    rep_info_check_result = action.get_associated_check_result(kwargs)
 
     rep_info_keys = [
         'New replicate experiment sets with inconsistent replicate info',
