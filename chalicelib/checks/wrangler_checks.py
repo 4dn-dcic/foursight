@@ -856,21 +856,35 @@ def users_with_doppelganger(connection, **kwargs):
         reset_ignore: you can reset the ignore list, and restart it, useful if you added something by mistake
     """
     check = init_check_res(connection, 'users_with_doppelganger')
-    last_result = check.get_primary_result().get('full_output', {})
-    # if last one was fail, find an earlier check with non-FAIL status
-    it = 0
-    while last_result['status'] == 'FAIL' or not last_result.get('primary'):
-        it += 1
-        # this is a daily check, so look for checks with 12h iteration
-        hours = it * 12
-        last_result = check.get_closest_result(diff_hours=hours)
-        # if this is going forever kill it
-        if hours > 100:
-            fail_msg = 'Can not find a non-FAIL check in last 100 hours'
-            check.brief_output = fail_msg
-            check.full_output = {}
-            check.status = 'FAIL'
-            return check
+    # do we want to add current results to ignore list
+    ignore_current = False
+    if kwargs.get('ignore_current'):
+        ignore_current = True
+    # do we want to reset the ignore list
+    reset = False
+    if kwargs.get('reset_ignore'):
+        reset = True
+    # GET THE IGNORE LIST FROM LAST CHECKS IF NOT RESET_IGNORE
+    if reset:
+        ignored_cases = []
+    else:
+        last_result = check.get_primary_result().get('full_output', {})
+        # if last one was fail, find an earlier check with non-FAIL status
+        it = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            it += 1
+            # this is a daily check, so look for checks with 12h iteration
+            hours = it * 12
+            last_result = check.get_closest_result(diff_hours=hours)
+            # if this is going forever kill it
+            if hours > 100:
+                err_msg = 'Can not find a non-FAIL check in last 100 hours'
+                check.brief_output = err_msg
+                check.full_output = {}
+                check.status = 'ERROR'
+                return check
+        # remove cases previously ignored
+        ignored_cases = last_result.get('ignore', [])
 
     # ignore contains nested list with 2 elements, 2 user @id values that should be ignored
     check.full_output = {'result': [], 'ignore': []}
@@ -885,14 +899,6 @@ def users_with_doppelganger(connection, **kwargs):
             an_email = an_email.strip()
             if an_email:
                 query += '?email=' + an_email.strip()
-    # do we want to ignore the current results
-    ignore_current = False
-    if kwargs.get('ignore_current'):
-        ignore_current = True
-    # do we want to reset the ignore list
-    reset = False
-    if kwargs.get('reset_ignore'):
-        reset = True
     # get specified users
     all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
     # combine all emails for each user
@@ -937,19 +943,25 @@ def users_with_doppelganger(connection, **kwargs):
                        'log': 'has similar names ({}/100)'.format(str(score)),
                        'brief': msg}
                 cases.append(log)
-    # remove cases previously ignored
-    ignored_cases = last_result.get('ignore', [])
-    # are they getting out of control
+
+    # are the ignored ones getting out of control
     if len(ignored_cases) > 100:
-        err_msg = 'Number of ignored cases is very high, time for maintainace'
-        check.brief_output = err_msg
-        check.full_output = {'result': [err_msg, ],  'ignore': ignored_cases}
-        check.status = 'ERROR'
+        fail_msg = 'Number of ignored cases is very high, time for maintainace'
+        check.brief_output = fail_msg
+        check.full_output = {'result': [fail_msg, ],  'ignore': ignored_cases}
+        check.status = 'FAIL'
         return check
     # remove ignored cases from all cases
     if ignored_cases:
         for an_ignored_case in ignored_cases:
             cases = [i for i in cases if i['user1'] not in an_ignored_case and i['user2'] not in an_ignored_case]
+    # if ignore_current, add cases to ignored ones
+    if ignore_current:
+        for a_case in cases:
+            ignored_cases.append([a_case['user1'], a_case['user2']])
+        cases = []
+
+    check.full_output = {'result': cases,  'ignore': ignored_cases}
 
     check.brief_output.append(msg)
     check.full_output.append(log)
