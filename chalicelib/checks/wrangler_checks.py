@@ -847,16 +847,31 @@ def finalize_user_pending_labs(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(email=None, ignore_current=False, reset_ignore=False)
 def users_with_doppelganger(connection, **kwargs):
     """Define comma seperated emails in scope
     if you want to work on a subset of all the results"""
     check = init_check_res(connection, 'users_with_doppelganger')
-    check.full_output = []
+    last_result = check.get_latest_result()
+    check.full_output = {'result': [], 'ignore': []}
     check.brief_output = []
     check.status = 'PASS'
     query = ('/search/?type=User&sort=display_title'
              '&field=display_title&field=contact_email&field=preferred_email&field=email')
+    # if check was limited to certain emails
+    if kwargs.get('email'):
+        emails = kwargs['email'].split(',')
+        for an_email in emails:
+            query += '?email=' + an_email.strip()
+    # do we want to ignore the current results
+    ignore_current = False
+    if kwargs.get('ignore_current'):
+        ignore_current = True
+    # do we want to reset the ignore list
+    reset = False
+    if kwargs.get('reset_ignore'):
+        reset = True
+    # get specified users
     all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
     # combine all emails for each user
     for a_user in all_users:
@@ -866,36 +881,44 @@ def users_with_doppelganger(connection, **kwargs):
             if a_user.get(f):
                 user_mails.append(a_user[f].lower())
         a_user['all_mails'] = list(set(user_mails))
+
     # go through each combination
     combs = itertools.combinations(all_users, 2)
+    cases = []
     for comb in combs:
         us1 = comb[0]
         us2 = comb[1]
         # is there a common email between the 2 users
         common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
         if common_mail:
-            msg = '{:<20} and {:<20} share mail(s) {}'.format(
+            msg = '{:<18} and {:<18} share mail(s) {}'.format(
                 us1['display_title'],
                 us2['display_title'],
                 str(common_mail))
             log = {'user1': [us1['display_title'], us1['@id']],
                    'user2': [us2['display_title'], us2['@id']],
-                   'log': 'has shared email(s) {}'.format(str(common_mail))}
-            check.brief_output.append(msg)
-            check.full_output.append(log)
-        # if not compare names
+                   'log': 'has shared email(s) {}'.format(str(common_mail)),
+                   'brief': msg}
+            cases.append(log)
+        # if not, compare names
         else:
             score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
             if score > 85:
-                msg = '{:<20} and {:<20} are similar ({}/100)'.format(
+                if us1['display_title'] == 'Tomas Rodriguez':
+                    print(us2['display_title'])
+                msg = '{:<18} and {:<18} are similar ({:<3}/100)'.format(
                     us1['display_title'],
                     us2['display_title'],
                     str(score))
                 log = {'user1': [us1['display_title'], us1['@id']],
                        'user2': [us2['display_title'], us2['@id']],
-                       'log': 'has similar names ({}/100)'.format(str(score))}
-                check.brief_output.append(msg)
-                check.full_output.append(log)
+                       'log': 'has similar names ({}/100)'.format(str(score)),
+                       'brief': msg}
+    
+
+
+    check.brief_output.append(msg)
+    check.full_output.append(log)
 
     if check.full_output:
         check.summary = 'Users with possible doppelgangers.'
