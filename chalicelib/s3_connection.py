@@ -55,7 +55,8 @@ class S3Connection(object):
         # make sure prefix ends with a slash (bucket format)
         prefix = ''.join([prefix, '/']) if not prefix.endswith('/') else prefix
         # this will exclude 'primary' and 'latest' in records_only == True
-        use_prefix = ''.join([prefix, '20' ])if records_only else prefix
+        # use '2' because is is the first digit of year (in uuid) 
+        use_prefix = ''.join([prefix, '2' ])if records_only else prefix
         while not reached_end:
             try:
                 # will limit to 1000 objects

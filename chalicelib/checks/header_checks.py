@@ -65,19 +65,18 @@ def find_items_for_header_processing(connection, check, header, add_search=None,
 
 # generic ACTION function used along to add/remove static headers from the
 # information obtained from find_items_for_header_processing
-def patch_items_with_headers(connection, action, headers_check, called_by):
+def patch_items_with_headers(connection, action, kwargs):
     """
     Arguments are:
     - the connection (FS connection)
     - the action (from init_action_res)
-    - the check from the associated header check (from init_check_res)
-    - the check uuid used to call the action (equal to kwargs['called_by']).
+    - kwargs (from the action function)
     Takes care of patching info on Fourfront and also populating fields on the
     action
     """
     action_logs = {'patch_failure': [], 'patch_success': []}
     # get latest results from prepare_static_headers
-    headers_check_result = headers_check.get_result_by_uuid(called_by)
+    headers_check_result = action.get_associated_check_result(kwargs)
     # the dictionaries can be combined
     total_patches = headers_check_result['full_output']['to_add']
     total_patches.update(headers_check_result['full_output']['to_remove'])
@@ -122,8 +121,7 @@ def prepare_static_headers(connection, **kwargs):
 def patch_static_headers(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -147,8 +145,7 @@ def prepare_static_headers_data_use_guidelines(connection, **kwargs):
 def patch_static_headers_data_use_guidelines(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers_data_use_guidelines')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_data_use_guidelines')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -169,8 +166,7 @@ def prepare_static_headers_inSitu_HiC(connection, **kwargs):
 def patch_static_headers_inSitu_HiC(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers_inSitu_HiC')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_inSitu_HiC')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -191,8 +187,7 @@ def prepare_static_headers_dilution_HiC(connection, **kwargs):
 def patch_static_headers_dilution_HiC(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers_dilution_HiC')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_dilution_HiC')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -213,8 +208,7 @@ def prepare_static_headers_FISH(connection, **kwargs):
 def patch_static_headers_FISH(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers_FISH')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_FISH')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -235,8 +229,7 @@ def prepare_static_headers_SPT(connection, **kwargs):
 def patch_static_headers_SPT(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers_SPT')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_SPT')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -257,8 +250,7 @@ def prepare_static_headers_SPRITE(connection, **kwargs):
 def patch_static_headers_SPRITE(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers_SPRITE')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_SPRITE')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -279,8 +271,7 @@ def prepare_static_headers_MARGI(connection, **kwargs):
 def patch_static_headers_MARGI(connection, **kwargs):
     action = init_action_res(connection, 'patch_static_headers_MARGI')
     # get latest results from prepare_static_headers
-    headers_check = init_check_res(connection, 'prepare_static_headers_MARGI')
-    patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+    patch_items_with_headers(connection, action, kwargs)
     return action
 
 
@@ -301,8 +292,7 @@ def prepare_static_headers_sciHiC(connection, **kwargs):
 def patch_static_headers_sciHiC(connection, **kwargs):
    action = init_action_res(connection, 'patch_static_headers_sciHiC')
    # get latest results from prepare_static_headers
-   headers_check = init_check_res(connection, 'prepare_static_headers_sciHiC')
-   patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+   patch_items_with_headers(connection, action, kwargs)
    return action
 
 
@@ -323,6 +313,5 @@ def prepare_static_headers_DNase_HiC(connection, **kwargs):
 def patch_static_headers_DNase_HiC(connection, **kwargs):
    action = init_action_res(connection, 'patch_static_headers_DNase_HiC')
    # get latest results from prepare_static_headers
-   headers_check = init_check_res(connection, 'prepare_static_headers_DNase_HiC')
-   patch_items_with_headers(connection, action, headers_check, kwargs['called_by'])
+   patch_items_with_headers(connection, action, kwargs)
    return action

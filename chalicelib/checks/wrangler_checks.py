@@ -58,8 +58,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
 def patch_workflow_run_to_deleted(connection, **kwargs):
     action = init_action_res(connection, 'patch_workflow_run_to_deleted')
     action_logs = {'patch_failure': [], 'patch_success': []}
-    wfr_w_del_check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
-    check_res = wfr_w_del_check.get_result_by_uuid(kwargs['called_by'])
+    check_res = action.get_associated_check_result(kwargs)
     for wfruid in check_res['full_output']:
         patch_data = {'status': 'deleted'}
         try:
@@ -162,11 +161,7 @@ def biorxiv_is_now_published(connection, **kwargs):
 def add_pub_and_replace_biorxiv(connection, **kwargs):
     action = init_action_res(connection, 'add_pub_2_replace_biorxiv')
     action_log = {}
-    biorxiv_check = init_check_res(connection, 'biorxiv_is_now_published')
-    if kwargs.get('called_by', None):
-        biorxiv_check_result = biorxiv_check.get_result_by_uuid(kwargs['called_by'])
-    else:
-        biorxiv_check_result = biorxiv_check.get_primary_result()
+    biorxiv_check_result = action.get_associated_check_result(kwargs)
     to_replace = biorxiv_check_result.get('full_output', {})
     for buuid, pmids in to_replace.items():
         error = ''
@@ -473,9 +468,8 @@ def identify_files_without_filesize(connection, **kwargs):
 def patch_file_size(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_size')
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
-    # get latest results from identify_files_without_filesize
-    filesize_check = init_check_res(connection, 'identify_files_without_filesize')
-    filesize_check_result = filesize_check.get_result_by_uuid(kwargs['called_by'])
+    # get the associated identify_files_without_filesize run result
+    filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         bucket = connection.ff_s3.outfile_bucket if 'FileProcessed' in hit['@type'] else connection.ff_s3.raw_file_bucket
         head_info = connection.ff_s3.does_key_exist(hit['upload_key'], bucket)
@@ -829,9 +823,8 @@ def users_with_pending_lab(connection, **kwargs):
 @action_function()
 def finalize_user_pending_labs(connection, **kwargs):
     action = init_action_res(connection, 'finalize_user_pending_labs')
-    pending_users_check = init_check_res(connection, 'users_with_pending_lab')
-    check_res = pending_users_check.get_result_by_uuid(kwargs['called_by'])
-    action.output = {'patch_failure': [], 'patch_success': []}
+    check_res = action.get_associated_check_result(kwargs)
+    action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
         patch_data = {'lab': user['pending_lab']}
         # patch lab and delete pending_lab in one request
