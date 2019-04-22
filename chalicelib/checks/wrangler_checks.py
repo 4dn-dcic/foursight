@@ -828,7 +828,7 @@ def finalize_user_pending_labs(connection, **kwargs):
     action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
         patch_data = {'lab': user['pending_lab']}
-        if 'lab_PI_viewing_groups' in user:
+        if user.get('lab_PI_viewing_groups'):
             patch_data['viewing_groups'] = user['lab_PI_viewing_groups']
         # patch lab and delete pending_lab in one request
         try:
