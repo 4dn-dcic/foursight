@@ -527,7 +527,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                                                            add_pc_wfr=True,
                                                            ignore_field=['experiment_relation',
                                                                          'biosample_relation',
-                                                                         'references'])
+                                                                         'references',
+                                                                         'reference_pubs'])
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
 

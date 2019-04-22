@@ -7,11 +7,11 @@ from ..utils import (
 )
 from dcicutils import ff_utils
 import requests
-import sys
 import json
 import datetime
 import time
-import boto3
+import itertools
+from fuzzywuzzy import fuzz
 
 
 @check_function(cmp_to_last=False)
@@ -808,7 +808,7 @@ def users_with_pending_lab(connection, **kwargs):
         check.summary = 'Users found with pending_lab.'
         if check.status == 'PASS':
             check.status = 'WARN'
-            check.description = check.summary + '. Run the action to add lab and remove pending_lab'
+            check.description = check.summary + ' Run the action to add lab and remove pending_lab'
             check.allow_action = True
             check.action_message = 'Will attempt to patch lab and remove pending_lab for %s users' % len(check.full_output)
         if check.status == 'FAIL':
@@ -838,3 +838,130 @@ def finalize_user_pending_labs(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function(emails=None, ignore_current=False, reset_ignore=False)
+def users_with_doppelganger(connection, **kwargs):
+    """ Find users that share emails or have very similar names
+    Args:
+        emails: comma seperated emails to run the check on, i.e. when you want to ignore some of the results
+        ignore_current: if there are accepted catches, put them to emails, and set ignore_current to true,
+                        they will not show up next time.
+        if there are caught cases, which are not problematic, you can add them to ignore list
+        reset_ignore: you can reset the ignore list, and restart it, useful if you added something by mistake
+    Result:
+     full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
+    """
+    check = init_check_res(connection, 'users_with_doppelganger')
+    # do we want to add current results to ignore list
+    ignore_current = False
+    if kwargs.get('ignore_current'):
+        ignore_current = True
+    # do we want to reset the ignore list
+    reset = False
+    if kwargs.get('reset_ignore'):
+        reset = True
+    # GET THE IGNORE LIST FROM LAST CHECKS IF NOT RESET_IGNORE
+    if reset:
+        ignored_cases = []
+    else:
+        last_result = check.get_primary_result()
+        # if last one was fail, find an earlier check with non-FAIL status
+        it = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            it += 1
+            # this is a daily check, so look for checks with 12h iteration
+            hours = it * 12
+            last_result = check.get_closest_result(diff_hours=hours)
+            # if this is going forever kill it
+            if hours > 100:
+                err_msg = 'Can not find a non-FAIL check in last 100 hours'
+                check.brief_output = err_msg
+                check.full_output = {}
+                check.status = 'ERROR'
+                return check
+        # remove cases previously ignored
+        ignored_cases = last_result['full_output'].get('ignore', [])
+
+    # ignore contains nested list with 2 elements, 2 user @id values that should be ignored
+    check.full_output = {'result': [], 'ignore': []}
+    check.brief_output = []
+    check.status = 'PASS'
+    query = ('/search/?type=User&sort=display_title'
+             '&field=display_title&field=contact_email&field=preferred_email&field=email')
+    # if check was limited to certain emails
+    if kwargs.get('emails'):
+        emails = kwargs['emails'].split(',')
+        for an_email in emails:
+            an_email = an_email.strip()
+            if an_email:
+                query += '&email=' + an_email.strip()
+    # get users
+    all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
+    # combine all emails for each user
+    for a_user in all_users:
+        mail_fields = ['email', 'contact_email', 'preferred_email']
+        user_mails = []
+        for f in mail_fields:
+            if a_user.get(f):
+                user_mails.append(a_user[f].lower())
+        a_user['all_mails'] = list(set(user_mails))
+
+    # go through each combination
+    combs = itertools.combinations(all_users, 2)
+    cases = []
+    for comb in combs:
+        us1 = comb[0]
+        us2 = comb[1]
+        # is there a common email between the 2 users
+        common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
+        if common_mail:
+            msg = '{} and {} share mail(s) {}'.format(
+                us1['display_title'],
+                us2['display_title'],
+                str(common_mail))
+            log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
+                   'user2': [us2['display_title'], us2['@id'], us2['email']],
+                   'log': 'has shared email(s) {}'.format(str(common_mail)),
+                   'brief': msg}
+            cases.append(log)
+        # if not, compare names
+        else:
+            score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
+            if score > 85:
+                msg = '{} and {} are similar ({}/100)'.format(
+                    us1['display_title'],
+                    us2['display_title'],
+                    str(score))
+                log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
+                       'user2': [us2['display_title'], us2['@id'], us2['email']],
+                       'log': 'has similar names ({}/100)'.format(str(score)),
+                       'brief': msg}
+                cases.append(log)
+
+    # are the ignored ones getting out of control
+    if len(ignored_cases) > 100:
+        fail_msg = 'Number of ignored cases is very high, time for maintainace'
+        check.brief_output = fail_msg
+        check.full_output = {'result': [fail_msg, ],  'ignore': ignored_cases}
+        check.status = 'FAIL'
+        return check
+    # remove ignored cases from all cases
+    if ignored_cases:
+        for an_ignored_case in ignored_cases:
+            cases = [i for i in cases if i['user1'] not in an_ignored_case and i['user2'] not in an_ignored_case]
+    # if ignore_current, add cases to ignored ones
+    if ignore_current:
+        for a_case in cases:
+            ignored_cases.append([a_case['user1'], a_case['user2']])
+        cases = []
+
+    check.full_output = {'result': cases,  'ignore': ignored_cases}
+    if cases:
+        check.summary = 'Some user accounts need attention.'
+        check.brief_output = [i['brief'] for i in cases]
+        check.status = 'WARN'
+    else:
+        check.summary = 'No user account conflicts'
+        check.brief_output = []
+    return check
