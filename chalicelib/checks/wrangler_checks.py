@@ -805,9 +805,10 @@ def users_with_pending_lab(connection, **kwargs):
                                                 ff_env=connection.ff_env, add_on='frame=object')
                 to_cache['lab_PI_email'] = pi_meta['email']
                 to_cache['lab_PI_title'] = pi_meta['title']
+                to_cache['lab_PI_viewing_groups'] = pi_meta['viewing_groups']
             cached_items[user_append['pending_lab']] = to_cache
         # now use the cache to fill fields
-        for lab_field in ['lab_title', 'lab_PI_email', 'lab_PI_title']:
+        for lab_field in ['lab_title', 'lab_PI_email', 'lab_PI_title', 'lab_PI_viewing_groups']:
             user_append[lab_field] = cached_items[user_append['pending_lab']].get(lab_field)
 
     if check.full_output:
@@ -831,9 +832,11 @@ def finalize_user_pending_labs(connection, **kwargs):
     action = init_action_res(connection, 'finalize_user_pending_labs')
     pending_users_check = init_check_res(connection, 'users_with_pending_lab')
     check_res = pending_users_check.get_result_by_uuid(kwargs['called_by'])
-    action.output = {'patch_failure': [], 'patch_success': []}
+    action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
         patch_data = {'lab': user['pending_lab']}
+        if 'lab_PI_viewing_groups' in user:
+            patch_data['viewing_groups'] = user['lab_PI_viewing_groups']
         # patch lab and delete pending_lab in one request
         try:
             ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
