@@ -159,6 +159,7 @@ def forbidden_response():
         body='Forbidden. Login on the /api/view/<environ> page.'
         )
 
+
 def process_response(response):
     """
     Does any final processing of a Foursight response before returning it. Right now, this includes:
@@ -213,24 +214,25 @@ def trim_output(output, max_size=100000):
 
 def view_run_check(environ, check, params):
     """
-    Called from the view endpoint (or manually, I guess), this re-runs the given
-    checks for the given environment and returns the
-    view_foursight templated result with the new check result.
+    Called from the view endpoint (or manually, I guess), this queues the given
+    check for the given environment and redirects to the view_foursight result
+    for the new check.
     Params are kwargs that are read from the url query_params; they will be
     added to the kwargs used to run the check.
 
-    This also be used to queue a check group. This is checked before individual check names
+    Args:
+        environ (str): Foursight environment name
+        check (str): check function name
+        params (dict): kwargs to use for check
+
+    Returns:
+        chalicelib.Response: redirect to future check landing page
     """
-    resp_headers = {'Location': '/api/view/' + environ}
-    connection = init_connection(environ)
-    check_str = get_check_strings(check)
     # convert string query params to literals
     params = query_params_to_literals(params)
-    if connection and check_str:
-        res = run_check_or_action(connection, check_str, params)
-        if res and res.get('uuid'):
-            resp_headers = {'Location': '/'.join(['/api/view', environ, check, res['uuid']])}
+    queued_uuid = queue_check(environ, check, params)
     # redirect to view page with a 302 so it isn't cached
+    resp_headers = {'Location': '/'.join(['/api/view', environ, check, queued_uuid])}
     return Response(
         status_code=302,
         body=json.dumps(resp_headers),
@@ -244,16 +246,32 @@ def view_run_action(environ, action, params):
     Params are kwargs that are read from the url query_params; they will be
     added to the kwargs used to run the check.
 
-    This also be used to queue an action group. This is checked before individual action names
+    Args:
+        environ (str): Foursight environment name
+        action (str): action function name
+        params (dict): kwargs to use for check
+
+    Returns:
+        chalicelib.Response: redirect to check view that called this action
     """
-    connection = init_connection(environ)
-    action_str = get_action_strings(action)
     # convert string query params to literals
     params = query_params_to_literals(params)
-    if connection and action_str:
-        run_check_or_action(connection, action_str, params)
-    resp_headers = {'Location': '/api/view/' + environ}
-    # redirect to view_foursight page with a 302 so it isn't cached
+    queued_uuid = queue_action(environ, action, params)
+    # redirect to calling check view page with a 302 so it isn't cached
+    if 'check_name' in params and 'called_by' in params:
+        check_detail = '/'.join([params['check_name'], params['called_by']])
+        resp_headers = {'Location': '/'.join(['/api/view', environ, check_detail])}
+    else:
+        # no check so cannot redirect
+        act_path = '/'.join(['/api/checks', action, queued_uuid])
+        return Response(
+            body = {
+                'status': 'success',
+                'details': 'Action is queued. When finished, view at: %s' % act_path,
+                'environment': environ
+            },
+            status_code = 200
+        )
     return Response(
         status_code=302,
         body=json.dumps(resp_headers),
@@ -333,6 +351,15 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
         res_check = init_check_res(connection, check)
         if res_check:
             data = res_check.get_result_by_uuid(uuid)
+            if data is None:
+                # the check hasn't run. Return a placeholder view
+                data = {
+                    'name': check,
+                    'uuid': uuid,
+                    'status': 'ERROR',
+                    'summary': 'Check has not yet run',
+                    'description': 'Check has not yet run'
+                }
             title = get_check_title_from_setup(check)
             processed_result = process_view_result(connection, data, is_admin)
             total_envs.append({
@@ -371,7 +398,14 @@ def get_load_time():
 def process_view_result(connection, res, is_admin):
     """
     Do some processing on the content of one check result (res arg, a dict)
-    Processes timestamp string, trims output fields, and adds action info
+    Processes timestamp string, trims output fields, and adds action info.
+
+    For action info, if the check has an action, try to find the associated
+    action by looking for '<check name>/action_records<check uuid>' object in
+    s3. The contents will be the path to the action. If found, display as
+    the "associated action" and disabled further runs of the action from the
+    check. Otherwise, allow runs of the action. For now, always show latest
+    action as well.
     """
     # first check to see if res is just a string, meaning
     # the check didn't execute properly
@@ -381,7 +415,7 @@ def process_view_result(connection, res, is_admin):
             'content': True,
             'title': 'Check System Error',
             'description': res,
-            'uuid': 'Did not run.'
+            'uuid': 'Did not successfully run'
         }
         return error_res
     # this can be removed once uuid has been around long enough
@@ -401,10 +435,30 @@ def process_view_result(connection, res, is_admin):
         res['admin_output'] = trim_output(res['admin_output'])
     else:
         res['admin_output'] = None
-    # get the latest result for the checks action, if present
+
+    ### LOGIC FOR VIEWING ACTION ###
+    # if this check has already run an action, display that. Otherwise, allow
+    # action to be run.
+    # For now also get the latest result for the checks action
+    # TODO: replace latest_action with action history
     if res.get('action'):
         action = init_action_res(connection, res.get('action'))
         if action:
+            action_record_key = '/'.join([res['name'], 'action_records', res['uuid']])
+            assc_action_key = connection.s3_connection.get_object(action_record_key)
+            if assc_action_key:
+                assc_action_key = assc_action_key.decode()  # in bytes
+                assc_action = connection.s3_connection.get_object(assc_action_key)
+                # If assc_action_key is written but assc_action is None, then
+                # it most likely means the action is still running
+                if assc_action is not None:
+                    # json.loads followed by json.dumps handles binary storage in s3
+                    res['assc_action'] = json.dumps(json.loads(assc_action), indent=4)
+                else:
+                    res['assc_action'] = 'Associated action has not finished.'
+                # don't allow the action to be run again from this check
+                del res['action']
+                res['allow_action'] = False
             latest_action = action.get_latest_result()
             if latest_action:
                 res['latest_action'] = json.dumps(latest_action, indent=4)
@@ -646,7 +700,7 @@ def run_get_environment(environ):
     return process_response(response)
 
 
-##### CHECK RUNNER FUNCTIONS #####
+##### QUEUE / CHECK RUNNER FUNCTIONS #####
 
 def queue_scheduled_checks(sched_environ, schedule_name):
     """
@@ -658,6 +712,13 @@ def queue_scheduled_checks(sched_environ, schedule_name):
 
     Run with schedule_name = None to skip adding the check group to the queue
     and just initiate the check runners.
+
+    Args:
+        sched_environ (str): Foursight environment name to schedule on
+        schedule_name (str): schedule name from check_setup / app
+
+    Returns:
+        dict: runner input of queued messages, used for testing
     """
     queue = get_sqs_queue()
     if schedule_name is not None:
@@ -680,19 +741,114 @@ def queue_scheduled_checks(sched_environ, schedule_name):
     return runner_input # for testing purposes
 
 
-def run_check_runner(runner_input):
+def queue_check(environ, check, params={}, deps=[], uuid=None):
     """
-    Run logic for a check runner. runner_input should be a dict containing one
+    Queue a single check, given by check function name, with given parameters
+    and dependencies (both optional). Also optionally pass in a uuid, which
+    will be used for the run if provided
+
+    Args:
+        environ (str): Foursight environment name
+        check (str): check function name
+        params (dict): kwargs to use for check. Defaults to {}
+        deps (list): list of dependencies for the check. Defaults to []
+        uuid (str): optional uuid to pass to the run. Defaults to None
+
+    Returns:
+        str: uuid of the queued check (from send_single_to_queue)
+    """
+    check_str = get_check_strings(check)
+    if not check_str:
+        error_res = {
+            'status': 'error',
+            'description': 'could not find check %s' % check,
+            'environment': environ,
+            'checks': {}
+        }
+        raise Exception(str(error_res))
+    to_send = [check_str, params, deps]
+    return send_single_to_queue(environ, to_send, uuid)
+
+
+def queue_action(environ, action, params={}, deps=[], uuid=None):
+    """
+    Queue a single action, given by action function name, with given parameters
+    and dependencies (both optional). Also optionally pass in a uuid, which
+    will be used for the run if provided
+
+    Args:
+        environ (str): Foursight environment name
+        action (str): action function name
+        params (dict): kwargs to use for action. Defaults to {}
+        deps (list): list of dependencies for the action. Defaults to []
+        uuid (str): optional uuid to pass to the run. Defaults to None
+
+    Returns:
+        str: uuid of the queued action (from send_single_to_queue)
+    """
+    action_str = get_action_strings(action)
+    if not action_str:
+        error_res = {
+            'status': 'error',
+            'description': 'could not find action %s' % action,
+            'environment': environ,
+            'checks': {}
+        }
+        raise Exception(str(error_res))
+    to_send = [action_str, params, deps]
+    return send_single_to_queue(environ, to_send, uuid)
+
+
+def send_single_to_queue(environ, to_send, uuid, invoke_runner=True):
+    """
+    Send a single formatted check/action to SQS for given environ. Pass
+    the given uuid to send_sqs_messages. Invoke a single check runner lambda
+
+    Args:
+        environ (str): Foursight environment name
+        to_send (list): check/action entry in form [check_str, params, deps]
+        uuid (str): uuid to pass to run. If None, generate a new uuid
+        invoke_runner (bool): If True, invoke a check_runner lambda
+
+    Returns:
+        str: uuid of the queued run (from send_single_to_queue)
+    """
+    queue = get_sqs_queue()
+    queued_uuid = send_sqs_messages(queue, environ, [to_send], uuid=uuid)
+    # kick off a single check runner lambda
+    if invoke_runner is True:
+        invoke_check_runner({'sqs_url': queue.url})
+    return queued_uuid
+
+
+def run_check_runner(runner_input, propogate=True):
+    """
+    Run logic for a check runner. Used to run checks and actions.
+
+    runner_input should be a dict containing one
     key: sqs_url that corresponds to the aws url for the queue.
     This function attempts to recieve one message from the standard SQS queue
-    using long polling, checks the run dependencies for that check, and then
-    will run the check. If dependencies are not met, the check is not run and
+    using long polling, checks the run dependencies for that check/action, and then
+    will run the check.
+
+    If the run was a check and the 'queue_action' parameter is set, along with
+    check.action and check.allow_action, will attempt to queue the associated
+    action.
+
+    If dependencies are not met, the check is not run and
     the run info is put back in the queue. Otherwise, the message is deleted
     from the queue.
 
     If there are no messages left (should always be true when nothing is
     recieved from sqs with long polling), then exit and do not propogate another
     check runner. Otherwise, initiate another check_runner to continue the process.
+
+    Args:
+        runner_input (dict): body of SQS message
+        propogate (bool): if True (default), invoke another check runner lambda
+
+    Returns:
+        dict: run result if something was run, else None
     """
     sqs_url = runner_input.get('sqs_url')
     if not sqs_url:
@@ -703,40 +859,73 @@ def run_check_runner(runner_input):
         AttributeNames=['MessageGroupId'],
         MaxNumberOfMessages=1,
         VisibilityTimeout=300,
-        WaitTimeSeconds=20
+        WaitTimeSeconds=10
     )
     message = response.get('Messages', [{}])[0]
     body = message.get('Body')
     receipt = message.get('ReceiptHandle')
     if not body or not receipt:
-        # if no messages recieved in 20 seconds of long polling, terminate
-        return
+        # if no messages recieved in 10 seconds of long polling, terminate
+        return None
     check_list = json.loads(body)
     if not isinstance(check_list, list) or len(check_list) != 5:
         # if not a valid check str, remove the item from the SQS
-        delete_message_and_propogate(runner_input, receipt)
-        return
-    [run_env, run_uuid, check_name, check_kwargs, check_deps] = check_list
+        delete_message_and_propogate(runner_input, receipt, propogate=propogate)
+        return None
+    [run_env, run_uuid, run_name, run_kwargs, run_deps] = check_list
     # find information from s3 about completed checks in this run
-    # actual id stored in s3 has key: <run_uuid>/<check_name>
-    if check_deps and isinstance(check_deps, list):
+    # actual id stored in s3 has key: <run_uuid>/<run_name>
+    if run_deps and isinstance(run_deps, list):
         already_run = collect_run_info(run_uuid)
-        deps_w_uuid = ['/'.join([run_uuid, dep]) for dep in check_deps]
+        deps_w_uuid = ['/'.join([run_uuid, dep]) for dep in run_deps]
         finished_dependencies = set(deps_w_uuid).issubset(already_run)
         if not finished_dependencies:
-            print('-RUN-> Not ready for: %s' % (check_name))
+            print('-RUN-> Not ready for: %s' % (run_name))
     else:
         finished_dependencies = True
     connection = init_connection(run_env)
     if finished_dependencies:
         # add the run uuid as the uuid to kwargs so that checks will coordinate
-        if 'uuid' not in check_kwargs:
-            check_kwargs['uuid'] = run_uuid
-        check_kwargs['_run_info'] = {'run_id': run_uuid, 'receipt': receipt, 'sqs_url': sqs_url}
-        run_result = run_check_or_action(connection, check_name, check_kwargs)
+        if 'uuid' not in run_kwargs:
+            run_kwargs['uuid'] = run_uuid
+        run_kwargs['_run_info'] = {'run_id': run_uuid, 'receipt': receipt, 'sqs_url': sqs_url}
+        # if this is an action, ensure we have not already written an action record
+        if 'check_name' in run_kwargs and 'called_by' in run_kwargs:
+            rec_key = '/'.join([run_kwargs['check_name'], 'action_records', run_kwargs['called_by']])
+            found_rec = connection.s3_connection.get_object(rec_key)
+            if found_rec is not None:
+                # the action record has been written. Abort and propogate
+                print('-RUN-> Found existing action record: %s. Skipping' % rec_key)
+                delete_message_and_propogate(runner_input, receipt, propogate=propogate)
+                return None
+            else:
+                # make a action record before running the action
+                # action name is the second part of run_name
+                act_name = run_name.split('/')[-1]
+                rec_body = ''.join([act_name, '/', run_uuid, '.json'])
+                connection.s3_connection.put_object(rec_key, rec_body)
+                print('-RUN-> Wrote action record: %s' % rec_key)
+        run_result = run_check_or_action(connection, run_name, run_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
-        print('-RUN-> Finished: %s' % (check_name))
-        delete_message_and_propogate(runner_input, receipt)
+        # invoke action if running a check and it has kwargs['queue_action']
+        if run_result['type'] == 'check' and run_result['kwargs']['queue_action'] is True:
+            # must also have check.action and check.allow_action set
+            if run_result['allow_action'] and run_result['action']:
+                action_params = {'check_name': run_result['name'],
+                                 'called_by': run_result['kwargs']['uuid']}
+                try:
+                    queue_action(run_env, run_result['action'],
+                                 params=action_params, uuid=run_uuid)
+                except Exception as exc:
+                    print('-RUN-> Could not queued action %s with kwargs: %s. Error: %s'
+                          % (run_result['action'], action_params, str(exc)))
+                else:
+                    print('-RUN-> Queued action %s with kwargs: %s'
+                          % (run_result['action'], action_params))
+        print('-RUN-> Finished: %s' % (run_name))
+        delete_message_and_propogate(runner_input, receipt, propogate=propogate)
+        return run_result
     else:
-        print('-RUN-> Recovered: %s' % (check_name))
-        recover_message_and_propogate(runner_input, receipt)
+        print('-RUN-> Recovered: %s' % (run_name))
+        recover_message_and_propogate(runner_input, receipt, propogate=propogate)
+        return None

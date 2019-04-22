@@ -176,8 +176,9 @@ def get_schedule_names():
 def get_check_title_from_setup(check_name):
     """
     Return a title of a check from CHECK_SETUP
+    If not found, just return check_name
     """
-    return CHECK_SETUP.get(check_name, {}).get("title", "No title")
+    return CHECK_SETUP.get(check_name, {}).get("title", check_name)
 
 
 def get_check_schedule(schedule_name):
@@ -268,7 +269,7 @@ def get_grouped_check_results(connection):
 
 def run_check_or_action(connection, check_str, check_kwargs):
     """
-    Does validation of proviced check_str, it's module, and kwargs.
+    Does validation of provided check_str, it's module, and kwargs.
     Determines by decorator whether the method is a check or action, then runs
     it. All errors are taken care of within the running of the check/action.
 

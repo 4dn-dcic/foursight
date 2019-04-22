@@ -167,8 +167,8 @@ def action_function(*default_args, **default_kwargs):
             signal.signal(signal.SIGALRM, partial(timeout_handler, partials))
             signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
             try:
-                if 'called_by' not in kwargs:
-                    raise BadCheckOrAction('Action is missing called_by in its kwargs.')
+                if 'check_name' not in kwargs or 'called_by' not in kwargs:
+                    raise BadCheckOrAction('Action is missing check_name/called_by in its kwargs.')
                 action = func(*args, **kwargs)
                 validate_run_result(action, is_check=False)
             except Exception as e:
@@ -293,7 +293,7 @@ def parse_datetime_to_utc(time_str, manual_format=None):
 def convert_camel_to_snake(name):
     """
     Convert a given CamelCase string to snake_case
-    Credit: https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case 
+    Credit: https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -309,7 +309,7 @@ def invoke_check_runner(runner_input):
     """
     client = boto3.client('lambda')
     # InvocationType='Event' makes asynchronous
-    # try/except while async invokes are problematics
+    # try/except while async invokes are problematic
     try:
         response = client.invoke(
             FunctionName=get_stage_info()['runner_name'],
@@ -324,10 +324,18 @@ def invoke_check_runner(runner_input):
     return response
 
 
-def delete_message_and_propogate(runner_input, receipt):
+def delete_message_and_propogate(runner_input, receipt, propogate=True):
     """
     Delete the message with given receipt from sqs queue and invoke the next
     lambda runner.
+
+    Args:
+        runner_input (dict): runner info, should minimally have 'sqs_url'
+        receipt (str): SQS message receipt
+        propogate (bool): if True (default), invoke another check runner lambda
+
+    Returns:
+        None
     """
     sqs_url = runner_input.get('sqs_url')
     if not sqs_url or not receipt:
@@ -337,10 +345,11 @@ def delete_message_and_propogate(runner_input, receipt):
         QueueUrl=sqs_url,
         ReceiptHandle=receipt
     )
-    invoke_check_runner(runner_input)
+    if propogate is True:
+        invoke_check_runner(runner_input)
 
 
-def recover_message_and_propogate(runner_input, receipt):
+def recover_message_and_propogate(runner_input, receipt, propogate=True):
     """
     Recover the message with given receipt to sqs queue and invoke the next
     lambda runner.
@@ -349,6 +358,14 @@ def recover_message_and_propogate(runner_input, receipt):
     available to the queue in that much time. This is a slight lag to allow
     dependencies to process.
     NOTE: VisibilityTimeout should be less than WaitTimeSeconds in run_check_runner
+
+    Args:
+        runner_input (dict): runner info, should minimally have 'sqs_url'
+        receipt (str): SQS message receipt
+        propogate (bool): if True (default), invoke another check runner lambda
+
+    Returns:
+        None
     """
     sqs_url = runner_input.get('sqs_url')
     if not sqs_url or not receipt:
@@ -359,7 +376,8 @@ def recover_message_and_propogate(runner_input, receipt):
         ReceiptHandle=receipt,
         VisibilityTimeout=15
     )
-    invoke_check_runner(runner_input)
+    if propogate is True:
+        invoke_check_runner(runner_input)
 
 
 def get_sqs_queue():
@@ -392,16 +410,30 @@ def collect_run_info(run_uuid):
     return set(complete)
 
 
-def send_sqs_messages(queue, environ, check_vals):
+def send_sqs_messages(queue, environ, check_vals, uuid=None):
     """
-    Send the messages to the queue. Check_vals are entries within a check_group
+    Send messages to SQS queue. Check_vals are entries within a check_group.
+    Optionally, provide a uuid that will be queued as the uuid for the run; if
+    not provided, datetime.utcnow is used
+
+    Args:
+        queue: boto3 sqs resource (from get_sqs_queue)
+        environ (str): foursight environment name
+        check_vals (list): list of formatted check vals, like those from
+            check_utils.get_check_schedule
+        uuid (str): optional string uuid
+
+    Returns:
+        str: uuid of queued messages
     """
     # uuid used as the MessageGroupId
-    uuid = datetime.utcnow().isoformat()
+    if not uuid:
+        uuid = datetime.utcnow().isoformat()
     # append environ and uuid as first elements to all check_vals
     proc_vals = [[environ, uuid] + val for val in check_vals]
     for val in proc_vals:
         response = queue.send_message(MessageBody=json.dumps(val))
+    return uuid
 
 
 def get_sqs_attributes(sqs_url):
