@@ -844,9 +844,13 @@ def finalize_user_pending_labs(connection, **kwargs):
 def users_with_doppelganger(connection, **kwargs):
     """ Find users that share emails or have very similar names
     Args:
-        email: comma seperated emails to run the check on, i.e. when you want to ignore some of the item_results
-        ignore_current: if there are caught cases, which are not problematic, you can add them to ignore list
+        emails: comma seperated emails to run the check on, i.e. when you want to ignore some of the results
+        ignore_current: if there are accepted catches, put them to emails, and set ignore_current to true,
+                        they will not show up next time.
+        if there are caught cases, which are not problematic, you can add them to ignore list
         reset_ignore: you can reset the ignore list, and restart it, useful if you added something by mistake
+    Result:
+     full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
     """
     check = init_check_res(connection, 'users_with_doppelganger')
     # do we want to add current results to ignore list
