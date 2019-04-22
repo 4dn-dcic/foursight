@@ -651,7 +651,11 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
                 step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
-            assert len(list(set(all_step3s))) == 1
+            try:
+                assert len(list(set(all_step3s))) == 1
+            except AssertionError:
+                problematic_run.append(['step3-not_unique', set_acc])
+                continue
             # if successful
             if step3_result['status'] == 'complete':
                 set_summary += '| completed runs'
