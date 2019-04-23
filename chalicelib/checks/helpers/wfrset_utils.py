@@ -1,4 +1,10 @@
 # Step Settings
+from .helpers import wfr_utils
+
+lambda_limit = wfr_utils.lambda_limit
+mapper = wfr_utils.mapper
+
+
 def step_settings(step_name, my_organism, attribution, overwrite=None):
     """Return a setting dict for given step, and modify variables in
     output files; genome assembly, file_type, desc, contributing lab.
@@ -8,10 +14,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     }
     """
     genome = ""
-    mapper = {'human': 'GRCh38',
-              'mouse': 'GRCm38',
-              'fruit-fly': 'dm6',
-              'chicken': 'galGal5'}
     genome = mapper.get(my_organism)
 
     out_n = "This is an output file of the Hi-C processing pipeline"

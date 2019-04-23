@@ -172,6 +172,10 @@ re_nz_sizes = {"HindIII": "6",
                "MboI": "4",
                "NcoI": "6"}
 
+mapper = {'human': 'GRCh38',
+          'mouse': 'GRCm38',
+          'fruit-fly': 'dm6',
+          'chicken': 'galGal5'}
 
 def extract_nz_chr(acc, auth):
     """Get RE nz recognition site length and chrsize file accession
@@ -693,7 +697,6 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
     # complete check values
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
-        check.status = 'WARN'
     if check.full_output['skipped']:
         check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
         check.status = 'WARN'
