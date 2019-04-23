@@ -853,6 +853,7 @@ def users_with_doppelganger(connection, **kwargs):
      full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
     """
     check = init_check_res(connection, 'users_with_doppelganger')
+    check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
     # do we want to add current results to ignore list
     ignore_current = False
     if kwargs.get('ignore_current'):
@@ -929,7 +930,7 @@ def users_with_doppelganger(connection, **kwargs):
         else:
             score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
             if score > 85:
-                msg = '{} and {} are similar ({}/100)'.format(
+                msg = '{} and {} are similar-{}'.format(
                     us1['display_title'],
                     us2['display_title'],
                     str(score))
@@ -955,6 +956,17 @@ def users_with_doppelganger(connection, **kwargs):
         for a_case in cases:
             ignored_cases.append([a_case['user1'], a_case['user2']])
         cases = []
+
+    # add if they have any items referencing them
+    if cases:
+        for a_case in cases:
+            us1_info = ff_utils.get_metadata(a_case['user1'][1] + '@@links', key=connection.ff_keys)
+            item_count_1 = len(us1_info['uuids_linking_to'])
+            us2_info = ff_utils.get_metadata(a_case['user2'][1] + '@@links', key=connection.ff_keys)
+            item_count_2 = len(us2_info['uuids_linking_to'])
+            add_on = ' ({}/{})'.format(item_count_1, item_count_2)
+            a_case['log'] = a_case['log'] + add_on
+            a_case['brief'] = a_case['brief'] + add_on
 
     check.full_output = {'result': cases,  'ignore': ignored_cases}
     if cases:
