@@ -412,6 +412,124 @@ def pairsqc_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None)
+def bg2bw_status(connection, **kwargs):
+    """Searches for pairs files produced by 4dn pipelines that don't have bg2bw
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'bg2bw_status')
+    my_auth = connection.ff_keys
+    check.action = "bg2bw_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # Build the query (find bg files without bw files)
+    query = ("/search/?type=FileProcessed&file_format.file_format=bg"
+             "extra_files.file_format.display_title!=bw")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    # no bg2bw run
+    missing_bg2bw = []
+    # successful run but no extra file
+    missing_extra = []
+    # still running
+    running = []
+
+    for a_bg in res:
+        # lambda has a time limit (300sec), kill before it is reached so we get some results
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            check.brief_output.append('did not complete checking all')
+            break
+        file_id = a_bg['accession']
+        report = wfr_utils.get_wfr_out(a_bg, 'bedGraphToBigWig',  key=my_auth, md_qc=True)
+        if report['status'] == 'running':
+            running.append(file_id)
+            continue
+        if report['status'] != 'complete':
+            missing_bg2bw.append(file_id)
+            continue
+        # There is a successful run, but no extra_file
+        if report['status'] == 'complete':
+            missing_extra.append(file_id)
+            continue
+    if running:
+        check.summary = 'Some files are running'
+        check.brief_output.append(str(len(running)) + ' files are still running.')
+        check.full_output['files_running_bg2bw'] = running
+    if missing_bg2bw:
+        check.allow_action = True
+        check.summary = 'Some files are missing runs'
+        check.brief_output.append(str(len(missing_bg2bw)) + ' files lack a successful bg2bw run')
+        check.full_output['files_without_bg2bw'] = missing_bg2bw
+        check.status = 'WARN'
+    if missing_extra:
+        check.allow_action = True
+        check.summary = 'Some files are missing runs'
+        check.brief_output.append(str(len(missing_extra)) + ' files have successful run but no extra file')
+        check.full_output['files_without_extra'] = missing_extra
+        check.status = 'WARN'
+    check.summary = check.summary.strip()
+    if not check.brief_output:
+        check.brief_output = ['All Good!']
+    return check
+
+
+@action_function(start_bg2bw=True, start_qc=True)
+def bg2bw_start(connection, **kwargs):
+    """Start bg2bw runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'bg2bw_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bg2bw_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_bg2bw'):
+        targets.extend(bg2bw_check_result.get('files_without_bg2bw', []))
+    if kwargs.get('start_qc'):
+        targets.extend(bg2bw_check_result.get('files_without_extra', []))
+
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        org = wfr_utils.mapper[a_file['genome_assembly']]
+        org = [k for k, v in wfr_utils.mapper.items() if v == a_file['genome_assembly']][0]
+        chrsize = wfr_utils.chr_size[org]
+
+        inp_f = {'input_pairs': a_file['@id'], 'chromsize': chrsize}
+        wfr_setup = wfrset_utils.step_settings('bedGraphToBigWig',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
 def in_situ_hic_status(connection, **kwargs):
     """
     Keyword arguments:
