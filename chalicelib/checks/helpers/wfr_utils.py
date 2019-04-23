@@ -502,7 +502,7 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True):
     if len(list(set(enzymes))) == 1:
         enz = enzymes[0]
     else:
-        enz = None
+        enz = ''
 
     bwa = bwa_index.get(organism)
     chrsize = chr_size.get(organism)
@@ -655,32 +655,36 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
                 step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
-            assert len(list(set(all_step3s))) == 1
-            # if successful
-            if step3_result['status'] == 'complete':
-                set_summary += '| completed runs'
-                patch_data = [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]
-                complete['patch_opf'].append([set_acc, patch_data])
-                complete['add_tag'] = [set_acc, tag]
-            # if still running
-            elif step3_result['status'] == 'running':
-                running.append(['step3', set_acc])
-                set_summary += "| running step3"
-            # problematic runs with repeated fails
-            elif step3_result['status'] == 'no complete run, too many errors':
-                set_summary += "| problems in step3"
-                problematic_run.append(['step3', set_acc])
-            # if run is not successful
+            # make sure existing step3s are matching
+            if len(list(set(all_step3s))) == 1:
+                # if successful
+                if step3_result['status'] == 'complete':
+                    set_summary += '| completed runs'
+                    patch_data = [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]
+                    complete['patch_opf'].append([set_acc, patch_data])
+                    complete['add_tag'] = [set_acc, tag]
+                # if still running
+                elif step3_result['status'] == 'running':
+                    running.append(['step3', set_acc])
+                    set_summary += "| running step3"
+                # problematic runs with repeated fails
+                elif step3_result['status'] == 'no complete run, too many errors':
+                    set_summary += "| problems in step3"
+                    problematic_run.append(['step3', set_acc])
+                # if run is not successful
+                else:
+                    set_summary += "| missing step3"
+                    inp_f = {'input_pairs': set_pairs,
+                             'chromsizes': refs['chrsize_ref']}
+                    if not nore:
+                        inp_f['restriction_file'] = refs['enz_ref']
+                    overwrite = {}
+                    if nonorm:
+                        overwrite = {'parameters': {"no_balance": True}}
+                    missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite], inp_f, set_acc])
             else:
-                set_summary += "| missing step3"
-                inp_f = {'input_pairs': set_pairs,
-                         'chromsizes': refs['chrsize_ref']}
-                if not nore:
-                    inp_f['restriction_file'] = refs['enz_ref']
-                overwrite = {}
-                if nonorm:
-                    overwrite = {'parameters': {"no_balance": True}}
-                missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite], inp_f, set_acc])
+                problematic_run.append(['step3-not_unique', set_acc])
+                set_summary += "| problem in step 3- not unique"
         check.brief_output.append(set_summary)
         if running:
             check.full_output['running_runs'].append({set_acc: running})
@@ -709,7 +713,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
         check.status = 'WARN'
         check.allow_action = True
     if check.full_output['problematic_runs']:
-        check.summary += str(len(check.full_output['problematic_runs'])) + ' with repeated fail|'
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
     return check
 
