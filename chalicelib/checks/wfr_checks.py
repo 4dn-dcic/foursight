@@ -207,53 +207,11 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    # missing run
-    missing_fastqc = []
-    # if there is a successful run but no qc
-    missing_qc = []
-    running = []
-    for a_fastq in res:
-        # lambda has a time limit (300sec), kill before it is reached so we get some results
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            check.brief_output.append('did not complete checking all')
-            break
-        file_id = a_fastq['accession']
-        report = wfr_utils.get_wfr_out(a_fastq, 'fastqc-0-11-4-1',  key=my_auth, md_qc=True)
-        if report['status'] == 'running':
-            running.append(file_id)
-            continue
-        # Most probably the trigger did not work, and we run it manually
-        if report['status'] != 'complete':
-            missing_fastqc.append(file_id)
-            continue
-        # There is a successful run, but no qc, previously happened when a file was reuploaded.
-        if report['status'] == 'complete':
-            missing_qc.append(file_id)
-            continue
-    if running:
-        check.summary = 'Some files are running'
-        check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['files_running_fastqc'] = running
-    if missing_fastqc:
-        check.allow_action = True
-        check.summary = 'Some files are missing fastqc runs'
-        check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
-        check.full_output['files_without_fastqc'] = missing_fastqc
-        check.status = 'WARN'
-    if missing_qc:
-        check.allow_action = True
-        check.summary = 'Some files are missing fastqc runs'
-        check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
-        check.full_output['files_without_qc'] = missing_qc
-        check.status = 'WARN'
-    check.summary = check.summary.strip()
-    if not check.brief_output:
-        check.brief_output = ['All Good!']
+    check = wfr_utils.check_runs_without_output(res, check, 'fastqc-0-11-4-1', my_auth, start)
     return check
 
 
-@action_function(start_fastqc=True, start_qc=True)
+@action_function(start_missing_run=True, start_missing_meta=True)
 def fastqc_start(connection, **kwargs):
     """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -262,11 +220,10 @@ def fastqc_start(connection, **kwargs):
     my_auth = connection.ff_keys
     fastqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
-    if kwargs.get('start_fastqc'):
-        targets.extend(fastqc_check_result.get('files_without_fastqc', []))
-    if kwargs.get('start_qc'):
-        targets.extend(fastqc_check_result.get('files_without_qc', []))
-
+    if kwargs.get('start_missing_run'):
+        targets.extend(fastqc_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(fastqc_check_result.get('files_without_changes', []))
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -319,52 +276,11 @@ def pairsqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    # missing run
-    missing_pairsqc = []
-    # if there is a successful run but no qc
-    missing_qc = []
-    running = []
-    for a_pairs in res:
-        # lambda has a time limit (300sec), kill before it is reached so we get some results
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            check.brief_output.append('did not complete checking all')
-            break
-        file_id = a_pairs['accession']
-        report = wfr_utils.get_wfr_out(a_pairs, 'pairsqc-single',  key=my_auth, md_qc=True)
-        if report['status'] == 'running':
-            running.append(file_id)
-            continue
-        if report['status'] != 'complete':
-            missing_pairsqc.append(file_id)
-            continue
-        # There is a successful run, but no qc, previously happened when a file was reuploaded.
-        if report['status'] == 'complete':
-            missing_qc.append(file_id)
-            continue
-    if running:
-        check.summary = 'Some files are running'
-        check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['files_running_pairsqc'] = running
-    if missing_pairsqc:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_pairsqc)) + ' files lack a successful pairsqc run')
-        check.full_output['files_without_pairsqc'] = missing_pairsqc
-        check.status = 'WARN'
-    if missing_qc:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
-        check.full_output['files_without_qc'] = missing_qc
-        check.status = 'WARN'
-    check.summary = check.summary.strip()
-    if not check.brief_output:
-        check.brief_output = ['All Good!']
+    check = wfr_utils.check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
     return check
 
 
-@action_function(start_pairsqc=True, start_qc=True)
+@action_function(start_missing_run=True, start_missing_meta=True)
 def pairsqc_start(connection, **kwargs):
     """Start pairsqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -373,11 +289,10 @@ def pairsqc_start(connection, **kwargs):
     my_auth = connection.ff_keys
     pairsqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
-    if kwargs.get('start_pairsqc'):
-        targets.extend(pairsqc_check_result.get('files_without_pairsqc', []))
-    if kwargs.get('start_qc'):
-        targets.extend(pairsqc_check_result.get('files_without_qc', []))
-
+    if kwargs.get('start_missing_run'):
+        targets.extend(pairsqc_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(pairsqc_check_result.get('files_without_changes', []))
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -428,7 +343,8 @@ def bg2bw_status(connection, **kwargs):
     check.status = 'PASS'
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
-             "extra_files.file_format.display_title!=bw")
+             "extra_files.file_format.display_title!=bw"
+             "&status!=uploading&status!=to be uploaded by workflow")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -442,54 +358,11 @@ def bg2bw_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    # no bg2bw run
-    missing_bg2bw = []
-    # successful run but no extra file
-    missing_extra = []
-    # still running
-    running = []
-
-    for a_bg in res:
-        # lambda has a time limit (300sec), kill before it is reached so we get some results
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            check.brief_output.append('did not complete checking all')
-            break
-        file_id = a_bg['accession']
-        report = wfr_utils.get_wfr_out(a_bg, 'bedGraphToBigWig',  key=my_auth, md_qc=True)
-        if report['status'] == 'running':
-            running.append(file_id)
-            continue
-        if report['status'] != 'complete':
-            missing_bg2bw.append(file_id)
-            continue
-        # There is a successful run, but no extra_file
-        if report['status'] == 'complete':
-            missing_extra.append(file_id)
-            continue
-    if running:
-        check.summary = 'Some files are running'
-        check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['files_running_bg2bw'] = running
-    if missing_bg2bw:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_bg2bw)) + ' files lack a successful bg2bw run')
-        check.full_output['files_without_bg2bw'] = missing_bg2bw
-        check.status = 'WARN'
-    if missing_extra:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_extra)) + ' files have successful run but no extra file')
-        check.full_output['files_without_extra'] = missing_extra
-        check.status = 'WARN'
-    check.summary = check.summary.strip()
-    if not check.brief_output:
-        check.brief_output = ['All Good!']
+    check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
     return check
 
 
-@action_function(start_bg2bw=True, start_qc=True)
+@action_function(start_missing_run=True, start_missing_meta=True)
 def bg2bw_start(connection, **kwargs):
     """Start bg2bw runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -498,11 +371,10 @@ def bg2bw_start(connection, **kwargs):
     my_auth = connection.ff_keys
     bg2bw_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
-    if kwargs.get('start_bg2bw'):
-        targets.extend(bg2bw_check_result.get('files_without_bg2bw', []))
-    if kwargs.get('start_qc'):
-        targets.extend(bg2bw_check_result.get('files_without_extra', []))
-
+    if kwargs.get('start_missing_run'):
+        targets.extend(bg2bw_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bg2bw_check_result.get('files_without_changes', []))
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -514,7 +386,7 @@ def bg2bw_start(connection, **kwargs):
         org = [k for k, v in wfr_utils.mapper.items() if v == a_file['genome_assembly']][0]
         chrsize = wfr_utils.chr_size[org]
 
-        inp_f = {'input_pairs': a_file['@id'], 'chromsize': chrsize}
+        inp_f = {'bgfile': a_file['@id'], 'chromsize': chrsize}
         wfr_setup = wfrset_utils.step_settings('bedGraphToBigWig',
                                                'no_organism',
                                                attributions)
