@@ -402,6 +402,95 @@ def bg2bw_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None)
+def bed2beddb_status(connection, **kwargs):
+    """Searches for small bed files uploaded by user in certain types
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'bed2beddb_status')
+    my_auth = connection.ff_keys
+    check.action = "bed2beddb_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    accepted_types = ['LADs', 'boundaries', 'domains']
+    file_size_limit = 100000  # 100KB
+    # Build the query (find bg files without bw files)
+    query = ("/search/?type=FileProcessed&file_format.file_format=bed"
+             "extra_files.file_format.display_title!=beddb"
+             "&status!=uploading&status!=to be uploaded by workflow")
+    query += "".join(["&file_type=" + i for i in accepted_types])
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+    # The search
+    res_all = ff_utils.search_metadata(query, key=my_auth)
+
+    res = [i for i in res_all if i['file_size'] < file_size_limit]
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_runs_without_output(res, check, 'bedtobeddb', my_auth, start)
+    if len(res_all) > len(res):
+        check.summary = 'Files with large size skipped, check parameters might need to change'
+        check.status = 'FAIL'
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bed2beddb_start(connection, **kwargs):
+    """Start bed2beddb runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'bed2beddb_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bed2beddb_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bed2beddb_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bed2beddb_check_result.get('files_without_changes', []))
+
+    # genome nomenclature for bed2beddb runs`
+    genome = {"GRCh38": "hg38",
+              "GRCm38": "mm10",
+              "dm6": 'dm6',
+              "galGal5": "galGal5"}
+
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        genome_as = genome[a_file['genome_assembly']]
+        overwrite = {'parameters': {"assembly": genome_as}}
+        inp_f = {'bedfile': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('bedtobeddb',
+                                               'no_organism',
+                                               attributions,
+                                               overwrite=overwrite)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
 def in_situ_hic_status(connection, **kwargs):
     """
     Keyword arguments:
