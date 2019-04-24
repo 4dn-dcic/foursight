@@ -1,5 +1,5 @@
 # Step Settings
-from .helpers import wfr_utils
+from . import wfr_utils
 
 lambda_limit = wfr_utils.lambda_limit
 mapper = wfr_utils.mapper
