@@ -562,7 +562,6 @@ def check_validation_errors(connection, **kwargs):
     return check
 
 
-
 def _get_all_other_processed_files(item):
     toignore = []
     # get directly linked other processed files
@@ -577,3 +576,115 @@ def _get_all_other_processed_files(item):
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
     return toignore
+
+
+@check_function()
+def check_bio_feature_organism_name(connection, **kwargs):
+    '''
+    Attempts to identify an organism to add to the organism_name field in BioFeature items
+    checks the linked genes or the genomic regions and then description
+    '''
+    check = init_check_res(connection, 'check_bio_feature_organism_name')
+    missing = {}
+    mismatch2fix = {}
+    mismatch2report = {}
+    matched = 0
+    # create some mappings
+    organism_search = 'search/?type=Organism'
+    organisms = ff_utils.search_metadata(organism_search, ff_env=connection.ff_env)
+    orgn2name = {o.get('@id'): o.get('name') for o in organisms}
+    # add special cases
+    orgn2name['unspecified'] = 'unspecified'
+    orgn2name['multiple organisms'] = 'multiple organisms'
+    genome2orgn = {o.get('genome_assembly'): o.get('@id') for o in organisms if 'genome_assembly' in o}
+    gene_search = 'search/?type=Gene'
+    genes = ff_utils.search_metadata(gene_search, ff_env=connection.ff_env)
+    gene2org = {g.get('@id'): g.get('organism.@id') for g in genes}
+    # get all BioFeatures
+    biofeat_search = 'search/?type=BioFeature'
+    biofeatures = ff_utils.search_metadata(biofeat_search, ff_env=connection.ff_env)
+    for biofeat in biofeatures:
+        linked_orgn_name = None
+        orgn_name = biofeat.get('organism_name')
+        biogenes = biofeat.get('relevant_genes')
+        if biogenes is not None:
+            borgns = [gene2org.get(g.get('@id')) for g in biogenes if '@id' in g]
+            linked_orgn_name = _get_orgname_from_atid_list(borgns, orgn2name)
+        if not linked_orgn_name:  # didn't get it from genes - try genomic regions
+            gen_regions = biofeat.get('genome_location')
+            if gen_regions is not None:
+                grorgns = []
+                for genreg in gen_regions:
+                    assembly_in_dt = False
+                    gr_dt = genreg.get('display_title')
+                    for ga, orgn in genome2orgn:
+                        if ga in gr_dt:
+                            grorgns.append(orgn)
+                            assembly_in_dt = True
+                            break
+                    if not assembly_in_dt:
+                        gr_res = ff_utils.get_es_metadata([genreg.get('uuid')], ff_env=connection.ff_env, sources=['properties.genome_assembly'])
+                        try:
+                            gr_ass = gr_res[0].get('properties').get('genome_assembly')
+                        except AttributeError:
+                            gr_ass = None
+                        if gr_ass is not None:
+                            for ga, orgn in genome2orgn:
+                                if ga == gr_ass:
+                                    grorgns.append(orgn)
+                linked_orgn_name = _get_orgname_from_atid_list(grorgns, orgn2name)
+        if not linked_orgn_name:  # and finally try Description
+            desc = biofeat.get('description')
+            if desc is not None:
+                for o in orgn2name.values():
+                    if o in desc.lower():
+                        linked_orgn_name = o
+                        break
+
+        # we've done our best now check and create output
+        bfuuid = biofeat.get('uuid')
+        if not orgn_name:
+            if linked_orgn_name:
+                missing[bfuuid] = linked_orgn_name
+            else:
+                missing[bfuuid] = 'UNIDENTIFIED'
+        else:
+            if linked_orgn_name:
+                if orgn_name != linked_orgn_name:
+                    if linked_orgn_name == 'unspecified':
+                        mismatch2report[bfuuid] = 'EXISTING: {}\nGUESSED UNSPECIFIED'.format(orgn_name)
+                    else:
+                        mismatch2fix[bfuuid] = 'EXISTING: {}\nGUESSED: {}'.format(orgn_name, linked_orgn_name)
+                else:
+                    matched += 1
+            else:
+                mismatch2report[bfuuid] = 'EXISTING: {}\nNO GUESS!'.format(orgn_name)
+        if missing or mismatch2fix:
+            check.status = 'WARN'
+            check.summary = 'Found BioFeatures with organism_name to fix'
+            check.brief_output = '{} BioFeatures with missing organism_name\n{} BioFeatures with mismatched names to review'.format(len(missing), len(mismatch2fix))
+            check.full_output = {
+                'MATCHED': matched,
+                'MISSING ORGANISM NAME': missing,
+                'MISMATCHED TO FIX': mismatch2fix,
+                'ORGANISM NAME SET WITH NO LINKING INFO': mismatch2report
+            }
+        else:
+            check.status = 'PASS'
+            check.summary = 'BioFeature organism_name looks good'
+            check.full_output = {
+                'MATCHED': matched,
+                'ORGANISM NAME SET WITH NO LINKING INFO': mismatch2report
+            }
+    return check
+
+
+def _get_orgname_from_atid_list(atids, orgn2name):
+    org_atid = [x for x in list(set(atids)) if x is not None]
+    if not org_atid:
+        org_atid = 'unspecified'
+    elif len(org_atid) == 1:
+        org_atid = org_atid[0]
+    else:
+        org_atid = 'multiple organisms'
+    return orgn2name.get(org_atid)

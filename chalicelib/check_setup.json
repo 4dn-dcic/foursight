@@ -201,6 +201,18 @@
             }
         }
     },
+    "check_bio_feature_organism_name": {
+        "title": "BioFeatures with missing or mismatched check_bio_feature_organism_name",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "paired_end_info_consistent": {
         "title": "Fastq files with inconsistent paired end information",
         "group": "Audit checks",
