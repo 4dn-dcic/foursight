@@ -956,7 +956,7 @@ def repli_2_stage_status(connection, **kwargs):
     check.action = "repli_2_stage_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
-    check.summary = ""
+    check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = '2-stage Repli-seq'
@@ -995,7 +995,7 @@ def repli_multi_stage_status(connection, **kwargs):
     check.action = "repli_multi_stage_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
-    check.summary = ""
+    check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'Multi-stage Repli-seq'
@@ -1034,7 +1034,7 @@ def tsa_seq_status(connection, **kwargs):
     check.action = "tsa_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
-    check.summary = ""
+    check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'TSA-seq'
@@ -1073,7 +1073,7 @@ def nad_seq_status(connection, **kwargs):
     check.action = "nad_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
-    check.summary = ""
+    check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'NAD-seq'
@@ -1112,7 +1112,7 @@ def atac_seq_status(connection, **kwargs):
     check.action = "atac_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
-    check.summary = ""
+    check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'ATAC-seq'
@@ -1151,7 +1151,7 @@ def chip_seq_status(connection, **kwargs):
     check.action = "chip_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
-    check.summary = ""
+    check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = 'ChIP-seq'
