@@ -1,8 +1,9 @@
 # Step Settings
-from . import wfr_utils
-
-lambda_limit = wfr_utils.lambda_limit
-mapper = wfr_utils.mapper
+lambda_limit = 260
+mapper = {'human': 'GRCh38',
+          'mouse': 'GRCm38',
+          'fruit-fly': 'dm6',
+          'chicken': 'galGal5'}
 
 
 def step_settings(step_name, my_organism, attribution, overwrite=None):
