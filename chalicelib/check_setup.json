@@ -667,18 +667,13 @@
             }
         }
     },
-    "check_files_for_higlass_viewconf": {
-        "title": "Generate Higlass ViewConfigs for Files",
+    "check_higlass_items_for_new_files": {
+        "title": "Create new Higlass Items for Files",
         "group": "Higlass checks",
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries" : [
-                            "&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&file_type!=read+positions"
-                        ]
-                    },
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 },
                 "webdev": {
@@ -686,50 +681,19 @@
                     "dependencies": []
                 },
                 "hotseat": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries" : [
-                            "&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&file_type!=read+positions"
-                        ]
-                    },
-                    "dependencies": []
-                }
-            },
-            "hourly_checks_2": {
-                "data": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries" : [
-                            "&tags!=higlass_reference&last_modified.date_modified.from=<get_latest_action_completed_date>"
-                        ]
-                    },
-                    "dependencies": []
-                },
-                "hotseat": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries" : [
-                            "&tags!=higlass_reference&last_modified.date_modified.from=<get_latest_action_completed_date>"
-                        ]
-                    },
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
         }
     },
-    "check_expsets_processedfiles_for_higlass_viewconf": {
-        "title": "Create HiGlass viewconfs for Experiment Sets - Processed Files",
+    "check_higlass_items_for_modified_files": {
+        "title": "Update Higlass Items for modified Files",
         "group": "Higlass checks",
         "schedule": {
-            "morning_checks": {
+            "hourly_checks_2": {
                 "data": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries": [
-                            "&processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config",
-                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config"
-                        ]
-                    },
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 },
                 "webdev": {
@@ -737,41 +701,63 @@
                     "dependencies": []
                 },
                 "hotseat": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries": [
-                            "&processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config",
-                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config"
-                        ]
-                    },
-                    "dependencies": []
-                }
-            },
-            "morning_checks_2": {
-                "data": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries": [
-                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.last_modified.date_modified.from=<get_primary_action_completed_date>",
-                            "&processed_files.higlass_uid%21=No+value&last_modified.date_modified.from=<get_primary_action_completed_date>",
-                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.processed_files.last_modified.date_modified.from=<get_latest_action_completed_date>"
-                        ]
-                    },
-                    "dependencies": []
-                },
-                "hotseat": {
-                    "kwargs": {
-                        "primary": true,
-                        "search_queries": [
-                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.last_modified.date_modified.from=<get_primary_result>",
-                            "&processed_files.higlass_uid%21=No+value&last_modified.date_modified.from=<get_primary_action_completed_date>",
-                            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.processed_files.last_modified.date_modified.from=<get_latest_action_completed_date>"
-                        ]
-                    },
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
         }
+    },
+    "check_higlass_items_for_queried_files": {
+        "title": "Manually update Higlass Items for Files",
+        "group": "Higlass checks",
+        "schedule": {},
+        "display": ["data", "hotseat"]
+    },
+    "check_expsets_processedfiles_for_new_higlass_items": {
+        "title": "Create Higlass Items for Processed Files in modified Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_modified_higlass_items": {
+        "title": "Update Higlass Items for Processed Files in modified Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_queried_higlass_items": {
+        "title": "Manually update Higlass Items for Processed Files in Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {},
+        "display": ["data", "hotseat"]
     },
     "check_expsets_otherprocessedfiles_for_higlass_viewconf": {
         "title": "Create HiGlass viewconfs for Experiment Sets - Supplementary Files",

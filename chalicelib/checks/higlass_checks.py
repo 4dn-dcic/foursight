@@ -204,27 +204,145 @@ def add_viewconf_static_content_to_file(connection, item_uuid, higlass_item_uuid
         return False, str(e)
     return True, ""
 
-@check_function(search_queries=[])
-def check_files_for_higlass_viewconf(connection, **kwargs):
+@check_function()
+def check_higlass_items_for_new_files(connection, **kwargs):
     """
-    Check to generate Higlass Items for appropriate files
+    Find files without Higlass Items.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        check results object.
+    """
+
+    return find_files_requiring_higlass_items(
+        connection,
+        check_name="check_higlass_items_for_new_files",
+        action_name="patch_higlass_items_for_new_files",
+        search_queries=["&tags!=higlass_reference&static_content.description!=auto_generated_higlass_view_config&file_type!=read+positions"],
+    )
+
+@action_function()
+def patch_higlass_items_for_new_files(connection, **kwargs):
+    """ Create Higlass Items for Files indicated in check_higlass_items_for_new_files.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        An action object.
+    """
+
+    return create_higlass_items_for_files(
+        connection,
+        called_by = kwargs.get('called_by', None),
+        check_name="check_higlass_items_for_new_files",
+        action_name="patch_higlass_items_for_new_files",
+    )
+
+@check_function()
+def check_higlass_items_for_modified_files(connection, **kwargs):
+    """
+    Find files modified since the last time the check was run.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        check results object.
+    """
+
+    return find_files_requiring_higlass_items(
+        connection,
+        check_name="check_higlass_items_for_modified_files",
+        action_name="patch_higlass_items_for_modified_files",
+        search_queries=["&tags!=higlass_reference&last_modified.date_modified.from=<get_latest_action_completed_date>"],
+    )
+
+@action_function()
+def patch_higlass_items_for_modified_files(connection, **kwargs):
+    """ Create Higlass Items for Files indicated in check_higlass_items_for_modified_files.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        An action object.
+    """
+
+    return create_higlass_items_for_files(
+        connection,
+        called_by = kwargs.get('called_by', None),
+        check_name="check_higlass_items_for_modified_files",
+        action_name="patch_higlass_items_for_modified_files",
+    )
+
+@check_function(search_queries=[])
+def check_higlass_items_for_queried_files(connection, **kwargs):
+    """
+    Create or Update HiGlass Items for files found in the given query.
 
     Args:
         connection: The connection to Fourfront.
         **kwargs, which may include:
-            search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be modified.
+            search_queries(list, optional, default=[]): A list of search queries. All Files found in at least one of the queries will be modified.
+
+    Returns:
+        check results object.
+    """
+
+    search_queries = kwargs.get('search_queries', [])
+
+    return find_files_requiring_higlass_items(
+        connection,
+        check_name="check_higlass_items_for_queried_files",
+        action_name="patch_higlass_items_for_queried_files",
+        search_queries=search_queries,
+    )
+
+@action_function()
+def patch_higlass_items_for_queried_files(connection, **kwargs):
+    """ Create Higlass Items for Files indicated in check_higlass_items_for_queried_files.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs
+
+    Returns:
+        An action object.
+    """
+    return create_higlass_items_for_files(
+        connection,
+        called_by = kwargs.get('called_by', None),
+        check_name="check_higlass_items_for_queried_files",
+        action_name="patch_higlass_items_for_queried_files",
+    )
+
+def find_files_requiring_higlass_items(connection, check_name, action_name, search_queries):
+    """
+    Check to generate Higlass Items for appropriate files.
+
+    Args:
+        check_name(string): Name of Foursight check.
+        action_name(string): Name of related Foursight action.
+        search_queries(list, optional, default=[]): A list of search queries. All Files found in at least one of the queries will be modified.
 
     Returns:
         check results object.
     """
 
     # Create the initial check
-    check = init_check_res(connection, 'check_files_for_higlass_viewconf')
+    check = init_check_res(connection, check_name)
     check.full_output = {
         "search_queries":[]
     }
     check.queries = []
-    check.action = 'patch_files_for_higlass_viewconf'
+    check.action = action_name
 
     # Add the fields we want to return.
     fields_to_include = '&field=' + '&field='.join((
@@ -238,25 +356,18 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         'track_and_facet_info.track_title',
     ))
 
-    # If no search query was provided, use the default queries
-    # - exclude reference files
-    # - exclude read positions because those files are too large for Higlass to render
-    search_queries = kwargs["search_queries"]
-    if not search_queries:
-        search_queries = [
-            "&tags!=higlass_reference&file_type!=read+positions&genome_assembly!=No+value",
-        ]
-
     files_by_accession = {}
     # Use all of the search queries to make a list of the ExpSets we will work on.
     for query in search_queries:
         # Interpolate the timestamps, if needed
-        query = interpolate_query_check_timestamps(connection, query, 'patch_files_for_higlass_viewconf', check)
+        query = interpolate_query_check_timestamps(connection, query, action_name, check)
 
         check.full_output["search_queries"].append(query)
 
         # Add to base search
         file_search_query = "/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value" + query + fields_to_include
+
+        print(file_search_query)
 
         # Query the files
         search_res = ff_utils.search_metadata(file_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
@@ -317,19 +428,21 @@ def check_files_for_higlass_viewconf(connection, **kwargs):
         check.status = 'WARN'
     return check
 
-@action_function()
-def patch_files_for_higlass_viewconf(connection, **kwargs):
+def create_higlass_items_for_files(connection, check_name, action_name, called_by):
     """ This action uses the results from check_files_for_higlass_viewconf
     to create or update new Higlass Items for the given Files.
 
     Args:
         connection: The connection to Fourfront.
-        **kwargs, which may include:
+        check_name(string): Name of Foursight check.
+        action_name(string): Name of related Foursight action.
+        called_by(string, optional, default=None): uuid of the check this action is associated with.
+            If None, use the primary result.
 
     Returns:
         An action object.
     """
-    action = init_action_res(connection, 'patch_files_for_higlass_viewconf')
+    action = init_action_res(connection, action_name)
     action_logs = {
         "success": {},
         "failed_to_create_higlass" : {},
@@ -337,9 +450,9 @@ def patch_files_for_higlass_viewconf(connection, **kwargs):
     }
 
     # get latest results
-    gen_check = init_check_res(connection, 'check_files_for_higlass_viewconf')
-    if kwargs.get('called_by', None):
-        gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
+    gen_check = init_check_res(connection, check_name)
+    if called_by:
+        gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
         gen_check_result = gen_check.get_primary_result()
 
@@ -525,9 +638,91 @@ def gather_processedfiles_for_expset(expset):
         "genome_assembly": processed_files[0]["genome_assembly"]
     }
 
+@check_function()
+def check_expsets_processedfiles_for_new_higlass_items(connection, **kwargs):
+    """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
+        ExpSets are chosen based on the search queries.
+
+        Args:
+            connection: The connection to Fourfront.
+            **kwargs, which may include:
+
+        Returns:
+            check result object.
+    """
+    return find_expsets_processedfiles_requiring_higlass_items(
+        connection,
+        check_name="check_expsets_processedfiles_for_new_higlass_items",
+        action_name="patch_expsets_processedfiles_for_new_higlass_items",
+        search_queries=[
+            "&processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config",
+            "&experiments_in_set.processed_files.higlass_uid%21=No+value&static_content.description!=auto_generated_higlass_view_config"
+        ]
+    )
+
+@action_function()
+def patch_expsets_processedfiles_for_new_higlass_items(connection, **kwargs):
+    """ Update the Experiment Sets Higlass Items for its Processed Files.
+
+        Args:
+            connection: The connection to Fourfront.
+            **kwargs
+
+        Returns:
+            action object.
+    """
+    return update_expsets_processedfiles_requiring_higlass_items(
+        connection,
+        check_name="check_expsets_processedfiles_for_new_higlass_items",
+        action_name="patch_expsets_processedfiles_for_new_higlass_items",
+        search_queries=search_queries
+    )
+
+@check_function()
+def check_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs):
+    """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
+        ExpSets are chosen based on the search queries.
+
+        Args:
+            connection: The connection to Fourfront.
+            **kwargs, which may include:
+
+        Returns:
+            check result object.
+    """
+    return find_expsets_processedfiles_requiring_higlass_items(
+        connection,
+        check_name="check_expsets_processedfiles_for_modified_higlass_items",
+        action_name="patch_expsets_processedfiles_for_modified_higlass_items",
+        search_queries=[
+            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.last_modified.date_modified.from=<get_primary_action_completed_date>",
+            "&processed_files.higlass_uid%21=No+value&last_modified.date_modified.from=<get_primary_action_completed_date>",
+            "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.processed_files.last_modified.date_modified.from=<get_primary_action_completed_date>"
+        ]
+    )
+
+@action_function()
+def patch_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs):
+    """ Update the Experiment Sets Higlass Items for its Processed Files.
+
+        Args:
+            connection: The connection to Fourfront.
+            **kwargs
+
+        Returns:
+            action object.
+    """
+    return update_expsets_processedfiles_requiring_higlass_items(
+        connection,
+        check_name="check_expsets_processedfiles_for_modified_higlass_items",
+        action_name="patch_expsets_processedfiles_for_modified_higlass_items",
+        search_queries=search_queries
+    )
+
 @check_function(search_queries=[])
-def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
-    """ Check to generate Higlass view configs on Fourfront for Experiment Sets Processed Files (and Processed Files in Experiment Sets.)
+def check_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs):
+    """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
+        ExpSets are chosen based on the search queries.
 
         Args:
             connection: The connection to Fourfront.
@@ -537,9 +732,46 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         Returns:
             check result object.
     """
+    return find_expsets_processedfiles_requiring_higlass_items(
+        connection,
+        check_name="check_expsets_processedfiles_for_queried_higlass_items",
+        action_name="patch_expsets_processedfiles_for_queried_higlass_items",
+        search_queries=search_queries
+    )
+
+@action_function()
+def patch_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs):
+    """ Update the Experiment Sets Higlass Items for its Processed Files.
+
+        Args:
+            connection: The connection to Fourfront.
+            **kwargs
+
+        Returns:
+            action object.
+    """
+    return update_expsets_processedfiles_requiring_higlass_items(
+        connection,
+        check_name="check_expsets_processedfiles_for_queried_higlass_items",
+        action_name="patch_expsets_processedfiles_for_queried_higlass_items",
+        search_queries=search_queries
+    )
+
+def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries):
+    """ Discover which ExpSets need Higlass Item updates base on their Processed Files or Processed Files in Experiment Sets.
+
+        Args:
+            connection: The connection to Fourfront.
+            check_name(string): Name of Foursight check.
+            action_name(string): Name of related Foursight action.
+            search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be modified.
+
+        Returns:
+            check result object.
+    """
     # Create the check
-    check = init_check_res(connection, 'check_expsets_processedfiles_for_higlass_viewconf')
-    check.action = 'patch_expsets_processedfiles_for_higlass_viewconf'
+    check = init_check_res(connection, check_name)
+    check.action = action_name
     check.full_output = {}
 
     # Generate the terms each Experiment Set will return.
@@ -561,7 +793,6 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     ])
 
     # If no search query was provided, use the default queries
-    search_queries = kwargs["search_queries"]
     if not search_queries:
         search_queries = [
             "&processed_files.higlass_uid%21=No+value",
@@ -572,7 +803,7 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     # Use all of the search queries to make a list of the ExpSets we will work on.
     for query in search_queries:
         # Interpolate the timestamps, if needed
-        query = interpolate_query_check_timestamps(connection, query, 'patch_expsets_processedfiles_for_higlass_viewconf', check)
+        query = interpolate_query_check_timestamps(connection, query, action_name, check)
 
         # Add to base search
         processed_expsets_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
@@ -653,18 +884,18 @@ def check_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
         check.allow_action = True
     return check
 
-@action_function()
-def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
-    """ Action for check_expsets_processedfiles_for_higlass_viewconf that creates/updates Higlass Item and adds them/updates the Experiment Set's Processed Files section.
+def update_expsets_processedfiles_for_higlass_viewconf(connection, check_name, action_name):
+    """ Create or update Higlass Items for the Experiment Set's Processed Files.
 
         Args:
             connection: The connection to Fourfront.
-            **kwargs
+            check_name(string): Name of Foursight check.
+            action_name(string): Name of related Foursight action.
 
         Returns:
             An action object.
     """
-    action = init_action_res(connection, 'patch_expsets_processedfiles_for_higlass_viewconf')
+    action = init_action_res(connection, action_name)
 
     # Time to act. Store the results here.
     action_logs = {
@@ -675,7 +906,7 @@ def patch_expsets_processedfiles_for_higlass_viewconf(connection, **kwargs):
     }
 
     # get latest results
-    gen_check = init_check_res(connection, 'check_expsets_processedfiles_for_higlass_viewconf')
+    gen_check = init_check_res(connection, check_name)
     if kwargs.get('called_by', None):
         gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
     else:
