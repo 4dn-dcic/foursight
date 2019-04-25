@@ -79,6 +79,8 @@ def md5run_status(connection, **kwargs):
     running = []
     missing_md5 = []
     not_switched_status = []
+    # multiple failed runs
+    problems = []
     my_s3_util = s3Utils(env=connection.ff_env)
     raw_bucket = my_s3_util.raw_file_bucket
     out_bucket = my_s3_util.outfile_bucket
@@ -102,8 +104,11 @@ def md5run_status(connection, **kwargs):
             no_s3_file.append(file_id)
             continue
         md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
+        print(md5_report)
         if md5_report['status'] == 'running':
             running.append(file_id)
+        elif md5_report['status'].startswith("no complete run, too many"):
+            problems.append(file_id)
         # Most probably the trigger did not work, and we run it manually
         elif md5_report['status'] != 'complete':
             missing_md5.append(file_id)
@@ -120,17 +125,23 @@ def md5run_status(connection, **kwargs):
         msg = str(len(running)) + ' files are still running md5run.'
         check.brief_output.append(msg)
         check.full_output['files_running_md5'] = running
+    if problems:
+        check.summary = 'Some files have problems'
+        msg = str(len(problems)) + ' file(s) have problems.'
+        check.brief_output.append(msg)
+        check.full_output['problems'] = problems
+        check.status = 'WARN'
     if missing_md5:
         check.allow_action = True
         check.summary = 'Some files are missing md5 runs'
-        msg = str(len(missing_md5)) + ' files lack a successful md5 run'
+        msg = str(len(missing_md5)) + ' file(s) lack a successful md5 run'
         check.brief_output.append(msg)
         check.full_output['files_without_md5run'] = missing_md5
         check.status = 'WARN'
     if not_switched_status:
         check.allow_action = True
         check.summary += ' Some files are have wrong status with a successful run'
-        msg = str(len(not_switched_status)) + ' files are have wrong status with a successful run'
+        msg = str(len(not_switched_status)) + ' file(s) are have wrong status with a successful run'
         check.brief_output.append(msg)
         check.full_output['files_with_run_and_wrong_status'] = not_switched_status
         check.status = 'WARN'
@@ -960,6 +971,8 @@ def repli_2_stage_status(connection, **kwargs):
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
     check.status = 'PASS'
     exp_type = '2-stage Repli-seq'
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    print(query)
     return check
 
 

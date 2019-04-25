@@ -81,7 +81,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }},
         {
         'app_name': 'repliseq-parta',
-        'workflow_uuid': '4459a4d8-1bd8-4b6a-b2cc-2506f4270a34',
+        'workflow_uuid': '4dn-dcic-lab:wf-repliseq-parta-v16',
         "parameters": {"nthreads": 4, "memperthread": "2G"},
         'custom_pf_fields': {
             'filtered_sorted_deduped_bam': {

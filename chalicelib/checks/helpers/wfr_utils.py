@@ -263,7 +263,14 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     if not my_workflows:
         return {'status': "no workflow in file with accepted version"}
     my_workflows = sorted(my_workflows, key=lambda k: k['run_hours'])
+    print('my_workflows')
+    print(len(my_workflows))
+    print(my_workflows)
+
     same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
+    print('same_type')
+    print(len(same_type_wfrs))
+    print(same_type_wfrs)
     last_wfr = same_type_wfrs[0]
     # get metadata for the last wfr
     if all_wfrs:
@@ -300,10 +307,12 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "no complete run, errrored"}
     # if other statuses, started running
     elif run_duration < run:
+        if len(same_type_wfrs) > 2:
+            return {'status': "no complete run, too many time-outs"}
         return {'status': "running"}
     # this should be the timeout case
     else:
-        return {'status': "no completed run, timout"}
+        return {'status': "no completed run, time-out"}
 
 
 def get_attribution(file_json):
@@ -546,8 +555,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
         report = get_wfr_out(a_file, run_name,  key=my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
-
-        elif report['status'] == "no complete run, too many errors":
+        elif report['status'].startswith("no complete run, too many"):
             problems.append(file_id)
         elif report['status'] != 'complete':
             missing_run.append(file_id)
@@ -651,7 +659,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                     part2 = 'not ready'
                     running.append(['step1', exp, pair])
                 # if run is not successful
-                elif step1_result['status'] == "no complete run, too many errors":
+                elif step1_result['status'].startswith("no complete run, too many"):
                     part2 = 'not ready'
                     problematic_run.append(['step1', exp, pair])
                 else:
@@ -687,7 +695,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 running.append(['step2', exp])
                 continue
             # problematic runs with repeated fails
-            elif step2_result['status'] == 'no complete run, too many errors':
+            elif step2_result['status'].startswith("no complete run, too many"):
                 part3 = 'not ready'
                 problematic_run.append(['step2', exp])
                 continue
@@ -727,7 +735,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                     running.append(['step3', set_acc])
                     set_summary += "| running step3"
                 # problematic runs with repeated fails
-                elif step3_result['status'] == 'no complete run, too many errors':
+                elif step3_result['status'].startswith("no complete run, too many"):
                     set_summary += "| problems in step3"
                     problematic_run.append(['step3', set_acc])
                 # if run is not successful
@@ -985,7 +993,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit):
                     part2 = 'not ready'
                     running.append(['step1', exp, pair])
                 # if run is not successful
-                elif step1_result['status'] == "no complete run, too many errors":
+                elif step1_result['status'].startswith("no complete run, too many"):
                     part2 = 'not ready'
                     problematic_run.append(['step1', exp, pair])
                 else:
