@@ -108,13 +108,13 @@ accepted_versions = {
     # bwa mem # handled manually for now
     'MARGI': [''],
     # Preliminary - Released to network
-    'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL - 1 STEP
-    '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL - 1 STEP
-    'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     # Preliminary - Released to network
-    'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1 ', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
@@ -824,7 +824,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
         # if move_to_pc is true, add them to processed_files
         if move_to_pc:
             # at this step we expect processed_files field to be empty
-            if ex_pc_ids:
+            if ex_pc:
                 log.append('expected processed_files to be empty: {}'.format(acc))
                 continue
             # patch the processed files field
@@ -918,3 +918,124 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
     action.output = action_log
     action.status = 'DONE'
     return action
+
+
+def check_repli(res, my_auth, tag, check, start, lambda_limit):
+    """Check run status for each set in res, and report missing runs and completed process"""
+    for a_set in res:
+        # get all related items
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+                                                           store_frame='embedded',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['experiment_relation',
+                                                                         'biosample_relation',
+                                                                         'references',
+                                                                         'reference_pubs'])
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        now = datetime.utcnow()
+        print(a_set['accession'], (now-start).seconds)
+        if (now-start).seconds > lambda_limit:
+            break
+        # missing run
+        missing_run = []
+        # still running
+        running = []
+        # problematic cases
+        problematic_run = []
+        # if all runs are complete, add the patch info for processed files and tag
+        complete = {'patch_opf': [],
+                    'add_tag': []}
+        set_summary = ""
+        set_acc = a_set['accession']
+        # references dict content
+        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
+        exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
+        paired = refs['pairing']
+        set_summary = " - ".join([set_acc, refs['organism'], refs['f_size']])
+        # if no files were found
+        if all(not value for value in exp_files.values()):
+            set_summary += "| skipped - no usable file"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # skip if missing reference
+        if not refs['bwa_ref'] or not refs['chrsize_ref']:
+            set_summary += "| skipped - no chrsize/bwa"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
+            continue
+        # cycle through the experiments, skip the ones without usable files
+        for exp in exp_files.keys():
+            if not exp_files.get(exp):
+                continue
+            # Check Part 1 and See if all are okay
+            exp_bams = []
+            part2 = 'ready'
+            for pair in exp_files[exp]:
+                if paired == 'Yes':
+                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
+                elif paired == 'No':
+                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
+                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
+                # if successful
+                if step1_result['status'] == 'complete':
+                    exp_bams.append(step1_result['out_bam'])
+                # if still running
+                elif step1_result['status'] == 'running':
+                    part2 = 'not ready'
+                    running.append(['step1', exp, pair])
+                # if run is not successful
+                elif step1_result['status'] == "no complete run, too many errors":
+                    part2 = 'not ready'
+                    problematic_run.append(['step1', exp, pair])
+                else:
+                    part2 = 'not ready'
+                    # add part 1
+                    if paired == 'Yes':
+                        inp_f = {'fastq': pair[0], 'fastq2': pair[1],
+                                 'bwa_index': refs['bwa_ref'],
+                                 'chromsizes': refs['chrsize_ref']}
+                        name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
+                    elif paired == 'No':
+                        inp_f = {'fastq': pair,
+                                 'bwa_index': refs['bwa_ref'],
+                                 'chromsizes': refs['chrsize_ref']}
+                        name_tag = pair.split('/')[2]
+                    missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
+
+
+
+
+
+        check.brief_output.append(set_summary)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if complete.get('add_tag'):
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            check.full_output['completed_runs'].append(complete)
+    # complete check values
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['skipped']:
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+    return check
+
