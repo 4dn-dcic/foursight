@@ -70,10 +70,10 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv):
             # handle differences in badge messages
             for a_badge in item['badges']:
                 if a_badge['badge'].endswith(badge + '/'):
-                    if a_badge['message'] == obj_id_dict[item['@id']]:
+                    if a_badge['messages'] == obj_id_dict[item['@id']]:
                         badge_ok.append(item['@id'])
                     else:
-                        a_badge['message'] = obj_id_dict[item['@id']]
+                        a_badge['messages'] = obj_id_dict[item['@id']]
                         badge_edit[item['@id']] = item['badges']
         else:
             this_badge = [a_badge for a_badge in item['badges'] if badge in a_badge['badge']][0]
@@ -149,6 +149,45 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, single_message='')
 
 
 @check_function()
+def gold_biosample(connection, **kwargs):
+    '''
+    Gold level commendation criteria:
+    1. Tier 1 or Tier 2 Cells obtained from the approved 4DN source and grown
+    precisely according to the approved SOP as specified including any additional
+    authentication eg. HAP-1 haploid line requires a FACs plot demonstrating less
+    than 5% diploid cells.
+    2. Culture start and harvest dates
+    3. Passage number
+    4. Total Days in Culture
+    5. Doubling number
+    6. Karyotyping is required for gold commendation for any biosample derived from
+    a 4DN pluripotent cell line that have been passaged more than 10 times beyond
+    the first thaw of the original vial.  Karyotype reports obtained in house or
+    by a service should be submitted as authentication.  However, for some genomics
+    experiments karyotype information can be derived from sequencing data and a
+    description of the derived karyotype can be submitted.
+    7. For differentiated cells that are derived from any tiered cell lines
+    1) the 4DN SOP must be precisely followed and
+    2) authentication as specified in the SOP must be submitted (links to SOPs).
+    '''
+    check = init_check_res(connection, 'gold_biosample')
+
+    search_url = ('search/?biosource.cell_line_tier=Tier+1&biosource.cell_line_tier=Tier+2'
+                  '&type=Biosample&cell_culture_details.morphology_image.uuid%21=No+value')
+    results = ff_utils.search_metadata(search_url, ff_env=connection.ff_env)
+    for result in results:
+    # follows SOP w/ no deviations
+    # correct source
+    # harvest date
+    # passage number
+    # days in culture
+    # doubling number
+    # karyotype
+    # differentiation SOP/ authentication
+    return check
+
+
+@check_function()
 def repsets_have_bio_reps(connection, **kwargs):
     '''
     Check for replicate experiment sets that have one of the following issues:
@@ -193,22 +232,19 @@ def repsets_have_bio_reps(connection, **kwargs):
                 audits[audit_key]['single_biorep'].append(result['@id'])
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
-            elif sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
+            if sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
                 audits[audit_key]['biorep_nums'].append('{} - biological replicate #s:'
                                              ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
                 exp_audits.append('Biological replicate numbers are not in sequence')
         # check if tech rep numbers not in sequence
-            else:
-                for key, val in rep_dict.items():
-                    if sorted(val) != list(range(min(val), max(val) + 1)):
-                        audits['techrep_nums'].append('{} - technical replicate #s of biorep {}:'
-                                                      ' {}'.format(result['@id'], key, str(sorted(val))))
-                        exp_audits.append('Technical replicate numbers of biological replicate {}'
-                                          ' are not in sequence'.format(key))
-        if exp_audits:
-            msg = '; '.join(exp_audits)
-            if result.get('status') not in REV:
-                by_exp[result['@id']] = msg
+            for key, val in rep_dict.items():
+                if sorted(val) != list(range(min(val), max(val) + 1)):
+                    audits['techrep_nums'].append('{} - technical replicate #s of biorep {}:'
+                                                  ' {}'.format(result['@id'], key, str(sorted(val))))
+                    exp_audits.append('Technical replicate numbers of biological replicate {}'
+                                      ' are not in sequence'.format(key))
+        if exp_audits and result.get('status') not in REV:
+            by_exp[result['@id']] = sorted(exp_audits)
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
                                                                  'replicate-numbers', connection.ff_env)
