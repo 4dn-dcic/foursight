@@ -694,7 +694,7 @@ def check_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs
 
         Args:
             connection: The connection to Fourfront.
-            **kwargs, which may include:
+            **kwargs
 
         Returns:
             check result object.
@@ -1049,61 +1049,151 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
     action.status = "DONE"
     return action
 
-@check_function(expset_accession=None)
-def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs):
-    """ Check to generate Higlass view configs on Fourfront for Experiment Sets Other Processed Files (aka Supplementary Files.)
+@check_function()
+def check_expsets_otherprocessedfiles_for_new_higlass_items(connection, **kwargs):
+    """ Search for Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files) that need to be updated.
+
+        Args:
+            connection: The connection to Fourfront.
+            **kwargs
+
+        Returns:
+            check result object.
+    """
+    return find_expsets_otherprocessedfiles_requiring_higlass_itmes(
+        connection,
+        check_name="check_expsets_otherprocessedfiles_for_new_higlass_items",
+        action_name="patch_expsets_otherprocessedfiles_for_new_higlass_items",
+        search_queries=[],
+        find_opfs_missing_higlass=True
+    )
+
+@action_function()
+def patch_expsets_otherprocessedfiles_for_new_higlass_items(connection, **kwargs):
+    """ Create Higlass Items for Files indicated in check_higlass_items_for_new_files.
+
+    Args:
+        connection: The connection to Fourfront.
+        **kwargs, which may include:
+            called_by(optional, string, default=None): uuid of the associated check. If None, use the primary check
+
+    Returns:
+        An action object.
+    """
+
+    return update_expsets_otherprocessedfiles_for_higlass_items(
+        connection,
+        called_by = kwargs.get('called_by', None),
+        check_name="check_expsets_otherprocessedfiles_for_new_higlass_items",
+        action_name="patch_expsets_otherprocessedfiles_for_new_higlass_items",
+    )
+
+@check_function(search_queries=[])
+def check_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
+    """ Search for Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files) that match the given query.
 
         Args:
             connection: The connection to Fourfront.
             **kwargs, which may include:
-                expset_accession: Only check this expset.
+                search_queries(list, optional, default=[]): A list of search queries. All Files found in at least one of the queries will be modified.
+
+        Returns:
+            check result object.
+    """
+    search_queries = kwargs.get('search_queries', [])
+
+    return find_expsets_otherprocessedfiles_requiring_higlass_itmes(
+        connection,
+        check_name="check_expsets_otherprocessedfiles_for_queried_files",
+        action_name="patch_expsets_otherprocessedfiles_for_queried_files",
+        search_queries=search_queries,
+        find_opfs_missing_higlass=False
+    )
+
+@action_function()
+def patch_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
+    """ Update the Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files).
+
+        Args:
+            connection: The connection to Fourfront.
+            **kwargs, which may include:
+                called_by(optional, string, default=None): uuid of the associated check. If None, use the primary check
+
+        Returns:
+            action object.
+    """
+    return update_expsets_otherprocessedfiles_for_higlass_items(
+        connection,
+        called_by = kwargs.get('called_by', None),
+        check_name="check_expsets_otherprocessedfiles_for_queried_files",
+        action_name="patch_expsets_otherprocessedfiles_for_queried_files",
+    )
+
+def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_name, action_name, search_queries, find_opfs_missing_higlass):
+    """ Check to generate Higlass view configs on Fourfront for Experiment Sets Other Processed Files (aka Supplementary Files.)
+
+        Args:
+            check_name(string): Name of Foursight check.
+            action_name(string): Name of related Foursight action.
+            search_queries(list, optional, default=[]): A list of search queries. All Expsets found in at least one of the queries will be modified.
+            find_opfs_missing_higlass(boolean, optional, default=True): If True, search_queries is ignored and the check will find Other Processed File groups with missing Higlass Items.
 
         Returns:
             check results object.
     """
 
-    check = init_check_res(connection, 'check_expsets_otherprocessedfiles_for_higlass_viewconf')
-    check.full_output = {}
-    check.action = 'patch_expsets_otherprocessedfiles_for_higlass_viewconf'
+    # Create the initial check
+    check = init_check_res(connection, check_name)
+    check.full_output = {
+        "search_queries":[]
+    }
+    check.queries = []
+    check.action = action_name
 
-    # If an accession was specified, get it
-    if kwargs['expset_accession']:
-        expsets_by_accession = {
-            kwargs['expset_accession'] : ff_utils.get_metadata(kwargs['expset_accession'], key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
-        }
-    else:
-        # Otherwise search for all relevant Experiment Sets
-        # get the fields you need to include
-        fields_to_include = ""
-        for new_field in (
-            "accession",
-            "other_processed_files",
-            "experiments_in_set",
-            "description",
-            "lab.uuid",
-            "award.uuid",
-            "contributing_labs.uuid",
-            "description",
-        ):
-            fields_to_include += "&field=" + new_field
+    # If no search query was provided and find_opfs_missing_higlass is False, fail
+    if not (search_queries or find_opfs_missing_higlass):
+        check.summary = check.description = "If find_opfs_missing_higlass is false, Search queries must be provided."
+        check.status = 'FAIL'
+        check.allow_action = False
+        return check
 
-        expects_by_accession = {}
+    if find_opfs_missing_higlass:
+        search_queries = [
+            "&experiments_in_set.other_processed_files.files.higlass_uid%21=No+value",
+            "&other_processed_files.files.higlass_uid%21=No+value"
+        ]
 
-        # Include ExpSets whose Other Processed File groups have higlass_uid
-        expset_query = '/search/?type=ExperimentSetReplicate&other_processed_files.files.higlass_uid%21=No+value' + fields_to_include
-        search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    # get the fields you need to include
+    fields_to_include = ""
+    for new_field in (
+        "accession",
+        "other_processed_files",
+        "experiments_in_set",
+        "description",
+        "lab.uuid",
+        "award.uuid",
+        "contributing_labs.uuid",
+        "description",
+    ):
+        fields_to_include += "&field=" + new_field
 
-        # store results by accession
-        expsets_by_accession = {expset["accession"]: expset for expset in search_res }
+    expsets_by_accession = {}
 
-        # Include ExpSets whose Experiments have Other Processed File groups with higlass_uid
-        expset_query = '/search/?type=ExperimentSetReplicate&experiments_in_set.other_processed_files.files.higlass_uid%21=No+value' + fields_to_include
+    for query in search_queries:
+        query = interpolate_query_check_timestamps(connection, query, action_name, check)
+
+        check.full_output["search_queries"].append(query)
+
+        # Add to the base search
+        expset_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
+
+        # Store results by accession
         search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys, ff_env=connection.ff_env)
         for expset in search_res:
             expsets_by_accession[ expset["accession"] ] = expset
 
-    # I'll need more specific file information, so get the files and their statuses.
-    file_query = '/search/?type=File&higlass_uid%21=No+value&field=status&field=accession'
+    # I'll need more specific file information, so get the files, statuses.
+    file_query = '/search/?type=File&higlass_uid%21=No+value&field=status&field=accession&limit=all'
     search_res = ff_utils.search_metadata(file_query, key=connection.ff_keys, ff_env=connection.ff_env)
     file_statuses = { res["accession"] : res["status"] for res in search_res if "accession" in res }
 
@@ -1113,15 +1203,19 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
     # Create a helper function that finds files with higlass_uid and the genome assembly
     def find_higlass_files(other_processed_files, filegroups_to_update, statuses_lookup):
-        # For each ExpSet Other Processed Filegroup without a higlass_view_config
-        for filegroup in [ fg for fg in other_processed_files if not fg.get("higlass_view_config", None) ]:
+
+        # If find_opfs_missing_higlass is set, find each Other Processed Filegroup without a higlass_view_config
+        if find_opfs_missing_higlass:
+            groups_to_consider = [ fg for fg in other_processed_files if not fg.get("higlass_view_config", None) ]
+        else:
+            groups_to_consider = other_processed_files
+
+        for filegroup in groups_to_consider:
             genome_assembly = None
             title = filegroup["title"]
-            higlass_file_found = False
 
             # Find every file with a higlass_uid
             for fil in [ f for f in filegroup["files"] if f.get("higlass_uid", None) ]:
-                higlass_file_found = True
                 accession = fil["accession"]
 
                 # Create new entry and copy genome assembly and filegroup type
@@ -1131,11 +1225,6 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                         "files": [],
                         "type": filegroup["type"],
                     }
-
-                # Every file has a status. Double check.
-                if accession not in statuses_lookup:
-                    info = ff_utils.get_metadata(accession, key=connection.ff_keys, ff_env=connection.ff_env, add_on="frame=embedded")
-                    statuses_lookup[accession] = info["status"]
 
                 # add file accessions to this group
                 filegroups_to_update[title]["files"].append({
@@ -1169,17 +1258,22 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
         for title, info in experiments_in_set_to_update.items():
             # Skip the experiment's file if the higlass view has already been generated.
-            if title in expset_titles_with_higlass:
+            if find_opfs_missing_higlass and title in expset_titles_with_higlass:
                 continue
 
             # Create the filegroup based on the experiment if:
             # - It doesn't exist in the ExpSet
             # - It does exist in the ExpSet, but the ExpSet didn't have any files to generate higlass uid with.
             if not (title in expset_titles and title in filegroups_to_update):
+                higlass_item_uuid = None
+                if "higlass_view_config" in info:
+                    higlass_item_uuid = info["higlass_view_config"].get("uuid", None)
+
                 filegroups_to_update[title] = {
                     "genome_assembly": info["genome_assembly"],
                     "files": [],
                     "type": info["type"],
+                    "higlass_item_uuid": higlass_item_uuid,
                 }
 
             # Add the files to the existing filegroup
@@ -1222,19 +1316,20 @@ def check_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
         check.allow_action = True
     return check
 
-@action_function(expset_accession=None)
-def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs):
-    """ Create, Post and Patch HiGlass viewconfig files for the given Experiment Sets and their Other Processed Files (aka Supplementary files) entries
+def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name, action_name, called_by):
+    """ Create, Post and Patch HiGlass Items for the given Experiment Sets and their Other Processed Files (aka Supplementary files) entries
 
         Args:
             connection: The connection to Fourfront.
-            **kwargs, which may include:
-                expset_accession(string, optional, default=None): Only generate a viewconf for the given Experiment Set acccession.
+            check_name(string): Name of Foursight check.
+            action_name(string): Name of related Foursight action.
+            called_by(string, optional, default=None): uuid of the check this action is associated with.
+                If None, use the primary result.
 
         Returns:
-            A check/action object.
+            An action object.
     """
-    action = init_action_res(connection, 'patch_expsets_otherprocessedfiles_for_higlass_viewconf')
+    action = init_action_res(connection, action_name)
 
     action_logs = {
         'successes': {},
@@ -1243,9 +1338,9 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     }
 
     # get latest results
-    gen_check = init_check_res(connection, 'check_expsets_otherprocessedfiles_for_higlass_viewconf')
-    if kwargs.get('called_by', None):
-        gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
+    gen_check = init_check_res(connection, check_name)
+    if called_by:
+        gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
         gen_check_result = gen_check.get_primary_result()
 
@@ -1263,15 +1358,14 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
     expsets_to_update = gen_check_result['full_output']["expsets_to_update"]
     filegroups_to_update = gen_check_result['full_output']["filegroups_to_update"]
 
+    viewconfs_updated_goal = 0
+    number_of_viewconfs_updated = 0
+
     # For each expset we want to update
     for accession in expsets_to_update:
         # If we've taken more than 270 seconds to complete, break immediately
         if time_expired:
             break
-
-        # If a particular expset was used as an argument, reject the others.
-        if kwargs["expset_accession"] and kwargs["expset_accession"] != accession:
-            continue
 
         lab = expsets_to_update[accession]["lab"]
         contributing_labs = expsets_to_update[accession]["contributing_labs"]
@@ -1280,6 +1374,8 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
 
         # Look in the filegroups we need to update for that ExpSet
         new_viewconfs = {}
+        viewconfs_updated_goal += len(filegroups_to_update[accession].keys())
+        number_of_posted_viewconfs = 0
         for title, info in filegroups_to_update[accession].items():
             # If we've taken more than 270 seconds to complete, break immediately
             if time.time() - start_time > 270:
@@ -1295,7 +1391,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             #- title: <expset accession> - <title of opf)
             higlass_title = "{acc} - {title}".format(acc=accession, title=title)
 
-            #- description: Supplementary files (<description of opf> 250 kb binned files) for 4DNES7QSJV2E (<description of the experiment> Dam_only DamID of RPE Tier 2 cells – cells were transduced with virus expressing Dam, gDNA was harvested after 4 days and processed for DamID-seq): 4DNFIRR2GRSY, 4DNFIPSIHU36
+            #- description: Supplementary files (<description of opf> ) for <accession> (<description of the experiment>): <file accessions involved>
             higlass_desc = "Supplementary Files ({opf_desc}) for {acc} ({exp_desc}): {files}".format(
                 opf_desc = title,
                 acc = accession,
@@ -1303,20 +1399,30 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 files=", ".join([ f["accession"] for f in data_files ])
             )
 
-            post_viewconf_results =  post_viewconf_to_visualization_endpoint(
+            # Create or update a HiglassItem based on these files.
+            higlass_item_results = create_or_update_higlass_item(
                 connection,
-                reference_files,
-                data_files,
-                lab,
-                contributing_labs,
-                award,
-                higlass_title,
-                higlass_desc,
-                ff_auth,
-                headers,
+                files={
+                    "reference": reference_files,
+                    "content": data_files,
+                },
+                higlass_item={
+                    "uuid": info.get("higlass_item_uuid", None),
+                    "title": higlass_title,
+                    "description": higlass_desc,
+                },
+                ff_requests_auth={
+                    "ff_auth": ff_auth,
+                    "headers": headers,
+                },
+                attributions={
+                    "lab": lab,
+                    "award": award,
+                    "contributing_labs": contributing_labs,
+                }
             )
 
-            if post_viewconf_results["error"]:
+            if higlass_item_results["error"]:
                 if accession not in action_logs['failed_to_create_viewconf']:
                     action_logs['failed_to_create_viewconf'][accession] = {}
                 if title not in action_logs['failed_to_create_viewconf'][accession]:
@@ -1336,10 +1442,11 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 matching_title_filegroups = [ newfilegroup, ]
 
             # Add the higlass_view_config to the filegroup
-            matching_title_filegroups[0]["higlass_view_config"] = post_viewconf_results["view_config_uuid"]
+            matching_title_filegroups[0]["higlass_view_config"] = higlass_item_results["item_uuid"]
             matching_title_filegroups[0]["higlass_view_config"]
 
-            new_viewconfs[title] = post_viewconf_results["view_config_uuid"]
+            new_viewconfs[title] = higlass_item_results["item_uuid"]
+            number_of_posted_viewconfs += 1
 
         # The other_processed_files section has been updated. Patch the changes.
         try:
@@ -1355,6 +1462,7 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
                 key=connection.ff_keys,
                 ff_env=connection.ff_env
             )
+            number_of_viewconfs_updated += number_of_posted_viewconfs
         except Exception as e:
             if accession not in action_logs['failed_to_patch_expset']:
                 action_logs['failed_to_patch_expset'][accession] = {}
@@ -1368,6 +1476,19 @@ def patch_expsets_otherprocessedfiles_for_higlass_viewconf(connection, **kwargs)
             action_logs['successes'][accession] = {}
         action_logs['successes'][accession] = new_viewconfs
 
+    # Report on successes.
+    if len(action_logs['successes'].keys()) >= len(expsets_to_update.keys()):
+        accession_report = "All"
+    else:
+        accession_report = "Only"
+    accession_report += " {actual} of {goal} ExpSets ({actual_opfs} of {goal_opfs} filegroups) updated".format(
+        actual=len(action_logs['successes'].keys()),
+        goal=len(expsets_to_update.keys()),
+        actual_opfs=number_of_viewconfs_updated,
+        goal_opfs=viewconfs_updated_goal,
+    )
+
+    action.description = accession_report
     action.status = 'DONE'
     action.output = action_logs
     return action

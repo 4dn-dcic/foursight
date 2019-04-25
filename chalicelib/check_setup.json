@@ -757,9 +757,9 @@
         "title": "Manually update Higlass Items for Processed Files in Experiment Sets",
         "group": "Higlass checks",
         "schedule": {},
-        "display": ["data", "hotseat"]
+        "display": ["data", "webdev", "hotseat"]
     },
-    "check_expsets_otherprocessedfiles_for_higlass_viewconf": {
+    "check_expsets_otherprocessedfiles_for_new_higlass_items": {
         "title": "Create HiGlass viewconfs for Experiment Sets - Supplementary Files",
         "group": "Higlass checks",
         "schedule": {
@@ -778,6 +778,12 @@
                 }
             }
         }
+    },
+    "check_expsets_otherprocessedfiles_for_queried_files": {
+        "title": "Manually update Higlass Items for Processed Files in Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {},
+        "display": ["data", "webdev", "hotseat"]
     },
     "find_cypress_test_items_to_purge": {
         "title": "Find Cypress Test files to Purge",
