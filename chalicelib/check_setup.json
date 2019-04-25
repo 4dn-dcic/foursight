@@ -760,7 +760,7 @@
         "display": ["data", "webdev", "hotseat"]
     },
     "check_expsets_otherprocessedfiles_for_new_higlass_items": {
-        "title": "Create HiGlass viewconfs for Experiment Sets - Supplementary Files",
+        "title": "Create Higlass Items for Other Processed (aka Supplementary) Files in Experiment Sets",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
@@ -780,7 +780,7 @@
         }
     },
     "check_expsets_otherprocessedfiles_for_queried_files": {
-        "title": "Manually update Higlass Items for Processed Files in Experiment Sets",
+        "title": "Manually update Higlass Items for Other Processed (aka Supplementary) Files in Experiment Sets",
         "group": "Higlass checks",
         "schedule": {},
         "display": ["data", "webdev", "hotseat"]

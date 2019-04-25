@@ -1174,6 +1174,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_n
         "award.uuid",
         "contributing_labs.uuid",
         "description",
+        "last_modified.date_modified"
     ):
         fields_to_include += "&field=" + new_field
 
@@ -1202,11 +1203,41 @@ def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_n
     check.full_output['reference_files'] = reference_files_by_ga
 
     # Create a helper function that finds files with higlass_uid and the genome assembly
-    def find_higlass_files(other_processed_files, filegroups_to_update, statuses_lookup):
-
+    def find_higlass_files(other_processed_files, filegroups_to_update, statuses_lookup, expset_last_modified_date):
         # If find_opfs_missing_higlass is set, find each Other Processed Filegroup without a higlass_view_config
         if find_opfs_missing_higlass:
-            groups_to_consider = [ fg for fg in other_processed_files if not fg.get("higlass_view_config", None) ]
+            def consider_filegroup(fg):
+                # If none of the files have higlass uids, do not make a Higlass Item for this group.
+                files_with_higlass_uid = [ f for f in fg["files"] if f.get("higlass_uid", None) ]
+                if not files_with_higlass_uid:
+                    return False
+
+                # If there is no Higlass Item in this group, we'll make one.
+                if not fg.get("higlass_view_config", None):
+                    return True
+
+                # If the higlass item was created before the expset was last modified, we need to consider the group.
+                if expset_last_modified_date:
+                    higlass_modified_date = None
+
+                    existing_higlass_item = fg["higlass_view_config"]
+                    if existing_higlass_item.get("last_modified", None) and existing_higlass_item["last_modified"].get("date_modified", None):
+                        higlass_modified_date = convert_es_timestamp_to_datetime(existing_higlass_item["last_modified"]["date_modified"])
+
+                    # If the ExpSet was modified but not the higlass item, then the Higlass Item is new and the group should be considered.
+                    if not higlass_modified_date:
+                        return True
+
+                    # If the Higlass Item is older than the ExpSet, it should be considered.
+                    if higlass_modified_date < expset_last_modified_date:
+                        return True
+                else:
+                    # If the ExpSet is new, then consider this group.
+                    return True
+
+                # No reason to consider this group.
+                return False
+            groups_to_consider = [ fg for fg in other_processed_files if consider_filegroup(fg) ]
         else:
             groups_to_consider = other_processed_files
 
@@ -1243,8 +1274,14 @@ def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_n
         # Look for other processed file groups with higlass_uid . Update the list by accession and file group title.
         expset_titles = set()
         expset_titles_with_higlass = set()
+
+        # Get the last modified date and convert it to a timestamp.
+        expset_last_modified_date = None
+        if expset.get("last_modified", None) and expset["last_modified"].get("date_modified", None):
+            expset_last_modified_date = convert_es_timestamp_to_datetime(expset["last_modified"]["date_modified"])
+
         if "other_processed_files" in expset:
-            find_higlass_files(expset["other_processed_files"], filegroups_to_update, file_statuses)
+            find_higlass_files(expset["other_processed_files"], filegroups_to_update, file_statuses, expset_last_modified_date)
 
             expset_titles = { fg["title"] for fg in expset["other_processed_files"] }
 
@@ -1254,7 +1291,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_n
         experiments_in_set_to_update = {}
         for experiment in expset.get("experiments_in_set", []):
             if "other_processed_files" in experiment:
-                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, file_statuses)
+                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, file_statuses, expset_last_modified_date)
 
         for title, info in experiments_in_set_to_update.items():
             # Skip the experiment's file if the higlass view has already been generated.
@@ -2080,3 +2117,29 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
         # Replace the key with the timestamp.
         search_query = search_query.replace("<get_latest_action_completed_date>", completed_timestamp)
     return search_query
+
+def convert_es_timestamp_to_datetime(raw):
+    """ Convert the ElasticSearch timestamp to a Python Datetime.
+
+    Args:
+        raw(string): The ElasticSearch timestamp, as a string.
+
+    Returns:
+        A datetime object (or None)
+    """
+    converted_date = None
+
+    if not raw:
+        return converted_date
+
+    index = raw.rfind(".")
+    if index != -1:
+        formatted_date = raw[0:index]
+    else:
+        formatted_date = raw
+
+    converted_date = datetime.strptime(
+        formatted_date,
+        "%Y-%m-%dT%H:%M:%S"
+    )
+    return converted_date
