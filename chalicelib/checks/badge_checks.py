@@ -152,6 +152,57 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, single_message='')
 
 
 @check_function()
+def yellow_flag_biosamples(connection, **kwargs):
+    check = init_check_res(connection, 'yellow_flag_biosamples')
+
+    results = ff_utils.search_metadata('search/?type=Biosample', ff_env=connection.ff_env)
+    flagged = {}
+    for result in results:
+        messages = []
+        bcc = result.get('cell_culture_details', {})
+        for item in [
+            'culture_harvest_date', 'doubling_number', 'passage_number', 'culture_duration', 'morphology_image'
+        ]:
+            if not bcc.get(item):
+                messages.append('Biosample missing {}'.format(item))
+        bs_types = [bs.get('biosource_type') for bs in result.get('biosource', [])]
+        karyotype = True if bcc.get('karyotype') else False
+        diff_auth = False
+        for protocol in bcc.get('authentication_protocols', []):
+            protocol_item = ff.get_metadata(protocol['@id'], ff_env="data")
+            if protocol_item.get('protocol_classification') == 'Karyotype Authentication':
+                karyotype = True
+            elif protocol_item.get('protocol_classification') == 'Differentiation Authentication':
+                diff_auth = True
+        if 'tem cell' in ''.join(bs_types) and bcc.get('passage_number', 0) > 10 and not karyotype:
+            messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
+        if result.get('biosample_type') == 'In vitro differentiated cells' and not diff_auth:
+            messages.append('Differentiated biosample missing differentiation authentication')
+        if messages:
+            flagged[result['@id']] = messages
+
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
+        flagged, 'ExperimentSetReplicate', 'replicate-numbers', connection.ff_env
+    )
+    #check.action = ''
+    if to_add or to_remove or to_edit:
+        check.status = 'WARN'
+        check.summary = 'Yellow flag biosample badges need patching'
+        check.description = '{} biosamples need warning badges patched'.format(
+            len(to_add.values()) + len(to_remove.values()) + len(to_edit.values())
+        )
+    else:
+        check.status = 'PASS'
+        check.summary = 'Yellow flag biosample badges up-to-date'
+        check.description = 'No yellow flag biosample badges need patching'
+    check.full_output = {'Add badge': to_add,
+                         'Remove badge': to_remove,
+                         'Keep badge and edit messages': to_edit,
+                         'Keep badge (no change)': ok}
+    return check
+
+
+@check_function()
 def gold_biosample(connection, **kwargs):
     '''
     Gold level commendation criteria:
@@ -422,9 +473,9 @@ def exp_has_raw_files(connection, **kwargs):
         check.summary = 'Raw Files badges up-to-date'
         check.description = 'No sequencing experiments need raw files badges patched'
     check.action = 'patch_badges_for_raw_files'
-    check.full_output = {'Experiments newly missing raw files': to_add,
-                         'Old experiments missing raw files': ok,
-                         'Experiments no longer missing raw files': to_remove}
+    check.full_output = {'Add badge': to_add,
+                         'Remove badge': to_remove,
+                         'Keep badge': ok}
     check.brief_output = {REV_KEY: missing_files_in_rev,
                           RELEASED_KEY: missing_files_released}
     return check
@@ -531,7 +582,8 @@ def consistent_replicate_info(connection, **kwargs):
                 info_dict['biosample_protocols'] = bp_vals
         if info_dict:
             info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
-            msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
+            #msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
+            msgs = ['Inconsistent replicate information in ' + item for item in info]
             name = '{}    {}    {}'.format(repset['uuid'], repset['@id'][-13:-1], repset['status'])
             lab = repset['lab']['display_title']
             audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
@@ -539,7 +591,7 @@ def consistent_replicate_info(connection, **kwargs):
                 check.brief_output[audit_key][lab] = {}
             check.brief_output[audit_key][lab][name] = info_dict
             if repset['status'] not in REV:
-                compare[repset['@id']] = msg
+                compare[repset['@id']] = msgs
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
         compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
@@ -554,9 +606,9 @@ def consistent_replicate_info(connection, **kwargs):
         check.summary = 'Replicate Info badges are up-to-date'
         check.description = 'No ExperimentSetReplicates found that need a replicate-info badge patched'
     check.full_output = {'New replicate experiment sets with inconsistent replicate info': to_add,
-                         'Old replicate experiment sets with inconsistent replicate info': ok,
                          'Replicate experiment sets with replicate info now consistent': to_remove,
-                         'Replicate experiment sets with replicate-info badge that needs editing': to_edit}
+                         'Replicate experiment sets with replicate-info badge that needs editing': to_edit,
+                         'Old replicate experiment sets with inconsistent replicate info': ok}
     #check.brief_output = results
     check.action = 'patch_badges_for_inconsistent_replicate_info'
     if to_add or to_remove or to_edit:
