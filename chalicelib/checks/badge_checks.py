@@ -70,11 +70,14 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv):
             # handle differences in badge messages
             for a_badge in item['badges']:
                 if a_badge['badge'].endswith(badge + '/'):
-                    if a_badge['messages'] == obj_id_dict[item['@id']]:
+                    if a_badge.get('messages') == obj_id_dict[item['@id']]:
                         badge_ok.append(item['@id'])
                     else:
+                        if a_badge.get('message'):
+                            del a_badge['message']
                         a_badge['messages'] = obj_id_dict[item['@id']]
                         badge_edit[item['@id']] = item['badges']
+                    break
         else:
             this_badge = [a_badge for a_badge in item['badges'] if badge in a_badge['badge']][0]
             item['badges'].remove(this_badge)
@@ -109,7 +112,7 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, single_message='')
     for add_key in add_list:
         add_result = ff_utils.get_metadata(add_key + '?frame=object', ff_env=ffenv)
         badges = add_result['badges'] if add_result.get('badges') else []
-        badges.append({'badge': badge_id, 'message': single_message if single_message else full_output[output_keys[0]][add_key]})
+        badges.append({'badge': badge_id, 'messages': [single_message] if single_message else full_output[output_keys[0]][add_key]})
         if [b['badge'] for b in badges].count(badge_id) > 1:
             # print an error message?
             patches['add_badge_failure'].append('{} already has badge'.format(add_key))
@@ -176,6 +179,7 @@ def gold_biosample(connection, **kwargs):
                   '&type=Biosample&cell_culture_details.morphology_image.uuid%21=No+value')
     results = ff_utils.search_metadata(search_url, ff_env=connection.ff_env)
     for result in results:
+        pass
     # follows SOP w/ no deviations
     # correct source
     # harvest date
@@ -223,11 +227,6 @@ def repsets_have_bio_reps(connection, **kwargs):
             else:
                 audit_key = RELEASED_KEY
 
-        # check if only 1 experiment present in set
-            # if len(result['replicate_exps']) == 1:
-            #     audits['single_experiment'].append('{} contains only 1 experiment'.format(result['@id']))
-            #     exp_audits.append('Replicate set contains only a single experiment')
-            # check for technical replicates only
             if len(rep_dict.keys()) == 1:
                 audits[audit_key]['single_biorep'].append(result['@id'])
                 exp_audits.append('Replicate set contains only a single biological replicate')
@@ -239,7 +238,7 @@ def repsets_have_bio_reps(connection, **kwargs):
         # check if tech rep numbers not in sequence
             for key, val in rep_dict.items():
                 if sorted(val) != list(range(min(val), max(val) + 1)):
-                    audits['techrep_nums'].append('{} - technical replicate #s of biorep {}:'
+                    audits[audit_key]['techrep_nums'].append('{} - technical replicate #s of biorep {}:'
                                                   ' {}'.format(result['@id'], key, str(sorted(val))))
                     exp_audits.append('Technical replicate numbers of biological replicate {}'
                                       ' are not in sequence'.format(key))
@@ -259,11 +258,22 @@ def repsets_have_bio_reps(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'Replicate number badges up-to-date'
         check.description = 'No replicate number badges need patching'
-    check.full_output = {'New replicate sets with replicate number issues': to_add,
-                         'Old replicate sets with replicate number issues': ok,
-                         'Replicate sets that no longer have replicate number issues': to_remove,
-                         'Replicate sets with a replicate_numbers badge that needs editing': to_edit}
-    check.brief_output = audits
+    check.full_output = {'Add badge': to_add,
+                         'Remove badge': to_remove,
+                         'Keep badge and edit messages': to_edit,
+                         'Keep badge (no change)': ok}
+    check.brief_output = {REV_KEY: audits[REV_KEY]}
+    check.brief_output[RELEASED_KEY] = {
+        k: {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []} for k in check.full_output.keys()
+    }
+    for k, v in audits[RELEASED_KEY].items():
+        for item in v:
+            name = item.split(' ')[0]
+            for key in ["Add badge", 'Remove badge', 'Keep badge and edit messages']:
+                if name in check.full_output[key].keys():
+                    check.brief_output[RELEASED_KEY][key][k].append(item)
+            if name in check.full_output['Keep badge (no change)']:
+                check.brief_output[RELEASED_KEY]['Keep badge (no change)'][k].append(item)
     if to_add or to_remove or to_edit:
         check.allow_action = True
     return check
@@ -274,9 +284,7 @@ def patch_badges_for_replicate_numbers(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_replicate_numbers')
     rep_check_result = action.get_associated_check_result(kwargs)
 
-    rep_keys = ['New replicate sets with replicate number issues',
-                'Replicate sets that no longer have replicate number issues',
-                'Replicate sets with a replicate_numbers badge that needs editing']
+    rep_keys = ['Add badge', 'Remove badge', 'Keep badge and edit messages']
 
     action.output = patch_badges(rep_check_result['full_output'], 'replicate-numbers', rep_keys, connection.ff_env)
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
