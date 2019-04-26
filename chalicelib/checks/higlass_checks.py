@@ -244,14 +244,15 @@ def patch_higlass_items_for_new_files(connection, **kwargs):
         action_name="patch_higlass_items_for_new_files",
     )
 
-@check_function()
+@check_function(minutes_leeway=10)
 def check_higlass_items_for_modified_files(connection, **kwargs):
     """
-    Find files modified since the last time the check was run.
+    Find files modified since the last time the action completed.
 
     Args:
         connection: The connection to Fourfront.
-        **kwargs
+        **kwargs, which may include:
+            minutes_leeway(integer, optional, default=10): Number of minutes after the action completed to consider the file modified.
 
     Returns:
         check results object.
@@ -262,6 +263,7 @@ def check_higlass_items_for_modified_files(connection, **kwargs):
         check_name="check_higlass_items_for_modified_files",
         action_name="patch_higlass_items_for_modified_files",
         search_queries=["&tags!=higlass_reference&last_modified.date_modified.from=<get_latest_action_completed_date>"],
+        minutes_leeway=kwargs["minutes_leeway"],
     )
 
 @action_function()
@@ -284,7 +286,7 @@ def patch_higlass_items_for_modified_files(connection, **kwargs):
         action_name="patch_higlass_items_for_modified_files",
     )
 
-@check_function(search_queries=[])
+@check_function(search_queries=[],minutes_leeway=1)
 def check_higlass_items_for_queried_files(connection, **kwargs):
     """
     Create or Update HiGlass Items for files found in the given query.
@@ -293,6 +295,7 @@ def check_higlass_items_for_queried_files(connection, **kwargs):
         connection: The connection to Fourfront.
         **kwargs, which may include:
             search_queries(list, optional, default=[]): A list of search queries. All Files found in at least one of the queries will be modified.
+            minutes_leeway(integer, optional, default=1): Number of minutes after the action completed to compare against.
 
     Returns:
         check results object.
@@ -326,7 +329,7 @@ def patch_higlass_items_for_queried_files(connection, **kwargs):
         action_name="patch_higlass_items_for_queried_files",
     )
 
-def find_files_requiring_higlass_items(connection, check_name, action_name, search_queries):
+def find_files_requiring_higlass_items(connection, check_name, action_name, search_queries, minutes_leeway=1):
     """
     Check to generate Higlass Items for appropriate files.
 
@@ -334,6 +337,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
         check_name(string): Name of Foursight check.
         action_name(string): Name of related Foursight action.
         search_queries(list, optional, default=[]): A list of search queries. All Files found in at least one of the queries will be modified.
+        minutes_leeway(integer, optional, default=1): Number of minutes after the action completed to compare against.
 
     Returns:
         check results object.
@@ -370,7 +374,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
     # Use all of the search queries to make a list of the ExpSets we will work on.
     for query in search_queries:
         # Interpolate the timestamps, if needed
-        query = interpolate_query_check_timestamps(connection, query, action_name, check)
+        query = interpolate_query_check_timestamps(connection, query, action_name, check, minutes_leeway)
 
         check.full_output["search_queries"].append(query)
 
@@ -425,12 +429,12 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
 
     if not target_files_by_ga:
         # nothing new to generate
-        check.summary = check.description = "No new view configs to generate"
+        check.summary = check.description = "No new Higlass Items to generate"
         check.allow_action = False
         check.status = 'PASS'
     else:
         all_files = sum([len(x) for x in check.full_output["ready"].values()])
-        check.summary = "Ready to generate %s Higlass view configs" % all_files
+        check.summary = "Ready to generate %s Higlass Items" % all_files
         check.description = check.summary + ". See full_output for details."
         check.allow_action = True
         check.status = 'WARN'
@@ -687,14 +691,15 @@ def patch_expsets_processedfiles_for_new_higlass_items(connection, **kwargs):
         action_name="patch_expsets_processedfiles_for_new_higlass_items"
     )
 
-@check_function()
+@check_function(minutes_leeway=10)
 def check_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
         ExpSets are chosen based on the search queries.
 
         Args:
             connection: The connection to Fourfront.
-            **kwargs
+            **kwargs, which may include:
+                minutes_leeway(integer, optional, default=10): Number of minutes after the action completed to compare against.
 
         Returns:
             check result object.
@@ -707,7 +712,8 @@ def check_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs
             "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.last_modified.date_modified.from=<get_latest_action_completed_date>",
             "&processed_files.higlass_uid%21=No+value&last_modified.date_modified.from=<get_latest_action_completed_date>",
             "&experiments_in_set.processed_files.higlass_uid%21=No+value&experiments_in_set.processed_files.last_modified.date_modified.from=<get_latest_action_completed_date>"
-        ]
+        ],
+        minutes_leeway=kwargs["minutes_leeway"],
     )
 
 @action_function()
@@ -729,7 +735,7 @@ def patch_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs
         action_name="patch_expsets_processedfiles_for_modified_higlass_items"
     )
 
-@check_function(search_queries=[])
+@check_function(search_queries=[],minutes_leeway=1)
 def check_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
         ExpSets are chosen based on the search queries.
@@ -738,6 +744,7 @@ def check_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs)
             connection: The connection to Fourfront.
             **kwargs, which may include:
                 search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be modified.
+                minutes_leeway(integer, optional, default=1): Number of minutes after the action completed to compare against.
 
         Returns:
             check result object.
@@ -748,7 +755,8 @@ def check_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs)
         connection,
         check_name="check_expsets_processedfiles_for_queried_higlass_items",
         action_name="patch_expsets_processedfiles_for_queried_higlass_items",
-        search_queries=search_queries
+        search_queries=search_queries,
+        minutes_leeway=kwargs["minutes_leeway"],
     )
 
 @action_function()
@@ -770,7 +778,7 @@ def patch_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs)
         action_name="patch_expsets_processedfiles_for_queried_higlass_items"
     )
 
-def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries):
+def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries, minutes_leeway=1):
     """ Discover which ExpSets need Higlass Item updates base on their Processed Files or Processed Files in Experiment Sets.
 
         Args:
@@ -778,6 +786,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
             check_name(string): Name of Foursight check.
             action_name(string): Name of related Foursight action.
             search_queries(list, optional, default=[]): A list of search queries. All ExpSets found in at least one of the queries will be modified.
+            minutes_leeway(integer, optional, default=1): Number of minutes after the action completed to compare against.
 
         Returns:
             check result object.
@@ -816,7 +825,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
     # Use all of the search queries to make a list of the ExpSets we will work on.
     for query in search_queries:
         # Interpolate the timestamps, if needed
-        query = interpolate_query_check_timestamps(connection, query, action_name, check)
+        query = interpolate_query_check_timestamps(connection, query, action_name, check, minutes_leeway)
 
         # Add to base search
         processed_expsets_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
@@ -1049,23 +1058,25 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
     action.status = "DONE"
     return action
 
-@check_function()
+@check_function(minutes_leeway=10)
 def check_expsets_otherprocessedfiles_for_new_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files) that need to be updated.
 
         Args:
             connection: The connection to Fourfront.
-            **kwargs
+            **kwargs, which may include:
+                minutes_leeway(integer, optional, default=10): Number of minutes after the action completed to compare against.
 
         Returns:
             check result object.
     """
-    return find_expsets_otherprocessedfiles_requiring_higlass_itmes(
+    return find_expsets_otherprocessedfiles_requiring_higlass_items(
         connection,
         check_name="check_expsets_otherprocessedfiles_for_new_higlass_items",
         action_name="patch_expsets_otherprocessedfiles_for_new_higlass_items",
         search_queries=[],
-        find_opfs_missing_higlass=True
+        find_opfs_missing_higlass=True,
+        minutes_leeway=kwargs["minutes_leeway"],
     )
 
 @action_function()
@@ -1088,7 +1099,7 @@ def patch_expsets_otherprocessedfiles_for_new_higlass_items(connection, **kwargs
         action_name="patch_expsets_otherprocessedfiles_for_new_higlass_items",
     )
 
-@check_function(search_queries=[])
+@check_function(search_queries=[],minutes_leeway=1)
 def check_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files) that match the given query.
 
@@ -1096,18 +1107,20 @@ def check_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
             connection: The connection to Fourfront.
             **kwargs, which may include:
                 search_queries(list, optional, default=[]): A list of search queries. All Files found in at least one of the queries will be modified.
+                minutes_leeway(integer, optional, default=1): Number of minutes after the action completed to compare against.
 
         Returns:
             check result object.
     """
     search_queries = kwargs.get('search_queries', [])
 
-    return find_expsets_otherprocessedfiles_requiring_higlass_itmes(
+    return find_expsets_otherprocessedfiles_requiring_higlass_items(
         connection,
         check_name="check_expsets_otherprocessedfiles_for_queried_files",
         action_name="patch_expsets_otherprocessedfiles_for_queried_files",
         search_queries=search_queries,
-        find_opfs_missing_higlass=False
+        find_opfs_missing_higlass=False,
+        minutes_leeway=kwargs["minutes_leeway"],
     )
 
 @action_function()
@@ -1129,7 +1142,7 @@ def patch_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
         action_name="patch_expsets_otherprocessedfiles_for_queried_files",
     )
 
-def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_name, action_name, search_queries, find_opfs_missing_higlass):
+def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries, find_opfs_missing_higlass=True, minutes_leeway=1):
     """ Check to generate Higlass view configs on Fourfront for Experiment Sets Other Processed Files (aka Supplementary Files.)
 
         Args:
@@ -1137,6 +1150,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_n
             action_name(string): Name of related Foursight action.
             search_queries(list, optional, default=[]): A list of search queries. All Expsets found in at least one of the queries will be modified.
             find_opfs_missing_higlass(boolean, optional, default=True): If True, search_queries is ignored and the check will find Other Processed File groups with missing Higlass Items.
+            minutes_leeway(integer, optional, default=1): Number of minutes after the action completed to compare against.
 
         Returns:
             check results object.
@@ -1181,7 +1195,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_itmes(connection, check_n
     expsets_by_accession = {}
 
     for query in search_queries:
-        query = interpolate_query_check_timestamps(connection, query, action_name, check)
+        query = interpolate_query_check_timestamps(connection, query, action_name, check, minutes_leeway)
 
         check.full_output["search_queries"].append(query)
 
@@ -2066,7 +2080,7 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
             "error": "Could not contact visualization endpoint."
         }
 
-def interpolate_query_check_timestamps(connection, search_query, action_name, result_check):
+def interpolate_query_check_timestamps(connection, search_query, action_name, result_check, minutes_leeway=1):
     """ Search for Foursight check timestamps in the search query
     and replace them with the actual timestamp.
 
@@ -2075,6 +2089,7 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
         search_query(string)    : This query may have a substitute key phrase.
         action_name(string)     : Name of the related action.
         result_check(RunResult) : This object can look for the history of other checks.
+        minutes_leeway(integer, optional, default=1): Number of minutes to move the timestamp into the future.
 
     Returns:
         The new search_query.
@@ -2106,7 +2121,7 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
             "%Y-%m-%dT%H:%M:%S"
         )
         # Move time stamp to 1 minute in the future.
-        completed_timestamp_datetime += timedelta(minutes=1)
+        completed_timestamp_datetime += timedelta(minutes=minutes_leeway)
 
         # Convert to elastic search format, yyyy-mm-dd HH:MM
         es_string = datetime.strftime(completed_timestamp_datetime, "%Y-%m-%d %H:%M")

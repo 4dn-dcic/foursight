@@ -711,7 +711,7 @@
         "title": "Manually update Higlass Items for Files",
         "group": "Higlass checks",
         "schedule": {},
-        "display": ["data", "hotseat"]
+        "display": ["data", "hotseat", "webdev"]
     },
     "check_expsets_processedfiles_for_new_higlass_items": {
         "title": "Create Higlass Items for Processed Files in modified Experiment Sets",
