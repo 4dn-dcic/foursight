@@ -91,7 +91,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'count_bg': {
                 'genome_assembly': genome,
                 'file_type': 'counts',
-                'description': 'read counts per 5 kb bin, unfiltered, unnormalized'}
+                'description': 'read counts, unfiltered, unnormalized'}
         }},
         {
         "app_name": "bedGraphToBigWig",

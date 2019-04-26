@@ -104,7 +104,6 @@ def md5run_status(connection, **kwargs):
             no_s3_file.append(file_id)
             continue
         md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
-        print(md5_report)
         if md5_report['status'] == 'running':
             running.append(file_id)
         elif md5_report['status'].startswith("no complete run, too many"):
@@ -547,7 +546,7 @@ def in_situ_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -599,7 +598,7 @@ def dilution_hic_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
 
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -649,7 +648,7 @@ def tcc_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -699,7 +698,7 @@ def dnase_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -749,7 +748,7 @@ def capture_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -799,7 +798,7 @@ def micro_c_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -849,7 +848,7 @@ def chia_pet_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -899,7 +898,7 @@ def trac_loop_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -949,7 +948,7 @@ def plac_seq_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -990,7 +989,7 @@ def repli_2_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -1029,7 +1028,7 @@ def repli_multi_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -1068,7 +1067,7 @@ def tsa_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -1107,7 +1106,7 @@ def nad_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -1146,7 +1145,7 @@ def atac_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -1185,5 +1184,5 @@ def chip_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action

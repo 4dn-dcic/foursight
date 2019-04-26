@@ -263,14 +263,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     if not my_workflows:
         return {'status': "no workflow in file with accepted version"}
     my_workflows = sorted(my_workflows, key=lambda k: k['run_hours'])
-    print('my_workflows')
-    print(len(my_workflows))
-    print(my_workflows)
-
     same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
-    print('same_type')
-    print(len(same_type_wfrs))
-    print(same_type_wfrs)
     last_wfr = same_type_wfrs[0]
     # get metadata for the last wfr
     if all_wfrs:
@@ -307,12 +300,13 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "no complete run, errrored"}
     # if other statuses, started running
     elif run_duration < run:
-        if len(same_type_wfrs) > 2:
-            return {'status': "no complete run, too many time-outs"}
         return {'status': "running"}
     # this should be the timeout case
     else:
-        return {'status': "no completed run, time-out"}
+        if len(same_type_wfrs) > 2:
+            return {'status': "no complete run, too many time-outs"}
+        else:
+            return {'status': "no completed run, time-out"}
 
 
 def get_attribution(file_json):
@@ -602,9 +596,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                                                                          'reference_pubs'])
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
-
         print(a_set['accession'], (now-start).seconds)
-
         if (now-start).seconds > lambda_limit:
             break
         # missing run
@@ -706,10 +698,10 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
                 missing_run.append(['step2', ['hi-c-processing-bam', refs['organism'], {}], inp_f, exp])
         if part3 is not 'ready':
-            if missing_run:
-                set_summary += "| missing step 1/2"
-            elif running:
+            if running:
                 set_summary += "| running step 1/2"
+            elif missing_run:
+                set_summary += "| missing step 1/2"
             elif problematic_run:
                 set_summary += "| problem in step 1/2"
 
@@ -860,8 +852,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     return log
 
 
-def start_missing_hic_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'input_pairs', 'input_bams']
+def start_missing_run(run_info, auth, env):
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -878,7 +870,7 @@ def start_missing_hic_run(run_info, auth, env):
     return url
 
 
-def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False):
+def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='hic'):
     started_runs = 0
     patched_md = 0
     action.description = ""
@@ -895,7 +887,7 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
             acc = list(a_case.keys())[0]
             for a_run in a_case[acc]:
                 started_runs += 1
-                url = start_missing_hic_run(a_run, my_auth, my_env)
+                url = start_missing_run(a_run, my_auth, my_env)
                 log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
                 if url.startswith('http'):
                     action_log['started_runs'].append([log_message, url])
@@ -910,7 +902,7 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
                 action.description = 'Did not complete action due to time limitations.'
                 break
             patched_md += 1
-            error = patch_complete_data(a_completed_info, 'hic', my_auth, move_to_pc=move_to_pc)
+            error = patch_complete_data(a_completed_info, runtype, my_auth, move_to_pc=move_to_pc)
             if not error:
                 log_message = acc + ' completed processing'
                 action_log['patched_meta'].append(log_message)
@@ -928,7 +920,7 @@ def start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, mo
     return action
 
 
-def check_repli(res, my_auth, tag, check, start, lambda_limit):
+def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -973,12 +965,13 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit):
             check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
             continue
         # cycle through the experiments, skip the ones without usable files
+        part3 = 'ready'  # switch for watching the set
         for exp in exp_files.keys():
             if not exp_files.get(exp):
                 continue
             # Check Part 1 and See if all are okay
-            exp_bams = []
-            part2 = 'ready'
+            exp_files = []
+            part2 = 'ready'  # switch for watching the exp
             for pair in exp_files[exp]:
                 if paired == 'Yes':
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
@@ -987,7 +980,8 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit):
                 step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
-                    exp_bams.append(step1_result['out_bam'])
+                    exp_files.extend([step1_result['filtered_sorted_deduped_bam'],
+                                      step1_result['count_bg']])
                 # if still running
                 elif step1_result['status'] == 'running':
                     part2 = 'not ready'
@@ -1009,11 +1003,27 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit):
                                  'bwa_index': refs['bwa_ref'],
                                  'chromsizes': refs['chrsize_ref']}
                         name_tag = pair.split('/')[2]
-                    missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
-
-
-
-
+                    overwrite = {}
+                    if winsize:
+                        overwrite = {'parameters': {'winsize': winsize}}
+                    missing_run.append(['step1', ['repliseq-parta', refs['organism'], overwrite], inp_f, name_tag])
+            # are all step1s complete
+            if part2 == 'ready':
+                # add files for experiment opf
+                complete['patch_opf'].append([exp, exp_files])
+            else:
+                part3 == 'not ready'
+        if part3 == 'ready':
+            # add the tag
+            set_summary += "| completed runs"
+            complete['add_tag'] = [set_acc, tag]
+        else:
+            if running:
+                set_summary += "| running step 1"
+            elif missing_run:
+                set_summary += "| missing step 1"
+            elif problematic_run:
+                set_summary += "| problem in step 1"
 
         check.brief_output.append(set_summary)
         if running:
@@ -1046,4 +1056,3 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit):
         check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
     return check
-
