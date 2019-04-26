@@ -2,8 +2,9 @@ dcicutils>=0.6.2
 requests==2.20.0
 click==6.7
 PyJWT==1.5.3
-Jinja2==2.9.6
+Jinja2==2.10.1
 MarkupSafe==1.0
 google-api-python-client==1.7.4
 geocoder==1.38.1
+fuzzywuzzy==0.17.0
 -e git+git://github.com/4dn-dcic/chalice.git#egg=chalice

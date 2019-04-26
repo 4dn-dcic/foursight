@@ -21,7 +21,7 @@ def identify_files_without_qc_summary(connection, **kwargs):
     time_limit = 270  # 4.5 minutes
     check = init_check_res(connection, 'identify_files_without_qc_summary')
     # must set this to be the function name of the action
-    check.action = "qc_summary"
+    check.action = 'patch_quality_metric_summary'
     default_filetype = 'FileProcessed'  # skip fastq
     default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
     filetype = kwargs.get('file_type') or default_filetype
@@ -81,8 +81,7 @@ def patch_quality_metric_summary(connection, **kwargs):
     action = init_action_res(connection, 'patch_quality_metric_summary')
     action_logs = {'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary
-    filesize_check = init_check_res(connection, 'identify_files_without_qc_summary')
-    filesize_check_result = filesize_check.get_result_by_uuid(kwargs['called_by'])
+    filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         if round(time.time() - t0, 2) > time_limit:
             break
@@ -99,4 +98,3 @@ def patch_quality_metric_summary(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
-
