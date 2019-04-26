@@ -965,13 +965,20 @@ def repli_2_stage_status(connection, **kwargs):
     my_auth = connection.ff_keys
     check.action = "repli_2_stage_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.brief_output = ['All Good!']
-    check.summary = "All Good!"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = '2-stage Repli-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
-    print(query)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
     return check
 
 
@@ -989,7 +996,8 @@ def repli_2_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                         move_to_pc=True,  runtype='repliseq')
     return action
 
 
@@ -1006,11 +1014,20 @@ def repli_multi_stage_status(connection, **kwargs):
     my_auth = connection.ff_keys
     check.action = "repli_multi_stage_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.brief_output = ['All Good!']
-    check.summary = "All Good!"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'Multi-stage Repli-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
     return check
 
 
@@ -1028,7 +1045,8 @@ def repli_multi_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                         move_to_pc=True,  runtype='repliseq')
     return action
 
 
@@ -1045,11 +1063,20 @@ def tsa_seq_status(connection, **kwargs):
     my_auth = connection.ff_keys
     check.action = "tsa_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.brief_output = ['All Good!']
-    check.summary = "All Good!"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TSA-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit, wisize=25000)
     return check
 
 
@@ -1067,7 +1094,8 @@ def tsa_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                         move_to_pc=False,  runtype='repliseq')
     return action
 
 
@@ -1084,11 +1112,20 @@ def nad_seq_status(connection, **kwargs):
     my_auth = connection.ff_keys
     check.action = "nad_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.brief_output = ['All Good!']
-    check.summary = "All Good!"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'NAD-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
     return check
 
 
@@ -1106,7 +1143,8 @@ def nad_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                         move_to_pc=True,  runtype='repliseq')
     return action
 
 
