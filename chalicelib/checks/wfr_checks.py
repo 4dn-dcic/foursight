@@ -1085,7 +1085,7 @@ def tsa_seq_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit, wisize=25000)
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=25000)
     return check
 
 
