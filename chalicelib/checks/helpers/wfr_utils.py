@@ -189,7 +189,8 @@ def extract_nz_chr(acc, auth):
     """Get RE nz recognition site length and chrsize file accession
     used for pairsqc."""
     exp_resp = ff_utils.get_metadata(acc, key=auth)
-    exp_type = exp_resp.get('experiment_type')
+    exp_type = exp_resp['experiment_type']['display_title']
+
     # get enzyme
     nz_num = ""
     nz = exp_resp.get('digestion_enzyme')
