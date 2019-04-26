@@ -599,7 +599,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
     genome2orgn = {o.get('genome_assembly'): o.get('@id') for o in organisms if 'genome_assembly' in o}
     gene_search = 'search/?type=Gene'
     genes = ff_utils.search_metadata(gene_search, ff_env=connection.ff_env)
-    gene2org = {g.get('@id'): g.get('organism.@id') for g in genes}
+    gene2org = {g.get('@id'): g.get('organism').get('@id') for g in genes}
     # get all BioFeatures
     biofeat_search = 'search/?type=BioFeature'
     biofeatures = ff_utils.search_metadata(biofeat_search, ff_env=connection.ff_env)
@@ -617,7 +617,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
                 for genreg in gen_regions:
                     assembly_in_dt = False
                     gr_dt = genreg.get('display_title')
-                    for ga, orgn in genome2orgn:
+                    for ga, orgn in genome2orgn.items():
                         if ga in gr_dt:
                             grorgns.append(orgn)
                             assembly_in_dt = True
@@ -629,7 +629,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
                         except AttributeError:
                             gr_ass = None
                         if gr_ass is not None:
-                            for ga, orgn in genome2orgn:
+                            for ga, orgn in genome2orgn.items():
                                 if ga == gr_ass:
                                     grorgns.append(orgn)
                 linked_orgn_name = _get_orgname_from_atid_list(grorgns, orgn2name)
