@@ -977,7 +977,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
             if not exp_files.get(exp):
                 continue
             # Check Part 1 and See if all are okay
-            exp_files = []
+            all_files = []
             part2 = 'ready'  # switch for watching the exp
             for pair in exp_files[exp]:
                 if paired == 'Yes':
@@ -987,7 +987,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                 step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
-                    exp_files.extend([step1_result['filtered_sorted_deduped_bam'],
+                    all_files.extend([step1_result['filtered_sorted_deduped_bam'],
                                       step1_result['count_bg']])
                 # if still running
                 elif step1_result['status'] == 'running':
@@ -1017,7 +1017,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
             # are all step1s complete
             if part2 == 'ready':
                 # add files for experiment opf
-                complete['patch_opf'].append([exp, exp_files])
+                complete['patch_opf'].append([exp, all_files])
             else:
                 part3 == 'not ready'
         if part3 == 'ready':
@@ -1046,6 +1046,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
             assert not missing_run
             check.full_output['completed_runs'].append(complete)
     # complete check values
+    check.summary = ""
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
     if check.full_output['skipped']:
