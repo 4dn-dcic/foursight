@@ -515,7 +515,8 @@ def in_situ_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'in situ Hi-C'
     # completion tag
@@ -565,7 +566,8 @@ def dilution_hic_status(connection, **kwargs):
     check.brief_output = []
     check.summary = ""
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'dilution Hi-C'
     # completion tag
@@ -617,7 +619,8 @@ def tcc_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TCC'
     # completion tag
@@ -667,7 +670,8 @@ def dnase_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'DNase Hi-C'
     # completion tag
@@ -717,7 +721,8 @@ def capture_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'capture Hi-C'
     # completion tag
@@ -767,7 +772,8 @@ def micro_c_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'micro-C'
     # completion tag
@@ -817,7 +823,8 @@ def chia_pet_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ChIA-PET'
     # completion tag
@@ -867,7 +874,8 @@ def trac_loop_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TrAC-loop'
     # completion tag
@@ -917,7 +925,8 @@ def plac_seq_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'PLAC-seq'
     # completion tag
@@ -1163,7 +1172,8 @@ def atac_seq_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
     check.summary = "All Good!"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ATAC-seq'
     return check
@@ -1202,7 +1212,8 @@ def chip_seq_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = ['All Good!']
     check.summary = "All Good!"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ChIP-seq'
     return check

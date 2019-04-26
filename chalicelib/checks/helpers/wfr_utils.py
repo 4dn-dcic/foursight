@@ -108,11 +108,17 @@ accepted_versions = {
     # bwa mem # handled manually for now
     'MARGI': [''],
     # Preliminary - Released to network
-    'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
+                      'RepliSeq_Pipeline_v14_step1',
+                      'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL - 1 STEP
-    '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
+                          'RepliSeq_Pipeline_v14_step1',
+                          'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL - 1 STEP
-    'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
+                              'RepliSeq_Pipeline_v14_step1',
+                              'RepliSeq_Pipeline_v16_step1'],
     # Preliminary - Released to network
     'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL
@@ -740,7 +746,8 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                     overwrite = {}
                     if nonorm:
                         overwrite = {'parameters': {"no_balance": True}}
-                    missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite], inp_f, set_acc])
+                    missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite],
+                                        inp_f, set_acc])
             else:
                 problematic_run.append(['step3-not_unique', set_acc])
                 set_summary += "| problem in step 3- not unique"
