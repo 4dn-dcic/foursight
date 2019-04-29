@@ -775,6 +775,12 @@
             }
         }
     },
+    "say_my_name": {
+        "title": "Say my name",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["data"]
+    },
     "users_with_pending_lab": {
         "title": "Users with Pending Lab",
         "group": "Metadata checks",
@@ -847,8 +853,32 @@
             }
         }
     },
+    "bg2bw_status" : {
+        "title": "e) BedGraph to BigWig",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "bed2beddb_status" : {
+        "title": "f) Bed to Beddb",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "in_situ_hic_status" : {
-        "title": "e) in situ Hi-C",
+        "title": "g) in situ Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -860,7 +890,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "f) Dilution Hi-C",
+        "title": "h) Dilution Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -872,7 +902,7 @@
         }
     },
     "tcc_status" : {
-        "title": "g) TCC",
+        "title": "i) TCC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -884,7 +914,7 @@
         }
     },
     "dnase_hic_status" : {
-        "title": "h) DNAse Hi-C",
+        "title": "j) DNAse Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -896,7 +926,7 @@
         }
     },
     "capture_hic_status" : {
-        "title": "i) Capture Hi-C",
+        "title": "k) Capture Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -908,7 +938,7 @@
         }
     },
     "micro_c_status" : {
-        "title": "j) Micro-C",
+        "title": "l) Micro-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -920,7 +950,7 @@
         }
     },
     "chia_pet_status" : {
-        "title": "k) ChIA-PET",
+        "title": "m) ChIA-PET",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -932,7 +962,7 @@
         }
     },
     "trac_loop_status" : {
-        "title": "l) TrAC-loop",
+        "title": "n) TrAC-loop",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -944,7 +974,79 @@
         }
     },
     "plac_seq_status" : {
-        "title": "m) PLAC-seq",
+        "title": "o) PLAC-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "repli_2_stage_status" : {
+        "title": "p) Repliseq - 2 Stage",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "repli_multi_stage_status" : {
+        "title": "q) Repliseq - Multi Stage",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "tsa_seq_status" : {
+        "title": "r) TSA-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "nad_seq_status" : {
+        "title": "s) NAD-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "atac_seq_status" : {
+        "title": "t) ATAC-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "chip_seq_status" : {
+        "title": "u) ChIP-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
