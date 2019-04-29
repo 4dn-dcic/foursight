@@ -784,6 +784,7 @@ def say_my_name(connection, **kwargs):
     check = init_check_res(connection, 'say_my_name')
     check.description = "Enter the new name or if you are done, use 'free' to clear your name"
     check.summary = ""
+    check.brief_output = ""
     check.status = "PASS"
     output = {}
     # update with the new parameters ()
@@ -797,4 +798,5 @@ def say_my_name(connection, **kwargs):
             output[a_key] = 'free'
     sum = str(output)[1:-1].replace("'", "")
     check.summary = sum
+    check.brief_output = sum
     return check
