@@ -17,7 +17,6 @@ from fuzzywuzzy import fuzz
 @check_function(cmp_to_last=False)
 def workflow_run_has_deleted_input_file(connection, **kwargs):
     check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
-    chkstatus = ''
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
     my_key = connection.ff_keys
@@ -65,7 +64,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
             fulloutput['problematic_provenance'].append([delfile, wfr['uuid']])
         else:
             del_list = fetch_wfr_associated(wfr)
-            fulloutput['problematic_wfr'].append([delfile, wfr['uuid'], del_list])
+            fulloutput['problematic_wfrs'].append([delfile, wfr['uuid'], del_list])
             no_of_items_to_delete += len(del_list)
     check.summary = "Live WorkflowRuns found linked to deleted Input Files"
     check.description = "{} live workflows were found linked to deleted input files - \
@@ -83,10 +82,10 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
 @action_function()
 def patch_workflow_run_to_deleted(connection, **kwargs):
     action = init_action_res(connection, 'patch_workflow_run_to_deleted')
-    action_logs = {'patch_failure': [], 'patch_success': []}
     check_res = action.get_associated_check_result(kwargs)
+    action_logs = {'patch_failure': [], 'patch_success': []}
     my_key = connection.ff_keys
-    for a_case in check_res['full_output']['problematic_wfr']:
+    for a_case in check_res['full_output']['problematic_wfrs']:
         wfruid = a_case[1]
         del_list = a_case[2]
         patch_data = {'status': 'deleted'}
