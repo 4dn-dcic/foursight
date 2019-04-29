@@ -59,17 +59,40 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     action = init_action_res(connection, 'patch_workflow_run_to_deleted')
     action_logs = {'patch_failure': [], 'patch_success': []}
     check_res = action.get_associated_check_result(kwargs)
+    my_key = connection.ff_keys
+
+    def fetch_wfr_associated(wfr_uuid, my_key):
+        """Given wfr_uuid, find associated output files and qcs"""
+        wfr_as_list = []
+        wfr_info = ff_utils.get_metadata(wfr_uuid, my_key)
+        wfr_as_list.append(wfr_info['uuid'])
+        if wfr_info.get('output_files'):
+            for o in wfr_info['output_files']:
+                    if o.get('value'):
+                        wfr_as_list.append(o['value']['uuid'])
+                    if o.get('value_qc'):
+                        wfr_as_list.append(o['value_qc']['uuid'])
+        if wfr_info.get('output_quality_metrics'):
+            for qc in wfr_info['output_quality_metrics']:
+                if qc.get('value'):
+                    wfr_as_list.append(qc['value']['uuid'])
+        return list(set(wfr_as_list))
+
     for wfruid in check_res['full_output']:
+        del_list = fetch_wfr_associated(wfruid, my_key)
         patch_data = {'status': 'deleted'}
-        try:
-            ff_utils.patch_metadata(patch_data, obj_id=wfruid, key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as e:
-            acc_and_error = '\n'.join([wfruid, str(e)])
-            action_logs['patch_failure'].append(acc_and_error)
-        else:
-            action_logs['patch_success'].append(wfruid)
-    action.status = 'DONE'
+        for delete_me in del_list:
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=delete_me, key=my_key)
+            except Exception as e:
+                acc_and_error = '\n'.join([delete_me, str(e)])
+                action_logs['patch_failure'].append(acc_and_error)
+            else:
+                action_logs['patch_success'].append(wfruid)
     action.output = action_logs
+    action.status = 'DONE'
+    if action_logs.get('patch_failure'):
+        action.status = 'WARN'
     return action
 
 
