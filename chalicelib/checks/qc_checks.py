@@ -84,7 +84,9 @@ def patch_quality_metric_summary(connection, **kwargs):
     filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         if round(time.time() - t0, 2) > time_limit:
-            break
+            action.status = 'TIME OUT'
+            action.output = action_logs
+            return action
         if qc_utils.parse_formatstr(hit['file_format']) == 'pairs':
             try:
                 qc_utils.calculate_qc_metric_pairsqc(hit['uuid'], key=connection.ff_keys)
