@@ -88,7 +88,7 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
                 acc_and_error = [delete_me, str(e)]
                 action_logs['patch_failure'].append(acc_and_error)
             else:
-                action_logs['patch_success'].append(wfruid + "-" + delete_me)
+                action_logs['patch_success'].append(wfruid + " - " + delete_me)
     action.output = action_logs
     action.status = 'DONE'
     if action_logs.get('patch_failure'):
