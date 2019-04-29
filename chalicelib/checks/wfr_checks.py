@@ -1005,8 +1005,8 @@ def repli_2_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
-                                         move_to_pc=True,  runtype='repliseq')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=True,  runtype='repliseq')
     return action
 
 
@@ -1054,8 +1054,8 @@ def repli_multi_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
-                                         move_to_pc=True,  runtype='repliseq')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=True,  runtype='repliseq')
     return action
 
 
@@ -1103,8 +1103,8 @@ def tsa_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
-                                         move_to_pc=False,  runtype='repliseq')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=False,  runtype='repliseq')
     return action
 
 
@@ -1152,8 +1152,8 @@ def nad_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_repli_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
-                                         move_to_pc=True,  runtype='repliseq')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=False,  runtype='repliseq')
     return action
 
 
