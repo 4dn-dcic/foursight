@@ -20,10 +20,10 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     chkstatus = ''
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
+    my_key = connection.ff_keys
     # run the check
     search_query = 'search/?type=WorkflowRun&status!=deleted&input_files.value.status=deleted&limit=all'
-    bad_wfrs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-
+    bad_wfrs = ff_utils.search_metadata(search_query, key=my_key)
     if kwargs.get('cmp_to_last', False):
         # filter out wfr uuids from last run if so desired
         prevchk = check.get_latest_result()
@@ -37,15 +37,41 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
         return check
 
     brief = str(len(bad_wfrs)) + " live WorkflowRuns linked to deleted input Files"
-    fulloutput = {}
+    # problematic_provenance stores uuid of deleted file, and the wfr that is not deleted
+    # problematic_wfr stores deleted file,  wfr to be deleted, and its dpwnstream items (qcs and output files)
+    fulloutput = {'problematic_provenance': [], 'problematic_wfrs': []}
+    no_of_items_to_delete = 0
+
+    def fetch_wfr_associated(wfr_info):
+        """Given wfr_uuid, find associated output files and qcs"""
+        wfr_as_list = []
+        wfr_as_list.append(wfr_info['uuid'])
+        if wfr_info.get('output_files'):
+            for o in wfr_info['output_files']:
+                    if o.get('value'):
+                        wfr_as_list.append(o['value']['uuid'])
+                    if o.get('value_qc'):
+                        wfr_as_list.append(o['value_qc']['uuid'])
+        if wfr_info.get('output_quality_metrics'):
+            for qc in wfr_info['output_quality_metrics']:
+                if qc.get('value'):
+                    wfr_as_list.append(qc['value']['uuid'])
+        return list(set(wfr_as_list))
+
     for wfr in bad_wfrs:
         infiles = wfr.get('input_files', [])
-        wfruuid = wfr.get('uuid', '')
-        delfiles = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted']
-        fulloutput[wfruuid] = delfiles
+        delfile = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted'][0]
+        if wfr['display_title'].startswith('File Provenance Tracking'):
+            fulloutput['problematic_provenance'].append([delfile, wfr['uuid']])
+        else:
+            del_list = fetch_wfr_associated(wfr)
+            fulloutput['problematic_wfr'].append([delfile, wfr['uuid'], del_list])
+            no_of_items_to_delete += len(del_list)
     check.summary = "Live WorkflowRuns found linked to deleted Input Files"
-    check.description = "%s live workflows were found linked to deleted input files - \
-                         you can delete the workflows using the linked action" % len(bad_wfrs)
+    check.description = "{} live workflows were found linked to deleted input files - \
+                         found {} items to delete, use action for cleanup".format(len(bad_wfrs), no_of_items_to_delete)
+    if fulloutput.get('problematic_provenance'):
+        brief += " ({} provenance tracking)"
     check.brief_output = brief
     check.full_output = fulloutput
     check.status = 'WARN'
@@ -60,26 +86,9 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     action_logs = {'patch_failure': [], 'patch_success': []}
     check_res = action.get_associated_check_result(kwargs)
     my_key = connection.ff_keys
-
-    def fetch_wfr_associated(wfr_uuid, my_key):
-        """Given wfr_uuid, find associated output files and qcs"""
-        wfr_as_list = []
-        wfr_info = ff_utils.get_metadata(wfr_uuid, my_key)
-        wfr_as_list.append(wfr_info['uuid'])
-        if wfr_info.get('output_files'):
-            for o in wfr_info['output_files']:
-                    if o.get('value'):
-                        wfr_as_list.append(o['value']['uuid'])
-                    if o.get('value_qc'):
-                        wfr_as_list.append(o['value_qc']['uuid'])
-        if wfr_info.get('output_quality_metrics'):
-            for qc in wfr_info['output_quality_metrics']:
-                if qc.get('value'):
-                    wfr_as_list.append(qc['value']['uuid'])
-        return list(set(wfr_as_list))
-
-    for wfruid in check_res['full_output']:
-        del_list = fetch_wfr_associated(wfruid, my_key)
+    for a_case in check_res['full_output']['problematic_wfr']:
+        wfruid = a_case[1]
+        del_list = a_case[2]
         patch_data = {'status': 'deleted'}
         for delete_me in del_list:
             try:
