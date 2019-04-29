@@ -92,7 +92,7 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     if action_logs.get('patch_failure'):
-        action.status = 'WARN'
+        action.status = 'FAIL'
     return action
 
 
