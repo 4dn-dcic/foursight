@@ -7,23 +7,28 @@ from ..utils import (
 )
 from dcicutils import ff_utils
 import requests
-import sys
 import json
 import datetime
 import time
-import boto3
+import itertools
+from fuzzywuzzy import fuzz
 
 
 @check_function(cmp_to_last=False)
 def workflow_run_has_deleted_input_file(connection, **kwargs):
+    """Checks all wfrs that are not deleted, and have deleted input files
+    There is an option to compare to the last, and only report new cases (cmp_to_last)
+    The full output has 2 keys, because we report provenance wfrs but not run action on them
+    problematic_provenance: stores uuid of deleted file, and the wfr that is not deleted
+    problematic_wfr:        stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
+    """
     check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
-    chkstatus = ''
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
+    my_key = connection.ff_keys
     # run the check
     search_query = 'search/?type=WorkflowRun&status!=deleted&input_files.value.status=deleted&limit=all'
-    bad_wfrs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-
+    bad_wfrs = ff_utils.search_metadata(search_query, key=my_key)
     if kwargs.get('cmp_to_last', False):
         # filter out wfr uuids from last run if so desired
         prevchk = check.get_latest_result()
@@ -31,21 +36,45 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
             prev_wfrs = prevchk.get('full_output', [])
             filtered = [b.get('uuid') for b in bad_wfrs if b.get('uuid') not in prev_wfrs]
             bad_wfrs = filtered
-
     if not bad_wfrs:
         check.summmary = check.description = "No live WorkflowRuns linked to deleted input Files"
         return check
-
     brief = str(len(bad_wfrs)) + " live WorkflowRuns linked to deleted input Files"
-    fulloutput = {}
+    # problematic_provenance stores uuid of deleted file, and the wfr that is not deleted
+    # problematic_wfr stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
+    fulloutput = {'problematic_provenance': [], 'problematic_wfrs': []}
+    no_of_items_to_delete = 0
+
+    def fetch_wfr_associated(wfr_info):
+        """Given wfr_uuid, find associated output files and qcs"""
+        wfr_as_list = []
+        wfr_as_list.append(wfr_info['uuid'])
+        if wfr_info.get('output_files'):
+            for o in wfr_info['output_files']:
+                    if o.get('value'):
+                        wfr_as_list.append(o['value']['uuid'])
+                    if o.get('value_qc'):
+                        wfr_as_list.append(o['value_qc']['uuid'])
+        if wfr_info.get('output_quality_metrics'):
+            for qc in wfr_info['output_quality_metrics']:
+                if qc.get('value'):
+                    wfr_as_list.append(qc['value']['uuid'])
+        return list(set(wfr_as_list))
+
     for wfr in bad_wfrs:
         infiles = wfr.get('input_files', [])
-        wfruuid = wfr.get('uuid', '')
-        delfiles = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted']
-        fulloutput[wfruuid] = delfiles
+        delfile = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted'][0]
+        if wfr['display_title'].startswith('File Provenance Tracking'):
+            fulloutput['problematic_provenance'].append([delfile, wfr['uuid']])
+        else:
+            del_list = fetch_wfr_associated(wfr)
+            fulloutput['problematic_wfrs'].append([delfile, wfr['uuid'], del_list])
+            no_of_items_to_delete += len(del_list)
     check.summary = "Live WorkflowRuns found linked to deleted Input Files"
-    check.description = "%s live workflows were found linked to deleted input files - \
-                         you can delete the workflows using the linked action" % len(bad_wfrs)
+    check.description = "{} live workflows were found linked to deleted input files - \
+                         found {} items to delete, use action for cleanup".format(len(bad_wfrs), no_of_items_to_delete)
+    if fulloutput.get('problematic_provenance'):
+        brief += " ({} provenance tracking)"
     check.brief_output = brief
     check.full_output = fulloutput
     check.status = 'WARN'
@@ -57,19 +86,25 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
 @action_function()
 def patch_workflow_run_to_deleted(connection, **kwargs):
     action = init_action_res(connection, 'patch_workflow_run_to_deleted')
-    action_logs = {'patch_failure': [], 'patch_success': []}
     check_res = action.get_associated_check_result(kwargs)
-    for wfruid in check_res['full_output']:
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    my_key = connection.ff_keys
+    for a_case in check_res['full_output']['problematic_wfrs']:
+        wfruid = a_case[1]
+        del_list = a_case[2]
         patch_data = {'status': 'deleted'}
-        try:
-            ff_utils.patch_metadata(patch_data, obj_id=wfruid, key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as e:
-            acc_and_error = '\n'.join([wfruid, str(e)])
-            action_logs['patch_failure'].append(acc_and_error)
-        else:
-            action_logs['patch_success'].append(wfruid)
-    action.status = 'DONE'
+        for delete_me in del_list:
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=delete_me, key=my_key)
+            except Exception as e:
+                acc_and_error = [delete_me, str(e)]
+                action_logs['patch_failure'].append(acc_and_error)
+            else:
+                action_logs['patch_success'].append(wfruid + " - " + delete_me)
     action.output = action_logs
+    action.status = 'DONE'
+    if action_logs.get('patch_failure'):
+        action.status = 'FAIL'
     return action
 
 
@@ -799,16 +834,17 @@ def users_with_pending_lab(connection, **kwargs):
                                                 ff_env=connection.ff_env, add_on='frame=object')
                 to_cache['lab_PI_email'] = pi_meta['email']
                 to_cache['lab_PI_title'] = pi_meta['title']
+                to_cache['lab_PI_viewing_groups'] = pi_meta['viewing_groups']
             cached_items[user_append['pending_lab']] = to_cache
         # now use the cache to fill fields
-        for lab_field in ['lab_title', 'lab_PI_email', 'lab_PI_title']:
+        for lab_field in ['lab_title', 'lab_PI_email', 'lab_PI_title', 'lab_PI_viewing_groups']:
             user_append[lab_field] = cached_items[user_append['pending_lab']].get(lab_field)
 
     if check.full_output:
         check.summary = 'Users found with pending_lab.'
         if check.status == 'PASS':
             check.status = 'WARN'
-            check.description = check.summary + '. Run the action to add lab and remove pending_lab'
+            check.description = check.summary + ' Run the action to add lab and remove pending_lab'
             check.allow_action = True
             check.action_message = 'Will attempt to patch lab and remove pending_lab for %s users' % len(check.full_output)
         if check.status == 'FAIL':
@@ -827,6 +863,8 @@ def finalize_user_pending_labs(connection, **kwargs):
     action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
         patch_data = {'lab': user['pending_lab']}
+        if user.get('lab_PI_viewing_groups'):
+            patch_data['viewing_groups'] = user['lab_PI_viewing_groups']
         # patch lab and delete pending_lab in one request
         try:
             ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
@@ -838,3 +876,142 @@ def finalize_user_pending_labs(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function(emails=None, ignore_current=False, reset_ignore=False)
+def users_with_doppelganger(connection, **kwargs):
+    """ Find users that share emails or have very similar names
+    Args:
+        emails: comma seperated emails to run the check on, i.e. when you want to ignore some of the results
+        ignore_current: if there are accepted catches, put them to emails, and set ignore_current to true,
+                        they will not show up next time.
+        if there are caught cases, which are not problematic, you can add them to ignore list
+        reset_ignore: you can reset the ignore list, and restart it, useful if you added something by mistake
+    Result:
+     full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
+    """
+    check = init_check_res(connection, 'users_with_doppelganger')
+    check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
+    # do we want to add current results to ignore list
+    ignore_current = False
+    if kwargs.get('ignore_current'):
+        ignore_current = True
+    # do we want to reset the ignore list
+    reset = False
+    if kwargs.get('reset_ignore'):
+        reset = True
+    # GET THE IGNORE LIST FROM LAST CHECKS IF NOT RESET_IGNORE
+    if reset:
+        ignored_cases = []
+    else:
+        last_result = check.get_primary_result()
+        # if last one was fail, find an earlier check with non-FAIL status
+        it = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            it += 1
+            # this is a daily check, so look for checks with 12h iteration
+            hours = it * 12
+            last_result = check.get_closest_result(diff_hours=hours)
+            # if this is going forever kill it
+            if hours > 100:
+                err_msg = 'Can not find a non-FAIL check in last 100 hours'
+                check.brief_output = err_msg
+                check.full_output = {}
+                check.status = 'ERROR'
+                return check
+        # remove cases previously ignored
+        ignored_cases = last_result['full_output'].get('ignore', [])
+
+    # ignore contains nested list with 2 elements, 2 user @id values that should be ignored
+    check.full_output = {'result': [], 'ignore': []}
+    check.brief_output = []
+    check.status = 'PASS'
+    query = ('/search/?type=User&sort=display_title'
+             '&field=display_title&field=contact_email&field=preferred_email&field=email')
+    # if check was limited to certain emails
+    if kwargs.get('emails'):
+        emails = kwargs['emails'].split(',')
+        for an_email in emails:
+            an_email = an_email.strip()
+            if an_email:
+                query += '&email=' + an_email.strip()
+    # get users
+    all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
+    # combine all emails for each user
+    for a_user in all_users:
+        mail_fields = ['email', 'contact_email', 'preferred_email']
+        user_mails = []
+        for f in mail_fields:
+            if a_user.get(f):
+                user_mails.append(a_user[f].lower())
+        a_user['all_mails'] = list(set(user_mails))
+
+    # go through each combination
+    combs = itertools.combinations(all_users, 2)
+    cases = []
+    for comb in combs:
+        us1 = comb[0]
+        us2 = comb[1]
+        # is there a common email between the 2 users
+        common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
+        if common_mail:
+            msg = '{} and {} share mail(s) {}'.format(
+                us1['display_title'],
+                us2['display_title'],
+                str(common_mail))
+            log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
+                   'user2': [us2['display_title'], us2['@id'], us2['email']],
+                   'log': 'has shared email(s) {}'.format(str(common_mail)),
+                   'brief': msg}
+            cases.append(log)
+        # if not, compare names
+        else:
+            score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
+            if score > 85:
+                msg = '{} and {} are similar-{}'.format(
+                    us1['display_title'],
+                    us2['display_title'],
+                    str(score))
+                log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
+                       'user2': [us2['display_title'], us2['@id'], us2['email']],
+                       'log': 'has similar names ({}/100)'.format(str(score)),
+                       'brief': msg}
+                cases.append(log)
+
+    # are the ignored ones getting out of control
+    if len(ignored_cases) > 100:
+        fail_msg = 'Number of ignored cases is very high, time for maintainace'
+        check.brief_output = fail_msg
+        check.full_output = {'result': [fail_msg, ],  'ignore': ignored_cases}
+        check.status = 'FAIL'
+        return check
+    # remove ignored cases from all cases
+    if ignored_cases:
+        for an_ignored_case in ignored_cases:
+            cases = [i for i in cases if i['user1'] not in an_ignored_case and i['user2'] not in an_ignored_case]
+    # if ignore_current, add cases to ignored ones
+    if ignore_current:
+        for a_case in cases:
+            ignored_cases.append([a_case['user1'], a_case['user2']])
+        cases = []
+
+    # add if they have any items referencing them
+    if cases:
+        for a_case in cases:
+            us1_info = ff_utils.get_metadata(a_case['user1'][1] + '@@links', key=connection.ff_keys)
+            item_count_1 = len(us1_info['uuids_linking_to'])
+            us2_info = ff_utils.get_metadata(a_case['user2'][1] + '@@links', key=connection.ff_keys)
+            item_count_2 = len(us2_info['uuids_linking_to'])
+            add_on = ' ({}/{})'.format(item_count_1, item_count_2)
+            a_case['log'] = a_case['log'] + add_on
+            a_case['brief'] = a_case['brief'] + add_on
+
+    check.full_output = {'result': cases,  'ignore': ignored_cases}
+    if cases:
+        check.summary = 'Some user accounts need attention.'
+        check.brief_output = [i['brief'] for i in cases]
+        check.status = 'WARN'
+    else:
+        check.summary = 'No user account conflicts'
+        check.brief_output = []
+    return check

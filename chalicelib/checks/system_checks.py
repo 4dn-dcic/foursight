@@ -776,3 +776,27 @@ def check_long_running_ec2s(connection, **kwargs):
         check.status = 'PASS'
         check.summary = '%s EC2s running longer than 1 week' % (len(check.full_output))
     return check
+
+
+@check_function(FS_dev='free', FF_hotseat='free', FF_mastertest='free', FF_webdev='free')
+def say_my_name(connection, **kwargs):
+    """List the person working on each environment."""
+    check = init_check_res(connection, 'say_my_name')
+    check.description = "Enter the new name or if you are done, use 'free' to clear your name"
+    check.summary = ""
+    check.brief_output = ""
+    check.status = "PASS"
+    output = {}
+    # update with the new parameters ()
+    for a_key in ['FS_dev', 'FF_hotseat', 'FF_mastertest', 'FF_webdev']:
+        if kwargs.get(a_key):
+            val = kwargs[a_key]
+            if val.lower() == 'free':
+                val = 'free'
+            output[a_key] = val
+        else:
+            output[a_key] = 'free'
+    sum = str(output)[1:-1].replace("'", "")
+    check.summary = sum
+    check.brief_output = sum
+    return check

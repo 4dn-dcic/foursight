@@ -79,6 +79,8 @@ def md5run_status(connection, **kwargs):
     running = []
     missing_md5 = []
     not_switched_status = []
+    # multiple failed runs
+    problems = []
     my_s3_util = s3Utils(env=connection.ff_env)
     raw_bucket = my_s3_util.raw_file_bucket
     out_bucket = my_s3_util.outfile_bucket
@@ -104,6 +106,8 @@ def md5run_status(connection, **kwargs):
         md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
+        elif md5_report['status'].startswith("no complete run, too many"):
+            problems.append(file_id)
         # Most probably the trigger did not work, and we run it manually
         elif md5_report['status'] != 'complete':
             missing_md5.append(file_id)
@@ -120,17 +124,23 @@ def md5run_status(connection, **kwargs):
         msg = str(len(running)) + ' files are still running md5run.'
         check.brief_output.append(msg)
         check.full_output['files_running_md5'] = running
+    if problems:
+        check.summary = 'Some files have problems'
+        msg = str(len(problems)) + ' file(s) have problems.'
+        check.brief_output.append(msg)
+        check.full_output['problems'] = problems
+        check.status = 'WARN'
     if missing_md5:
         check.allow_action = True
         check.summary = 'Some files are missing md5 runs'
-        msg = str(len(missing_md5)) + ' files lack a successful md5 run'
+        msg = str(len(missing_md5)) + ' file(s) lack a successful md5 run'
         check.brief_output.append(msg)
         check.full_output['files_without_md5run'] = missing_md5
         check.status = 'WARN'
     if not_switched_status:
         check.allow_action = True
         check.summary += ' Some files are have wrong status with a successful run'
-        msg = str(len(not_switched_status)) + ' files are have wrong status with a successful run'
+        msg = str(len(not_switched_status)) + ' file(s) are have wrong status with a successful run'
         check.brief_output.append(msg)
         check.full_output['files_with_run_and_wrong_status'] = not_switched_status
         check.status = 'WARN'
@@ -207,53 +217,11 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    # missing run
-    missing_fastqc = []
-    # if there is a successful run but no qc
-    missing_qc = []
-    running = []
-    for a_fastq in res:
-        # lambda has a time limit (300sec), kill before it is reached so we get some results
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            check.brief_output.append('did not complete checking all')
-            break
-        file_id = a_fastq['accession']
-        report = wfr_utils.get_wfr_out(a_fastq, 'fastqc-0-11-4-1',  key=my_auth, md_qc=True)
-        if report['status'] == 'running':
-            running.append(file_id)
-            continue
-        # Most probably the trigger did not work, and we run it manually
-        if report['status'] != 'complete':
-            missing_fastqc.append(file_id)
-            continue
-        # There is a successful run, but no qc, previously happened when a file was reuploaded.
-        if report['status'] == 'complete':
-            missing_qc.append(file_id)
-            continue
-    if running:
-        check.summary = 'Some files are running'
-        check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['files_running_fastqc'] = running
-    if missing_fastqc:
-        check.allow_action = True
-        check.summary = 'Some files are missing fastqc runs'
-        check.brief_output.append(str(len(missing_fastqc)) + ' files lack a successful fastqc run')
-        check.full_output['files_without_fastqc'] = missing_fastqc
-        check.status = 'WARN'
-    if missing_qc:
-        check.allow_action = True
-        check.summary = 'Some files are missing fastqc runs'
-        check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
-        check.full_output['files_without_qc'] = missing_qc
-        check.status = 'WARN'
-    check.summary = check.summary.strip()
-    if not check.brief_output:
-        check.brief_output = ['All Good!']
+    check = wfr_utils.check_runs_without_output(res, check, 'fastqc-0-11-4-1', my_auth, start)
     return check
 
 
-@action_function(start_fastqc=True, start_qc=True)
+@action_function(start_missing_run=True, start_missing_meta=True)
 def fastqc_start(connection, **kwargs):
     """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -262,11 +230,10 @@ def fastqc_start(connection, **kwargs):
     my_auth = connection.ff_keys
     fastqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
-    if kwargs.get('start_fastqc'):
-        targets.extend(fastqc_check_result.get('files_without_fastqc', []))
-    if kwargs.get('start_qc'):
-        targets.extend(fastqc_check_result.get('files_without_qc', []))
-
+    if kwargs.get('start_missing_run'):
+        targets.extend(fastqc_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(fastqc_check_result.get('files_without_changes', []))
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -319,52 +286,11 @@ def pairsqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    # missing run
-    missing_pairsqc = []
-    # if there is a successful run but no qc
-    missing_qc = []
-    running = []
-    for a_pairs in res:
-        # lambda has a time limit (300sec), kill before it is reached so we get some results
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            check.brief_output.append('did not complete checking all')
-            break
-        file_id = a_pairs['accession']
-        report = wfr_utils.get_wfr_out(a_pairs, 'pairsqc-single',  key=my_auth, md_qc=True)
-        if report['status'] == 'running':
-            running.append(file_id)
-            continue
-        if report['status'] != 'complete':
-            missing_pairsqc.append(file_id)
-            continue
-        # There is a successful run, but no qc, previously happened when a file was reuploaded.
-        if report['status'] == 'complete':
-            missing_qc.append(file_id)
-            continue
-    if running:
-        check.summary = 'Some files are running'
-        check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['files_running_pairsqc'] = running
-    if missing_pairsqc:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_pairsqc)) + ' files lack a successful pairsqc run')
-        check.full_output['files_without_pairsqc'] = missing_pairsqc
-        check.status = 'WARN'
-    if missing_qc:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_qc)) + ' files have successful run but no qc')
-        check.full_output['files_without_qc'] = missing_qc
-        check.status = 'WARN'
-    check.summary = check.summary.strip()
-    if not check.brief_output:
-        check.brief_output = ['All Good!']
+    check = wfr_utils.check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
     return check
 
 
-@action_function(start_pairsqc=True, start_qc=True)
+@action_function(start_missing_run=True, start_missing_meta=True)
 def pairsqc_start(connection, **kwargs):
     """Start pairsqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -373,11 +299,10 @@ def pairsqc_start(connection, **kwargs):
     my_auth = connection.ff_keys
     pairsqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
-    if kwargs.get('start_pairsqc'):
-        targets.extend(pairsqc_check_result.get('files_without_pairsqc', []))
-    if kwargs.get('start_qc'):
-        targets.extend(pairsqc_check_result.get('files_without_qc', []))
-
+    if kwargs.get('start_missing_run'):
+        targets.extend(pairsqc_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(pairsqc_check_result.get('files_without_changes', []))
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -412,6 +337,170 @@ def pairsqc_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None)
+def bg2bw_status(connection, **kwargs):
+    """Searches for pairs files produced by 4dn pipelines that don't have bg2bw
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'bg2bw_status')
+    my_auth = connection.ff_keys
+    check.action = "bg2bw_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # Build the query (find bg files without bw files)
+    query = ("/search/?type=FileProcessed&file_format.file_format=bg"
+             "extra_files.file_format.display_title!=bw"
+             "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bg2bw_start(connection, **kwargs):
+    """Start bg2bw runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'bg2bw_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bg2bw_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bg2bw_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bg2bw_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        org = wfr_utils.mapper[a_file['genome_assembly']]
+        org = [k for k, v in wfr_utils.mapper.items() if v == a_file['genome_assembly']][0]
+        chrsize = wfr_utils.chr_size[org]
+
+        inp_f = {'bgfile': a_file['@id'], 'chromsize': chrsize}
+        wfr_setup = wfrset_utils.step_settings('bedGraphToBigWig',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def bed2beddb_status(connection, **kwargs):
+    """Searches for small bed files uploaded by user in certain types
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'bed2beddb_status')
+    my_auth = connection.ff_keys
+    check.action = "bed2beddb_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    accepted_types = ['LADs', 'boundaries', 'domains']
+    file_size_limit = 100000  # 100KB
+    # Build the query (find bg files without bw files)
+    query = ("/search/?type=FileProcessed&file_format.file_format=bed"
+             "extra_files.file_format.display_title!=beddb"
+             "&status!=uploading&status!=to be uploaded by workflow")
+    query += "".join(["&file_type=" + i for i in accepted_types])
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+    # The search
+    res_all = ff_utils.search_metadata(query, key=my_auth)
+
+    res = [i for i in res_all if i['file_size'] < file_size_limit]
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_runs_without_output(res, check, 'bedtobeddb', my_auth, start)
+    if len(res_all) > len(res):
+        check.summary = 'Files with large size skipped, check parameters might need to change'
+        check.status = 'FAIL'
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bed2beddb_start(connection, **kwargs):
+    """Start bed2beddb runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'bed2beddb_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bed2beddb_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bed2beddb_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bed2beddb_check_result.get('files_without_changes', []))
+
+    # genome nomenclature for bed2beddb runs`
+    genome = {"GRCh38": "hg38",
+              "GRCm38": "mm10",
+              "dm6": 'dm6',
+              "galGal5": "galGal5"}
+
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        genome_as = genome[a_file['genome_assembly']]
+        overwrite = {'parameters': {"assembly": genome_as}}
+        inp_f = {'bedfile': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('bedtobeddb',
+                                               'no_organism',
+                                               attributions,
+                                               overwrite=overwrite)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
 def in_situ_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -426,7 +515,8 @@ def in_situ_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'in situ Hi-C'
     # completion tag
@@ -457,7 +547,7 @@ def in_situ_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -476,7 +566,8 @@ def dilution_hic_status(connection, **kwargs):
     check.brief_output = []
     check.summary = ""
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'dilution Hi-C'
     # completion tag
@@ -509,7 +600,7 @@ def dilution_hic_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
 
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -528,7 +619,8 @@ def tcc_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TCC'
     # completion tag
@@ -559,7 +651,7 @@ def tcc_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -578,7 +670,8 @@ def dnase_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'DNase Hi-C'
     # completion tag
@@ -609,7 +702,7 @@ def dnase_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -628,7 +721,8 @@ def capture_hic_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'capture Hi-C'
     # completion tag
@@ -659,7 +753,7 @@ def capture_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -678,7 +772,8 @@ def micro_c_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'micro-C'
     # completion tag
@@ -709,7 +804,7 @@ def micro_c_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -728,7 +823,8 @@ def chia_pet_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ChIA-PET'
     # completion tag
@@ -759,7 +855,7 @@ def chia_pet_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -778,7 +874,8 @@ def trac_loop_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TrAC-loop'
     # completion tag
@@ -809,7 +906,7 @@ def trac_loop_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
 
 
@@ -828,7 +925,8 @@ def plac_seq_status(connection, **kwargs):
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [], 'completed_runs': [], 'problematic_runs':[]}
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'PLAC-seq'
     # completion tag
@@ -859,5 +957,281 @@ def plac_seq_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_hic_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def repli_2_stage_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'repli_2_stage_status')
+    my_auth = connection.ff_keys
+    check.action = "repli_2_stage_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = '2-stage Repli-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
+    return check
+
+
+@action_function(start_runs=False, patch_completed=False)
+def repli_2_stage_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'repli_2_stage_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=True,  runtype='repliseq')
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def repli_multi_stage_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'repli_multi_stage_status')
+    my_auth = connection.ff_keys
+    check.action = "repli_multi_stage_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'Multi-stage Repli-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
+    return check
+
+
+@action_function(start_runs=False, patch_completed=False)
+def repli_multi_stage_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'repli_multi_stage_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=True,  runtype='repliseq')
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def tsa_seq_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'tsa_seq_status')
+    my_auth = connection.ff_keys
+    check.action = "tsa_seq_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'TSA-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=25000)
+    return check
+
+
+@action_function(start_runs=False, patch_completed=False)
+def tsa_seq_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'tsa_seq_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=False,  runtype='repliseq')
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def nad_seq_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'nad_seq_status')
+    my_auth = connection.ff_keys
+    check.action = "nad_seq_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'NAD-seq'
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
+    return check
+
+
+@action_function(start_runs=False, patch_completed=False)
+def nad_seq_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'nad_seq_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+                                   move_to_pc=False,  runtype='repliseq')
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def atac_seq_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'atac_seq_status')
+    my_auth = connection.ff_keys
+    check.action = "atac_seq_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = ['All Good!']
+    check.summary = "All Good!"
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'ATAC-seq'
+    return check
+
+
+@action_function(start_runs=False, patch_completed=False)
+def atac_seq_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'atac_seq_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def chip_seq_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'chip_seq_status')
+    my_auth = connection.ff_keys
+    check.action = "chip_seq_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = ['All Good!']
+    check.summary = "All Good!"
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'ChIP-seq'
+    return check
+
+
+@action_function(start_runs=False, patch_completed=False)
+def chip_seq_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'chip_seq_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
     return action
