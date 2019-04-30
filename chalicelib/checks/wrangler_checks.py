@@ -16,6 +16,12 @@ from fuzzywuzzy import fuzz
 
 @check_function(cmp_to_last=False)
 def workflow_run_has_deleted_input_file(connection, **kwargs):
+    """Checks all wfrs that are not deleted, and have deleted input files
+    There is an option to compare to the last, and only report new cases (cmp_to_last)
+    The full output has 2 keys, because we report provenance wfrs but not run action on them
+    problematic_provenance: stores uuid of deleted file, and the wfr that is not deleted
+    problematic_wfr:        stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
+    """
     check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
@@ -30,14 +36,12 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
             prev_wfrs = prevchk.get('full_output', [])
             filtered = [b.get('uuid') for b in bad_wfrs if b.get('uuid') not in prev_wfrs]
             bad_wfrs = filtered
-
     if not bad_wfrs:
         check.summmary = check.description = "No live WorkflowRuns linked to deleted input Files"
         return check
-
     brief = str(len(bad_wfrs)) + " live WorkflowRuns linked to deleted input Files"
     # problematic_provenance stores uuid of deleted file, and the wfr that is not deleted
-    # problematic_wfr stores deleted file,  wfr to be deleted, and its dpwnstream items (qcs and output files)
+    # problematic_wfr stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
     fulloutput = {'problematic_provenance': [], 'problematic_wfrs': []}
     no_of_items_to_delete = 0
 
