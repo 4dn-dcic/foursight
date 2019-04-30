@@ -2100,27 +2100,26 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
         action = init_action_res(connection, action_name)
         action_result = action.get_latest_result()
 
-        if not action_result:
-            return search_query
-
-        if "completed_timestamp" not in action_result["output"]:
-            return search_query
-
-        # Timestamp example:
-        # Cut off the timezone and seconds offset.
-        completed_timestamp_raw = action_result["output"]["completed_timestamp"]
-
-        index = completed_timestamp_raw.rfind(".")
-        if index != -1:
-            completed_timestamp_formatted = completed_timestamp_raw[0:index]
+        # If there is no action, or it lacks a completed timestamp, return the current time.
+        if not action_result or "completed_timestamp" not in action_result["output"]:
+            completed_timestamp_datetime = datetime.utcnow()
         else:
-            completed_timestamp_formatted = completed_timestamp_raw
+            # Timestamp example:
+            # Cut off the timezone and seconds offset.
+            completed_timestamp_raw = action_result["output"]["completed_timestamp"]
 
-        completed_timestamp_datetime = datetime.strptime(
-            completed_timestamp_formatted,
-            "%Y-%m-%dT%H:%M:%S"
-        )
-        # Move time stamp to 1 minute in the future.
+            index = completed_timestamp_raw.rfind(".")
+            if index != -1:
+                completed_timestamp_formatted = completed_timestamp_raw[0:index]
+            else:
+                completed_timestamp_formatted = completed_timestamp_raw
+
+            completed_timestamp_datetime = datetime.strptime(
+                completed_timestamp_formatted,
+                "%Y-%m-%dT%H:%M:%S"
+            )
+
+        # Add some leeway for the timestamp.
         completed_timestamp_datetime += timedelta(minutes=minutes_leeway)
 
         # Convert to elastic search format, yyyy-mm-dd HH:MM
