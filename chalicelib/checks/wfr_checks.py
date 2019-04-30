@@ -991,7 +991,7 @@ def repli_2_stage_status(connection, **kwargs):
     return check
 
 
-@action_function(start_runs=False, patch_completed=False)
+@action_function(start_runs=True, patch_completed=True)
 def repli_2_stage_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -1040,7 +1040,7 @@ def repli_multi_stage_status(connection, **kwargs):
     return check
 
 
-@action_function(start_runs=False, patch_completed=False)
+@action_function(start_runs=True, patch_completed=True)
 def repli_multi_stage_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -1089,7 +1089,7 @@ def tsa_seq_status(connection, **kwargs):
     return check
 
 
-@action_function(start_runs=False, patch_completed=False)
+@action_function(start_runs=True, patch_completed=True)
 def tsa_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -1099,6 +1099,7 @@ def tsa_seq_start(connection, **kwargs):
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
+    print(check_result)
     if kwargs.get('start_runs'):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
@@ -1138,7 +1139,7 @@ def nad_seq_status(connection, **kwargs):
     return check
 
 
-@action_function(start_runs=False, patch_completed=False)
+@action_function(start_runs=True, patch_completed=True)
 def nad_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -1179,7 +1180,7 @@ def atac_seq_status(connection, **kwargs):
     return check
 
 
-@action_function(start_runs=False, patch_completed=False)
+@action_function(start_runs=True, patch_completed=True)
 def atac_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -1219,7 +1220,7 @@ def chip_seq_status(connection, **kwargs):
     return check
 
 
-@action_function(start_runs=False, patch_completed=False)
+@action_function(start_runs=True, patch_completed=True)
 def chip_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
