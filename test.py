@@ -850,7 +850,7 @@ class TestActionResult(FSTest):
 
 
 class TestCheckUtils(FSTest):
-    environ = 'mastertest' # hopefully this is up
+    environ = 'mastertest'  # hopefully this is up
     connection = app_utils.init_connection(environ)
 
     def test_get_check_strings(self):
