@@ -88,7 +88,7 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ffenv):
     return needs_badge, remove_badge, badge_edit, badge_ok
 
 
-def patch_badges(full_output, badge_name, output_keys, ffenv, single_message=''):
+def patch_badges(full_output, badge_name, ffenv, single_message=''):
     '''
     General function for patching badges.
     For badges with single message choice:
@@ -103,11 +103,13 @@ def patch_badges(full_output, badge_name, output_keys, ffenv, single_message='')
     patches = {'add_badge_success': [], 'add_badge_failure': [],
                'remove_badge_success': [], 'remove_badge_failure': []}
     badge_id = '/badges/' + badge_name + '/'
+    output_keys = ['Add badge', 'Remove badge']
     if isinstance(full_output[output_keys[0]], list):
         add_list = full_output[output_keys[0]]
     elif isinstance(full_output[output_keys[0]], dict):
         patches['edit_badge_success'] = []
         patches['edit_badge_failure'] = []
+        output_keys.append('Keep badge and edit messages')
         add_list = full_output[output_keys[0]].keys()
     for add_key in add_list:
         add_result = ff_utils.get_metadata(add_key + '?frame=object&field=badges', ff_env=ffenv)
@@ -160,27 +162,30 @@ def yellow_flag_biosamples(connection, **kwargs):
     check.brief_output = {REV_KEY: {}, RELEASED_KEY: {}}
     for result in results:
         messages = []
-        bcc = result.get('cell_culture_details', {})
-        for item in [
-            'culture_harvest_date', 'doubling_number', 'passage_number', 'culture_duration', 'morphology_image'
-        ]:
-            if not bcc.get(item):
-                messages.append('Biosample missing {}'.format(item))
         bs_types = [bs.get('biosource_type') for bs in result.get('biosource', [])]
-        karyotype = True if bcc.get('karyotype') else False
+        karyotype = False
         diff_auth = False
         ploidy = False
-        for protocol in bcc.get('authentication_protocols', []):
-            protocol_item = ff_utils.get_metadata(protocol['@id'], ff_env="data")
-            auth_type = protocol_item.get('protocol_classification')
-            if auth_type == 'Karyotype Authentication':
+        bccs = result.get('cell_culture_details', [])
+        for bcc in bccs:
+            for item in [
+                'culture_harvest_date', 'doubling_number', 'passage_number', 'culture_duration', 'morphology_image'
+            ]:
+                if not bcc.get(item):
+                    messages.append('Biosample missing {}'.format(item))
+            if bcc.get('karyotype'):
                 karyotype = True
-            elif auth_type == 'Differentiation Authentication':
-                diff_auth = True
-            elif auth_type == 'Ploidy Authentication':
-                ploidy = True
-        if 'tem cell' in ''.join(bs_types) and bcc.get('passage_number', 0) > 10 and not karyotype:
-            messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
+            for protocol in bcc.get('authentication_protocols', []):
+                protocol_item = ff_utils.get_metadata(protocol['@id'], ff_env=connection.ff_env)
+                auth_type = protocol_item.get('protocol_classification')
+                if not karyotype and auth_type == 'Karyotype Authentication':
+                    karyotype = True
+                elif auth_type == 'Differentiation Authentication':
+                    diff_auth = True
+                elif auth_type == 'Ploidy Authentication':
+                    ploidy = True
+            if 'tem cell' in ''.join(bs_types) and bcc.get('passage_number', 0) > 10 and not karyotype:
+                messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
         if result.get('biosample_type') == 'In vitro differentiated cells' and not diff_auth:
             messages.append('Differentiated biosample missing differentiation authentication')
         if 'HAP-1' in result.get('biosource_summary') and not ploidy:
@@ -201,6 +206,7 @@ def yellow_flag_biosamples(connection, **kwargs):
         check.description = '{} biosamples need warning badges patched'.format(
             len(to_add.values()) + len(to_remove.values()) + len(to_edit.values())
         )
+        check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'Yellow flag biosample badges up-to-date'
@@ -222,10 +228,8 @@ def patch_biosample_warning_badges(connection, **kwargs):
     action = init_action_res(connection, 'patch_biosample_warning_badges')
     bs_check_result = action.get_associated_check_result(kwargs)
 
-    bs_keys = ['Add badge', 'Remove badge', 'Keep badge and edit messages']
-
     action.output = patch_badges(
-        bs_check_result['full_output'], 'biosample-metadata-incomplete', bs_keys, connection.ff_env
+        bs_check_result['full_output'], 'biosample-metadata-incomplete', connection.ff_env
     )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
@@ -266,9 +270,9 @@ def gold_biosamples(connection, **kwargs):
     gold = []
     for result in results:
     # follows SOP w/ no deviations
-        if result.get('cell_culture_details').get('follows_sop') == 'Yes':
-            if result.get('status') not in REV:
-                gold.append(result['@id'])
+        sop = True if all([bcc.get('follows_sop', '') == 'Yes' for bcc in result.get('cell_culture_details', [])]) else False
+        if sop and result.get('status') not in REV:
+            gold.append(result['@id'])
     # correct source
     to_add, to_remove, ok = compare_badges(gold, 'Biosample', 'gold-biosample', connection.ff_env)
     check.action = 'patch_gold_biosample_badges'
@@ -292,10 +296,8 @@ def patch_gold_biosample_badges(connection, **kwargs):
     action = init_action_res(connection, 'patch_gold_biosample_badges')
     gold_check_result = action.get_associated_check_result(kwargs)
 
-    gold_keys = ['Add badge', 'Remove badge']
-
     action.output = patch_badges(
-        gold_check_result['full_output'], 'gold-biosample', gold_keys, connection.ff_env,
+        gold_check_result['full_output'], 'gold-biosample', connection.ff_env,
         single_message=('Biosample receives gold status for being a 4DN Tier 1 or Tier 2'
                         ' cell line that follows the approved SOP and contains all of the '
                         'pertinent metadata information as required by the 4DN Samples working group.')
@@ -402,9 +404,7 @@ def patch_badges_for_replicate_numbers(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_replicate_numbers')
     rep_check_result = action.get_associated_check_result(kwargs)
 
-    rep_keys = ['Add badge', 'Remove badge', 'Keep badge and edit messages']
-
-    action.output = patch_badges(rep_check_result['full_output'], 'replicate-numbers', rep_keys, connection.ff_env)
+    action.output = patch_badges(rep_check_result['full_output'], 'replicate-numbers', connection.ff_env)
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -464,10 +464,10 @@ def tier1_metadata_present(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'Tier 1 metadata badges up-to-date'
         check.description = 'No tier 1 biosamples need metadata_missing badges patched'
-    check.full_output = {'New tier1 biosamples missing required metadata': to_add,
-                         'Old tier1 biosamples missing required metadata': ok,
-                         'Tier1 biosamples no longer missing required metadata': to_remove,
-                         'Biosamples with a tier1_metadata_missing badge that needs editing': to_edit}
+    check.full_output = {'Add badge': to_add,
+                         'Keep badge (no change)': ok,
+                         'Remove badge': to_remove,
+                         'Keep badge and edit messages': to_edit}
     check.brief_output = missing
     # if to_add or to_remove or to_edit:
     #     check.allow_action = True
@@ -479,11 +479,7 @@ def patch_badges_for_tier1_metadata(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_tier1_metadata')
     tier1_check_result = action.get_associated_check_result(kwargs)
 
-    tier1keys = ['New tier1 biosamples missing required metadata',
-                 'Tier1 biosamples no longer missing required metadata',
-                 'Biosamples with a tier1_metadata_missing badge that needs editing']
-
-    action.output = patch_badges(tier1_check_result['full_output'], 'tier1-metadata-missing', tier1keys, connection.ff_env)
+    action.output = patch_badges(tier1_check_result['full_output'], 'tier1-metadata-missing', connection.ff_env)
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -544,7 +540,7 @@ def exp_has_raw_files(connection, **kwargs):
                          'Remove badge': to_remove,
                          'Keep badge': ok}
     check.brief_output = {REV_KEY: missing_files_in_rev,
-                          RELEASED_KEY: missing_files_released}
+                          RELEASED_KEY: {'Add badge': to_add, 'Remove badge': to_remove}}
     return check
 
 
@@ -553,10 +549,9 @@ def patch_badges_for_raw_files(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_raw_files')
     raw_check_result = action.get_associated_check_result(kwargs)
 
-    raw_keys = ['Experiments newly missing raw files', 'Experiments no longer missing raw files']
-
-    action.output = patch_badges(raw_check_result['full_output'], 'no-raw-files', raw_keys,
-                                 connection.ff_env, single_message='Raw files missing')
+    action.output = patch_badges(
+        raw_check_result['full_output'], 'no-raw-files', connection.ff_env, single_message='Raw files missing'
+    )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
@@ -672,11 +667,10 @@ def consistent_replicate_info(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'Replicate Info badges are up-to-date'
         check.description = 'No ExperimentSetReplicates found that need a replicate-info badge patched'
-    check.full_output = {'New replicate experiment sets with inconsistent replicate info': to_add,
-                         'Replicate experiment sets with replicate info now consistent': to_remove,
-                         'Replicate experiment sets with replicate-info badge that needs editing': to_edit,
-                         'Old replicate experiment sets with inconsistent replicate info': ok}
-    #check.brief_output = results
+    check.full_output = {'Add badge': to_add,
+                         'Remove badge': to_remove,
+                         'Keep badge and edit messages': to_edit,
+                         'Keep badge (no change)': ok}
     check.action = 'patch_badges_for_inconsistent_replicate_info'
     if to_add or to_remove or to_edit:
         check.allow_action = True
@@ -688,14 +682,9 @@ def patch_badges_for_inconsistent_replicate_info(connection, **kwargs):
     action = init_action_res(connection, 'patch_badges_for_inconsistent_replicate_info')
     rep_info_check_result = action.get_associated_check_result(kwargs)
 
-    rep_info_keys = [
-        'New replicate experiment sets with inconsistent replicate info',
-        'Replicate experiment sets with replicate info now consistent',
-        'Replicate experiment sets with replicate-info badge that needs editing'
-    ]
-
-    action.output = patch_badges(rep_info_check_result['full_output'], 'inconsistent-replicate-info',
-                                 rep_info_keys, connection.ff_env)
+    action.output = patch_badges(
+        rep_info_check_result['full_output'], 'inconsistent-replicate-info', connection.ff_env
+    )
     if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
         action.status = 'FAIL'
         action.description = 'Some items failed to patch. See below for details.'
