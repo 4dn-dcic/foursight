@@ -16,14 +16,19 @@ from fuzzywuzzy import fuzz
 
 @check_function(cmp_to_last=False)
 def workflow_run_has_deleted_input_file(connection, **kwargs):
+    """Checks all wfrs that are not deleted, and have deleted input files
+    There is an option to compare to the last, and only report new cases (cmp_to_last)
+    The full output has 2 keys, because we report provenance wfrs but not run action on them
+    problematic_provenance: stores uuid of deleted file, and the wfr that is not deleted
+    problematic_wfr:        stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
+    """
     check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
-    chkstatus = ''
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
+    my_key = connection.ff_keys
     # run the check
     search_query = 'search/?type=WorkflowRun&status!=deleted&input_files.value.status=deleted&limit=all'
-    bad_wfrs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
-
+    bad_wfrs = ff_utils.search_metadata(search_query, key=my_key)
     if kwargs.get('cmp_to_last', False):
         # filter out wfr uuids from last run if so desired
         prevchk = check.get_latest_result()
@@ -31,21 +36,45 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
             prev_wfrs = prevchk.get('full_output', [])
             filtered = [b.get('uuid') for b in bad_wfrs if b.get('uuid') not in prev_wfrs]
             bad_wfrs = filtered
-
     if not bad_wfrs:
         check.summmary = check.description = "No live WorkflowRuns linked to deleted input Files"
         return check
-
     brief = str(len(bad_wfrs)) + " live WorkflowRuns linked to deleted input Files"
-    fulloutput = {}
+    # problematic_provenance stores uuid of deleted file, and the wfr that is not deleted
+    # problematic_wfr stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
+    fulloutput = {'problematic_provenance': [], 'problematic_wfrs': []}
+    no_of_items_to_delete = 0
+
+    def fetch_wfr_associated(wfr_info):
+        """Given wfr_uuid, find associated output files and qcs"""
+        wfr_as_list = []
+        wfr_as_list.append(wfr_info['uuid'])
+        if wfr_info.get('output_files'):
+            for o in wfr_info['output_files']:
+                    if o.get('value'):
+                        wfr_as_list.append(o['value']['uuid'])
+                    if o.get('value_qc'):
+                        wfr_as_list.append(o['value_qc']['uuid'])
+        if wfr_info.get('output_quality_metrics'):
+            for qc in wfr_info['output_quality_metrics']:
+                if qc.get('value'):
+                    wfr_as_list.append(qc['value']['uuid'])
+        return list(set(wfr_as_list))
+
     for wfr in bad_wfrs:
         infiles = wfr.get('input_files', [])
-        wfruuid = wfr.get('uuid', '')
-        delfiles = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted']
-        fulloutput[wfruuid] = delfiles
+        delfile = [f.get('value').get('uuid') for f in infiles if f.get('value').get('status') == 'deleted'][0]
+        if wfr['display_title'].startswith('File Provenance Tracking'):
+            fulloutput['problematic_provenance'].append([delfile, wfr['uuid']])
+        else:
+            del_list = fetch_wfr_associated(wfr)
+            fulloutput['problematic_wfrs'].append([delfile, wfr['uuid'], del_list])
+            no_of_items_to_delete += len(del_list)
     check.summary = "Live WorkflowRuns found linked to deleted Input Files"
-    check.description = "%s live workflows were found linked to deleted input files - \
-                         you can delete the workflows using the linked action" % len(bad_wfrs)
+    check.description = "{} live workflows were found linked to deleted input files - \
+                         found {} items to delete, use action for cleanup".format(len(bad_wfrs), no_of_items_to_delete)
+    if fulloutput.get('problematic_provenance'):
+        brief += " ({} provenance tracking)"
     check.brief_output = brief
     check.full_output = fulloutput
     check.status = 'WARN'
@@ -57,19 +86,25 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
 @action_function()
 def patch_workflow_run_to_deleted(connection, **kwargs):
     action = init_action_res(connection, 'patch_workflow_run_to_deleted')
-    action_logs = {'patch_failure': [], 'patch_success': []}
     check_res = action.get_associated_check_result(kwargs)
-    for wfruid in check_res['full_output']:
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    my_key = connection.ff_keys
+    for a_case in check_res['full_output']['problematic_wfrs']:
+        wfruid = a_case[1]
+        del_list = a_case[2]
         patch_data = {'status': 'deleted'}
-        try:
-            ff_utils.patch_metadata(patch_data, obj_id=wfruid, key=connection.ff_keys, ff_env=connection.ff_env)
-        except Exception as e:
-            acc_and_error = '\n'.join([wfruid, str(e)])
-            action_logs['patch_failure'].append(acc_and_error)
-        else:
-            action_logs['patch_success'].append(wfruid)
-    action.status = 'DONE'
+        for delete_me in del_list:
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=delete_me, key=my_key)
+            except Exception as e:
+                acc_and_error = [delete_me, str(e)]
+                action_logs['patch_failure'].append(acc_and_error)
+            else:
+                action_logs['patch_success'].append(wfruid + " - " + delete_me)
     action.output = action_logs
+    action.status = 'DONE'
+    if action_logs.get('patch_failure'):
+        action.status = 'FAIL'
     return action
 
 

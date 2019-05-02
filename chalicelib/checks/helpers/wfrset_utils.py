@@ -1,4 +1,11 @@
 # Step Settings
+lambda_limit = 240
+mapper = {'human': 'GRCh38',
+          'mouse': 'GRCm38',
+          'fruit-fly': 'dm6',
+          'chicken': 'galGal5'}
+
+
 def step_settings(step_name, my_organism, attribution, overwrite=None):
     """Return a setting dict for given step, and modify variables in
     output files; genome assembly, file_type, desc, contributing lab.
@@ -8,10 +15,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     }
     """
     genome = ""
-    mapper = {'human': 'GRCh38',
-              'mouse': 'GRCm38',
-              'fruit-fly': 'dm6',
-              'chicken': 'galGal5'}
     genome = mapper.get(my_organism)
 
     out_n = "This is an output file of the Hi-C processing pipeline"
@@ -78,7 +81,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }},
         {
         'app_name': 'repliseq-parta',
-        'workflow_uuid': '4459a4d8-1bd8-4b6a-b2cc-2506f4270a34',
+        'workflow_uuid': '4dn-dcic-lab:wf-repliseq-parta-v16',
         "parameters": {"nthreads": 4, "memperthread": "2G"},
         'custom_pf_fields': {
             'filtered_sorted_deduped_bam': {
@@ -88,7 +91,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'count_bg': {
                 'genome_assembly': genome,
                 'file_type': 'counts',
-                'description': 'read counts per 5 kb bin, unfiltered, unnormalized'}
+                'description': 'read counts, unfiltered, unnormalized'}
         }},
         {
         "app_name": "bedGraphToBigWig",
@@ -147,7 +150,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "spot_instance": True,
         "ebs_iops": "",
         "log_bucket": "tibanna-output",
-        "key_name": "4dn-encode"
+        "key_name": "4dn-encode",
+        "behavior_on_capacity_limit": "retry_without_spot"
         }
     if not template.get('parameters'):
         template['parameters'] = {}
