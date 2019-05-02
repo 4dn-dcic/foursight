@@ -7,12 +7,7 @@ from ..utils import (
 )
 from .helpers import qc_utils
 from dcicutils import ff_utils
-import requests
-import sys
-import json
-import datetime
 import time
-import boto3
 
 
 @check_function(file_type=None, status=None, search_add_on=None)
