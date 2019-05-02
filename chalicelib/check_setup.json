@@ -202,7 +202,7 @@
         }
     },
     "check_bio_feature_organism_name": {
-        "title": "BioFeatures with missing or mismatched check_bio_feature_organism_name",
+        "title": "BioFeatures with missing or mismatched organism_name",
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
