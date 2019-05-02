@@ -1,5 +1,5 @@
 # Step Settings
-lambda_limit = 260
+lambda_limit = 240
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
@@ -150,7 +150,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "spot_instance": True,
         "ebs_iops": "",
         "log_bucket": "tibanna-output",
-        "key_name": "4dn-encode"
+        "key_name": "4dn-encode",
+        "behavior_on_capacity_limit": "retry_without_spot"
         }
     if not template.get('parameters'):
         template['parameters'] = {}

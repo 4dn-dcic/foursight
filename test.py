@@ -850,7 +850,7 @@ class TestActionResult(FSTest):
 
 
 class TestCheckUtils(FSTest):
-    environ = 'mastertest' # hopefully this is up
+    environ = 'mastertest'  # hopefully this is up
     connection = app_utils.init_connection(environ)
 
     def test_get_check_strings(self):
@@ -1044,7 +1044,7 @@ class TestCheckUtils(FSTest):
         # with an action
         action = utils.init_action_res(self.connection, 'add_random_test_nums')
         act_kwargs = {'primary': True, 'uuid': test_uuid, 'check_name': 'test_random_nums',
-                      'called_by': latest_uuid}
+                      'called_by': test_uuid}
         test_info_2 = ['test_checks/add_random_test_nums', act_kwargs, [] ,'xxx']
         action_res = check_utils.run_check_or_action(self.connection, test_info_2[0], test_info_2[1])
         self.assertTrue(isinstance(action_res, dict))
@@ -1054,19 +1054,17 @@ class TestCheckUtils(FSTest):
         # pop runtime_seconds kwarg
         self.assertTrue('runtime_seconds' in action_res['kwargs'])
         action_res['kwargs'].pop('runtime_seconds')
-        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid, 'check_name': 'test_random_nums', 'called_by': latest_uuid})
-        latest_uuid = action_res.get('uuid')
-        time.sleep(3)
+        self.assertTrue(action_res.get('kwargs') == {'primary': True, 'offset': 0, 'uuid': test_uuid, 'check_name': 'test_random_nums', 'called_by': test_uuid})
+        act_uuid = action_res.get('uuid')
+        act_res = action.get_result_by_uuid(act_uuid)
+        self.assertTrue(act_res['uuid'] == act_uuid)
         latest_res = action.get_latest_result()
-        self.assertTrue(latest_res.get('uuid') == latest_uuid)
-        output = latest_res.get('output')
-        # output will differ for latest and primary res, since the checks differ
-        self.assertTrue(output['latest'] != output['primary'])
+        self.assertTrue(latest_res['uuid'] == act_uuid)
         # make sure the action can get its associated check result
         assc_check = action.get_associated_check_result(act_kwargs)
         self.assertTrue(assc_check is not None)
         self.assertTrue(assc_check['name'] == act_kwargs['check_name'])
-        self.assertTrue(assc_check['uuid'] == act_kwargs['called_by'])
+        self.assertTrue(assc_check['uuid'] == act_uuid)
 
 
     def test_run_check_errors(self):
