@@ -36,3 +36,44 @@ def parse_formatstr(file_format_str):
     if not file_format_str:
         return None
     return file_format_str.replace('/file-formats/', '').replace('/', '')
+
+
+def calculate_qc_metric_atacseq_bb(file_uuid, key, patch=False):
+    '''peak call bigbed file from atacseq/chipseq'''
+    res = ff_utils.get_metadata(file_uuid, key=key)
+    if 'quality_metric' not in res:
+        return
+    qc_uuid = res['quality_metric']['uuid']
+    quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
+    if 'overlap_reproducibility_qc' not in quality_metric:
+        return
+    if 'idr_reproducibility_qc' in quality_metric:
+        qc_method = 'idr'
+    else:
+        qc_method = 'overlap'
+    qc_summary = []
+    def million(numVal):
+        return str(round(numVal / 10000) / 100) + "m"
+    def tooltip(numVal):
+        return "Percent of total reads (=%s)" % million(numVal)
+    def round2(numVal):
+        return round(numVal * 100) / 100
+    opt_set = quality_metric[qc_method + "_reproducibility_qc"]["opt_set"] 
+    qc_summary.append({"title": "Optimal Peaks",
+                                          "value": str(quality_metric[qc_method + "_reproducibility_qc"]["N_opt"]),
+                                          "numberType": "integer"}) 
+    qc_summary.append({"title": "Rescue Ratio",
+                                          "tooltip": "Ratio of number of peaks (Nt) relative to peak calling based on psuedoreplicates (Np) [max(Np,Nt) / min (Np,Nt)]",
+                                          "value": str(round2(quality_metric[qc_method + "_reproducibility_qc"]["rescue_ratio"])),
+                                          "numberType": "float"}) 
+    qc_summary.append({"title": "Self Consistency Ratio",
+                                          "tooltip": "Ratio of number of peaks in two replicates [max(N1,N2) / min (N1,N2)]",
+                                          "value": str(round2(quality_metric[qc_method + "_reproducibility_qc"]["self_consistency_ratio"])),
+                                          "numberType": "float"})
+    qc_summary.append({"title": "Fraction of Reads in Peaks",
+                                          "value": str(round2(quality_metric[qc_method + "_frip_qc"][opt_set]["FRiP"])),
+                                          "numberType": "float"})
+    if patch:
+        ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
+    return qc_summary
+

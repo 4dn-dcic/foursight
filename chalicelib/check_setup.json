@@ -313,8 +313,24 @@
             }
         }
     },
-    "identify_files_without_qc_summary": {
-        "title": "Files without quality metric summary",
+    "identify_files_without_qc_summary_pairs": {
+        "title": "Pairs files without quality metric summary",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "identify_files_without_qc_summary_bb": {
+        "title": "Bigbed files without quality metric summary",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
