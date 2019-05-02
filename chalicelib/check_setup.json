@@ -173,15 +173,23 @@
             }
         }
     },
-    "tier1_metadata_present": {
-        "title": "Tier 1 Biosamples with Missing Metadata",
+    "yellow_flag_biosamples": {
+        "title": "Yellow Flag Biosamples",
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
+                "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
-                },
+                }
+            }
+        }
+    },
+    "gold_biosamples": {
+        "title": "Gold Biosamples",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks": {
                 "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
