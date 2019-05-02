@@ -1,5 +1,5 @@
 # Step Settings
-lambda_limit = 260
+lambda_limit = 240
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
