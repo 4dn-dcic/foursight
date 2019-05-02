@@ -166,11 +166,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -182,10 +178,6 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
                 "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -198,10 +190,6 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
                 "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -214,14 +202,10 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-              "mastertest": {
-                  "kwargs": {"primary": true},
-                  "dependencies": []
-              },
-              "hotseat": {
-                  "kwargs": {"primary": true},
-                  "dependencies": []
-              }
+                "all": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
             }
         }
     },
@@ -242,11 +226,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
