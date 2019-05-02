@@ -562,7 +562,6 @@ def check_validation_errors(connection, **kwargs):
     return check
 
 
-
 def _get_all_other_processed_files(item):
     toignore = []
     # get directly linked other processed files
@@ -577,3 +576,157 @@ def _get_all_other_processed_files(item):
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
     return toignore
+
+
+@check_function()
+def check_bio_feature_organism_name(connection, **kwargs):
+    '''
+    Attempts to identify an organism to add to the organism_name field in BioFeature items
+    checks the linked genes or the genomic regions and then description
+    '''
+    check = init_check_res(connection, 'check_bio_feature_organism_name')
+    check.action = "patch_bio_feature_organism_name"
+
+    # create some mappings
+    organism_search = 'search/?type=Organism'
+    organisms = ff_utils.search_metadata(organism_search, ff_env=connection.ff_env)
+    orgn2name = {o.get('@id'): o.get('name') for o in organisms}
+    # add special cases
+    orgn2name['unspecified'] = 'unspecified'
+    orgn2name['multiple organisms'] = 'multiple organisms'
+    genome2orgn = {o.get('genome_assembly'): o.get('@id') for o in organisms if 'genome_assembly' in o}
+    gene_search = 'search/?type=Gene'
+    genes = ff_utils.search_metadata(gene_search, ff_env=connection.ff_env)
+    gene2org = {g.get('@id'): g.get('organism').get('@id') for g in genes}
+    # get all BioFeatures
+    biofeat_search = 'search/?type=BioFeature'
+    biofeatures = ff_utils.search_metadata(biofeat_search, ff_env=connection.ff_env)
+
+    matches = 0
+    name_trumps_guess = 0
+    mismatches = 0
+    to_patch = {}
+    brief_report = []
+    to_report = {'name_trumps_guess': {}, 'lost_and_found': {}, 'orphans': {}, 'mismatches': {}}
+    for biofeat in biofeatures:
+        linked_orgn_name = None
+        orgn_name = biofeat.get('organism_name')
+        biogenes = biofeat.get('relevant_genes')
+        if biogenes is not None:
+            borgns = [gene2org.get(g.get('@id')) for g in biogenes if '@id' in g]
+            linked_orgn_name = _get_orgname_from_atid_list(borgns, orgn2name)
+        if not linked_orgn_name:  # didn't get it from genes - try genomic regions
+            gen_regions = biofeat.get('genome_location')
+            if gen_regions is not None:
+                grorgns = []
+                for genreg in gen_regions:
+                    assembly_in_dt = False
+                    gr_dt = genreg.get('display_title')
+                    for ga, orgn in genome2orgn.items():
+                        if ga in gr_dt:
+                            grorgns.append(orgn)
+                            assembly_in_dt = True
+                            break
+                    if not assembly_in_dt:
+                        gr_res = ff_utils.get_es_metadata([genreg.get('uuid')], ff_env=connection.ff_env, sources=['properties.genome_assembly'])
+                        try:
+                            gr_ass = gr_res[0].get('properties').get('genome_assembly')
+                        except AttributeError:
+                            gr_ass = None
+                        if gr_ass is not None:
+                            for ga, orgn in genome2orgn.items():
+                                if ga == gr_ass:
+                                    grorgns.append(orgn)
+                linked_orgn_name = _get_orgname_from_atid_list(grorgns, orgn2name)
+        if not linked_orgn_name:  # and finally try Description
+            desc = biofeat.get('description')
+            if desc is not None:
+                for o in orgn2name.values():
+                    if o in desc.lower():
+                        linked_orgn_name = o
+                        break
+
+        # we've done our best now check and create output
+        bfuuid = biofeat.get('uuid')
+        bfname = biofeat.get('display_title')
+        if not orgn_name:
+            if linked_orgn_name:
+                to_patch[bfuuid] = {'organism_name': linked_orgn_name}
+                brief_report.append('{} MISSING ORGANISM - PATCH TO {}'.format(bfname, linked_orgn_name))
+                to_report['lost_and_found'].update({bfuuid: linked_orgn_name})
+            else:
+                brief_report.append('{} MISSING ORGANISM - NO GUESS'.format(bfname))
+                to_report['orphans'].update({bfuuid: None})
+        else:
+            if linked_orgn_name:
+                if orgn_name != linked_orgn_name:
+                    if linked_orgn_name == 'unspecified':
+                        name_trumps_guess += 1
+                        to_report['name_trumps_guess'].update({bfuuid: (orgn_name, linked_orgn_name)})
+                    elif orgn_name == 'unspecified':  # patch if a specific name is found
+                        to_patch[bfuuid] = {'organism_name': linked_orgn_name}
+                        to_report['mismatches'].update({bfuuid: (orgn_name, linked_orgn_name)})
+                        brief_report.append('{}: CURRENT {} GUESS {} - WILL PATCH!'.format(bfname, orgn_name, linked_orgn_name))
+                    else:
+                        mismatches += 1
+                        to_report['mismatches'].update({bfuuid: (orgn_name, linked_orgn_name)})
+                        brief_report.append('{}: CURRENT {} GUESS {}'.format(bfname, orgn_name, linked_orgn_name))
+                else:
+                    matches += 1
+            else:
+                to_report['name_trumps_guess'].update({bfuuid: (orgn_name, None)})
+    brief_report.sort()
+    cnt_rep = [
+        'MATCHES: {}'.format(matches),
+        'MISMATCHES TO CHECK: {}'.format(mismatches),
+        'OK MISMATCHES: {}'.format(name_trumps_guess)
+    ]
+
+    check.brief_output = cnt_rep + brief_report
+    check.full_output = {}
+    if brief_report:
+        check.summary = 'Found BioFeatures with organism_name that needs attention'
+        check.status = 'WARN'
+    else:
+        check.status = 'PASS'
+        check.summary = 'BioFeature organism_name looks good'
+    if to_report:
+        to_report.update({'counts': cnt_rep})
+        check.full_output.update({'info': to_report})
+    if to_patch:
+        check.full_output.update({'to_patch': to_patch})
+    return check
+
+
+def _get_orgname_from_atid_list(atids, orgn2name):
+    org_atid = [x for x in list(set(atids)) if x is not None]
+    if not org_atid:
+        org_atid = 'unspecified'
+    elif len(org_atid) == 1:
+        org_atid = org_atid[0]
+    else:
+        org_atid = 'multiple organisms'
+    return orgn2name.get(org_atid)
+
+
+@action_function()
+def patch_bio_feature_organism_name(connection, **kwargs):
+    action = init_action_res(connection, 'patch_bio_feature_organism_name')
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    check_res = action.get_associated_check_result(kwargs)
+    output = check_res.get('full_output')
+    patches = output.get('to_patch')
+    if patches:
+        for uid, val in patches.items():
+            try:
+                res = ff_utils.patch_metadata(val, uid, ff_env=connection.ff_env)
+            except:
+                action_logs['patch_failure'].append(uid)
+            else:
+                if res.get('status') == 'success':
+                    action_logs['patch_success'].append(uid)
+                else:
+                    action_logs['patch_failure'].append(uid)
+        action.status = 'DONE'
+        action.output = action_logs
+        return action
