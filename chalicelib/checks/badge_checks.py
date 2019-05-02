@@ -159,7 +159,7 @@ def yellow_flag_biosamples(connection, **kwargs):
 
     results = ff_utils.search_metadata('search/?type=Biosample', ff_env=connection.ff_env)
     flagged = {}
-    check.brief_output = {REV_KEY: {}, RELEASED_KEY: {}}
+    check.brief_output = {RELEASED_KEY: {}, REV_KEY: []}
     for result in results:
         messages = []
         bs_types = [bs.get('biosource_type') for bs in result.get('biosource', [])]
@@ -192,7 +192,9 @@ def yellow_flag_biosamples(connection, **kwargs):
             messages.append('HAP-1 biosample missing ploidy authentication')
         if messages:
             if result.get('status') in REV:
-                check.brief_output[REV_KEY][result['@id']] = messages
+                check.brief_output[REV_KEY].append('{} missing {}'.format(
+                    result['@id'], ', '.join([item[item.index('missing') + 8:] for item in messages])
+                ))
             else:
                 flagged[result['@id']] = messages
 
@@ -216,9 +218,14 @@ def yellow_flag_biosamples(connection, **kwargs):
                          'Keep badge and edit messages': to_edit,
                          'Keep badge (no change)': ok}
     check.brief_output[RELEASED_KEY] = {
-        'Add badge': list(to_add.keys()),
+        #'Add badge': list(to_add.keys()),
+        'Add badge': ['{} missing {}'.format(
+            k, ', '.join([item[item.index('missing') + 8:] for item in flagged[k]])
+        ) for k in to_add.keys()],
         'Remove badge': list(to_remove.keys()),
-        'Keep badge and edit messages': list(to_edit.keys())
+        'Keep badge and edit messages': ['{} missing {}'.format(
+            k, ', '.join([item[item.index('missing') + 8:] for item in flagged[k]])
+        ) for k in to_edit.keys()]
     }
     return check
 
@@ -613,8 +620,11 @@ def consistent_replicate_info(connection, **kwargs):
         'microscopy_technique',
         'imaging_paths',
     ]
-    check.brief_output = {REV_KEY: {}, RELEASED_KEY: {}}
+    check.brief_output = {REV_KEY: {}, RELEASED_KEY: {
+        'Add badge': {}, 'Remove badge': {}, 'Keep badge and edit messages': {}
+    }}
     compare = {}
+    results = {}
     for repset in repsets:
         info_dict = {}
         exp_list = [item['@id'] for item in repset['experiments_in_set']]
@@ -646,18 +656,29 @@ def consistent_replicate_info(connection, **kwargs):
             info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
             #msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
             msgs = ['Inconsistent replicate information in ' + item for item in info]
-            name = '{}    {}    {}'.format(repset['uuid'], repset['@id'][-13:-1], repset['status'])
+            text = '{} - inconsistency in {}'.format(repset['@id'][-13:-1], ', '.join(list(info_dict.keys())))
             lab = repset['lab']['display_title']
             audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
-            if lab not in check.brief_output[audit_key]:
-                check.brief_output[audit_key][lab] = {}
-            check.brief_output[audit_key][lab][name] = info_dict
+            results[repset['@id']] = {'status': audit_key, 'lab': lab, 'info': text}
+            if audit_key == REV_KEY:
+                if lab not in check.brief_output[audit_key]:
+                    check.brief_output[audit_key][lab] = []
+                check.brief_output[audit_key][lab].append(text)
             if repset['status'] not in REV:
                 compare[repset['@id']] = msgs
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
         compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_env
     )
+    key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
+    for result in results.keys():
+        for k, v in key_dict.items():
+            if result in v.keys():
+                if results[result]['lab'] not in check.brief_output[RELEASED_KEY][k].keys():
+                    check.brief_output[RELEASED_KEY][k][results[result]['lab']] = []
+                check.brief_output[RELEASED_KEY][k][results[result]['lab']].append(results[result]['info'])
+                break
+    check.brief_output[RELEASED_KEY]['Remove badge'] = list(to_remove.keys())
     if to_add or to_remove or to_edit:
         check.status = 'WARN'
         check.summary = 'Replicate Info badges need patching'
