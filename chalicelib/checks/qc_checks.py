@@ -15,9 +15,9 @@ def identify_files_without_qc_summary_pairs(connection, **kwargs):
     fileformat = 'pairs'
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
-    check = init_check_res(connection, 'identify_files_without_qc_summary')
+    check = init_check_res(connection, 'identify_files_without_qc_summary_pairs')
     # must set this to be the function name of the action
-    check.action = 'patch_quality_metric_summary'
+    check.action = 'patch_quality_metric_summary_pairs'
     default_filetype = 'FileProcessed'  # skip fastq
     default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
     filetype = kwargs.get('file_type') or default_filetype
