@@ -129,13 +129,14 @@ def patch_quality_metric_summary_pairs(connection, **kwargs):
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
     action = init_action_res(connection, 'patch_quality_metric_summary_pairs')
-    action_logs = {'skipping_format': [], 'patch_failure': [], 'patch_success': []}
+    action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary
     filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         if round(time.time() - t0, 2) > time_limit:
             action.status = 'WARN'
-            action.output = ["time out"] + action_logs
+            action_logs['time out'] = True
+            action.output = action_logs
             return action
         if qc_utils.parse_formatstr(hit['file_format']) == 'pairs':
             try:
@@ -157,13 +158,14 @@ def patch_quality_metric_summary_bb(connection, **kwargs):
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
     action = init_action_res(connection, 'patch_quality_metric_summary_bb')
-    action_logs = {'skipping_format': [], 'patch_failure': [], 'patch_success': []}
+    action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary_bb
     filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         if round(time.time() - t0, 2) > time_limit:
             action.status = 'WARN'
-            action.output = ["time out"] + action_logs
+            action_logs['time out'] = True
+            action.output = action_logs
             return action
         if qc_utils.parse_formatstr(hit['file_format']) == 'bigbed':
             try:
