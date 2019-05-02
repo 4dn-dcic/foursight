@@ -359,13 +359,13 @@ def repsets_have_bio_reps(connection, **kwargs):
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
             if sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
-                audits[audit_key]['biorep_nums'].append('{} - biological replicate #s:'
+                audits[audit_key]['biorep_nums'].append('{} - bio rep #s:'
                                              ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
                 exp_audits.append('Biological replicate numbers are not in sequence')
         # check if tech rep numbers not in sequence
             for key, val in rep_dict.items():
                 if sorted(val) != list(range(min(val), max(val) + 1)):
-                    audits[audit_key]['techrep_nums'].append('{} - technical replicate #s of biorep {}:'
+                    audits[audit_key]['techrep_nums'].append('{} - tech rep #s of biorep {}:'
                                                   ' {}'.format(result['@id'], key, str(sorted(val))))
                     exp_audits.append('Technical replicate numbers of biological replicate {}'
                                       ' are not in sequence'.format(key))
