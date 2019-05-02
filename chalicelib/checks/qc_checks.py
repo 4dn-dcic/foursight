@@ -134,7 +134,7 @@ def patch_quality_metric_summary_pairs(connection, **kwargs):
     filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         if round(time.time() - t0, 2) > time_limit:
-            action.status = 'WARN'
+            action.status = 'FAIL'
             action_logs['time out'] = True
             action.output = action_logs
             return action
@@ -163,7 +163,7 @@ def patch_quality_metric_summary_bb(connection, **kwargs):
     filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         if round(time.time() - t0, 2) > time_limit:
-            action.status = 'WARN'
+            action.status = 'FAIL'
             action_logs['time out'] = True
             action.output = action_logs
             return action
