@@ -663,6 +663,10 @@ def check_bio_feature_organism_name(connection, **kwargs):
                     if linked_orgn_name == 'unspecified':
                         name_trumps_guess += 1
                         to_report['name_trumps_guess'].update({bfuuid: (orgn_name, linked_orgn_name)})
+                    elif orgn_name == 'unspecified':  # patch if a specific name is found
+                        to_patch[bfuuid] = {'organism_name': linked_orgn_name}
+                        to_report['mismatches'].update({bfuuid: (orgn_name, linked_orgn_name)})
+                        brief_report.append('{}: CURRENT {} GUESS {} - WILL PATCH!'.format(bfname, orgn_name, linked_orgn_name))
                     else:
                         mismatches += 1
                         to_report['mismatches'].update({bfuuid: (orgn_name, linked_orgn_name)})
