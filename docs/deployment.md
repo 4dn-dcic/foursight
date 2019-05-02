@@ -11,7 +11,7 @@ Where `<stage>` is either `dev` or `prod`. If there is a packaging issue with yo
 You will need a number of environment variables to be present locally to be able to deploy Foursight.
 
 ## Automatic deployments
-The Github repository for Chalice is outfitted with Travis CI testing and will deploy automatically when code is merged into the master or production branch. When you merge into master and all the tests pass, Foursight will be automatically deployed to the dev stage. When you merge into production and tests pass, automatic deployment to the prod stage will occur.
+The Github repository for Chalice is outfitted with Travis CI testing and will deploy automatically when code is merged into the production branch. When you merge into production and tests pass, automatic deployment to the prod stage will occur.
 
 ## Running tests
 As you add checks to Foursight, please take the time to create tests for them. The current test setup is pretty basic: the Python ```unittest``` package can be executed locally from the root directory with the following command:
