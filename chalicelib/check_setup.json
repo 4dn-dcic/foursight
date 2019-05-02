@@ -667,8 +667,8 @@
             }
         }
     },
-    "check_files_for_higlass_viewconf": {
-        "title": "Generate Higlass ViewConfigs for Files",
+    "check_higlass_items_for_new_files": {
+        "title": "Create new Higlass Items for Files",
         "group": "Higlass checks",
         "schedule": {
             "hourly_checks": {
@@ -687,8 +687,80 @@
             }
         }
     },
-    "check_expsets_processedfiles_for_higlass_viewconf": {
-        "title": "Create HiGlass viewconfs for Experiment Sets - Processed Files",
+    "check_higlass_items_for_modified_files": {
+        "title": "Update Higlass Items for modified Files",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_higlass_items_for_queried_files": {
+        "title": "Manually update Higlass Items for Files",
+        "group": "Higlass checks",
+        "schedule": {},
+        "display": ["data", "hotseat", "webdev"]
+    },
+    "check_expsets_processedfiles_for_new_higlass_items": {
+        "title": "Create Higlass Items for Processed Files in modified Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_modified_higlass_items": {
+        "title": "Update Higlass Items for Processed Files in modified Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_queried_higlass_items": {
+        "title": "Manually update Higlass Items for Processed Files in Experiment Sets",
+        "group": "Higlass checks",
+        "schedule": {},
+        "display": ["data", "webdev", "hotseat"]
+    },
+    "check_expsets_otherprocessedfiles_for_new_higlass_items": {
+        "title": "Create Higlass Items for Other Processed (aka Supplementary) Files in Experiment Sets",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
@@ -707,25 +779,11 @@
             }
         }
     },
-    "check_expsets_otherprocessedfiles_for_higlass_viewconf": {
-        "title": "Create HiGlass viewconfs for Experiment Sets - Supplementary Files",
+    "check_expsets_otherprocessedfiles_for_queried_files": {
+        "title": "Manually update Higlass Items for Other Processed (aka Supplementary) Files in Experiment Sets",
         "group": "Higlass checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "webdev": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "hotseat": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
+        "schedule": {},
+        "display": ["data", "webdev", "hotseat"]
     },
     "find_cypress_test_items_to_purge": {
         "title": "Find Cypress Test files to Purge",
