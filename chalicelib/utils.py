@@ -168,7 +168,7 @@ def action_function(*default_args, **default_kwargs):
             signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
             try:
                 if 'check_name' not in kwargs or 'called_by' not in kwargs:
-                    raise BadCheckOrAction('Action is missing check_name or called_by in its kwargs.')
+                    raise BadCheckOrAction('Action requires check_name and called_by in its kwargs.')
                 action = func(*args, **kwargs)
                 validate_run_result(action, is_check=False)
             except Exception as e:
