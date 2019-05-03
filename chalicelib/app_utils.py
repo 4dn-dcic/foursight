@@ -583,7 +583,7 @@ def run_put_check(environ, check, put_data):
     putCheck = init_check_res(connection, check, init_uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
-    for field in ['title', 'status', 'description', 'brief_output', 'full_output', 'admin_output']:
+    for field in ['title', 'status', 'summary', 'description', 'brief_output', 'full_output', 'admin_output']:
         put_content = put_data.get(field)
         prev_content = getattr(putCheck, field, None)
         if put_content:
