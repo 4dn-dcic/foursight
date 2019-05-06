@@ -42,7 +42,7 @@ def parse_formatstr(file_format_str):
     return file_format_str.replace('/file-formats/', '').replace('/', '')
 
 
-def calculate_qc_metric_atacseq_bb(file_uuid, key, patch=False):
+def calculate_qc_metric_atacseq_bb(file_uuid, key):
     '''peak call bigbed file from atacseq/chipseq'''
     res = ff_utils.get_metadata(file_uuid, key=key)
     if 'quality_metric' not in res:
@@ -81,6 +81,47 @@ def calculate_qc_metric_atacseq_bb(file_uuid, key, patch=False):
     qc_summary.append({"title": "Fraction of Reads in Peaks",
                        "value": str(round2(quality_metric[qc_method + "_frip_qc"][opt_set]["FRiP"])),
                        "numberType": "float"})
-    if patch:
-        ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
+    ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
+    return qc_summary
+
+
+def calculate_qc_metric_tagalign(file_uuid, key):
+    '''peak call tagAlign bed file from atacseq/chipseq'''
+    res = ff_utils.get_metadata(file_uuid, key=key)
+    qc_uuid = res['quality_metric']['uuid']
+    quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
+    pref = ''
+    if 'flagstat_qc' not in quality_metric:
+        if 'ctl_flagstat_qc' not in quality_metric:
+            return
+        else:
+            pref = 'ctl_'
+    qc_summary = []
+    def million(numVal):
+        return str(round(numVal / 10000) / 100) + "m"
+    def tooltip(numVal):
+        return "Percent of total reads (=%s)" % million(numVal)
+    def round2(numVal):
+        return round(numVal * 100) / 100
+    # mitochondrial rate (only for ATAC-seq)
+    qc_type = quality_metric['@type'][0]
+    if qc_type == 'QualityMetricAtacseq':
+        total = quality_metric[pref + "dup_qc"][0]["paired_reads"] + quality_metric[pref + "dup_qc"][0]["unpaired_reads"] 
+        nonmito = quality_metric[pref + "pbc_qc"][0]["total_read_pairs"]
+        mito_rate = round2((1 - (float(nonmito) / float(total))) * 100)
+        qc_summary.append({"title": "Percent mitochondrial reads",
+                                              "value": str(mito_rate),
+                                              "numberType": "percent"}) 
+    qc_summary.append({"title": "Nonredundant Read Fraction (NRF)",
+                                          "value": str(round2(quality_metric[pref + "pbc_qc"][0]["NRF"])),
+                                          "tooltip": "distinct non-mito read pairs / total non-mito read pairs",
+                                          "numberType": "float"}) 
+    qc_summary.append({"title": "PCR Bottleneck Coefficient (PBC)",
+                                          "value": str(round2(quality_metric[pref + "pbc_qc"][0]["PBC1"])),
+                                          "tooltip": "one-read non-mito read pairs / distinct non-mito read pairs",
+                                          "numberType": "float"})
+    qc_summary.append({"title": "Filtered & Deduped Reads",
+                                          "value": str(quality_metric[pref + "nodup_flagstat_qc"][0]["total"]),
+                                          "numberType": "integer"})
+    ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
     return qc_summary
