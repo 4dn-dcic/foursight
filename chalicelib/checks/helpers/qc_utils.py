@@ -120,8 +120,11 @@ def calculate_qc_metric_tagalign(file_uuid, key):
                                           "value": str(round2(quality_metric[pref + "pbc_qc"][0]["PBC1"])),
                                           "tooltip": "one-read non-mito read pairs / distinct non-mito read pairs",
                                           "numberType": "float"})
+    final_reads = quality_metric[pref + "nodup_flagstat_qc"][0]["read1"]  # PE
+    if not final_reads:
+        final_reads = quality_metric[pref + "nodup_flagstat_qc"][0]["total"]  # SE
     qc_summary.append({"title": "Filtered & Deduped Reads",
-                                          "value": str(quality_metric[pref + "nodup_flagstat_qc"][0]["total"]),
+                                          "value": str(final_reads),
                                           "numberType": "integer"})
     ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
     return qc_summary
