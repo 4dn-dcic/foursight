@@ -428,8 +428,6 @@ def check_status_mismatch(connection, **kwargs):
                 listatus = litem.get('properties').get('status', 'in review by lab')
                 llabel = litem.get('item_type')
                 lstatus = STATUS_LEVEL.get(listatus)
-                if not lstatus:
-                    import pdb; pdb.set_trace()
                 # add info to tracking dict
                 id2status[luuid] = lstatus
                 id2item[luuid] = {'label': llabel, 'status': listatus}
