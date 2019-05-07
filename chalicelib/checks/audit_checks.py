@@ -23,6 +23,7 @@ STATUS_LEVEL = {
     'planned': 2,
     'archived to project': 2,
     'in review by lab': 1,
+    'released to lab': 1,
     'submission in progress': 1,
     'to be uploaded by workflow': 1,
     'uploading': 1,
@@ -397,8 +398,7 @@ def check_status_mismatch(connection, **kwargs):
         lab = es_item.get('embedded').get('lab').get('display_title')
         status = es_item.get('properties').get('status', 'in review by lab')
         opfs = _get_all_other_processed_files(es_item)
-
-        id2links[es_item.get('uuid')] = es_item.get('linked_uuids')
+        id2links[es_item.get('uuid')] = [li.get('uuid') for li in es_item.get('linked_uuids_embedded')]
         id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
         id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'lab': lab,
                                         'description': desc, 'to_ignore': list(set(opfs))}
@@ -428,7 +428,8 @@ def check_status_mismatch(connection, **kwargs):
                 listatus = litem.get('properties').get('status', 'in review by lab')
                 llabel = litem.get('item_type')
                 lstatus = STATUS_LEVEL.get(listatus)
-
+                if not lstatus:
+                    import pdb; pdb.set_trace()
                 # add info to tracking dict
                 id2status[luuid] = lstatus
                 id2item[luuid] = {'label': llabel, 'status': listatus}
@@ -448,14 +449,10 @@ def check_status_mismatch(connection, **kwargs):
             key = '{} | {} | {} | {}'.format(
                 eid, eset.get('label'), eset.get('status'), eset.get('description'))
             brief_output.setdefault(eset.get('lab'), {}).update({key: len(mids)})
-            #key = '{}    {}    {}    {}    {}'.format(
-            #    eid, eset.get('label'), eset.get('status'), eset.get('lab'), eset.get('description'))
-            #brief_output[key] = len(mids)
             for mid in mids:
                 mitem = id2item.get(mid)
                 val = '{} | {} | {}'.format(mid, mitem.get('label'), mitem.get('status'))
                 full_output.setdefault(eset.get('lab'), {}).setdefault(key, []).append(val)
-                #full_output.setdefault(key, []).append(val)
         check.status = 'WARN'
         check.summary = "MISMATCHED STATUSES FOUND"
         check.description = 'Released or pre-release items have linked items with unreleased status'
