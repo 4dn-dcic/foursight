@@ -377,7 +377,7 @@ def check_status_mismatch(connection, **kwargs):
     id2links = {}
     id2status = {}
     id2item = {}
-    stati2search = ['released', 'released_to_project', 'pre-release']
+    stati2search = ['released', 'released_to_project']
     items2search = ['ExperimentSet']
     item_search = 'search/?frame=object'
     for item in items2search:
