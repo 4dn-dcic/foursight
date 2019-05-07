@@ -1091,7 +1091,7 @@ class TestCheckUtils(FSTest):
         action_res = check_utils.run_check_or_action(self.connection, 'test_checks/test_action_error', {})
         self.assertTrue(action_res['status'] == 'FAIL')
         # this output is a list
-        self.assertTrue('Action is missing check_name/called_by in its kwargs' in ''.join(action_res['output']))
+        self.assertTrue('Action requires check_name and called_by in its kwargs' in ''.join(action_res['output']))
         self.assertTrue(action_res['description'] == 'Action failed to run. See output.')
 
     def test_run_action_exception(self):
