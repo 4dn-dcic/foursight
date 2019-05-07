@@ -564,6 +564,9 @@ def _get_all_other_processed_files(item):
     # get directly linked other processed files
     for pfinfo in item.get('properties').get('other_processed_files', []):
         toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
+        hgv = pfinfo.get('higlass_view_config')
+        if hgv:
+            toignore.append(hgv)
     # experiment sets can also have linked opfs from experiment
     expts = item.get('embedded').get('experiments_in_set')
     if expts is not None:
@@ -572,6 +575,9 @@ def _get_all_other_processed_files(item):
             if opfs is not None:
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
+                    hgv = pfinfo.get('higlass_view_config')
+                    if hgv:
+                        toignore.append(hgv)
     return toignore
 
 
