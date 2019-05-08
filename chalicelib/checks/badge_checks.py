@@ -285,7 +285,7 @@ def gold_biosamples(connection, **kwargs):
     if to_add or to_remove:
         check.status = 'WARN'
         check.summary = 'Gold biosample badges need patching'
-        check.description = '{} biosamples need gold badges patched.'.format(len(to_add) + len(to_remove.keys()))
+        check.description = '{} biosamples need gold badges patched. '.format(len(to_add) + len(to_remove.keys()))
         check.description += 'Yellow_flag_biosamples check must pass before patching.'
         yellow_check = init_check_res(connection, 'yellow_flag_biosamples')
         latest_yellow = yellow_check.get_latest_result()
