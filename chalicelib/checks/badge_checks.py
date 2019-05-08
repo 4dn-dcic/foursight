@@ -194,8 +194,12 @@ def yellow_flag_biosamples(connection, **kwargs):
                     diff_auth = True
                 elif auth_type == 'Ploidy Authentication':
                     ploidy = True
-            if 'tem cell' in ''.join(bs_types) and bcc.get('passage_number', 0) > 10 and not karyotype:
-                messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
+            passages = bcc.get('passage_number', 0)
+            if 'tem cell' in ''.join(bs_types) and not karyotype:
+                if passages > 10:
+                    messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
+                elif not passages:
+                    messages.append('Biosample is a stem cell line with unknown passage number missing karyotype')
         if result.get('biosample_type') == 'In vitro differentiated cells' and not diff_auth:
             messages.append('Differentiated biosample missing differentiation authentication')
         if 'HAP-1' in result.get('biosource_summary') and not ploidy:
@@ -282,7 +286,12 @@ def gold_biosamples(connection, **kwargs):
         check.status = 'WARN'
         check.allow_action = True
         check.summary = 'Gold biosample badges need patching'
-        check.description = '{} biosamples need gold badges patched'.format(len(to_add) + len(to_remove.keys()))
+        check.description = '{} biosamples need gold badges patched.'.format(len(to_add) + len(to_remove.keys()))
+        check.description += 'Yellow_flag_biosamples check must pass before patching.'
+        yellow_check = init_check_res(connection, 'yellow_flag_biosamples')
+        latest_yellow = yellow_check.get_latest_result()
+        if latest_yellow['status'] == 'PASS':
+            check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'Gold biosample badges up-to-date'
