@@ -181,6 +181,14 @@
                 "hotseat": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -192,7 +200,15 @@
             "morning_checks": {
                 "hotseat": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
+                    "dependencies": ["yellow_flag_biosamples"]
+                },
+                "staging": {
+                    "kwargs": {"primary": true},
+                    "dependencies": ["yellow_flag_biosamples"]
+                },
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": ["yellow_flag_biosamples"]
                 }
             }
         }
@@ -351,6 +367,22 @@
     },
     "identify_files_without_qc_summary_bb": {
         "title": "Bigbed files without quality metric summary",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "identify_files_without_qc_summary_bed": {
+        "title": "Bed files without quality metric summary",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
@@ -704,7 +736,7 @@
         }
     },
     "check_higlass_items_for_new_files": {
-        "title": "Create new Higlass Items for Files",
+        "title": "Create new Items for Files",
         "group": "Higlass checks",
         "schedule": {
             "hourly_checks": {
@@ -724,7 +756,7 @@
         }
     },
     "check_higlass_items_for_modified_files": {
-        "title": "Update Higlass Items for modified Files",
+        "title": "Update Items for modified Files",
         "group": "Higlass checks",
         "schedule": {
             "hourly_checks_2": {
@@ -744,13 +776,13 @@
         }
     },
     "check_higlass_items_for_queried_files": {
-        "title": "Manually update Higlass Items for Files",
+        "title": "Manually update Items for Files",
         "group": "Higlass checks",
         "schedule": {},
         "display": ["data", "hotseat", "webdev"]
     },
     "check_expsets_processedfiles_for_new_higlass_items": {
-        "title": "Create Higlass Items for Processed Files in modified Experiment Sets",
+        "title": "Create new Items for ExpSets (Processed Files)",
         "group": "Higlass checks",
         "schedule": {
             "hourly_checks": {
@@ -770,7 +802,7 @@
         }
     },
     "check_expsets_processedfiles_for_modified_higlass_items": {
-        "title": "Update Higlass Items for Processed Files in modified Experiment Sets",
+        "title": "Update existing Items for ExpSets (Processed Files)",
         "group": "Higlass checks",
         "schedule": {
             "hourly_checks_2": {
@@ -790,13 +822,13 @@
         }
     },
     "check_expsets_processedfiles_for_queried_higlass_items": {
-        "title": "Manually update Higlass Items for Processed Files in Experiment Sets",
+        "title": "Manually update for ExpSets (Processed Files)",
         "group": "Higlass checks",
         "schedule": {},
         "display": ["data", "webdev", "hotseat"]
     },
     "check_expsets_otherprocessedfiles_for_new_higlass_items": {
-        "title": "Create Higlass Items for Other Processed (aka Supplementary) Files in Experiment Sets",
+        "title": "Create/Update Items for ExpSets (Supplementary Files)",
         "group": "Higlass checks",
         "schedule": {
             "morning_checks": {
@@ -816,7 +848,7 @@
         }
     },
     "check_expsets_otherprocessedfiles_for_queried_files": {
-        "title": "Manually update Higlass Items for Other Processed (aka Supplementary) Files in Experiment Sets",
+        "title": "Manually update Items for ExpSets (Supplementary Files)",
         "group": "Higlass checks",
         "schedule": {},
         "display": ["data", "webdev", "hotseat"]

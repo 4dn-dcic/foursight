@@ -353,8 +353,8 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
 
     # If no search query was provided, fail
     if not search_queries:
-        check.summary = check.description = "Search queries must be provided."
-        check.status = 'FAIL'
+        check.summary = check.description = "No search query provided, nothing to update."
+        check.status = 'PASS'
         check.allow_action = False
         return check
 
@@ -816,8 +816,8 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
 
     # If no search query was provided, fail
     if not search_queries:
-        check.summary = check.description = "Search queries must be provided."
-        check.status = 'FAIL'
+        check.summary = check.description = "No search query provided, nothing to update."
+        check.status = 'PASS'
         check.allow_action = False
         return check
 
@@ -1164,10 +1164,10 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
     check.queries = []
     check.action = action_name
 
-    # If no search query was provided and find_opfs_missing_higlass is False, fail
+    # If no search query was provided and find_opfs_missing_higlass is False, pass with no results
     if not (search_queries or find_opfs_missing_higlass):
-        check.summary = check.description = "If find_opfs_missing_higlass is false, Search queries must be provided."
-        check.status = 'FAIL'
+        check.summary = check.description = "No search query provided, nothing to update."
+        check.status = 'PASS'
         check.allow_action = False
         return check
 
@@ -1242,8 +1242,8 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
                     if not higlass_modified_date:
                         return True
 
-                    # If the Higlass Item is older than the ExpSet, it should be considered.
-                    if higlass_modified_date < expset_last_modified_date:
+                    # If the Higlass Item is older than the ExpSet, it should be considered. Give about 10 minutes of leeway.
+                    if higlass_modified_date + timedelta(minutes=10) < expset_last_modified_date:
                         return True
                 else:
                     # If the ExpSet is new, then consider this group.
