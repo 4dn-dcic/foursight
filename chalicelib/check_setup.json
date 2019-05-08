@@ -200,15 +200,15 @@
             "morning_checks": {
                 "hotseat": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
+                    "dependencies": ["yellow_flag_biosamples"]
                 },
                 "staging": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
+                    "dependencies": ["yellow_flag_biosamples"]
                 },
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
+                    "dependencies": ["yellow_flag_biosamples"]
                 }
             }
         }
