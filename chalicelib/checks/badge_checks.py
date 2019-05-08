@@ -218,7 +218,6 @@ def yellow_flag_biosamples(connection, **kwargs):
                          'Keep badge and edit messages': to_edit,
                          'Keep badge (no change)': ok}
     check.brief_output[RELEASED_KEY] = {
-        #'Add badge': list(to_add.keys()),
         'Add badge': ['{} missing {}'.format(
             k, ', '.join([item[item.index('missing') + 8:] for item in flagged[k]])
         ) for k in to_add.keys()],
@@ -280,7 +279,6 @@ def gold_biosamples(connection, **kwargs):
         sop = True if all([bcc.get('follows_sop', '') == 'Yes' for bcc in result.get('cell_culture_details', [])]) else False
         if sop and result.get('status') not in REV:
             gold.append(result['@id'])
-    # correct source
     to_add, to_remove, ok = compare_badges(gold, 'Biosample', 'gold-biosample', connection.ff_env)
     check.action = 'patch_gold_biosample_badges'
     if to_add or to_remove:
@@ -418,81 +416,6 @@ def patch_badges_for_replicate_numbers(connection, **kwargs):
     else:
         action.status = 'DONE'
         action.description = 'Patching badges successful for replicate numbers'
-    return action
-
-
-@check_function()
-def tier1_metadata_present(connection, **kwargs):
-    '''
-    Check for Tier 1 Biosample badges that are missing one or more of the following
-    pieces of required metadata:
-    1) culture_start_date
-    2) culture_harvest_date
-    3) culture_duration
-    4) morphology_image
-    5) a linked cell_culture_details item
-
-    Action patches badges with a message detailing which of the above pieces of
-    metadata is missing.
-    '''
-    check = init_check_res(connection, 'tier1_metadata_present')
-
-    results = ff_utils.search_metadata('search/?biosource.cell_line_tier=Tier+1&type=Biosample',
-                                       ff_env=connection.ff_env)
-    missing = {REV_KEY: {}, RELEASED_KEY: {}}
-    msg_dict = {'culture_start_date': 'Tier 1 Biosample missing Culture Start Date',
-                # item will fail validation if missing a start date - remove this part of check?
-                'culture_duration': 'Tier 1 Biosample missing Culture Duration',
-                'morphology_image': 'Tier 1 Biosample missing Morphology Image'}
-    for result in results:
-        if len(result.get('biosource')) != 1:
-            continue
-        elif not result.get('cell_culture_details'):
-            missing[result['@id']] = 'Tier 1 Biosample missing Cell Culture Details'
-        else:
-            messages = [val for key, val in msg_dict.items() if not result['cell_culture_details'].get(key)]
-            if messages:
-                if result.get('status') in REV:
-                    missing[REV_KEY][result['@id']] = '; '.join(messages)
-                else:
-                    missing[RELEASED_KEY][result['@id']] = '; '.join(messages)
-
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
-        missing[RELEASED_KEY], 'Biosample', 'tier1-metadata-missing', connection.ff_env
-    )
-    check.action = 'patch_badges_for_tier1_metadata'
-    if to_add or to_remove or to_edit:
-        check.status = 'WARN'
-        check.summary = 'Tier 1 metadata badges need patching'
-        check.description = '{} tier 1 biosamples need metadata_missing badges patched'.format(
-            len(to_add.values()) + len(to_remove.values()) + len(to_edit.values())
-        )
-    else:
-        check.status = 'PASS'
-        check.summary = 'Tier 1 metadata badges up-to-date'
-        check.description = 'No tier 1 biosamples need metadata_missing badges patched'
-    check.full_output = {'Add badge': to_add,
-                         'Keep badge (no change)': ok,
-                         'Remove badge': to_remove,
-                         'Keep badge and edit messages': to_edit}
-    check.brief_output = missing
-    # if to_add or to_remove or to_edit:
-    #     check.allow_action = True
-    return check
-
-
-@action_function()
-def patch_badges_for_tier1_metadata(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_for_tier1_metadata')
-    tier1_check_result = action.get_associated_check_result(kwargs)
-
-    action.output = patch_badges(tier1_check_result['full_output'], 'tier1-metadata-missing', connection.ff_env)
-    if [action.output[key] for key in list(action.output.keys()) if 'failure' in key and action.output[key]]:
-        action.status = 'FAIL'
-        action.description = 'Some items failed to patch. See below for details.'
-    else:
-        action.status = 'DONE'
-        action.description = 'Patching badges successful for missing tier1 metadata.'
     return action
 
 
