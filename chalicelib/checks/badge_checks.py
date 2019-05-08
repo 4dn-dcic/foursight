@@ -284,7 +284,6 @@ def gold_biosamples(connection, **kwargs):
     check.action = 'patch_gold_biosample_badges'
     if to_add or to_remove:
         check.status = 'WARN'
-        check.allow_action = True
         check.summary = 'Gold biosample badges need patching'
         check.description = '{} biosamples need gold badges patched.'.format(len(to_add) + len(to_remove.keys()))
         check.description += 'Yellow_flag_biosamples check must pass before patching.'
@@ -385,6 +384,7 @@ def repsets_have_bio_reps(connection, **kwargs):
         check.description = '{} replicate experiment sets need replicate badges patched'.format(
             len(to_add.values()) + len(to_remove.values()) + len(to_edit.values())
         )
+        check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'Replicate number badges up-to-date'
@@ -405,8 +405,6 @@ def repsets_have_bio_reps(connection, **kwargs):
                     check.brief_output[RELEASED_KEY][key][k].append(item)
             if name in check.full_output['Keep badge (no change)']:
                 check.brief_output[RELEASED_KEY]['Keep badge (no change)'][k].append(item)
-    if to_add or to_remove or to_edit:
-        check.allow_action = True
     return check
 
 
