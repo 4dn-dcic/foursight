@@ -23,6 +23,7 @@ STATUS_LEVEL = {
     'planned': 2,
     'archived to project': 2,
     'in review by lab': 1,
+    'released to lab': 1,
     'submission in progress': 1,
     'to be uploaded by workflow': 1,
     'uploading': 1,
@@ -376,7 +377,7 @@ def check_status_mismatch(connection, **kwargs):
     id2links = {}
     id2status = {}
     id2item = {}
-    stati2search = ['released', 'released_to_project', 'pre-release']
+    stati2search = ['released', 'released_to_project']
     items2search = ['ExperimentSet']
     item_search = 'search/?frame=object'
     for item in items2search:
@@ -397,8 +398,7 @@ def check_status_mismatch(connection, **kwargs):
         lab = es_item.get('embedded').get('lab').get('display_title')
         status = es_item.get('properties').get('status', 'in review by lab')
         opfs = _get_all_other_processed_files(es_item)
-
-        id2links[es_item.get('uuid')] = es_item.get('linked_uuids')
+        id2links[es_item.get('uuid')] = [li.get('uuid') for li in es_item.get('linked_uuids_embedded')]
         id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
         id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'lab': lab,
                                         'description': desc, 'to_ignore': list(set(opfs))}
@@ -428,7 +428,6 @@ def check_status_mismatch(connection, **kwargs):
                 listatus = litem.get('properties').get('status', 'in review by lab')
                 llabel = litem.get('item_type')
                 lstatus = STATUS_LEVEL.get(listatus)
-
                 # add info to tracking dict
                 id2status[luuid] = lstatus
                 id2item[luuid] = {'label': llabel, 'status': listatus}
@@ -448,14 +447,10 @@ def check_status_mismatch(connection, **kwargs):
             key = '{} | {} | {} | {}'.format(
                 eid, eset.get('label'), eset.get('status'), eset.get('description'))
             brief_output.setdefault(eset.get('lab'), {}).update({key: len(mids)})
-            #key = '{}    {}    {}    {}    {}'.format(
-            #    eid, eset.get('label'), eset.get('status'), eset.get('lab'), eset.get('description'))
-            #brief_output[key] = len(mids)
             for mid in mids:
                 mitem = id2item.get(mid)
                 val = '{} | {} | {}'.format(mid, mitem.get('label'), mitem.get('status'))
                 full_output.setdefault(eset.get('lab'), {}).setdefault(key, []).append(val)
-                #full_output.setdefault(key, []).append(val)
         check.status = 'WARN'
         check.summary = "MISMATCHED STATUSES FOUND"
         check.description = 'Released or pre-release items have linked items with unreleased status'
@@ -567,6 +562,9 @@ def _get_all_other_processed_files(item):
     # get directly linked other processed files
     for pfinfo in item.get('properties').get('other_processed_files', []):
         toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
+        hgv = pfinfo.get('higlass_view_config')
+        if hgv:
+            toignore.append(hgv)
     # experiment sets can also have linked opfs from experiment
     expts = item.get('embedded').get('experiments_in_set')
     if expts is not None:
@@ -575,6 +573,9 @@ def _get_all_other_processed_files(item):
             if opfs is not None:
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
+                    hgv = pfinfo.get('higlass_view_config')
+                    if hgv:
+                        toignore.append(hgv)
     return toignore
 
 
