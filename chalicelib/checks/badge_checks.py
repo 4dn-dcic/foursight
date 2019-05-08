@@ -155,6 +155,16 @@ def patch_badges(full_output, badge_name, ffenv, single_message=''):
 
 @check_function()
 def yellow_flag_biosamples(connection, **kwargs):
+    '''
+    Checks biosamples for required metadata:
+    1. Culture harvest date, doubling number, passage number, culture duration
+    2. Morphology image
+    3. Karyotyping (authentication doc or string field) for any biosample derived
+    from pluripotent cell line that has been passaged more than 10 times beyond
+    the first thaw of the original vial.
+    4. Differentiation authentication for differentiated cells.
+    5. HAP-1 biosamples must have ploidy authentication.
+    '''
     check = init_check_res(connection, 'yellow_flag_biosamples')
 
     results = ff_utils.search_metadata('search/?type=Biosample', ff_env=connection.ff_env)
@@ -251,22 +261,9 @@ def gold_biosamples(connection, **kwargs):
     '''
     Gold level commendation criteria:
     1. Tier 1 or Tier 2 Cells obtained from the approved 4DN source and grown
-    precisely according to the approved SOP as specified including any additional
-    authentication eg. HAP-1 haploid line requires a FACs plot demonstrating less
-    than 5% diploid cells.
-    2. Culture start and harvest dates
-    3. Passage number
-    4. Total Days in Culture
-    5. Doubling number
-    6. Karyotyping is required for gold commendation for any biosample derived from
-    a 4DN pluripotent cell line that have been passaged more than 10 times beyond
-    the first thaw of the original vial.  Karyotype reports obtained in house or
-    by a service should be submitted as authentication.  However, for some genomics
-    experiments karyotype information can be derived from sequencing data and a
-    description of the derived karyotype can be submitted.
-    7. For differentiated cells that are derived from any tiered cell lines
-    1) the 4DN SOP must be precisely followed and
-    2) authentication as specified in the SOP must be submitted (links to SOPs).
+    precisely according to the approved SOP including any additional
+    authentication (eg. HAP-1 haploid line requires ploidy authentication).
+    2. All required metadata present (does not have a biosample warning badge).
     '''
     check = init_check_res(connection, 'gold_biosamples')
 
@@ -275,7 +272,7 @@ def gold_biosamples(connection, **kwargs):
     results = ff_utils.search_metadata(search_url, ff_env=connection.ff_env)
     gold = []
     for result in results:
-    # follows SOP w/ no deviations
+        # follows SOP w/ no deviations
         sop = True if all([bcc.get('follows_sop', '') == 'Yes' for bcc in result.get('cell_culture_details', [])]) else False
         if sop and result.get('status') not in REV:
             gold.append(result['@id'])
