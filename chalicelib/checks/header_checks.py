@@ -174,8 +174,8 @@ def patch_static_headers_inSitu_HiC(connection, **kwargs):
 @check_function()
 def prepare_static_headers_dilution_HiC(connection, **kwargs):
     check = init_check_res(connection, 'prepare_static_headers_dilution_HiC')
-    add_search='/search/?experiments_in_set.experiment_type=dilution+Hi-C&type=ExperimentSet&frame=object'
-    remove_search='/search/?experiments_in_set.experiment_type!=dilution+Hi-C&type=ExperimentSet&frame=object'
+    add_search='/search/?experiments_in_set.experiment_type=Dilution+Hi-C&type=ExperimentSet&frame=object'
+    remove_search='/search/?experiments_in_set.experiment_type!=Dilution+Hi-C&type=ExperimentSet&frame=object'
     header_at_id='/static-sections/7627f4eb-9f2d-4171-9e9b-87ab800ab5cd/'
     check.action = 'patch_static_headers_dilution_HiC'
     find_items_for_header_processing(connection, check, header_at_id,
