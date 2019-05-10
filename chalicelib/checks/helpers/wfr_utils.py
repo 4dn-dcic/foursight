@@ -90,7 +90,7 @@ accepted_versions = {
     # OFFICIAL
     'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
-    'dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
     'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-RE
@@ -98,7 +98,7 @@ accepted_versions = {
     # OFFICIAL  # NO-NORM
     'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE
-    'micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
@@ -132,7 +132,7 @@ accepted_versions = {
     'MC-3C': [''],
     'MC-Hi-C': [''],
     'Hi-ChIP': [''],
-    'DAM-ID seq': [''],
+    'DamID-seq': [''],
     'RNA-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
