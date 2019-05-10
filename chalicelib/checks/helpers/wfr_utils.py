@@ -96,7 +96,7 @@ accepted_versions = {
     # OFFICIAL  # NO-RE
     'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-NORM
-    'capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE
     'micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
@@ -124,7 +124,7 @@ accepted_versions = {
     # OFFICIAL
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
-    'ChIP-seq':      ['ENCODE_CHIP_Pipeline_1.1.1'],
+    'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1'],
     'single cell Repli-seq': [''],
     'cryomilling TCC': [''],
     'single cell Hi-C': [''],

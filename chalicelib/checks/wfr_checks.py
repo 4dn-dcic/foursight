@@ -724,7 +724,7 @@ def capture_hic_status(connection, **kwargs):
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_type = 'capture Hi-C'
+    exp_type = 'Capture Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
     # Build the query, add date and lab if available
