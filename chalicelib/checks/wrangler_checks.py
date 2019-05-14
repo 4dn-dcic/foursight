@@ -455,7 +455,7 @@ def identify_files_without_filesize(connection, **kwargs):
     default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
     filetype = kwargs.get('file_type') or default_filetype
     stati = 'status=' + (kwargs.get('status') or default_stati)
-    search_query = 'search/?type={}&{}&frame=object'.format(filetype, stati)
+    search_query = 'search/?type={}&{}&frame=object&file_size=No value'.format(filetype, stati)
     ff = kwargs.get('file_format')
     if ff is not None:
         ff = '&file_format.file_format=' + ff
@@ -467,35 +467,35 @@ def identify_files_without_filesize(connection, **kwargs):
         search_query += addon
     problem_files = []
     file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
+    if not file_hits:
+        check.status = 'PASS'
+        return check
+
     for hit in file_hits:
-        if hit.get('file_size') is None:
-            hit_dict = {
-                'accession': hit.get('accession'),
-                'uuid': hit.get('uuid'),
-                '@type': hit.get('@type'),
-                'upload_key': hit.get('upload_key')
-            }
-            problem_files.append(hit_dict)
+        hit_dict = {
+            'accession': hit.get('accession'),
+            'uuid': hit.get('uuid'),
+            '@type': hit.get('@type'),
+            'upload_key': hit.get('upload_key')
+        }
+        problem_files.append(hit_dict)
     check.brief_output = '{} files with no file size'.format(len(problem_files))
     check.full_output = problem_files
-    if problem_files:
-        check.status = 'WARN'
-        check.summary = 'File metadata found without file_size'
-        status_str = 'pre-release/released/released to project/uploaded'
-        if kwargs.get('status'):
-            status_str = kwargs.get('status')
-        type_str = ''
-        if kwargs.get('file_type'):
-            type_str = kwargs.get('file_type') + ' '
-        ff_str = ''
-        if kwargs.get('file_format'):
-            ff_str = kwargs.get('file_format') + ' '
-        check.description = "{cnt} {type}{ff}files that are {st} don't have file_size.".format(
-            cnt=len(problem_files), type=type_str, st=status_str, ff=ff_str)
-        check.action_message = "Will attempt to patch file_size for %s files." % str(len(problem_files))
-        check.allow_action = True  # allows the action to be run
-    else:
-        check.status = 'PASS'
+    check.status = 'WARN'
+    check.summary = 'File metadata found without file_size'
+    status_str = 'pre-release/released/released to project/uploaded'
+    if kwargs.get('status'):
+        status_str = kwargs.get('status')
+    type_str = ''
+    if kwargs.get('file_type'):
+        type_str = kwargs.get('file_type') + ' '
+    ff_str = ''
+    if kwargs.get('file_format'):
+        ff_str = kwargs.get('file_format') + ' '
+    check.description = "{cnt} {type}{ff}files that are {st} don't have file_size.".format(
+        cnt=len(problem_files), type=type_str, st=status_str, ff=ff_str)
+    check.action_message = "Will attempt to patch file_size for %s files." % str(len(problem_files))
+    check.allow_action = True  # allows the action to be run
     return check
 
 
