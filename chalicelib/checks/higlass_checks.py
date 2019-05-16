@@ -10,6 +10,7 @@ from dcicutils import ff_utils
 import requests
 import json
 import time
+import re
 from copy import deepcopy
 
 def get_reference_files(connection):
@@ -527,6 +528,7 @@ def create_higlass_items_for_files(connection, check_name, action_name, called_b
                 files={
                     "reference":ref_files,
                     "content":[file_info],
+                    "height": 600,
                 },
                 higlass_item={
                     "uuid":existing_higlass_uuid,
@@ -991,12 +993,13 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
             if sc_uuids:
                 existing_higlass_uuid = sc_uuids[0]["uuid"]
 
-            # Create or update a HiglassItem based on these files.
+            # Create or update a Higlass Item based on these files.
             higlass_item_results = create_or_update_higlass_item(
                 connection,
                 files={
                     "reference":ref_files,
                     "content":files_for_viewconf,
+                    "height": max(300, 40 * len(files_for_viewconf)),
                 },
                 higlass_item={
                     "uuid": existing_higlass_uuid,
@@ -1456,6 +1459,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
                 files={
                     "reference": reference_files,
                     "content": data_files,
+                    "height": max(300, 40 * len(data_files)),
                 },
                 higlass_item={
                     "uuid": info.get("higlass_item_uuid", None),
@@ -1723,13 +1727,21 @@ def files_not_registered_with_higlass(connection, **kwargs):
             # check for higlass_uid and, if confirm_on_higlass is True, check the higlass server
             if file_info.get('higlass_uid'):
                 if kwargs['confirm_on_higlass'] is True:
-                    higlass_get = higlass_server + '/api/v1/tileset_info/?d=%s' % file_info['higlass_uid']
-                    hg_res = requests.get(higlass_get)
-                    # Make sure the response completed successfully and did not return an error.
-                    if hg_res.status_code >= 400:
-                        files_to_be_reg[file_format].append(file_info)
-                    elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
-                        files_to_be_reg[file_format].append(file_info)
+                    # Chromsize files use a different URL
+                    if procfile['file_format'].get('file_format') == "chromsizes":
+                        higlass_get = higlass_server + '/api/v1/chrom-sizes/?id=%s' % file_info['higlass_uid']
+                        hg_res = requests.get(higlass_get)
+                        if hg_res.status_code >= 400:
+                            files_to_be_reg[file_format].append(file_info)
+                    else:
+                        higlass_get = higlass_server + '/api/v1/tileset_info/?d=%s' % file_info['higlass_uid']
+                        hg_res = requests.get(higlass_get)
+
+                        # Make sure the response completed successfully and did not return an error.
+                        if hg_res.status_code >= 400:
+                            files_to_be_reg[file_format].append(file_info)
+                        elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
+                            files_to_be_reg[file_format].append(file_info)
             else:
                 files_to_be_reg[file_format].append(file_info)
 
@@ -1770,7 +1782,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.allow_action = True
     return check
 
-@action_function(file_accession=None)
+@action_function(file_accession=None, force_new_higlass_uid=False)
 def patch_file_higlass_uid(connection, **kwargs):
     """ After running "files_not_registered_with_higlass",
     Try to register files with higlass.
@@ -1778,7 +1790,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     Args:
         connection: The connection to Fourfront.
         **kwargs, which may include:
-            file_accession: Only check this file.
+            file_accession(string, optional, default=None): Only check this file.
+            force_new_higlass_uid (boolean, optional, default=False): If True, create a new higlass_uid for this file.
 
     Returns:
         A check/action object.
@@ -1786,7 +1799,7 @@ def patch_file_higlass_uid(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_higlass_uid')
     action_logs = {
         'patch_failure': {},
-        'patch_success': [],
+        'patch_success': {},
         'registration_failure': {},
         'registration_success': 0
     }
@@ -1858,7 +1871,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 action_logs['registration_failure'][hit['accession']] = err_msg
                 continue
             # register with previous higlass_uid if already there
-            if hit.get('higlass_uid'):
+            if hit.get('higlass_uid') and not kwargs['force_new_higlass_uid']:
                 payload['uuid'] = hit['higlass_uid']
 
             res = requests.post(
@@ -1873,6 +1886,12 @@ def patch_file_higlass_uid(connection, **kwargs):
                 action_logs['registration_success'] += 1
                 # Get higlass's uuid. This is Fourfront's higlass_uid.
                 response_higlass_uid = res.json()['uuid']
+
+                # Higlass server may have returned a bytestring, and Python forced that into a string. Remove the b'' section.
+                matches = re.match("b'([^']+)'", res.json()['uuid'])
+                if matches and matches.groups():
+                    response_higlass_uid = matches.group(1)
+
                 if 'higlass_uid' not in hit or hit['higlass_uid'] != response_higlass_uid:
                     patch_data = {'higlass_uid': response_higlass_uid}
                     try:
@@ -1882,8 +1901,9 @@ def patch_file_higlass_uid(connection, **kwargs):
                             type = type(e),
                             message = str(e)
                         )
+                        pass
                     else:
-                        action_logs['patch_success'].append(hit['accession'])
+                        action_logs['patch_success'][hit['accession']] = response_higlass_uid
             else:
                 # Add reason for failure. res.json not available on 500 resp
                 try:
@@ -1987,6 +2007,7 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
         files(dict)         : Info on the files used to create the viewconfig and Item. Also sets Item status.
             reference(list)     : A list of Reference files accessions
             content(list)       : A list of file dicts.
+            height(integer, optional, default=300): The maximum height of the Higlass Item.
         attributions(dict)  : Higlass Item permission settings using uuids.
             lab(string)
             contributing_labs(list) : A list of contributing lab uuids.
@@ -2007,6 +2028,9 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
     # start with the reference files and add the target files
     file_accessions = [ f["accession"] for f in files["content"] ]
     to_post = {'files': files["reference"] + file_accessions}
+
+    # Add the height
+    to_post["height"] = files.get("height", 300)
 
     # post the files to the visualization endpoint
     res = requests.post(
