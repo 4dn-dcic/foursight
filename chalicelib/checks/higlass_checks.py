@@ -1659,7 +1659,6 @@ def files_not_registered_with_higlass(connection, **kwargs):
         search_queries_by_type[file_cat] = search_query
 
     for file_cat, search_query in search_queries_by_type.items():
-
         # Skip if there is no search query (most likely it was filtered out)
         if not search_query:
             continue
@@ -1703,7 +1702,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
                         and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
                         break
-                if 'upload_key' not in file_info:  # bw or beddb file not found
+                if 'upload_key' not in file_info:
+                    # bw or beddb file not found, do not consider this file for registration
                     continue
             else:
                 # mcool and bw files use themselves
@@ -1712,6 +1712,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 else:
                     not_found_upload_key.append(file_info['accession'])
                     continue
+
             # make sure file exists on s3
             typebucket_by_cat = {
                 "raw" : connection.ff_s3.raw_file_bucket,
