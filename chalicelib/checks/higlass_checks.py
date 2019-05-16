@@ -528,7 +528,6 @@ def create_higlass_items_for_files(connection, check_name, action_name, called_b
                 files={
                     "reference":ref_files,
                     "content":[file_info],
-                    "height": 600,
                 },
                 higlass_item={
                     "uuid":existing_higlass_uuid,
@@ -999,7 +998,6 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
                 files={
                     "reference":ref_files,
                     "content":files_for_viewconf,
-                    "height": max(300, 40 * len(files_for_viewconf)),
                 },
                 higlass_item={
                     "uuid": existing_higlass_uuid,
@@ -1459,7 +1457,6 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
                 files={
                     "reference": reference_files,
                     "content": data_files,
-                    "height": max(300, 40 * len(data_files)),
                 },
                 higlass_item={
                     "uuid": info.get("higlass_item_uuid", None),
@@ -2007,7 +2004,6 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
         files(dict)         : Info on the files used to create the viewconfig and Item. Also sets Item status.
             reference(list)     : A list of Reference files accessions
             content(list)       : A list of file dicts.
-            height(integer, optional, default=300): The maximum height of the Higlass Item.
         attributions(dict)  : Higlass Item permission settings using uuids.
             lab(string)
             contributing_labs(list) : A list of contributing lab uuids.
@@ -2028,9 +2024,6 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
     # start with the reference files and add the target files
     file_accessions = [ f["accession"] for f in files["content"] ]
     to_post = {'files': files["reference"] + file_accessions}
-
-    # Add the height
-    to_post["height"] = files.get("height", 300)
 
     # post the files to the visualization endpoint
     res = requests.post(
