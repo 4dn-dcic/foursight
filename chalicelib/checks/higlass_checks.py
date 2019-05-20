@@ -10,6 +10,7 @@ from dcicutils import ff_utils
 import requests
 import json
 import time
+import uuid
 from copy import deepcopy
 
 def get_reference_files(connection):
@@ -1867,9 +1868,13 @@ def patch_file_higlass_uid(connection, **kwargs):
                 err_msg = 'No filetype case specified for %s' % ftype
                 action_logs['registration_failure'][hit['accession']] = err_msg
                 continue
+
             # register with previous higlass_uid if already there
+            # otherwise, specify our own new higlass_uid with slugid
             if hit.get('higlass_uid') and not kwargs['force_new_higlass_uid']:
                 payload['uuid'] = hit['higlass_uid']
+            else:
+                payload['uuid'] = str(uuid.uuid4())
 
             res = requests.post(
                 higlass_server + '/api/v1/link_tile/',
