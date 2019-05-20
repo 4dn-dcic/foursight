@@ -10,7 +10,6 @@ from dcicutils import ff_utils
 import requests
 import json
 import time
-import re
 from copy import deepcopy
 
 def get_reference_files(connection):
@@ -1884,11 +1883,6 @@ def patch_file_higlass_uid(connection, **kwargs):
                 action_logs['registration_success'] += 1
                 # Get higlass's uuid. This is Fourfront's higlass_uid.
                 response_higlass_uid = res.json()['uuid']
-
-                # Higlass server may have returned a bytestring, and Python forced that into a string. Remove the b'' section.
-                matches = re.match("b'([^']+)'", res.json()['uuid'])
-                if matches and matches.groups():
-                    response_higlass_uid = matches.group(1)
 
                 if 'higlass_uid' not in hit or hit['higlass_uid'] != response_higlass_uid:
                     patch_data = {'higlass_uid': response_higlass_uid}
