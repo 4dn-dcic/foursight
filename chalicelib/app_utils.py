@@ -449,7 +449,10 @@ def process_view_result(connection, res, is_admin):
                     # json.loads followed by json.dumps handles binary storage in s3
                     res['assc_action'] = json.dumps(json.loads(assc_action), indent=4)
                 else:
-                    res['assc_action'] = 'Associated action has not finished.'
+                    res['assc_action'] = json.dumps(
+                        {'description': 'Associated action has not finished.', 'status': 'PEND'},
+                        indent=4
+                    )
                 # don't allow the action to be run again from this check
                 del res['action']
                 res['allow_action'] = False
