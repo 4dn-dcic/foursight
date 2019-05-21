@@ -13,7 +13,7 @@ As an initial disclaimer, Foursight environments are specifically made to work w
 You can perform a GET request to see the information for any environment (```staging``` in the example below). Please note that you must be logged in as admin to see this information or provide the correct `Authorization` header with your request.
 
 ```
-https://foursight.4dnucleome.org/api/environments/staging
+https://foursight.4dnucleome.org/environments/staging
 ```
 
 ## Dynamically creating environments

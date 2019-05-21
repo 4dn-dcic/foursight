@@ -79,8 +79,8 @@ def auth0_callback():
     """
     request = app.current_request
     req_dict = request.to_dict()
-    resp_headers = {'Location': '/api/view/data,staging'}
-    domain = req_dict.get('headers', {}).get('host')
+    domain, context = get_domain_and_context(req_dict)
+    resp_headers = {'Location': context + 'view/data,staging'}
     params = req_dict.get('query_params')
     if not params:
         return forbidden_response()
@@ -95,7 +95,7 @@ def auth0_callback():
         'client_id': auth0_client,
         'client_secret': auth0_secret,
         'code': auth0_code,
-        'redirect_uri': ''.join(['https://', domain, '/api/callback/'])
+        'redirect_uri': ''.join(['https://', domain, context, 'callback/'])
     }
     json_payload = json.dumps(payload)
     headers = { 'content-type': "application/json" }
@@ -114,10 +114,11 @@ def auth0_callback():
 @app.route('/', methods=['GET'])
 def index():
     """
-    Redirect with 302 to /api/view/data
+    Redirect with 302 to /view/data
     Non-protected route
     """
-    resp_headers = {'Location': '/api/view/data'}
+    domain, context = get_domain_and_context(app.current_request.to_dict())
+    resp_headers = {'Location': context + 'view/data'}
     return Response(status_code=302, body=json.dumps(resp_headers),
                     headers=resp_headers)
 
@@ -140,14 +141,15 @@ def view_run_route(environ, check, method):
     Protected route
     """
     req_dict = app.current_request.to_dict()
+    domain, context = get_domain_and_context(req_dict)
     query_params = req_dict.get('query_params', {})
     if check_authorization(req_dict):
         if method == 'action':
-            return view_run_action(environ, check, query_params)
+            return view_run_action(environ, check, query_params, context)
         else:
-            return view_run_check(environ, check, query_params)
+            return view_run_check(environ, check, query_params, context)
     else:
-        return forbidden_response()
+        return forbidden_response(context)
 
 
 @app.route('/view/{environ}', methods=['GET'])
@@ -156,8 +158,8 @@ def view_route(environ):
     Non-protected route
     """
     req_dict = app.current_request.to_dict()
-    domain = req_dict.get('headers', {}).get('host', "")
-    return view_foursight(environ, check_authorization(req_dict), domain)
+    domain, context = get_domain_and_context(req_dict)
+    return view_foursight(environ, check_authorization(req_dict), domain, context)
 
 
 @app.route('/view/{environ}/{check}/{uuid}', methods=['GET'])
@@ -166,9 +168,9 @@ def view_check_route(environ, check, uuid):
     Protected route
     """
     req_dict = app.current_request.to_dict()
-    domain = req_dict.get('headers', {}).get('host', "")
+    domain, context = get_domain_and_context(req_dict)
     if check_authorization(req_dict):
-        return view_foursight_check(environ, check, uuid, True, domain)
+        return view_foursight_check(environ, check, uuid, True, domain, context)
     else:
         return forbidden_response()
 
@@ -183,8 +185,9 @@ def history_route(environ, check):
     query_params = req_dict.get('query_params')
     start = int(query_params.get('start', '0')) if query_params else 0
     limit = int(query_params.get('limit', '25')) if query_params else 25
-    domain = req_dict.get('headers', {}).get('host', "")
-    return view_foursight_history(environ, check, start, limit, check_authorization(req_dict), domain)
+    domain, context = get_domain_and_context(req_dict)
+    return view_foursight_history(environ, check, start, limit,
+                                  check_authorization(req_dict), domain, context)
 
 
 @app.route('/checks/{environ}/{check}/{uuid}', methods=['GET'])
