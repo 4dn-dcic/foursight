@@ -20,12 +20,12 @@
                         {{title}}
                     </a>
                 </div>
-                <div class="col-sm-1">
+                <div class="col-sm-auto">
                     {% if check.get('assc_action') and check.get('assc_action_status')%}
                         <span class="{{'action-icon assc-action-' + check['assc_action_status'].lower()}}"></span>
                     {% endif %}
                 </div>
-                <div class="col-sm-5">
+                <div class="col">
                     <span class="opacity-transition" id={{'summary-' + environment + '-' + check['name']}} style="font-weight:350;">
                         {{check_summary[:57] + '...' if (check_summary and check_summary|length > 60) else check_summary}}
                     </span>
@@ -84,7 +84,7 @@
                         Result history
                     </a>
                     {% if check.get('kwargs') %}
-                        <form action={{'/api/view_run/' + environment + '/' + check['name'] + '/check'}} method="GET">
+                        <form action={{'/api/view_run/' + environment + '/' + check['name'] + '/check'}} method="GET" target="_blank">
                             {% for kwarg in check['kwargs'] %}
                                 {% if kwarg not in ['uuid', '_run_info', 'runtime_seconds', 'queue_action'] %}
                                     <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
@@ -95,6 +95,7 @@
                                     {% endif %}
                                 {% elif kwarg == 'queue_action' %}
                                     {% if check.get('action') and check.get('allow_action') %}
+                                        <span style="font-weight: bold; margin-right: 5px">{{kwarg}}</span>
                                         {% if is_admin %}
                                             <input style="width: 35%;" type="text" name={{kwarg}} value="{{check['kwargs'][kwarg]}}" /><br>
                                         {% else %}
@@ -105,7 +106,7 @@
 
                             {% endfor %}
                             {% if is_admin %}
-                                <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit" target="_blank">
+                                <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit">
                                     Queue check
                                 </button>
                             {% endif %}
