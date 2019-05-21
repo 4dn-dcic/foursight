@@ -409,6 +409,18 @@ class TestAppUtils(FSTest):
         self.assertTrue(res.status_code == 403)
         self.assertTrue(res.body == 'Forbidden. Login on the /view/<environment> page.')
 
+    def test_get_domain_and_context(self):
+        domain, context = app_utils.get_domain_and_context(
+            {'headers': {'host': 'xyz'}, 'context': {'path': '/api/123'}}
+        )
+        self.assertTrue(domain == 'xyz')
+        self.assertTrue(context == '/api/')
+        # with no context provided
+        domain, context = app_utils.get_domain_and_context(
+            {'headers': {'host': 'xyz'}}
+        )
+        self.assertTrue(context == '/')
+
     def test_process_response(self):
         response = chalice.Response(
             status_code = 200,
