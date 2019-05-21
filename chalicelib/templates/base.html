@@ -21,8 +21,8 @@
                     </a>
                 </div>
                 <div class="col-sm-1">
-                    {% if check.get('assc_action') %}
-                        <span class="{{'action-icon assc-action-' + check['assc_action']['status'].lower()}}"></span>
+                    {% if check.get('assc_action') and check.get('assc_action_status')%}
+                        <span class="{{'action-icon assc-action-' + check['assc_action_status'].lower()}}"></span>
                     {% endif %}
                 </div>
                 <div class="col-sm-5">

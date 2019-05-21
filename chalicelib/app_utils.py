@@ -447,12 +447,12 @@ def process_view_result(connection, res, is_admin):
                 # it most likely means the action is still running
                 if assc_action is not None:
                     # json.loads followed by json.dumps handles binary storage in s3
-                    res['assc_action'] = json.dumps(json.loads(assc_action), indent=4)
+                    assc_action_contents = json.loads(assc_action)
+                    res['assc_action_status'] = assc_action_contents['status']
+                    res['assc_action'] = json.dumps(assc_action_contents, indent=4)
                 else:
-                    res['assc_action'] = json.dumps(
-                        {'description': 'Associated action has not finished.', 'status': 'PEND'},
-                        indent=4
-                    )
+                    res['assc_action_status'] = 'PEND'
+                    res['assc_action'] = 'Associated action has not finished.'
                 # don't allow the action to be run again from this check
                 del res['action']
                 res['allow_action'] = False
