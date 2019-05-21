@@ -20,9 +20,14 @@
                         {{title}}
                     </a>
                 </div>
-                <div class="col-sm-6">
+                <div class="col-sm-1">
+                    {% if check.get('assc_action') %}
+                        <span class="{{'action-icon assc-action-' + check['assc_action']['status'].lower()}}"></span>
+                    {% endif %}
+                </div>
+                <div class="col-sm-5">
                     <span class="opacity-transition" id={{'summary-' + environment + '-' + check['name']}} style="font-weight:350;">
-                        {{check_summary[:77] + '...' if (check_summary and check_summary|length > 80) else check_summary}}
+                        {{check_summary[:57] + '...' if (check_summary and check_summary|length > 60) else check_summary}}
                     </span>
                 </div>
                 <div class="col-sm-2 pull-right">
@@ -91,7 +96,7 @@
                                 {% endif %}
                             {% endfor %}
                             {% if is_admin %}
-                                <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit">
+                                <button style="margin-top: 5px;" class="btn btn-default btn-sm" type="submit" target="_blank">
                                     Queue check
                                 </button>
                             {% endif %}
@@ -167,6 +172,21 @@
     }
     .in-line{
         display: inline-block;
+    }
+    .action-icon {
+        height: 11px;
+        width: 11px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .assc-action-done {
+        background-color: #55aa57;
+    }
+    .assc-action-fail {
+        background-color: #b84947;
+    }
+    .assc-action-pend {
+        background-color: #e7c418;
     }
     .check-pass, .check-done {
         background-color: #dff0d8;
