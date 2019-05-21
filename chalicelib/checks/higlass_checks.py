@@ -10,6 +10,7 @@ from dcicutils import ff_utils
 import requests
 import json
 import time
+import uuid
 from copy import deepcopy
 
 def get_reference_files(connection):
@@ -991,7 +992,7 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
             if sc_uuids:
                 existing_higlass_uuid = sc_uuids[0]["uuid"]
 
-            # Create or update a HiglassItem based on these files.
+            # Create or update a Higlass Item based on these files.
             higlass_item_results = create_or_update_higlass_item(
                 connection,
                 files={
@@ -1658,7 +1659,6 @@ def files_not_registered_with_higlass(connection, **kwargs):
         search_queries_by_type[file_cat] = search_query
 
     for file_cat, search_query in search_queries_by_type.items():
-
         # Skip if there is no search query (most likely it was filtered out)
         if not search_query:
             continue
@@ -1702,7 +1702,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
                         and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
                         break
-                if 'upload_key' not in file_info:  # bw or beddb file not found
+                if 'upload_key' not in file_info:
+                    # bw or beddb file not found, do not consider this file for registration
                     continue
             else:
                 # mcool and bw files use themselves
@@ -1711,6 +1712,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 else:
                     not_found_upload_key.append(file_info['accession'])
                     continue
+
             # make sure file exists on s3
             typebucket_by_cat = {
                 "raw" : connection.ff_s3.raw_file_bucket,
@@ -1723,13 +1725,21 @@ def files_not_registered_with_higlass(connection, **kwargs):
             # check for higlass_uid and, if confirm_on_higlass is True, check the higlass server
             if file_info.get('higlass_uid'):
                 if kwargs['confirm_on_higlass'] is True:
-                    higlass_get = higlass_server + '/api/v1/tileset_info/?d=%s' % file_info['higlass_uid']
-                    hg_res = requests.get(higlass_get)
-                    # Make sure the response completed successfully and did not return an error.
-                    if hg_res.status_code >= 400:
-                        files_to_be_reg[file_format].append(file_info)
-                    elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
-                        files_to_be_reg[file_format].append(file_info)
+                    # Chromsize files use a different URL
+                    if procfile['file_format'].get('file_format') == "chromsizes":
+                        higlass_get = higlass_server + '/api/v1/chrom-sizes/?id=%s' % file_info['higlass_uid']
+                        hg_res = requests.get(higlass_get)
+                        if hg_res.status_code >= 400:
+                            files_to_be_reg[file_format].append(file_info)
+                    else:
+                        higlass_get = higlass_server + '/api/v1/tileset_info/?d=%s' % file_info['higlass_uid']
+                        hg_res = requests.get(higlass_get)
+
+                        # Make sure the response completed successfully and did not return an error.
+                        if hg_res.status_code >= 400:
+                            files_to_be_reg[file_format].append(file_info)
+                        elif 'error' in hg_res.json().get(file_info['higlass_uid'], {}):
+                            files_to_be_reg[file_format].append(file_info)
             else:
                 files_to_be_reg[file_format].append(file_info)
 
@@ -1770,7 +1780,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.allow_action = True
     return check
 
-@action_function(file_accession=None)
+@action_function(file_accession=None, force_new_higlass_uid=False)
 def patch_file_higlass_uid(connection, **kwargs):
     """ After running "files_not_registered_with_higlass",
     Try to register files with higlass.
@@ -1778,7 +1788,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     Args:
         connection: The connection to Fourfront.
         **kwargs, which may include:
-            file_accession: Only check this file.
+            file_accession(string, optional, default=None): Only check this file.
+            force_new_higlass_uid (boolean, optional, default=False): If True, create a new higlass_uid for this file.
 
     Returns:
         A check/action object.
@@ -1786,7 +1797,7 @@ def patch_file_higlass_uid(connection, **kwargs):
     action = init_action_res(connection, 'patch_file_higlass_uid')
     action_logs = {
         'patch_failure': {},
-        'patch_success': [],
+        'patch_success': {},
         'registration_failure': {},
         'registration_success': 0
     }
@@ -1857,9 +1868,13 @@ def patch_file_higlass_uid(connection, **kwargs):
                 err_msg = 'No filetype case specified for %s' % ftype
                 action_logs['registration_failure'][hit['accession']] = err_msg
                 continue
+
             # register with previous higlass_uid if already there
-            if hit.get('higlass_uid'):
+            # otherwise, specify our own new higlass_uid with slugid
+            if hit.get('higlass_uid') and not kwargs['force_new_higlass_uid']:
                 payload['uuid'] = hit['higlass_uid']
+            else:
+                payload['uuid'] = str(uuid.uuid4())
 
             res = requests.post(
                 higlass_server + '/api/v1/link_tile/',
@@ -1873,6 +1888,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 action_logs['registration_success'] += 1
                 # Get higlass's uuid. This is Fourfront's higlass_uid.
                 response_higlass_uid = res.json()['uuid']
+
                 if 'higlass_uid' not in hit or hit['higlass_uid'] != response_higlass_uid:
                     patch_data = {'higlass_uid': response_higlass_uid}
                     try:
@@ -1882,8 +1898,9 @@ def patch_file_higlass_uid(connection, **kwargs):
                             type = type(e),
                             message = str(e)
                         )
+                        pass
                     else:
-                        action_logs['patch_success'].append(hit['accession'])
+                        action_logs['patch_success'][hit['accession']] = response_higlass_uid
             else:
                 # Add reason for failure. res.json not available on 500 resp
                 try:
