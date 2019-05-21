@@ -80,7 +80,7 @@ def auth0_callback():
     request = app.current_request
     req_dict = request.to_dict()
     domain, context = get_domain_and_context(req_dict)
-    resp_headers = {'Location': context + 'view/data,staging'}
+    resp_headers = {'Location': context + 'view/' + DEFAULT_ENV}
     params = req_dict.get('query_params')
     if not params:
         return forbidden_response()
@@ -114,11 +114,11 @@ def auth0_callback():
 @app.route('/', methods=['GET'])
 def index():
     """
-    Redirect with 302 to /view/data
+    Redirect with 302 to view page of DEFAULT_ENV
     Non-protected route
     """
     domain, context = get_domain_and_context(app.current_request.to_dict())
-    resp_headers = {'Location': context + 'view/data'}
+    resp_headers = {'Location': context + 'view/' + DEFAULT_ENV}
     return Response(status_code=302, body=json.dumps(resp_headers),
                     headers=resp_headers)
 
