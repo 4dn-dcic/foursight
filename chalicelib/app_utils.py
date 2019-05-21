@@ -154,10 +154,8 @@ def get_jwt(request_dict):
 
 
 def forbidden_response():
-    return Response(
-        status_code=403,
-        body='Forbidden. Login on the /api/view/<environ> page.'
-        )
+    return Response(status_code=403,
+                    body='Forbidden. Login on the /api/view/<environ> page.')
 
 
 def process_response(response):
@@ -233,10 +231,8 @@ def view_run_check(environ, check, params):
     queued_uuid = queue_check(environ, check, params)
     # redirect to view page with a 302 so it isn't cached
     resp_headers = {'Location': '/'.join(['/api/view', environ, check, queued_uuid])}
-    return Response(
-        status_code=302,
-        body=json.dumps(resp_headers),
-        headers=resp_headers)
+    return Response(status_code=302, body=json.dumps(resp_headers),
+                    headers=resp_headers)
 
 
 def view_run_action(environ, action, params):
@@ -272,10 +268,8 @@ def view_run_action(environ, action, params):
             },
             status_code = 200
         )
-    return Response(
-        status_code=302,
-        body=json.dumps(resp_headers),
-        headers=resp_headers)
+    return Response(status_code=302, body=json.dumps(resp_headers),
+                    headers=resp_headers)
 
 
 def view_foursight(environ, is_admin=False, domain=""):

@@ -9,6 +9,7 @@ from chalicelib.app_utils import *
 app = Chalice(app_name='foursight')
 app.debug = True
 STAGE = os.environ.get('chalice_stage', 'dev')
+DEFAULT_ENV = 'data'
 
 ######### SCHEDULED FXNS #########
 
@@ -87,10 +88,8 @@ def auth0_callback():
     auth0_client = os.environ.get('CLIENT_ID', None)
     auth0_secret = os.environ.get('CLIENT_SECRET', None)
     if not (domain and auth0_code and auth0_client and auth0_secret):
-        return Response(
-            status_code=301,
-            body=json.dumps(resp_headers),
-            headers=resp_headers)
+        return Response(status_code=301, body=json.dumps(resp_headers),
+                        headers=resp_headers)
     payload = {
         'grant_type': 'authorization_code',
         'client_id': auth0_client,
@@ -109,18 +108,18 @@ def auth0_callback():
             expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)
             cookie_str +=  (' Expires=' + expires.strftime("%a, %d %b %Y %H:%M:%S GMT") + ';')
         resp_headers['Set-Cookie'] = cookie_str
-    return Response(
-        status_code=302,
-        body=json.dumps(resp_headers),
-        headers=resp_headers)
+    return Response(status_code=302, body=json.dumps(resp_headers), headers=resp_headers)
 
 
 @app.route('/', methods=['GET'])
 def index():
     """
-    Test route
+    Redirect with 302 to /api/view/data
+    Non-protected route
     """
-    return json.dumps({'foursight': 'insight into fourfront'})
+    resp_headers = {'Location': '/api/view/data'}
+    return Response(status_code=302, body=json.dumps(resp_headers),
+                    headers=resp_headers)
 
 
 @app.route('/introspect', methods=['GET'])
@@ -130,10 +129,7 @@ def introspect():
     """
     auth = check_authorization(app.current_request.to_dict())
     if auth:
-        return Response(
-            status_code=200,
-            body=json.dumps(app.current_request.to_dict())
-            )
+        return Response(status_code=200, body=json.dumps(app.current_request.to_dict()))
     else:
         return forbidden_response()
 
