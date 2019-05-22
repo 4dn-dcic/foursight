@@ -9,6 +9,7 @@ from chalicelib.app_utils import *
 app = Chalice(app_name='foursight')
 app.debug = True
 STAGE = os.environ.get('chalice_stage', 'dev')
+DEFAULT_ENV = 'data'
 
 ######### SCHEDULED FXNS #########
 
@@ -78,8 +79,8 @@ def auth0_callback():
     """
     request = app.current_request
     req_dict = request.to_dict()
-    resp_headers = {'Location': '/api/view/data,staging'}
-    domain = req_dict.get('headers', {}).get('host')
+    domain, context = get_domain_and_context(req_dict)
+    resp_headers = {'Location': context + 'view/' + DEFAULT_ENV}
     params = req_dict.get('query_params')
     if not params:
         return forbidden_response()
@@ -87,16 +88,14 @@ def auth0_callback():
     auth0_client = os.environ.get('CLIENT_ID', None)
     auth0_secret = os.environ.get('CLIENT_SECRET', None)
     if not (domain and auth0_code and auth0_client and auth0_secret):
-        return Response(
-            status_code=301,
-            body=json.dumps(resp_headers),
-            headers=resp_headers)
+        return Response(status_code=301, body=json.dumps(resp_headers),
+                        headers=resp_headers)
     payload = {
         'grant_type': 'authorization_code',
         'client_id': auth0_client,
         'client_secret': auth0_secret,
         'code': auth0_code,
-        'redirect_uri': ''.join(['https://', domain, '/api/callback/'])
+        'redirect_uri': ''.join(['https://', domain, context, 'callback/'])
     }
     json_payload = json.dumps(payload)
     headers = { 'content-type': "application/json" }
@@ -109,18 +108,19 @@ def auth0_callback():
             expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)
             cookie_str +=  (' Expires=' + expires.strftime("%a, %d %b %Y %H:%M:%S GMT") + ';')
         resp_headers['Set-Cookie'] = cookie_str
-    return Response(
-        status_code=302,
-        body=json.dumps(resp_headers),
-        headers=resp_headers)
+    return Response(status_code=302, body=json.dumps(resp_headers), headers=resp_headers)
 
 
 @app.route('/', methods=['GET'])
 def index():
     """
-    Test route
+    Redirect with 302 to view page of DEFAULT_ENV
+    Non-protected route
     """
-    return json.dumps({'foursight': 'insight into fourfront'})
+    domain, context = get_domain_and_context(app.current_request.to_dict())
+    resp_headers = {'Location': context + 'view/' + DEFAULT_ENV}
+    return Response(status_code=302, body=json.dumps(resp_headers),
+                    headers=resp_headers)
 
 
 @app.route('/introspect', methods=['GET'])
@@ -130,10 +130,7 @@ def introspect():
     """
     auth = check_authorization(app.current_request.to_dict())
     if auth:
-        return Response(
-            status_code=200,
-            body=json.dumps(app.current_request.to_dict())
-            )
+        return Response(status_code=200, body=json.dumps(app.current_request.to_dict()))
     else:
         return forbidden_response()
 
@@ -144,14 +141,15 @@ def view_run_route(environ, check, method):
     Protected route
     """
     req_dict = app.current_request.to_dict()
+    domain, context = get_domain_and_context(req_dict)
     query_params = req_dict.get('query_params', {})
     if check_authorization(req_dict):
         if method == 'action':
-            return view_run_action(environ, check, query_params)
+            return view_run_action(environ, check, query_params, context)
         else:
-            return view_run_check(environ, check, query_params)
+            return view_run_check(environ, check, query_params, context)
     else:
-        return forbidden_response()
+        return forbidden_response(context)
 
 
 @app.route('/view/{environ}', methods=['GET'])
@@ -160,8 +158,8 @@ def view_route(environ):
     Non-protected route
     """
     req_dict = app.current_request.to_dict()
-    domain = req_dict.get('headers', {}).get('host', "")
-    return view_foursight(environ, check_authorization(req_dict), domain)
+    domain, context = get_domain_and_context(req_dict)
+    return view_foursight(environ, check_authorization(req_dict), domain, context)
 
 
 @app.route('/view/{environ}/{check}/{uuid}', methods=['GET'])
@@ -170,9 +168,9 @@ def view_check_route(environ, check, uuid):
     Protected route
     """
     req_dict = app.current_request.to_dict()
-    domain = req_dict.get('headers', {}).get('host', "")
+    domain, context = get_domain_and_context(req_dict)
     if check_authorization(req_dict):
-        return view_foursight_check(environ, check, uuid, True, domain)
+        return view_foursight_check(environ, check, uuid, True, domain, context)
     else:
         return forbidden_response()
 
@@ -187,8 +185,9 @@ def history_route(environ, check):
     query_params = req_dict.get('query_params')
     start = int(query_params.get('start', '0')) if query_params else 0
     limit = int(query_params.get('limit', '25')) if query_params else 25
-    domain = req_dict.get('headers', {}).get('host', "")
-    return view_foursight_history(environ, check, start, limit, check_authorization(req_dict), domain)
+    domain, context = get_domain_and_context(req_dict)
+    return view_foursight_history(environ, check, start, limit,
+                                  check_authorization(req_dict), domain, context)
 
 
 @app.route('/checks/{environ}/{check}/{uuid}', methods=['GET'])

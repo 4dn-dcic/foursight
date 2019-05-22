@@ -150,10 +150,6 @@ class TestAppRoutes(FSTest):
     environ = 'mastertest' # hopefully this is up
     conn = app_utils.init_connection(environ)
 
-    def test_home_route(self):
-        res = app.index()
-        self.assertTrue(json.loads(res) == {'foursight': 'insight into fourfront'})
-
     def test_view_foursight(self):
         res = app_utils.view_foursight(self.environ) # not is_admin
         self.assertTrue(res.headers == {u'Content-Type': u'text/html'})
@@ -165,7 +161,7 @@ class TestAppRoutes(FSTest):
         # run a check, which redirects to future check result
         res2 = app_utils.view_run_check(self.environ, 'indexing_progress', {})
         self.assertTrue(res2.status_code == 302)
-        self.assertTrue('/api/view/' + self.environ + '/indexing_progress/' in res2.body)
+        self.assertTrue('/view/' + self.environ + '/indexing_progress/' in res2.body)
         # get check uuid from res location
         chk_uuid = res2.headers['Location'].split('/')[-1]
         # running action w/ an check brings you to the action bound to a check
@@ -411,7 +407,19 @@ class TestAppUtils(FSTest):
     def test_forbidden_response(self):
         res = app_utils.forbidden_response()
         self.assertTrue(res.status_code == 403)
-        self.assertTrue(res.body == 'Forbidden. Login on the /api/view/<environ> page.')
+        self.assertTrue(res.body == 'Forbidden. Login on the /view/<environment> page.')
+
+    def test_get_domain_and_context(self):
+        domain, context = app_utils.get_domain_and_context(
+            {'headers': {'host': 'xyz'}, 'context': {'path': '/api/123'}}
+        )
+        self.assertTrue(domain == 'xyz')
+        self.assertTrue(context == '/api/')
+        # with no context provided
+        domain, context = app_utils.get_domain_and_context(
+            {'headers': {'host': 'xyz'}}
+        )
+        self.assertTrue(context == '/')
 
     def test_process_response(self):
         response = chalice.Response(
@@ -423,7 +431,7 @@ class TestAppUtils(FSTest):
         response.body = 'A' * 6000000
         too_long_resp = app_utils.process_response(response)
         self.assertTrue(too_long_resp.status_code == 413)
-        self.assertTrue(too_long_resp.body == 'Body size exceeded 6 MB maximum. Try visiting /api/view/data.')
+        self.assertTrue(too_long_resp.body == 'Body size exceeded 6 MB maximum.')
 
     def test_trim_output(self):
         short_output = {'some_field': 'some_value'}
