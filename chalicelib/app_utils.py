@@ -479,6 +479,11 @@ def process_view_result(connection, res, is_admin):
                 # don't allow the action to be run again from this check
                 del res['action']
                 res['allow_action'] = False
+            elif res.get('allow_action') is True:
+                # if there is an action + allow action is set but the action has
+                # not yet run, display an icon status to signify this
+                res['assc_action_status'] = 'ready'
+
             latest_action = action.get_latest_result()
             if latest_action:
                 res['latest_action'] = json.dumps(latest_action, indent=4)

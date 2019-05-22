@@ -17,7 +17,7 @@
             <div class='row'>
                 <div class="col-sm-4">
                     <div class="col-sm-1" style="padding:0;" align="center">
-                        {% if check.get('assc_action') and check.get('assc_action_status')%}
+                        {% if check.get('assc_action_status')%}
                             <span class="{{'action-icon assc-action-' + check['assc_action_status'].lower()}}"></span>
                         {% endif %}
                     </div>
@@ -199,6 +199,9 @@
     }
     .assc-action-pend {
         background-color: #e7c418;
+    }
+    .assc-action-ready {
+        background-color: #b6b5b5;
     }
     .check-pass, .check-done {
         background-color: #dff0d8;
