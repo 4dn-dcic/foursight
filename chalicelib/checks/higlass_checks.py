@@ -1754,11 +1754,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
         check.status = 'PASS'
 
     file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
+
     if file_count != 0:
         check.status = 'WARN'
+        check.allow_action = True
     if check.summary:
         if file_count != 0:
-            check.summary += ' %s files ready for registration' % file_count
+            check.summary += ' %s files ready for registration.' % file_count
             check.description += ' %s files ready for registration.' % file_count
         elif check.status == 'PASS':
             check.summary += ' All files are registered.'
@@ -1768,16 +1770,14 @@ def files_not_registered_with_higlass(connection, **kwargs):
             check.description += ' No files to register.'
 
         if not kwargs['confirm_on_higlass']:
-            check.description += "Run with confirm_on_higlass=True to check against the higlass server"
+            check.description += " Run with confirm_on_higlass=True to check against the higlass server"
     else:
         check.summary = ' %s files ready for registration' % file_count
         check.description = check.summary
         if not kwargs['confirm_on_higlass']:
             check.description += "Run with confirm_on_higlass=True to check against the higlass server"
 
-
     check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
-    check.allow_action = True
     return check
 
 @action_function(file_accession=None, force_new_higlass_uid=False)
