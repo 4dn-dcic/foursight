@@ -1754,7 +1754,6 @@ def files_not_registered_with_higlass(connection, **kwargs):
         check.status = 'PASS'
 
     file_count = sum([len(files_to_be_reg[ft]) for ft in files_to_be_reg])
-    check.allow_action = False
 
     if file_count != 0:
         check.status = 'WARN'
