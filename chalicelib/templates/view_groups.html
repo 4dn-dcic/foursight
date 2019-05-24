@@ -30,7 +30,7 @@
                             {% for title in group %}
                                 {% if title != '_statuses' and title != '_name'%}
                                     <li>
-                                        {{check_result(group[title], title, env['environment'], is_admin)}}
+                                        {{check_result(group[title], title, env['environment'], is_admin, context)}}
                                     </li>
                                 {% endif %}
                             {% endfor %}
