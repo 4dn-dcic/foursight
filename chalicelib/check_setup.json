@@ -837,7 +837,7 @@
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true,
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "hotseat": {
