@@ -23,7 +23,8 @@ def md5run_status_extra_file(connection, **kwargs):
     check.status = 'PASS'
 
     # Build the query
-    query = '/search/?type=File&extra_files.status=uploading&extra_files.status=upload+failed'
+    query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
+             '&extra_files.status!=uploaded')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -204,8 +205,8 @@ def fastqc_status(connection, **kwargs):
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
-    # fastqc not properly reporting for nanopore reads
-    skip_instruments = ['PromethION', 'GridION', 'MinION']
+    # fastqc not properly reporting for long reads
+    skip_instruments = ['PromethION', 'GridION', 'MinION', 'PacBio RS II']
     skip_add = "".join(['&instrument!=' + i for i in skip_instruments])
     query += skip_add
 
