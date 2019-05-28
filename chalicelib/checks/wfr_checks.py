@@ -204,6 +204,11 @@ def fastqc_status(connection, **kwargs):
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
+    # fastqc not properly reporting for nanopore reads
+    skip_instruments = ['PromethION', 'GridION', 'MinION']
+    skip_add = "".join(['&instrument!=' + i for i in skip_instruments])
+    query += skip_add
+
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
