@@ -199,7 +199,7 @@ def extract_nz_chr(acc, auth):
     if nz_num:
         pass
     # Use 6 for Chiapet and all without nz (Soo & Burak)
-    elif exp_type in ['CHIA-pet', 'ChIA-PET', 'micro-C', 'DNase Hi-C', 'TrAC-loop']:
+    elif exp_type in ['ChIA-PET', 'Micro-C', 'DNase Hi-C', 'TrAC-loop']:
         nz_num = '6'
     else:
         return (None, None, 'No enzyme or accepted exp type')
