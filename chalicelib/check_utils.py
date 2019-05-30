@@ -181,10 +181,13 @@ def get_check_title_from_setup(check_name):
     return CHECK_SETUP.get(check_name, {}).get("title", check_name)
 
 
-def get_check_schedule(schedule_name):
+def get_check_schedule(schedule_name, conditions=None):
     """
     Go through CHECK_SETUP and return all the required info for to run a given
     schedule for any environment.
+
+    If a list of conditions is provided, filter the schedule to only include
+    checks that match ALL of the conditions.
 
     Returns a dictionary keyed by environ.
     The check running info is the standard format of:
@@ -194,6 +197,11 @@ def get_check_schedule(schedule_name):
     for check_name, detail in CHECK_SETUP.items():
         if not schedule_name in detail['schedule']:
             continue
+        # skip the check if conditions provided and any are not met
+        if conditions and isinstance(conditions, list):
+            check_conditions = detail.get('conditions', [])
+            if any([cond not in check_conditions for cond in conditions]):
+                continue
         for env_name, env_detail in detail['schedule'][schedule_name].items():
             check_str = '/'.join([detail['module'], check_name])
             run_info = [check_str, env_detail['kwargs'], env_detail['dependencies']]
