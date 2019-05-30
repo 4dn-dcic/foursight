@@ -971,11 +971,19 @@ class TestCheckUtils(FSTest):
 
     def test_get_check_schedule(self):
         schedule = check_utils.get_check_schedule('morning_checks')
-        self.assertTrue(len(schedule.keys()) > 0)
+        self.assertTrue(len(schedule) > 0)
         for env in schedule:
             self.assertTrue(isinstance(schedule[env], list))
             for check_info in schedule[env]:
                 assert len(check_info) == 3
+
+        # test with conditions
+        schedule_cond1 = check_utils.get_check_schedule('morning_checks', conditions=['put_env'])
+        self.assertTrue(0 < len(schedule_cond1) < len(schedule))
+        # test with conditions that don't exist (ALL must match)
+        schedule_cond2 = check_utils.get_check_schedule('morning_checks',
+                                                        conditions=['put_env', 'fake_condition'])
+        self.assertTrue(len(schedule_cond2) == 0)
 
     def test_get_checks_within_schedule(self):
         checks_in_sched = check_utils.get_checks_within_schedule('morning_checks')

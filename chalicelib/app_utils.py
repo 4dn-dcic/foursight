@@ -675,10 +675,10 @@ def run_put_environment(environ, env_data):
                 status_code = 500
             )
         else:
-            # if not testing, queue all checks to update/populate new env
+            # if not testing, queue checks with 'put_env' condition for the new env
             if 'test' not in get_stage_info()['queue_name']:
                 for sched in get_schedule_names():
-                    queue_scheduled_checks(environ, sched)
+                    queue_scheduled_checks(environ, sched, conditions=['put_env'])
             response = Response(
                 body = {
                     'status': 'success',
@@ -729,7 +729,7 @@ def run_get_environment(environ):
 
 ##### QUEUE / CHECK RUNNER FUNCTIONS #####
 
-def queue_scheduled_checks(sched_environ, schedule_name):
+def queue_scheduled_checks(sched_environ, schedule_name, conditions=None):
     """
     Given a str environment and schedule name, add the check info to the
     existing queue (or creates a new one if there is none). Then initiates 4
@@ -740,9 +740,13 @@ def queue_scheduled_checks(sched_environ, schedule_name):
     Run with schedule_name = None to skip adding the check group to the queue
     and just initiate the check runners.
 
+    Can optionally provide a list of conditions that will be used as used to
+    filter the checks to schedule based on the 'conditions' list in check_setup
+
     Args:
         sched_environ (str): Foursight environment name to schedule on
         schedule_name (str): schedule name from check_setup / app
+        conditions (list): optional list of one or more conditions to filter by
 
     Returns:
         dict: runner input of queued messages, used for testing
@@ -753,7 +757,7 @@ def queue_scheduled_checks(sched_environ, schedule_name):
             print('-RUN-> %s is not a valid environment. Cannot queue.' % sched_environ)
             return
         sched_environs = list_environments() if sched_environ == 'all' else [sched_environ]
-        check_schedule = get_check_schedule(schedule_name)
+        check_schedule = get_check_schedule(schedule_name, conditions)
         if not check_schedule:
             print('-RUN-> %s is not a valid schedule. Cannot queue.' % schedule_name)
             return
