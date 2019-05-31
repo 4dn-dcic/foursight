@@ -179,16 +179,18 @@ def biorxiv_is_now_published(connection, **kwargs):
         chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
         if not chkstatus:
             chkstatus = 'WARN'
+        check.allow_action = True
     else:
         chkdesc = "No Biorxivs to replace\n" + chkdesc
         if not chkstatus:
             chkstatus = 'PASS'
+        check.allow_action = False
 
     check.status = chkstatus
     check.summary = check.description = chkdesc
     check.brief_output = fndcnt
     check.full_output = fulloutput
-    check.allow_action = True
+
     return check
 
 
