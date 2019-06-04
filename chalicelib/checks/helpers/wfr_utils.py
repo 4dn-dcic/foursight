@@ -886,13 +886,12 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
     if missing_runs:
         for a_case in missing_runs:
             now = datetime.utcnow()
-
-            print((now-start).seconds)
-
+            acc = list(a_case.keys())[0]
+            print((now-start).seconds, acc)
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations.'
                 break
-            acc = list(a_case.keys())[0]
+
             for a_run in a_case[acc]:
                 started_runs += 1
                 url = start_missing_run(a_run, my_auth, my_env)
