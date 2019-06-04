@@ -10,7 +10,7 @@
             <ul>
                 {% for title in env['checks'] %}
                 <li>
-                    {{check_result(env['checks'][title], title, env['environment'], is_admin)}}
+                    {{check_result(env['checks'][title], title, env['environment'], is_admin, context)}}
                 </li>
                 {% endfor %}
             </ul>

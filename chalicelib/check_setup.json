@@ -14,6 +14,7 @@
     "indexing_progress": {
         "title": "Indexing progress",
         "group": "Elasticsearch checks",
+        "conditions": ["put_env"],
         "schedule": {
             "ten_min_checks": {
                 "all": {
@@ -26,6 +27,7 @@
     "elastic_beanstalk_health": {
         "title": "Elastic Beanstalk health",
         "group": "System checks",
+        "conditions": ["put_env"],
         "schedule": {
             "ten_min_checks": {
                 "all": {
@@ -44,6 +46,7 @@
     "status_of_elasticsearch_indices": {
         "title": "Status of elasticsearch indices",
         "group": "Elasticsearch checks",
+        "conditions": ["put_env"],
         "schedule": {
             "thirty_min_checks": {
                 "all": {
@@ -56,6 +59,7 @@
     "indexing_records": {
         "title": "Indexing records",
         "group": "Elasticsearch checks",
+        "conditions": ["put_env"],
         "schedule": {
             "thirty_min_checks": {
                 "all": {
@@ -92,6 +96,7 @@
     "fourfront_performance_metrics": {
         "title": "Fourfront performance metrics",
         "group": "System checks",
+        "conditions": ["put_env"],
         "schedule": {
             "morning_checks": {
                 "data": {
@@ -403,11 +408,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 }
             }
@@ -741,11 +746,11 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -761,7 +766,7 @@
         "schedule": {
             "hourly_checks_2": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "webdev": {
@@ -787,11 +792,11 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -807,11 +812,11 @@
         "schedule": {
             "hourly_checks_2": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -833,11 +838,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 },
                 "hotseat": {

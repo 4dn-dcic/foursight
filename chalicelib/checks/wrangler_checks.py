@@ -179,16 +179,18 @@ def biorxiv_is_now_published(connection, **kwargs):
         chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
         if not chkstatus:
             chkstatus = 'WARN'
+        check.allow_action = True
     else:
         chkdesc = "No Biorxivs to replace\n" + chkdesc
         if not chkstatus:
             chkstatus = 'PASS'
+        check.allow_action = False
 
     check.status = chkstatus
     check.summary = check.description = chkdesc
     check.brief_output = fndcnt
     check.full_output = fulloutput
-    check.allow_action = True
+
     return check
 
 
@@ -424,7 +426,7 @@ def change_in_item_counts(connection, **kwargs):
     total_counts_db = sum([diff_counts[coll]['DB'] for coll in diff_counts if diff_counts[coll]['DB'] >= 0])
     # see if we have negative counts
     # allow negative counts, but make note of, for the following types
-    purged_types = ['tracking_item']
+    purged_types = ['tracking_item', 'higlass_view_config']
     negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
     inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
     if negative_types:

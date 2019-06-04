@@ -153,11 +153,20 @@ def get_jwt(request_dict):
     return token
 
 
-def forbidden_response():
-    return Response(
-        status_code=403,
-        body='Forbidden. Login on the /api/view/<environ> page.'
-        )
+def get_domain_and_context(request_dict):
+    """
+    Given a request that has already been dict-transformed, get the host
+    and the url context for endpoints. Context will basically either be
+    '/api/' or '/'
+    """
+    domain = request_dict.get('headers', {}).get('host')
+    context = '/api/' if request_dict.get('context', {}).get('path', '').startswith('/api/') else '/'
+    return domain, context
+
+
+def forbidden_response(context="/"):
+    return Response(status_code=403,
+                    body='Forbidden. Login on the %s page.' % (context + 'view/<environment>'))
 
 
 def process_response(response):
@@ -166,7 +175,7 @@ def process_response(response):
     * Changing the response body if it is greater than 5.5 MB (Lambda body max is 6 MB)
     """
     if len(json.dumps(response.body)) > 5500000:
-        response.body = 'Body size exceeded 6 MB maximum. Try visiting /api/view/data.'
+        response.body = 'Body size exceeded 6 MB maximum.'
         response.status_code = 413
     return response
 
@@ -212,7 +221,7 @@ def trim_output(output, max_size=100000):
 ##### ROUTE RUNNING FUNCTIONS #####
 
 
-def view_run_check(environ, check, params):
+def view_run_check(environ, check, params, context="/"):
     """
     Called from the view endpoint (or manually, I guess), this queues the given
     check for the given environment and redirects to the view_foursight result
@@ -224,6 +233,7 @@ def view_run_check(environ, check, params):
         environ (str): Foursight environment name
         check (str): check function name
         params (dict): kwargs to use for check
+        context (str): string context to use for Foursight routing
 
     Returns:
         chalicelib.Response: redirect to future check landing page
@@ -232,14 +242,12 @@ def view_run_check(environ, check, params):
     params = query_params_to_literals(params)
     queued_uuid = queue_check(environ, check, params)
     # redirect to view page with a 302 so it isn't cached
-    resp_headers = {'Location': '/'.join(['/api/view', environ, check, queued_uuid])}
-    return Response(
-        status_code=302,
-        body=json.dumps(resp_headers),
-        headers=resp_headers)
+    resp_headers = {'Location': '/'.join([context + 'view', environ, check, queued_uuid])}
+    return Response(status_code=302, body=json.dumps(resp_headers),
+                    headers=resp_headers)
 
 
-def view_run_action(environ, action, params):
+def view_run_action(environ, action, params, context="/"):
     """
     Called from the view endpoint (or manually, I guess), this runs the given
     action for the given environment and refreshes the foursight view.
@@ -250,6 +258,7 @@ def view_run_action(environ, action, params):
         environ (str): Foursight environment name
         action (str): action function name
         params (dict): kwargs to use for check
+        context (str): string context to use for Foursight routing
 
     Returns:
         chalicelib.Response: redirect to check view that called this action
@@ -260,10 +269,10 @@ def view_run_action(environ, action, params):
     # redirect to calling check view page with a 302 so it isn't cached
     if 'check_name' in params and 'called_by' in params:
         check_detail = '/'.join([params['check_name'], params['called_by']])
-        resp_headers = {'Location': '/'.join(['/api/view', environ, check_detail])}
+        resp_headers = {'Location': '/'.join([context + 'view', environ, check_detail])}
     else:
         # no check so cannot redirect
-        act_path = '/'.join(['/api/checks', action, queued_uuid])
+        act_path = '/'.join([context + 'checks', action, queued_uuid])
         return Response(
             body = {
                 'status': 'success',
@@ -272,18 +281,17 @@ def view_run_action(environ, action, params):
             },
             status_code = 200
         )
-    return Response(
-        status_code=302,
-        body=json.dumps(resp_headers),
-        headers=resp_headers)
+    return Response(status_code=302, body=json.dumps(resp_headers),
+                    headers=resp_headers)
 
 
-def view_foursight(environ, is_admin=False, domain=""):
+def view_foursight(environ, is_admin=False, domain="", context="/"):
     """
     View a template of all checks from the given environment(s).
     Environ may be 'all' or a specific FS environments separated by commas.
     With 'all', this function can be somewhat slow.
     Domain is the current FS domain, needed for Auth0 redirect.
+    Context is the current context, usually "/api/" or "/"
     Returns a response with html content.
     Non-protected route
     """
@@ -329,6 +337,7 @@ def view_foursight(environ, is_admin=False, domain=""):
         load_time = get_load_time(),
         is_admin=is_admin,
         domain=domain,
+        context=context,
         running_checks=running_checks,
         queued_checks=queued_checks
     )
@@ -336,7 +345,7 @@ def view_foursight(environ, is_admin=False, domain=""):
     return process_response(html_resp)
 
 
-def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
+def view_foursight_check(environ, check, uuid, is_admin=False, domain="", context="/"):
     """
     View a formatted html response for a single check (environ, check, uuid)
     """
@@ -377,6 +386,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain=""):
         load_time = get_load_time(),
         is_admin=is_admin,
         domain=domain,
+        context=context,
         running_checks=running_checks,
         queued_checks=queued_checks
     )
@@ -404,8 +414,9 @@ def process_view_result(connection, res, is_admin):
     action by looking for '<check name>/action_records<check uuid>' object in
     s3. The contents will be the path to the action. If found, display as
     the "associated action" and disabled further runs of the action from the
-    check. Otherwise, allow runs of the action. For now, always show latest
-    action as well.
+    check; also edit the check summary to reflect that action has finished.
+    Otherwise, allow runs of the action.
+    For now, always show latest action as well.
     """
     # first check to see if res is just a string, meaning
     # the check didn't execute properly
@@ -453,12 +464,26 @@ def process_view_result(connection, res, is_admin):
                 # it most likely means the action is still running
                 if assc_action is not None:
                     # json.loads followed by json.dumps handles binary storage in s3
-                    res['assc_action'] = json.dumps(json.loads(assc_action), indent=4)
+                    assc_action_contents = json.loads(assc_action)
+                    res['assc_action_status'] = assc_action_contents['status']
+                    res['assc_action'] = json.dumps(assc_action_contents, indent=4)
+                    # update check summary
+                    if res.get('summary'):
+                        res['summary'] = 'ACTION %s: %s' % (assc_action_contents['status'], res['summary'])
                 else:
+                    res['assc_action_status'] = 'PEND'
                     res['assc_action'] = 'Associated action has not finished.'
+                    # update check summary
+                    if res.get('summary'):
+                        res['summary'] = 'ACTION PENDING: %s' % res['summary']
                 # don't allow the action to be run again from this check
                 del res['action']
                 res['allow_action'] = False
+            elif res.get('allow_action') is True:
+                # if there is an action + allow action is set but the action has
+                # not yet run, display an icon status to signify this
+                res['assc_action_status'] = 'ready'
+
             latest_action = action.get_latest_result()
             if latest_action:
                 res['latest_action'] = json.dumps(latest_action, indent=4)
@@ -469,7 +494,8 @@ def process_view_result(connection, res, is_admin):
     return res
 
 
-def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, domain=""):
+def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
+                           domain="", context="/"):
     """
     View a tabular format of the history of a given check or action (str name
     as the 'check' parameter) for the given environment. Results look like:
@@ -508,6 +534,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False, do
         stage=get_stage_info()['stage'],
         is_admin=is_admin,
         domain=domain,
+        context=context,
         running_checks=running_checks,
         queued_checks=queued_checks
     )
@@ -648,10 +675,10 @@ def run_put_environment(environ, env_data):
                 status_code = 500
             )
         else:
-            # if not testing, queue all checks to update/populate new env
+            # if not testing, queue checks with 'put_env' condition for the new env
             if 'test' not in get_stage_info()['queue_name']:
                 for sched in get_schedule_names():
-                    queue_scheduled_checks(environ, sched)
+                    queue_scheduled_checks(environ, sched, conditions=['put_env'])
             response = Response(
                 body = {
                     'status': 'success',
@@ -702,7 +729,7 @@ def run_get_environment(environ):
 
 ##### QUEUE / CHECK RUNNER FUNCTIONS #####
 
-def queue_scheduled_checks(sched_environ, schedule_name):
+def queue_scheduled_checks(sched_environ, schedule_name, conditions=None):
     """
     Given a str environment and schedule name, add the check info to the
     existing queue (or creates a new one if there is none). Then initiates 4
@@ -713,9 +740,13 @@ def queue_scheduled_checks(sched_environ, schedule_name):
     Run with schedule_name = None to skip adding the check group to the queue
     and just initiate the check runners.
 
+    Can optionally provide a list of conditions that will be used as used to
+    filter the checks to schedule based on the 'conditions' list in check_setup
+
     Args:
         sched_environ (str): Foursight environment name to schedule on
         schedule_name (str): schedule name from check_setup / app
+        conditions (list): optional list of one or more conditions to filter by
 
     Returns:
         dict: runner input of queued messages, used for testing
@@ -726,7 +757,7 @@ def queue_scheduled_checks(sched_environ, schedule_name):
             print('-RUN-> %s is not a valid environment. Cannot queue.' % sched_environ)
             return
         sched_environs = list_environments() if sched_environ == 'all' else [sched_environ]
-        check_schedule = get_check_schedule(schedule_name)
+        check_schedule = get_check_schedule(schedule_name, conditions)
         if not check_schedule:
             print('-RUN-> %s is not a valid schedule. Cannot queue.' % schedule_name)
             return
