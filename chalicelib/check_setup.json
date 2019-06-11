@@ -936,6 +936,18 @@
             }
         }
     },
+    "check_assay_classification_short_names": {
+        "title": "Check Assay Classification Short Names",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5run_status" : {
         "title": "a) MD5run",
         "group": "Pipeline checks",
