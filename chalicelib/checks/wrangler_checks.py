@@ -1043,6 +1043,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "context-dependent reporter expression": "Reporter Expression",
         "scanning electron microscopy": "SEM",
         "transmission electron microscopy": "TEM",
+        "immunofluorescence": "Immunofluorescence"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
                                         ff_env=connection.ff_env)
