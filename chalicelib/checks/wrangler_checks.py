@@ -1022,6 +1022,7 @@ def users_with_doppelganger(connection, **kwargs):
 @check_function()
 def check_assay_classification_short_names(connection, **kwargs):
     check = init_check_res(connection, 'check_assay_classification_short_names')
+    check.action = 'patch_assay_subclass_short'
 
     subclass_dict = {
         "replication timing": "Replication timing",
