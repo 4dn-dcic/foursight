@@ -1094,13 +1094,12 @@ def patch_assay_subclass_short(connection, **kwargs):
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_success': [], 'patch_failure': []}
     for k, v in check_res['full_output']['Patch by action'].items():
-        if not v['new subclass_short'].startswith('N/A'):
-            try:
-                ff_utils.patch_metadata({'assay_subclass_short': v['new subclass_short']}, k, ff_env=connection.ff_env)
-            except Exception as e:
-                action_logs['patch_failure'].append({k: str(e)})
-            else:
-                action_logs['patch_success'].append(k)
+        try:
+            ff_utils.patch_metadata({'assay_subclass_short': v['new subclass_short']}, k, ff_env=connection.ff_env)
+        except Exception as e:
+            action_logs['patch_failure'].append({k: str(e)})
+        else:
+            action_logs['patch_success'].append(k)
     if action_logs['patch_failure']:
         action.status = 'FAIL'
     else:
