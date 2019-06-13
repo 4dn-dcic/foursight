@@ -1048,33 +1048,43 @@ def check_assay_classification_short_names(connection, **kwargs):
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
                                         ff_env=connection.ff_env)
-    issues = {}
+    auto_patch = {}
+    manual = {}
     for exptype in exptypes:
+        value = ''
         if exptype.get('assay_classification', '').lower() in subclass_dict:
             value = subclass_dict[exptype['assay_classification'].lower()]
         elif exptype.get('assay_subclassification', '').lower() in subclass_dict:
             value = subclass_dict[exptype['assay_subclassification'].lower()]
         else:
-            value = 'N/A - Attention needed'
-        if exptype.get('assay_subclass_short') != value:
-            issues[exptype['@id']] = {
+            manual[exptype['@id']] = {
+                'classification': exptype['assay_classification'],
+                'subclassification': exptype['assay_subclassification'],
+                'current subclass_short': exptype.get('assay_subclass_short'),
+                'new subclass_short': 'N/A - Attention needed'
+            }
+        if value and exptype.get('assay_subclass_short') != value:
+            auto_patch[exptype['@id']] = {
                 'classification': exptype['assay_classification'],
                 'subclassification': exptype['assay_subclassification'],
                 'current subclass_short': exptype.get('assay_subclass_short'),
                 'new subclass_short': value
             }
-            if not value.startswith('N/A'):
-                check.allow_action = True
-    if issues:
+            check.allow_action = True
+    check.full_output = {'Manual patching needed': manual, 'Patch by action': auto_patch}
+    check.brief_output = {'Manual patching needed': list(manual.keys()), 'Patch by action': list(auto_patch.keys())}
+    if auto_patch or manual:
         check.status = 'WARN'
         check.summary = 'Experiment Type classifications need patching'
-        check.description = '{} experiment types need assay_subclass_short patched'.format(len(issues.keys()))
+        check.description = '{} experiment types need assay_subclass_short patched'.format(
+            len(manual.keys()) + len(auto_patch.keys())
+        )
+        if manual:
+            check.summary += ' - some manual patching needed'
     else:
         check.status = 'PASS'
         check.summary = 'Experiment Type classifications all set'
         check.description = 'No experiment types need assay_subclass_short patched'
-    check.brief_output = list(issues.keys())
-    check.full_output = issues
     return check
 
 
@@ -1083,7 +1093,7 @@ def patch_assay_subclass_short(connection, **kwargs):
     action = init_action_res(connection, 'patch_assay_subclass_short')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_success': [], 'patch_failure': []}
-    for k, v in check_res['full_output'].items():
+    for k, v in check_res['full_output']['Patch by action'].items():
         if not v['new subclass_short'].startswith('N/A'):
             try:
                 ff_utils.patch_metadata({'assay_subclass_short': v['new subclass_short']}, k, ff_env=connection.ff_env)
