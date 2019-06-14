@@ -539,7 +539,7 @@ def check_validation_errors(connection, **kwargs):
     '''
     check = init_check_res(connection, 'check_validation_errors')
 
-    search_url = 'search/?audit.INTERNAL_ACTION.category=validation+error&type=Item'
+    search_url = 'search/?validation_errors.name!=No+value&type=Item'
     results = ff_utils.search_metadata(search_url + '&field=@id', ff_env=connection.ff_env)
     if results:
         types = {item for result in results for item in result['@type'] if item != 'Item'}
