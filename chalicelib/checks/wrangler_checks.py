@@ -230,6 +230,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
         ]
         post_metadata = {f: biorxiv.get(f) for f in fields2transfer if biorxiv.get(f) is not None}
         post_metadata['ID'] = pmid
+        post_metadata['status'] = 'current'
         if 'url' in biorxiv:
             post_metadata['aka'] = biorxiv.get('url')
 
@@ -262,7 +263,9 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
                 # a single pub with that pmid is found - try to patch it
                 pub = pub_search_res[0]
                 for f, v in post_metadata.items():
-                    if f in pub and pub.get(f):
+                    if pub.get(f):
+                        if f == 'status' and pub.get(f) != v:
+                            fields_to_patch[f] = v
                         if f != 'ID':
                             existing_fields[f] = pub.get(f)
                     else:
@@ -290,6 +293,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             else:
                 error = 'POST failure for {} msg: {}'.format(pmid, error)
                 action_log[buuid] = error
+                continue
 
         # here we have successfully posted or patched a pub
         # set status of biorxiv to replaced
