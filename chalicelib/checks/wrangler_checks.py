@@ -236,6 +236,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
         # first try to post the pub
         pub_upd_res = None
+        pub = None
         try:
             pub_upd_res = ff_utils.post_metadata(post_metadata, 'publication', key=connection.ff_keys)
         except Exception as e:
@@ -244,7 +245,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             if pub_upd_res.get('status') != 'success':
                 error = pub_upd_res.get('status')
         if error:
-            if "'code': 409" in error:
+            if "'code': 422" in error:
                 # there is a conflict-see if pub is already in portal
                 pub_search_res = None
                 error = ''  # reset error
@@ -252,7 +253,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
                     search = 'search/?type=Publication&ID={}&frame=object'.format(post_metadata['ID'])
                     pub_search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
                 except Exception as e:
-                        error = 'SEARCH failure for {} - msg: {}'.format(pmid, str(e))
+                    error = 'SEARCH failure for {} - msg: {}'.format(pmid, str(e))
                 else:
                     if not pub_search_res or len(pub_search_res) != 1:
                         error = 'SEARCH for {} returned zero or multiple results'.format(pmid)
@@ -262,6 +263,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
                 # a single pub with that pmid is found - try to patch it
                 pub = pub_search_res[0]
+
                 for f, v in post_metadata.items():
                     if pub.get(f):
                         if f == 'status' and pub.get(f) != v:
@@ -294,9 +296,43 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
                 error = 'POST failure for {} msg: {}'.format(pmid, error)
                 action_log[buuid] = error
                 continue
+        else:
+            pub = pub_upd_res['@graph'][0]
 
         # here we have successfully posted or patched a pub
-        # set status of biorxiv to replaced
+        # generate a static header with link to new pub and set status of biorxiv to replaced
+        if not pub:
+            action_log[buuid] = 'NEW PUB INFO NOT AVAILABLE'
+            continue
+
+        header_alias = "static_header:replaced_biorxiv_{}_by_{}".format(biorxiv.get('ID'), pmid)
+        header_post = {
+            "body": "This biorxiv set was replaced by [{0}](https://data.4dnucleome.org/publications/{1}/).".format(pmid, pub.get('uuid')),
+            "award": biorxiv.get('award', {}).get('uuid'),
+            "lab": biorxiv.get('lab', {}).get('uuid'),
+            "name": "static-header.replaced_item_{}".format(biorxiv.get('ID')),
+            "section_type": "Item Page Header",
+            "options": {"title_icon": "info", "default_open": True, "filetype": "md", "collapsible": False},
+            "title": "Note: Replaced Biorxiv",
+            "status": 'released',
+            "aliases": [header_alias]
+        }
+        huuid = None
+        try:
+            header_res = ff_utils.post_metadata(header_post, 'static_section', key=connection.ff_keys)
+        except Exception as e:
+            error = 'FAILED TO POST STATIC SECTION {} - msg: '.format(str(e))
+        else:
+            try:
+                huuid = header_res['@graph'][0].get('uuid')
+            except Exception as e:
+                try:
+
+            if header_res.get('status') != 'success':
+                # see if validation and try to get existing section which may not yet be linked
+                pass
+            else:
+
         try:
             replace_res = ff_utils.patch_metadata({'status': 'replaced'}, buuid, key=connection.ff_keys)
         except Exception as e:
