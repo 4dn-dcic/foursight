@@ -864,7 +864,7 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": true},
                     "dependencies": []
                 }
             }
@@ -929,6 +929,22 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_assay_classification_short_names": {
+        "title": "Check Assay Classification Short Names",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []

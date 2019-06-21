@@ -141,6 +141,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'read positions',
                 'description': 'Merged file, positions of aligned reads in bed format, one line per read mate'}
             }
+        },
+        {
+        "app_name": "insulator-score-caller",
+        "wf_uuid": "54a46fe7-cec2-4bfb-ab5f-470320f69fb0",
+        "parameters": {"binsize": -1, "windowsize": 100000, "cutoff": 2},
+        'custom_pf_fields': {
+            'bwfile': {
+                'genome_assembly': genome,
+                'file_type': 'insulation score - diamond',
+                'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
+            }
         }
     ]
 
