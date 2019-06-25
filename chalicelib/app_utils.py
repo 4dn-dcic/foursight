@@ -938,8 +938,9 @@ def run_check_runner(runner_input, propogate=True):
                 print('-RUN-> Wrote action record: %s' % rec_key)
         run_result = run_check_or_action(connection, run_name, run_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
-        # invoke action if running a check and it has kwargs['queue_action']
-        if run_result['type'] == 'check' and run_result['kwargs']['queue_action'] is True:
+        # invoke action if running a check and kwargs['queue_action'] matches stage
+        stage = get_stage_info()['stage']
+        if run_result['type'] == 'check' and run_result['kwargs']['queue_action'] == stage:
             # must also have check.action and check.allow_action set
             if run_result['allow_action'] and run_result['action']:
                 action_params = {'check_name': run_result['name'],
@@ -948,11 +949,11 @@ def run_check_runner(runner_input, propogate=True):
                     queue_action(run_env, run_result['action'],
                                  params=action_params, uuid=run_uuid)
                 except Exception as exc:
-                    print('-RUN-> Could not queued action %s with kwargs: %s. Error: %s'
-                          % (run_result['action'], action_params, str(exc)))
+                    print('-RUN-> Could not queue action %s on stage %s with kwargs: %s. Error: %s'
+                          % (run_result['action'], stage, action_params, str(exc)))
                 else:
-                    print('-RUN-> Queued action %s with kwargs: %s'
-                          % (run_result['action'], action_params))
+                    print('-RUN-> Queued action %s on stage %s with kwargs: %s'
+                          % (run_result['action'], stage, action_params))
         print('-RUN-> Finished: %s' % (run_name))
         delete_message_and_propogate(runner_input, receipt, propogate=propogate)
         return run_result

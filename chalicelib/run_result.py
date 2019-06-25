@@ -284,7 +284,7 @@ class CheckResult(RunResult):
         if 'primary' not in self.kwargs:
             self.kwargs['primary'] = False
         if 'queue_action' not in self.kwargs:
-            self.kwargs['queue_action'] = False
+            self.kwargs['queue_action'] = 'Not queued'
         # if this was triggered from the check_runner, store record of the run
         if '_run_info' in self.kwargs and 'run_id' in self.kwargs['_run_info']:
             self.record_run_info()
