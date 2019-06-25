@@ -408,11 +408,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -746,11 +746,11 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -766,7 +766,7 @@
         "schedule": {
             "hourly_checks_2": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
@@ -792,11 +792,11 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -812,11 +812,11 @@
         "schedule": {
             "hourly_checks_2": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -838,11 +838,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -864,7 +864,7 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }

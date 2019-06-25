@@ -553,11 +553,11 @@ class TestCheckRunner(FSTest):
     def test_check_runner_manually_with_associated_action(self):
         cleared = self.clear_queue_and_runners()
         self.assertTrue(cleared)
-        # queue a check with queue_action=True kwarg, meaning the associated
+        # queue a check with queue_action="dev" kwarg, meaning the associated
         # action will automatically be queued after completion
         check = utils.init_check_res(self.connection, 'test_random_nums')
         action = utils.init_action_res(self.connection, 'add_random_test_nums')
-        to_send = ['test_checks/test_random_nums', {'primary': True, 'queue_action': True}, []]
+        to_send = ['test_checks/test_random_nums', {'primary': True, 'queue_action': 'dev'}, []]
         # send the check to the queue; the action will be queue automatically
         run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
         # both check and action separately must make it through queue
@@ -1038,7 +1038,7 @@ class TestCheckUtils(FSTest):
         # make sure runtime is in kwargs and pop it
         self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
         check_res.get('kwargs').pop('runtime_seconds')
-        self.assertTrue(check_res.get('kwargs') == {'primary': True, 'uuid': test_uuid, 'queue_action': False})
+        self.assertTrue(check_res.get('kwargs') == {'primary': True, 'uuid': test_uuid, 'queue_action': 'Not queued'})
         primary_uuid = check_res.get('uuid')
         time.sleep(5)
         primary_res = check.get_primary_result()
@@ -1050,7 +1050,7 @@ class TestCheckUtils(FSTest):
         latest_uuid = check_res.get('uuid')
         self.assertTrue('runtime_seconds' in check_res.get('kwargs'))
         check_res.get('kwargs').pop('runtime_seconds')
-        self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid, 'queue_action': False})
+        self.assertTrue(check_res.get('kwargs') == {'primary': False, 'uuid': latest_uuid, 'queue_action': 'Not queued'})
         # latest res will be more recent than primary res now
         latest_res = check.get_latest_result()
         self.assertTrue(latest_res.get('uuid') == latest_uuid)
@@ -1171,15 +1171,15 @@ class TestUtils(FSTest):
         self.assertTrue(isinstance(runtime, float))
         self.assertTrue('_run_info' not in kwargs_default)
         uuid = kwargs_default.get('uuid')
-        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid, 'primary': False, 'queue_action': False})
+        self.assertTrue(kwargs_default == {'abc': 123, 'do_not_store': True, 'uuid': uuid, 'primary': False, 'queue_action': 'Not queued'})
         kwargs_add = self.test_function_dummy(bcd=234).get('kwargs')
         self.assertTrue('runtime_seconds' in kwargs_add)
         kwargs_add.pop('runtime_seconds')
-        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid, 'primary': False, 'queue_action': False})
+        self.assertTrue(kwargs_add == {'abc': 123, 'bcd': 234, 'do_not_store': True, 'uuid': uuid, 'primary': False, 'queue_action': 'Not queued'})
         kwargs_override = self.test_function_dummy(abc=234, primary=True).get('kwargs')
         self.assertTrue('runtime_seconds' in kwargs_override)
         kwargs_override.pop('runtime_seconds')
-        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid, 'primary': True, 'queue_action': False})
+        self.assertTrue(kwargs_override == {'abc': 234, 'do_not_store': True, 'uuid': uuid, 'primary': True, 'queue_action': 'Not queued'})
 
     def test_handle_kwargs(self):
         default_kwargs = {'abc': 123, 'bcd': 234}
