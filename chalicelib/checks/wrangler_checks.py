@@ -224,7 +224,7 @@ def biorxiv_is_now_published(connection, **kwargs):
 
 @action_function()
 def add_pub_and_replace_biorxiv(connection, **kwargs):
-    action = init_action_res(connection, 'add_pub_2_replace_biorxiv')
+    action = init_action_res(connection, 'add_pub_and_replace_biorxiv')
     action_log = {}
     biorxiv_check_result = action.get_associated_check_result(kwargs)
     check_output = biorxiv_check_result.get('full_output', {})
