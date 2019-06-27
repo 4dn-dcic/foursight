@@ -108,72 +108,115 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(uuid_list=None, false_positives=None)
 def biorxiv_is_now_published(connection, **kwargs):
+    ''' To restrict the check to just certain biorxivs use a comma separated list
+        of biorxiv uuids in uuid_list kwarg.  This is useful if you want to
+        only perform the replacement on a subset of the potential matches - i.e.
+        re-run the check with a uuid list and then perform the actions on the result
+        of the restricted check.
+
+        Known cases of incorrect associations are stored in the check result in
+        the 'false_positive' field of full_output.  To add new entries to this field use the
+        'false_positive' kwarg with format "rxiv_uuid1: number_part_only_of_PMID, rxiv_uuid2: ID ..."
+         eg. fd3827e5-bc4c-4c03-bf22-919ee8f4351f:31010829 and to reset to empty use 'RESET'
+    '''
     check = init_check_res(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
+    search = 'search/?'
+    if kwargs.get('uuid_list'):
+        suffix = '&'.join(['uuid={}'.format(u) for u in [uid.strip() for uid in kwargs.get('uuid_list').split(',')]])
+    else:
+        suffix = 'journal=bioRxiv&type=Publication&status=current&limit=all'
     # run the check
-    search_query = 'search/?journal=bioRxiv&type=Publication&status=current&limit=all'
+    search_query = search + suffix
     biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
     if not biorxivs:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
         return check
 
-    pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&field=title&'
+    # here is where we get any previous or current false positives
+    last_result = check.get_primary_result()
+    # if last one was fail, find an earlier check with non-FAIL status
+    it = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        it += 1
+        # this is a daily check, so look for checks with 12h iteration
+        hours = it * 12
+        last_result = check.get_closest_result(diff_hours=hours)
+        # if this is going forever kill it
+        if hours > 100:
+            err_msg = 'Can not find a non-FAIL check in last 100 hours'
+            check.brief_output = err_msg
+            check.full_output = {}
+            check.status = 'ERROR'
+            return check
+    last_result = last_result.get('full_output')
+    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
+    try:
+        false_pos = last_result.get('false_positives', {})
+    except AttributeError:  # if check errored last result is a list of error rather than a dict
+        false_pos = {}
+    fp_input = kwargs.get('false_positives')
+    if fp_input:
+        fps = [fp.strip() for fp in fp_input.split(',')]
+        for fp in fps:
+            if fp == 'RESET':  # reset the saved dict to empty
+                false_pos = {}
+                continue
+            id_vals = [i.strip() for i in fp.split(':')]
+            false_pos.setdefault(id_vals[0], []).append(id_vals[1])
+    fulloutput['false_positives'] = false_pos
+    pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json'
     problems = {}
     fndcnt = 0
-    fulloutput = {}
     for bx in biorxivs:
         title = bx.get('title')
+        authors = bx.get('authors')
         buuid = bx.get('uuid')
-        if not title:
+        if not (title and authors):
             # problem with biorxiv record in ff
-            print("Biorxiv %s lacks a title" % buuid)
-            if problems.get('notitle'):
-                problems['notitle'].append(buuid)
-            else:
-                problems['notitle'] = [buuid]
+            problems.setdefault('missing metadata', []).append(buuid)
             if not chkstatus or chkstatus != 'WARN':
                 chkstatus = 'WARN'
-            if "some biorxiv records do not have a title\n" not in chkdesc:
-                chkdesc = chkdesc + "some biorxiv records do not have a title\n"
-            continue
-        term = 'term=%s' % title
-        pubmed_query = pubmed_url + term
+            msg = "some biorxiv records are missing metadata used for search\n"
+            if msg not in chkdesc:
+                chkdesc = chkdesc + msg
+        # first search with title
+        suffix = '&field=title&term={}'.format(title)
+        title_query = pubmed_url + suffix
         time.sleep(1)
-        res = requests.get(pubmed_query)
-        if res.status_code != 200:
-            print("We got a status code other than 200 for %s" % buuid)
-            # problem with request to pubmed
-            if problems.get('eutilsq'):
-                problems['eutilsq'].append(buuid)
+        do_author_search = False
+        ids = []
+        res = requests.get(title_query)
+        if res.status_code == 200:
+            result = res.json().get('esearchresult')
+            if not result or not result.get('idlist'):
+                do_author_search = True
             else:
-                problems['eutilsq'] = [buuid]
-            if not chkstatus or chkstatus != 'WARN':
-                chkstatus = 'WARN'
-            if "problem with eutils query for some records\n" not in chkdesc:
-                chkdesc = chkdesc + "problem with eutils query for some records\n"
-            continue
-        result = res.json().get('esearchresult')
-        if not result or result.get('idlist') is None:
-            # problem with format of results returned by esearch
-            if not chkstatus or chkstatus != 'WARN':
-                chkstatus = 'WARN'
-            if problems.get('pubmedresult'):
-                problems['pubmedresult'].append(buuid)
-            else:
-                problems['pubmedresult'] = [buuid]
-            if "problem with results format for some records\n" not in chkdesc:
-                chkdesc = chkdesc + "problem with results format for some records\n"
-            continue
-        ids = result.get('idlist')
+                ids = result.get('idlist')
+        else:
+            do_author_search = True  # problem with request to pubmed
+
+        if do_author_search and authors:
+            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(' ')[-1]) for a in authors])
+            author_query = pubmed_url + author_string
+            time.sleep(1)
+            res = requests.get(author_query)
+            if res.status_code == 200:
+                result = res.json().get('esearchresult')
+                if result and result.get('idlist'):
+                    ids = result.get('idlist')
+
+        if buuid in false_pos:
+            ids = [i for i in ids if i not in false_pos[buuid]]
         if ids:
             # we have possible article(s) - populate check_result
             fndcnt += 1
-            fulloutput[buuid] = ['PMID:' + id for id in ids]
+            fulloutput['biorxivs2check'][buuid] = ['PMID:' + id for id in ids]
 
     if fndcnt != 0:
         chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
@@ -196,10 +239,11 @@ def biorxiv_is_now_published(connection, **kwargs):
 
 @action_function()
 def add_pub_and_replace_biorxiv(connection, **kwargs):
-    action = init_action_res(connection, 'add_pub_2_replace_biorxiv')
+    action = init_action_res(connection, 'add_pub_and_replace_biorxiv')
     action_log = {}
     biorxiv_check_result = action.get_associated_check_result(kwargs)
-    to_replace = biorxiv_check_result.get('full_output', {})
+    check_output = biorxiv_check_result.get('full_output', {})
+    to_replace = check_output.get('biorxivs2check', {})
     for buuid, pmids in to_replace.items():
         error = ''
         if len(pmids) > 1:
@@ -228,13 +272,19 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
             'exp_sets_used_in_pub', 'published_by'
         ]
+        fields2flag = ['static_headers', 'static_content']
         post_metadata = {f: biorxiv.get(f) for f in fields2transfer if biorxiv.get(f) is not None}
         post_metadata['ID'] = pmid
+        post_metadata['status'] = 'current'
         if 'url' in biorxiv:
             post_metadata['aka'] = biorxiv.get('url')
+        flags = {f: biorxiv.get(f) for f in fields2flag if biorxiv.get(f) is not None}
+        if flags:
+            action_log[buuid] = 'Static content to check: ' + str(flags)
 
         # first try to post the pub
         pub_upd_res = None
+        pub = None
         try:
             pub_upd_res = ff_utils.post_metadata(post_metadata, 'publication', key=connection.ff_keys)
         except Exception as e:
@@ -243,7 +293,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             if pub_upd_res.get('status') != 'success':
                 error = pub_upd_res.get('status')
         if error:
-            if "'code': 409" in error:
+            if "'code': 422" in error:
                 # there is a conflict-see if pub is already in portal
                 pub_search_res = None
                 error = ''  # reset error
@@ -251,7 +301,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
                     search = 'search/?type=Publication&ID={}&frame=object'.format(post_metadata['ID'])
                     pub_search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
                 except Exception as e:
-                        error = 'SEARCH failure for {} - msg: {}'.format(pmid, str(e))
+                    error = 'SEARCH failure for {} - msg: {}'.format(pmid, str(e))
                 else:
                     if not pub_search_res or len(pub_search_res) != 1:
                         error = 'SEARCH for {} returned zero or multiple results'.format(pmid)
@@ -261,8 +311,11 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
                 # a single pub with that pmid is found - try to patch it
                 pub = pub_search_res[0]
+
                 for f, v in post_metadata.items():
-                    if f in pub and pub.get(f):
+                    if pub.get(f):
+                        if f == 'status' and pub.get(f) != v:
+                            fields_to_patch[f] = v
                         if f != 'ID':
                             existing_fields[f] = pub.get(f)
                     else:
@@ -290,11 +343,62 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             else:
                 error = 'POST failure for {} msg: {}'.format(pmid, error)
                 action_log[buuid] = error
+                continue
+        else:
+            pub = pub_upd_res['@graph'][0]
 
         # here we have successfully posted or patched a pub
-        # set status of biorxiv to replaced
+        # generate a static header with link to new pub and set status of biorxiv to replaced
+        if not pub:
+            action_log[buuid] = 'NEW PUB INFO NOT AVAILABLE'
+            continue
+
+        header_alias = "static_header:replaced_biorxiv_{}_by_{}".format(biorxiv.get('uuid'), pmid.replace(':', '_'))
+        header_name = "static-header.replaced_item_{}".format(biorxiv.get('uuid'))
+        header_post = {
+            "body": "This biorxiv set was replaced by [{0}]({2}{1}/).".format(pmid, pub.get('uuid'), connection.ff_server),
+            "award": biorxiv.get('award'),
+            "lab": biorxiv.get('lab'),
+            "name": header_name,
+            "section_type": "Item Page Header",
+            "options": {"title_icon": "info", "default_open": True, "filetype": "md", "collapsible": False},
+            "title": "Note: Replaced Biorxiv",
+            "status": 'released',
+            "aliases": [header_alias]
+        }
+        huuid = None
+        try_search = False
         try:
-            replace_res = ff_utils.patch_metadata({'status': 'replaced'}, buuid, key=connection.ff_keys)
+            header_res = ff_utils.post_metadata(header_post, 'static_section', key=connection.ff_keys)
+        except Exception as e:
+            error = 'FAILED TO POST STATIC SECTION {} - msg: '.format(str(e))
+            try_search = True
+        else:
+            try:
+                huuid = header_res['@graph'][0].get('uuid')
+            except (KeyError, AttributeError) as e:  # likely a conflict - search for existing section by name
+                try_search = True
+        if try_search:
+            try:
+                search = 'search/?type=UserContent&name={}&frame=object'.format(header_name)
+                header_search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
+            except Exception as e:
+                error = 'SEARCH failure for {} - msg: {}'.format(header_name, str(e))
+            else:
+                if header_search_res and len(header_search_res) == 1:
+                    huuid = header_search_res[0].get('uuid')
+                else:
+                    error = 'PROBLEM WITH STATIC SECTION CREATION - manual intervention needed'
+        if error:
+            action_log[buuid] = error
+
+        patch_json = {'status': 'replaced'}
+        if huuid:  # need to see if other static content exists and add this one
+            existing_content = biorxiv.get('static_content', [])
+            existing_content.append({'content': huuid, 'location': 'header'})
+            patch_json['static_content'] = existing_content
+        try:
+            replace_res = ff_utils.patch_metadata(patch_json, buuid, key=connection.ff_keys)
         except Exception as e:
             error = 'FAILED TO UPDATE STATUS FOR {} - msg: '.format(buuid, str(e))
         else:
