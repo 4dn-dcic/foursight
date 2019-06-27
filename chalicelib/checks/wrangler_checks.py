@@ -139,7 +139,22 @@ def biorxiv_is_now_published(connection, **kwargs):
         return check
 
     # here is where we get any previous or current false positives
-    last_result = check.get_latest_result().get('full_output')
+    last_result = check.get_primary_result()
+    # if last one was fail, find an earlier check with non-FAIL status
+    it = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        it += 1
+        # this is a daily check, so look for checks with 12h iteration
+        hours = it * 12
+        last_result = check.get_closest_result(diff_hours=hours)
+        # if this is going forever kill it
+        if hours > 100:
+            err_msg = 'Can not find a non-FAIL check in last 100 hours'
+            check.brief_output = err_msg
+            check.full_output = {}
+            check.status = 'ERROR'
+            return check
+    last_result = last_result.get('full_output')
     fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
     try:
         false_pos = last_result.get('false_positives', {})
