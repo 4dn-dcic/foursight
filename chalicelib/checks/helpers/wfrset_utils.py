@@ -79,6 +79,61 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'contact list-combined',
                 'description': out_n}
         }},
+
+
+
+
+
+
+
+
+        {
+        'app_name': 'imargi-processing-fastq',
+        'workflow_uuid': '7eedaaa8-4c2e-4c71-9d9a-04f05ab1becf',
+        'parameters': {"nThreads": 4},
+        'custom_pf_fields': {
+            'out_bam': {
+                'genome_assembly': genome,
+                'file_type': 'intermediate file',
+                'description': int_n}
+        }},
+        {
+        'app_name': 'imargi-processing-bam',
+        'workflow_uuid': '4918e659-6e6c-444f-93c4-276c0d753537',
+        'parameters': {"nthreads": 8, "asembly": "hg38"},
+        'custom_pf_fields': {
+            'out_qc': {
+                'genome_assembly': genome,
+                'file_type': 'Other',
+                'description': out_n},
+            'final_pairs': {
+                'genome_assembly': genome,
+                'file_type': 'contact list-replicate',
+                'description': out_n}
+        }},
+        {
+        'app_name': 'imargi-processing-pairs',
+        'workflow_uuid': 'd3e33c23-7442-4f43-8601-337d2f04980a',
+        'custom_pf_fields': {
+            'out_mcool': {
+                'genome_assembly': genome,
+                'file_type': 'contact matrix',
+                'description': out_n},
+            'merged_pairs': {
+                'genome_assembly': genome,
+                'file_type': 'contact list-combined',
+                'description': out_n}
+        }},
+
+
+
+
+
+
+
+
+
+
         {
         'app_name': 'repliseq-parta',
         'workflow_uuid': '4dn-dcic-lab:wf-repliseq-parta-v16',
