@@ -5,6 +5,10 @@ mapper = {'human': 'GRCh38',
           'fruit-fly': 'dm6',
           'chicken': 'galGal5'}
 
+pairs_mapper = {"GRCh38": "hg38",
+                "GRCm38": "mm10",
+                "dm6": 'dm6',
+                "galGal5": "galGal5"}
 
 def step_settings(step_name, my_organism, attribution, overwrite=None):
     """Return a setting dict for given step, and modify variables in
@@ -16,6 +20,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     """
     genome = ""
     genome = mapper.get(my_organism)
+    pairs_assembly = pairs_mapper.get(genome)
 
     out_n = "This is an output file of the Hi-C processing pipeline"
     int_n = "This is an intermediate file in the HiC processing pipeline"
@@ -79,14 +84,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'contact list-combined',
                 'description': out_n}
         }},
-
-
-
-
-
-
-
-
         {
         'app_name': 'imargi-processing-fastq',
         'workflow_uuid': '7eedaaa8-4c2e-4c71-9d9a-04f05ab1becf',
@@ -100,7 +97,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'imargi-processing-bam',
         'workflow_uuid': '4918e659-6e6c-444f-93c4-276c0d753537',
-        'parameters': {"nthreads": 8, "asembly": "hg38"},
+        'parameters': {"nthreads": 8, "assembly": pairs_assembly},
         'custom_pf_fields': {
             'out_qc': {
                 'genome_assembly': genome,
@@ -124,16 +121,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'contact list-combined',
                 'description': out_n}
         }},
-
-
-
-
-
-
-
-
-
-
         {
         'app_name': 'repliseq-parta',
         'workflow_uuid': '4dn-dcic-lab:wf-repliseq-parta-v16',
@@ -148,6 +135,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'counts',
                 'description': 'read counts, unfiltered, unnormalized'}
         }},
+        {
+        "app_name": "bedtobeddb",
+        'parameters': {"assembly": pairs_assembly},
+        "workflow_uuid": "9d575e99-5ffe-4ea4-b74f-ad40f621cd39",
+        "overwrite_input_extra": False
+        },
         {
         "app_name": "bedGraphToBigWig",
         "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
