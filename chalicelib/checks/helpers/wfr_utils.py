@@ -1080,7 +1080,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
