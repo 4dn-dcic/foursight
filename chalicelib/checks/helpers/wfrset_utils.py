@@ -205,7 +205,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     ]
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
-    template['config'] = {
+    update_config = {
         "ebs_type": "gp2",
         "spot_instance": True,
         "ebs_iops": "",
@@ -213,6 +213,14 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "key_name": "4dn-encode",
         "behavior_on_capacity_limit": "retry_without_spot"
         }
+    if template.get('config'):
+        temp_conf = template['config']
+        for a_key in update_config:
+            if a_key not in temp_conf:
+                temp_conf[a_key] = update_config[a_key]
+    else:
+        template['config'] = update_config
+
     if not template.get('parameters'):
         template['parameters'] = {}
     if template.get('custom_pf_fields'):
