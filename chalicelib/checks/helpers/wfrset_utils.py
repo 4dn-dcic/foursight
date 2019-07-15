@@ -10,6 +10,7 @@ pairs_mapper = {"GRCh38": "hg38",
                 "dm6": 'dm6',
                 "galGal5": "galGal5"}
 
+
 def step_settings(step_name, my_organism, attribution, overwrite=None):
     """Return a setting dict for given step, and modify variables in
     output files; genome assembly, file_type, desc, contributing lab.
@@ -92,7 +93,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'out_bam': {
                 'genome_assembly': genome,
                 'file_type': 'intermediate file',
-                'description': int_n}
+                'description': "This is an intermediate file from the MARGI processing pipeline"}
         }},
         {
         'app_name': 'imargi-processing-bam',
@@ -101,12 +102,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             'out_qc': {
                 'genome_assembly': genome,
-                'file_type': 'Other',
-                'description': out_n},
+                'file_type': 'QC',
+                'description': 'This is an output file of the Hi-C processing pipeline'},
             'final_pairs': {
                 'genome_assembly': genome,
                 'file_type': 'contact list-replicate',
-                'description': out_n}
+                'description': 'This is an output file of the Hi-C processing pipeline'}
         }},
         {
         'app_name': 'imargi-processing-pairs',
@@ -115,11 +116,11 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'out_mcool': {
                 'genome_assembly': genome,
                 'file_type': 'contact matrix',
-                'description': out_n},
+                'description': 'This is an output file of the Hi-C processing pipeline'},
             'merged_pairs': {
                 'genome_assembly': genome,
                 'file_type': 'contact list-combined',
-                'description': out_n}
+                'description': 'This is an output file of the Hi-C processing pipeline'}
         }},
         {
         'app_name': 'repliseq-parta',

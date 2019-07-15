@@ -488,13 +488,10 @@ def bed2beddb_start(connection, **kwargs):
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
-        genome_as = genome[a_file['genome_assembly']]
-        overwrite = {'parameters': {"assembly": genome_as}}
         inp_f = {'bedfile': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('bedtobeddb',
                                                'no_organism',
-                                               attributions,
-                                               overwrite=overwrite)
+                                               attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
