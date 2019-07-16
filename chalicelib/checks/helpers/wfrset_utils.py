@@ -88,6 +88,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'imargi-processing-fastq',
         'workflow_uuid': '7eedaaa8-4c2e-4c71-9d9a-04f05ab1becf',
+        'config': {'mem': 8, 'cpu': 4, 'ebs': '3x', 'EBS_optimized': 'true'},
         'parameters': {"nThreads": 4},
         'custom_pf_fields': {
             'out_bam': {
@@ -98,6 +99,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'imargi-processing-bam',
         'workflow_uuid': '4918e659-6e6c-444f-93c4-276c0d753537',
+        'config': {'mem': 8, 'cpu': 8, 'ebs_size': '3x', 'EBS_optimized': 'true'},
         'parameters': {"nthreads": 8, "assembly": pairs_assembly},
         'custom_pf_fields': {
             'out_qc': {
@@ -112,6 +114,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'imargi-processing-pairs',
         'workflow_uuid': 'd3e33c23-7442-4f43-8601-337d2f04980a',
+        'config': {'mem': 8, 'cpu': 4, 'ebs': '3x', 'EBS_optimized': 'true'},
         'custom_pf_fields': {
             'out_mcool': {
                 'genome_assembly': genome,
