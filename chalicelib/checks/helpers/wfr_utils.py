@@ -82,6 +82,18 @@ workflow_details = {
     "mergebed": {
         "run_time": 200,
         "accepted_versions": ["v1"]
+    },
+    'imargi-processing-fastq': {
+        "run_time": 50,
+        "accepted_versions": ["1.1.1"]
+    },
+    'imargi-processing-bam': {
+        "run_time": 50,
+        "accepted_versions": ["1.1.1"]
+    },
+    'imargi-processing-pairs': {
+        "run_time": 200,
+        "accepted_versions": ["1.1.1"]
     }
 }
 
@@ -106,7 +118,7 @@ accepted_versions = {
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
-    'MARGI': [''],
+    'MARGI':         ['MARGI_Pipeline_1.1.1'],
     # Preliminary - Released to network
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
@@ -155,7 +167,7 @@ chr_size = {"human": "4DNFI823LSII",
 re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'DpnII': '/files-reference/4DNFIBNAPW3O/',
                    'HindIII': '/files-reference/4DNFI823MBKE/',
-                   'NcoI': '/files-reference/4DNFI3HVU2OD/'
+                   'NcoI': '/files-reference/4DNFI3HVU2OD/',
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
@@ -166,6 +178,11 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
          "chicken": {"HindIII": '/files-reference/4DNFITPCJFWJ/'
                      }
          }
+
+
+# re bed files for MARGI pipeline - AluI is the enzyme for margi exps
+re_fragment = {"human": '/files-reference/4DNFIL1I5TSP/'}
+
 
 # max_distance for species (used for pairsqc)
 max_size = {"human": None,
@@ -440,7 +457,7 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
-def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True):
+def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
     """Find fastq files from experiment set, exclude miseq by default
     expects my_rep_set to be set response in frame object (search result)
     will check if files are paired or not, and if paired will give list of lists for each exp
@@ -518,10 +535,15 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True):
 
     bwa = bwa_index.get(organism)
     chrsize = chr_size.get(organism)
+    # get the enzyme file for organism and enzyme type
     if re_nz.get(organism):
         enz_file = re_nz[organism].get(enz)
     else:
         enz_file = None
+    # if margi, enzyme is predifined as AluI in a separate dict
+    if type == 'MARGI':
+        enz = 'AluI'
+        enz_file = re_fragment.get(organism)
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
     refs = {'pairing': paired,
@@ -785,6 +807,203 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
     return check
 
 
+def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False):
+    """Check run status for each set in res, and report missing runs and completed process"""
+    for a_set in res:
+        # get all related items
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+                                                           store_frame='embedded',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['experiment_relation',
+                                                                         'biosample_relation',
+                                                                         'references',
+                                                                         'reference_pubs'])
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        now = datetime.utcnow()
+        print(a_set['accession'], (now-start).seconds, len(all_uuids))
+        if (now-start).seconds > lambda_limit:
+            break
+        # missing run
+        missing_run = []
+        # still running
+        running = []
+        # problematic cases
+        problematic_run = []
+        # if all runs are complete, add the patch info for processed files and tag
+        complete = {'patch_opf': [],
+                    'add_tag': []}
+        set_summary = ""
+        set_acc = a_set['accession']
+        part3 = 'ready'
+        # references dict content
+        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
+        exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'], type='MARGI')
+        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        # if no files were found
+        if all(not value for value in exp_files.values()):
+            set_summary += "| skipped - no usable file"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # skip if missing reference
+        if not refs['bwa_ref'] or not refs['chrsize_ref']:
+            set_summary += "| skipped - no chrsize/bwa"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
+            continue
+        if not refs['enz_ref'] and not nore:
+            set_summary += "| skipped - no enz"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no enz'})
+            continue
+        if refs['pairing'] != 'Yes':
+            set_summary += "| skipped - unpaired files"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - not paired'})
+            continue
+
+        set_pairs = []
+        # cycle through the experiments, skip the ones without usable files
+        for exp in exp_files.keys():
+            # we don't have exp level runs, but we have a patch, hence part 2.5
+            part2_5 = 'ready'
+            if not exp_files.get(exp):
+                continue
+            # Check Part 1 and See if all are okay
+            exp_pairs = []
+            for pair in exp_files[exp]:
+                part2 = 'ready'
+                input_bam = ""
+                pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
+                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', all_wfrs=all_wfrs)
+                # if successful
+                if step1_result['status'] == 'complete':
+                    input_bam = step1_result['out_bam']
+                # if still running
+                elif step1_result['status'] == 'running':
+                    part2 = 'not ready'
+                    running.append(['step1', exp, pair])
+                # if run is not successful
+                elif step1_result['status'].startswith("no complete run, too many"):
+                    part2 = 'not ready'
+                    problematic_run.append(['step1', exp, pair])
+                else:
+                    part2 = 'not ready'
+                    # add part 1
+                    inp_f = {'fastq_R1': pair[0], 'fastq_R2': pair[1], 'bwa_index': refs['bwa_ref']}
+                    name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
+                    missing_run.append(['step1', ['imargi-processing-fastq', refs['organism'], {}], inp_f, name_tag])
+
+                # going into step2
+                if part2 != 'ready':
+                    part2_5 = 'not ready'
+                    continue
+
+                bam_resp = [i for i in all_items['file_processed'] if i['@id'] == input_bam][0]
+                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', all_wfrs=all_wfrs)
+                # if successful
+                if step2_result['status'] == 'complete':
+                    exp_pairs.append(step2_result['final_pairs'])
+                # if still running
+                elif step2_result['status'] == 'running':
+                    part2_5 = 'not ready'
+                    running.append(['step2', exp, input_bam])
+                # if run is not successful
+                elif step2_result['status'].startswith("no complete run, too many"):
+                    part2_5 = 'not ready'
+                    problematic_run.append(['step2', exp, input_bam])
+                else:
+                    part2_5 = 'not ready'
+                    # add part 1
+                    inp_f = {'input_bam': input_bam, 'chromsize': refs['chrsize_ref'],
+                             'restrict_frags': refs['enz_ref']}
+                    name_tag = input_bam.split('/')[2]
+                    missing_run.append(['step2', ['imargi-processing-bam', refs['organism'], {}], inp_f, name_tag])
+
+            if part2_5 != 'ready':
+                part3 = 'not ready'
+            else:
+                # if exps runs were fine, lets patch exp with all pairs produced
+                patch_data = exp_pairs
+                complete['patch_opf'].append([exp, patch_data])
+                set_pairs.extend(exp_pairs)
+
+                # patch the experiment with exp_pairs
+        if part3 is not 'ready':
+            if running:
+                set_summary += "| running step 1/2"
+            elif missing_run:
+                set_summary += "| missing step 1/2"
+            elif problematic_run:
+                set_summary += "| problem in step 1/2"
+
+        if part3 is 'ready':
+            # if we made it to this step, there should be files in set_pairs
+            assert set_pairs
+            # make sure all input bams went through same last step3
+            all_step3s = []
+            for a_pair in set_pairs:
+                a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
+                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', all_wfrs=all_wfrs)
+                all_step3s.append((step3_result['status'], step3_result.get('out_mcool')))
+            # make sure existing step3s are matching
+            if len(list(set(all_step3s))) == 1:
+                # if successful
+                if step3_result['status'] == 'complete':
+                    set_summary += '| completed runs'
+                    patch_data = [step3_result['merged_pairs'], step3_result['out_mcool']]
+                    complete['patch_opf'].append([set_acc, patch_data])
+                    complete['add_tag'] = [set_acc, tag]
+                # if still running
+                elif step3_result['status'] == 'running':
+                    running.append(['step3', set_acc])
+                    set_summary += "| running step3"
+                # problematic runs with repeated fails
+                elif step3_result['status'].startswith("no complete run, too many"):
+                    set_summary += "| problems in step3"
+                    problematic_run.append(['step3', set_acc])
+                # if run is not successful
+                else:
+                    set_summary += "| missing step3"
+                    inp_f = {'input_pairs': set_pairs}
+                    missing_run.append(['step3', ['imargi-processing-pairs', refs['organism']],
+                                        inp_f, set_acc])
+            else:
+                problematic_run.append(['step3-not_unique', set_acc])
+                set_summary += "| problem in step 3- not unique"
+        check.brief_output.append(set_summary)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if complete.get('add_tag'):
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            check.full_output['completed_runs'].append(complete)
+    # complete check values
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['skipped']:
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+    return check
+
+
 def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     """If move to pc is set to true, if the exp_set or exp status is not released/to project
     it will move the files to processed_files"""
@@ -861,7 +1080,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
