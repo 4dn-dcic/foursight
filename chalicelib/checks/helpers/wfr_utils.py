@@ -434,6 +434,18 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
     except Exception as e:
         return str(e)
 
+def check_indexing_status(key):
+    q = '/indexing_status'
+    results = ff_utils.get_metadata(q, key=key)
+    for key in results.keys():
+        if key == 'status':
+            continue
+        else:
+            if results[key] == 0:
+                continue
+            else:
+                return False
+    return True
 
 def build_exp_type_query(exp_type, kwargs):
     assert exp_type in accepted_versions
