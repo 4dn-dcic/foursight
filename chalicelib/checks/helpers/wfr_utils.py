@@ -93,7 +93,7 @@ workflow_details = {
     },
     'imargi-processing-pairs': {
         "run_time": 200,
-        "accepted_versions": ["1.1.1"]
+        "accepted_versions": ["1.1.1_dcic_2"]
     }
 }
 
