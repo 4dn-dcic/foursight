@@ -22,6 +22,15 @@ def md5run_status_extra_file(connection, **kwargs):
     my_auth = connection.ff_keys
     check.status = 'PASS'
 
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
              '&extra_files.status!=uploaded&extra_files.href!=No value')
@@ -57,6 +66,16 @@ def md5run_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query
     query = '/search/?status=uploading&status=upload failed'
     # add file type
@@ -202,6 +221,16 @@ def fastqc_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
@@ -275,6 +304,16 @@ def pairsqc_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?file_format.file_format=pairs&type=FileProcessed"
              "&status=pre-release&status=released&status=released+to+project&status=uploaded"
@@ -357,6 +396,16 @@ def bg2bw_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
              "extra_files.file_format.display_title!=bw"
@@ -434,6 +483,16 @@ def bed2beddb_status(connection, **kwargs):
     check.status = 'PASS'
     accepted_types = ['LADs', 'boundaries', 'domains']
     file_size_limit = 100000  # 100KB
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bed"
              "extra_files.file_format.display_title!=beddb"
@@ -524,6 +583,16 @@ def in_situ_hic_status(connection, **kwargs):
     exp_type = 'in situ Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -575,6 +644,16 @@ def dilution_hic_status(connection, **kwargs):
     exp_type = 'Dilution Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -628,6 +707,16 @@ def tcc_status(connection, **kwargs):
     exp_type = 'TCC'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -679,6 +768,16 @@ def dnase_hic_status(connection, **kwargs):
     exp_type = 'DNase Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -730,6 +829,16 @@ def capture_hic_status(connection, **kwargs):
     exp_type = 'Capture Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -781,6 +890,16 @@ def micro_c_status(connection, **kwargs):
     exp_type = 'Micro-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -832,6 +951,16 @@ def chia_pet_status(connection, **kwargs):
     exp_type = 'ChIA-PET'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -883,6 +1012,16 @@ def trac_loop_status(connection, **kwargs):
     exp_type = 'TrAC-loop'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -934,6 +1073,16 @@ def plac_seq_status(connection, **kwargs):
     exp_type = 'PLAC-seq'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -983,6 +1132,16 @@ def repli_2_stage_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = '2-stage Repli-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1032,6 +1191,16 @@ def repli_multi_stage_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = 'Multi-stage Repli-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1081,6 +1250,16 @@ def tsa_seq_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = 'TSA-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1131,6 +1310,16 @@ def nad_seq_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = 'NAD-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1180,6 +1369,16 @@ def atac_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ATAC-seq'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+
     return check
 
 
@@ -1262,6 +1461,16 @@ def margi_status(connection, **kwargs):
     exp_type = 'MARGI'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.full_output = {}
+        return check
+        
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
