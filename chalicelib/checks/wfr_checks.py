@@ -24,10 +24,13 @@ def md5run_status_extra_file(connection, **kwargs):
 
     # check indexing queue
     env = connection.ff_env
+    print(env)
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    print(indexing_queue)
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -73,6 +76,7 @@ def md5run_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -228,6 +232,7 @@ def fastqc_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -311,6 +316,7 @@ def pairsqc_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -403,6 +409,7 @@ def bg2bw_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -490,6 +497,7 @@ def bed2beddb_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -533,12 +541,6 @@ def bed2beddb_start(connection, **kwargs):
         targets.extend(bed2beddb_check_result.get('files_without_run', []))
     if kwargs.get('start_missing_meta'):
         targets.extend(bed2beddb_check_result.get('files_without_changes', []))
-
-    # genome nomenclature for bed2beddb runs`
-    genome = {"GRCh38": "hg38",
-              "GRCm38": "mm10",
-              "dm6": 'dm6',
-              "galGal5": "galGal5"}
 
     for a_target in targets:
         now = datetime.utcnow()
@@ -590,6 +592,7 @@ def in_situ_hic_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -651,6 +654,7 @@ def dilution_hic_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -714,6 +718,7 @@ def tcc_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -775,6 +780,7 @@ def dnase_hic_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -836,6 +842,7 @@ def capture_hic_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -897,6 +904,7 @@ def micro_c_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -958,6 +966,7 @@ def chia_pet_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1019,6 +1028,7 @@ def trac_loop_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1080,6 +1090,7 @@ def plac_seq_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1139,6 +1150,7 @@ def repli_2_stage_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1198,6 +1210,7 @@ def repli_multi_stage_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1257,6 +1270,7 @@ def tsa_seq_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1317,6 +1331,7 @@ def nad_seq_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1376,6 +1391,7 @@ def atac_seq_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
 
@@ -1468,9 +1484,10 @@ def margi_status(connection, **kwargs):
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-        
+
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
