@@ -24,9 +24,7 @@ def md5run_status_extra_file(connection, **kwargs):
 
     # check indexing queue
     env = connection.ff_env
-    print(env)
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    print(indexing_queue)
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
