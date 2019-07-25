@@ -576,13 +576,14 @@ def process_download_tracking_items(connection, **kwargs):
             if track_ip in ip_cache:
                 continue
             geo = geocoder.ip(track_ip, session=session)
-            geo_country = getattr(geo, 'country', 'Unknown')
-            geo_city = getattr(geo, 'city', 'Unknown')
+            geo_country = getattr(geo, 'country') or 'Unknown'
+            geo_city = getattr(geo, 'city') or 'Unknown'
             geo_state = getattr(geo, 'state', None)
             if geo_state:
                 geo_city = ', '.join([geo_city, geo_state])
             # cache the geo info in an arbitrary form
             ip_cache[track_ip] = '//'.join([geo_city, geo_country])
+
     # iterate over the individual tracking items
     for tracking in search_page:
         if round(time.time() - t0, 2) > time_limit:
