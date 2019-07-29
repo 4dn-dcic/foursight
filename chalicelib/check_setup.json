@@ -952,6 +952,18 @@
             }
         }
     },
+    "check_for_ontology_updates": {
+        "title": "Check for Ontology Updates",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5run_status" : {
         "title": "a) MD5run",
         "group": "Pipeline checks",

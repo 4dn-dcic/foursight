@@ -1106,3 +1106,56 @@ def patch_assay_subclass_short(connection, **kwargs):
         action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+def semver2int(semver):
+    v = [num for num in semver.lstrip('v').split('.')]
+    for i in range(1,len(v)):
+        if len(v[i]) == 1:
+            v[i] = '0' + v[i]
+    return float(''.join([v[0] + '.'] + v[1:]))
+
+
+@check_function(efo_version='v3.8.0', uberon_version='2017-04-26', obi_version='v2017-05-11')
+def check_for_ontology_updates(connection, **kwargs):
+    '''
+    Checks for updates in one of the three main ontologies that the 4DN data portal uses:
+    EFO, UBERON, and OBI.
+    EFO: checks github repo for new releases and compares release tag. Release tag is a
+    semantic version number starting with 'v'.
+    OBI: checks github repo for new releases and compares release tag. Release tag is a 'v'
+    plus the release date.
+    UBERON: github site doesn't have official 'releases' (and website isn't properly updated),
+    so checks for commits that have a commit message containing 'new release'
+    '''
+    check = init_check_res(connection, 'check_for_ontology_updates')
+
+    efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
+    efo_latest = efo.json()[0]['tag_name']
+    uberon = requests.get('https://api.github.com/repos/obophenotype/uberon/commits')
+    uberon_latest = [item['commit']['author']['date'] for item in uberon.json()
+                     if 'new release' in item['commit']['message'].lower()][0][:10]
+    obi = requests.get('https://api.github.com/repos/obi-ontology/obi/releases')
+    obi_latest = obi.json()[0]['tag_name']
+    check.full_output = {
+        'EFO': {'latest_version': efo_latest, 'compare_to': kwargs['efo_version'], 'needs_update': False},
+        'UBERON': {'latest_version': uberon_latest, 'compare_to': kwargs['uberon_version'], 'needs_update': False},
+        'OBI': {'latest_version': obi_latest, 'compare_to': kwargs['obi_version'], 'needs_update': False}
+    }
+    if semver2int(efo_latest) > semver2int(kwargs['efo_version']):
+        check.full_output['EFO']['needs_update'] = True
+    if uberon_latest > kwargs['uberon_version']:
+        check.full_output['UBERON']['needs_update'] = True
+    if obi_latest[1:] > kwargs['obi_version'][1:]:
+        check.full_output['OBI']['needs_update'] = True
+    check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
+    num = ''.join(check.brief_output).count('update')
+    if num:
+        check.summary = 'Ontology updates needed'
+        check.description = '{} ontologies need update'.format(num)
+        check.status = 'WARN'
+    else:
+        check.summary = 'Ontologies up-to-date'
+        check.description = 'No ontology updates needed'
+        check.status = 'PASS'
+    return check
