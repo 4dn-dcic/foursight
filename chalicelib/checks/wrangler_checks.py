@@ -1116,7 +1116,7 @@ def semver2int(semver):
     return float(''.join([v[0] + '.'] + v[1:]))
 
 
-@check_function(efo_version='v3.8.0', uberon_version='2017-04-26', obi_version='v2017-05-11')
+@check_function(efo_version='', uberon_version='', obi_version='')
 def check_for_ontology_updates(connection, **kwargs):
     '''
     Checks for updates in one of the three main ontologies that the 4DN data portal uses:
@@ -1127,9 +1127,15 @@ def check_for_ontology_updates(connection, **kwargs):
     plus the release date.
     UBERON: github site doesn't have official 'releases' (and website isn't properly updated),
     so checks for commits that have a commit message containing 'new release'
+
+    If version numbers to compare against aren't specified in the UI, it will use the ones 
+    from the previous primary check result.
     '''
     check = init_check_res(connection, 'check_for_ontology_updates')
-
+    latest_check = check.get_primary_result()
+    for item in ['efo_version', 'uberon_version', 'obi_version']:
+        if not kwargs[item]:
+            kwargs[item] = latest_check['full_output'][item[:item.index('_')].upper()]['compare_to']
     efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
     efo_latest = efo.json()[0]['tag_name']
     uberon = requests.get('https://api.github.com/repos/obophenotype/uberon/commits')
