@@ -25,7 +25,7 @@ foursight_cron_by_schedule = {
         'hourly_checks_2': Cron('15', '0/1', '*', '*', '?', '*'),
         'morning_checks': Cron('0', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('15', '10', '*', '*', '?', '*'),
-        'monday_checks': Cron('0', '9', '?', '*', '3', '*'),
+        'monday_checks': Cron('0', '9', '?', '*', '2', '*'),
         'monthly_checks': Cron('0', '9', '1', '*', '?', '*')
     },
     'dev': {
@@ -35,7 +35,7 @@ foursight_cron_by_schedule = {
         'hourly_checks_2': Cron('45', '0/1', '*', '*', '?', '*'),
         'morning_checks': Cron('30', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('45', '10', '*', '*', '?', '*'),
-        'monday_checks': Cron('30', '9', '?', '*', '3', '*'),
+        'monday_checks': Cron('30', '9', '?', '*', '2', '*'),
         'monthly_checks': Cron('30', '9', '1', '*', '?', '*')
     }
 }
