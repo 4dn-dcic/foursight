@@ -956,7 +956,7 @@
         "title": "Check for Ontology Updates",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks": {
+            "monday_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
