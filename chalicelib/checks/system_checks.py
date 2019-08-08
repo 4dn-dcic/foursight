@@ -293,8 +293,26 @@ def secondary_queue_deduplication(connection, **kwargs):
     elapsed = round(time.time() - t0, 2)
     failed = []
     seen_uuids = set()
+    # this is a bit of a hack -- send maximum sid with every message we replace
+    # get the maximum sid at the start of deduplication and update it if we
+    # encounter a higher sid
+    try:
+        max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
+                                                   ff_env=connection.ff_env).json()
+    except:  ### TEMP!
+        max_sid = 0
+    else:
+        max_sid = max_sid_resp['max_sid']
+
+    # if max_sid_resp['status'] != 'success':
+        # check.status = 'FAIL'
+        # check.summary = 'Could not retrieve max_sid from the server'
+        # return check
+    # max_sid = max_sid_resp['max_sid']
+
+
     exit_reason = 'out of time'
-    dedup_msg = 'Deduplicated: %s' % kwargs['uuid']
+    dedup_msg = 'FS dedup uuid: %s' % kwargs['uuid']
     while elapsed < time_limit:
         # end if we are spinning our wheels replacing the same uuids
         if (replaced + repeat_replaced) >= starting_count:
@@ -306,23 +324,27 @@ def secondary_queue_deduplication(connection, **kwargs):
         recieved = client.receive_message(
             QueueUrl=queue_url,
             MaxNumberOfMessages=10,  # batch size for all sqs ops
-            WaitTimeSeconds=4  # 4 seconds of long polling
+            WaitTimeSeconds=1  # 1 second of long polling
         )
         batch = recieved.get("Messages", [])
-        if not batch:  # if no messages received from long polling, exit
+        if not batch:
             exit_reason = 'no messages left'
             break
-        for i in range(len(batch)):
+        for msg in batch:
             try:
-                msg_body = json.loads(batch[i]['Body'])
+                msg_body = json.loads(msg['Body'])
             except json.JSONDecodeError:
-                problem_msgs.append(batch[i]['Body'])
+                problem_msgs.append(msg['Body'])
                 continue
             total_msgs += 1
             msg_uuid = msg_body['uuid']
+            # update max_sid with message sid if applicable
+            if msg_body.get('sid') is not None and msg_body['sid'] > max_sid:
+                max_sid = msg_body['sid']
+            msg_body['sid'] = max_sid
             to_process = {
-                'Id': batch[i]['MessageId'],
-                'ReceiptHandle': batch[i]['ReceiptHandle']
+                'Id': msg['MessageId'],
+                'ReceiptHandle': msg['ReceiptHandle']
             }
             # every item gets deleted; original uuids get re-sent
             to_delete.append(to_process)
@@ -337,9 +359,12 @@ def secondary_queue_deduplication(connection, **kwargs):
                 time.sleep(0.0001)  # slight sleep for time-based Id
                 # add foursight uuid stamp
                 msg_body['fs_detail'] = dedup_msg
+                # add a slight delay to recycled messages, so that they are
+                # not available for consumption for 2 seconds
                 send_info = {
                     'Id': str(int(time.time() * 1000000)),
-                    'MessageBody': json.dumps(msg_body)
+                    'MessageBody': json.dumps(msg_body),
+                    'DelaySeconds': 2
                 }
                 to_send.append(send_info)
                 seen_uuids.add(msg_uuid)
