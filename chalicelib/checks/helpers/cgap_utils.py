@@ -35,7 +35,15 @@ workflow_details = {
     "workflow_gatk-BaseRecalibrator-check": {
         "run_time": 12,
         "accepted_versions": ["v9"]
-    }
+    },
+    "workflow_gatk-ApplyBQSR-check": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
+    "workflow_index-sorted-bam": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
 }
 
 # accepted versions for completed pipelines
@@ -70,7 +78,9 @@ def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
     step_status = step_result['status']
     # if successful
     if step_status == 'complete':
-        step_output = step_result[new_step_output_arg]
+        if new_step_output_arg:
+            step_output = step_result[new_step_output_arg]
+        pass
     # if still running
     elif step_status == 'running':
         running.append([step_tag, sample_tag])

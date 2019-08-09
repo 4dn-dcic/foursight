@@ -126,9 +126,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'Intermediate alingnment file'}
                         }
             },
-            {  # temp
-                'app_name': '',
-                'workflow_uuid': '',
+            {  # step 7
+                'app_name': 'workflow_gatk-ApplyBQSR-check',
+                'workflow_uuid': '6c9c6f49-f954-4e76-8dfb-d385cddcebd6',
                 'parameters': {},
                 "config": {
                     "instance_type": "",
@@ -137,11 +137,22 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "behavior_on_capacity_limit": "wait_and_retry"
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'recalibrated_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
                         'description': 'Intermediate alingnment file'}
                         }
+            },
+            {  # step 8
+                'app_name': 'workflow_index-sorted-bam',
+                'workflow_uuid': '502e4846-a4ab-4da1-a5a3-d835442004a3',
+                'parameters': {},
+                "config": {
+                    "instance_type": "t3.small",
+                    "ebs_size": "1.2x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                }
             },
             {  # temp
                 'app_name': '',
