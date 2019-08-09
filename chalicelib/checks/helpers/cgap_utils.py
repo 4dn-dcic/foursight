@@ -15,6 +15,26 @@ workflow_details = {
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
         "accepted_versions": ["v8"]
+    },
+    "workflow_readgroups-check": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
+    "workflow_merge_bam-check": {
+        "run_time": 12,
+        "accepted_versions": ["v8"]
+    },
+    "workflow_picard-markduplicates-check": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
+    "workflow_sort-bam-check": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
+    "workflow_gatk-BaseRecalibrator-check": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
     }
 }
 
@@ -30,6 +50,38 @@ chr_size = {"human": "4DNFI823LSII",
             "mouse": "4DNFI3UBJ3HZ",
             "fruit-fly": '4DNFIBEEN92C',
             "chicken": "4DNFIQFZW4DX"}
+
+
+def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
+            step_tag, sample_tag, new_step_input_file,
+            input_file_dict,  new_step_name, new_step_output_arg,
+            additional_input, organism):
+    step_output = ''
+    # Lets get the repoinse from one of the input files that will be used in this step
+    # if it is a list take the first item, if not use it as is
+    if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
+        input_resp = [i for i in all_files if i['@id'] == new_step_input_file[0]][0]
+        name_tag = '_'.join([i.split('/')[2] for i in new_step_input_file])
+    else:
+        input_resp = [i for i in all_files if i['@id'] == new_step_input_file][0]
+        name_tag = new_step_input_file.split('/')[2]
+
+    step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+    step_status = step_result['status']
+    # if successful
+    if step_status == 'complete':
+        step_output = step_result[new_step_output_arg]
+    # if still running
+    elif step_status == 'running':
+        running.append([step_tag, sample_tag])
+    # if run is not successful
+    elif step_status.startswith("no complete run, too many"):
+        problematic_run.append([step_tag, sample_tag])
+    else:
+        # add step 4
+        missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
+
+    return running, problematic_run, missing_run, step_status, step_output
 
 
 def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):

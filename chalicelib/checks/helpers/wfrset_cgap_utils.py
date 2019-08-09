@@ -35,11 +35,131 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "behavior_on_capacity_limit": "wait_and_retry"
                     },
                 'custom_pf_fields': {
-                    'output': {
+                    'raw_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnemnt file'}
-                        }}
+                        'description': 'Intermediate alingnment file'}
+                        }
+            },
+            {
+                'app_name': 'workflow_readgroups-check',
+                'workflow_uuid': '548e63a4-1936-4f68-8e8d-8e4658767911',
+                'parameters': {},
+                "config": {
+                    "instance_type": "t3.large",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                    },
+                'custom_pf_fields': {
+                    'bam_w_readgroups': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alingnment file'}
+                        }
+            },
+            {
+                'app_name': 'workflow_merge_bam-check',
+                'workflow_uuid': '4dn-dcic-lab:workflow_merge_bam-check_v8',
+                'parameters': {},
+                "config": {
+                    "instance_type": "t3.medium",
+                    "ebs_size": "2.2x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'merged_bam': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alingnment file'}
+                        }
+            },
+            {  # step 4
+                'app_name': 'workflow_picard-markduplicates-check',
+                'workflow_uuid': 'beb2b340-94ee-4afe-b4e3-66caaf063397',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5n.18xlarge",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'dupmarked_bam': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alingnment file'}
+                        }
+            },
+            {  # step 5
+                'app_name': 'workflow_sort-bam-check',
+                'workflow_uuid': '560f5194-cd3a-4799-9b1a-6a2d2c371c89',
+                'parameters': {},
+                "config": {
+                    "instance_type": "m5a.2xlarge",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'sorted_bam': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alingnment file'}
+                        }
+            },
+            {  # step 6
+                'app_name': 'workflow_gatk-BaseRecalibrator-check',
+                'workflow_uuid': '455b3056-64ca-4a9b-b546-294b01c9ca92',
+                'parameters': {},
+                "config": {
+                    "instance_type": "t3.small",
+                    "ebs_size": "2x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'recalibration_report': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alingnment file'}
+                        }
+            },
+            {  # temp
+                'app_name': '',
+                'workflow_uuid': '',
+                'parameters': {},
+                "config": {
+                    "instance_type": "",
+                    "ebs_size": "",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alingnment file'}
+                        }
+            },
+            {  # temp
+                'app_name': '',
+                'workflow_uuid': '',
+                'parameters': {},
+                "config": {
+                    "instance_type": "",
+                    "ebs_size": "",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alingnment file'}
+                        }
+            }
             ]
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
