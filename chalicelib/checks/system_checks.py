@@ -296,20 +296,13 @@ def secondary_queue_deduplication(connection, **kwargs):
     # this is a bit of a hack -- send maximum sid with every message we replace
     # get the maximum sid at the start of deduplication and update it if we
     # encounter a higher sid
-    try:
-        max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
-                                                   ff_env=connection.ff_env).json()
-    except:  ### TEMP!
-        max_sid = 0
-    else:
-        max_sid = max_sid_resp['max_sid']
-
-    # if max_sid_resp['status'] != 'success':
-        # check.status = 'FAIL'
-        # check.summary = 'Could not retrieve max_sid from the server'
-        # return check
-    # max_sid = max_sid_resp['max_sid']
-
+    max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
+                                               ff_env=connection.ff_env).json()
+    if max_sid_resp['status'] != 'success':
+        check.status = 'FAIL'
+        check.summary = 'Could not retrieve max_sid from the server'
+        return check
+    max_sid = max_sid_resp['max_sid']
 
     exit_reason = 'out of time'
     dedup_msg = 'FS dedup uuid: %s' % kwargs['uuid']
