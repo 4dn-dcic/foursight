@@ -32,7 +32,7 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
-    "workflow_gatk-BaseRecalibrator-check": {
+    "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
@@ -63,7 +63,7 @@ chr_size = {"human": "4DNFI823LSII",
 def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
             step_tag, sample_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input, organism):
+            additional_input, organism, no_output=False):
     step_output = ''
     # Lets get the repoinse from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
@@ -73,8 +73,10 @@ def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
     else:
         input_resp = [i for i in all_files if i['@id'] == new_step_input_file][0]
         name_tag = new_step_input_file.split('/')[2]
-
-    step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+    if no_output:
+        step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+    else:
+        step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
     step_status = step_result['status']
     # if successful
     if step_status == 'complete':
@@ -270,12 +272,20 @@ def start_missing_run(run_info, auth, env):
     inputs = run_info[2]
     name_tag = run_info[3]
     # find file to use for attribution
-    for attr_key in attr_keys:
-        if attr_key in inputs:
-            attr_file = inputs[attr_key]
+    # if there is a single input, use that one
+    if len(inputs) == 1:
+        for i in inputs:
+            attr_file = inputs[i]
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
             break
+    else:
+        for attr_key in attr_keys:
+            if attr_key in inputs:
+                attr_file = inputs[attr_key]
+                if isinstance(attr_file, list):
+                    attr_file = attr_file[0]
+                break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
@@ -370,256 +380,5 @@ def find_fastq_info(exp, fastq_files):
             'chrsize_ref': chrsize,
             'f_size': str(f_size)+'GB'}
     return files, refs
-
-
-def check_runs_without_output(res, check, run_name, my_auth, start):
-    """Common processing for checks that are running on files and not producing output files
-    like qcs ones producing extra files"""
-    # no successful run
-    missing_run = []
-    # successful run but no expected metadata change (qc or extra file)
-    missing_meta_changes = []
-    # still running
-    running = []
-    # multiple failed runs
-    problems = []
-
-    for a_file in res:
-        # lambda has a time limit (300sec), kill before it is reached so we get some results
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            check.brief_output.append('did not complete checking all')
-            break
-        file_id = a_file['accession']
-        report = get_wfr_out(a_file, run_name,  key=my_auth, md_qc=True)
-        if report['status'] == 'running':
-            running.append(file_id)
-        elif report['status'].startswith("no complete run, too many"):
-            problems.append(file_id)
-        elif report['status'] != 'complete':
-            missing_run.append(file_id)
-        # There is a successful run, but no extra_file
-        elif report['status'] == 'complete':
-            missing_meta_changes.append(file_id)
-    if running:
-        check.summary = 'Some files are running'
-        check.brief_output.append(str(len(running)) + ' files are still running.')
-        check.full_output['running'] = running
-    if problems:
-        check.summary = 'Some files have problems'
-        check.brief_output.append(str(len(problems)) + ' files have multiple failed runs')
-        check.full_output['problems'] = problems
-        check.status = 'WARN'
-    if missing_run:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_run)) + ' files lack a successful run')
-        check.full_output['files_without_run'] = missing_run
-        check.status = 'WARN'
-    if missing_meta_changes:
-        check.allow_action = True
-        check.summary = 'Some files are missing runs'
-        check.brief_output.append(str(len(missing_meta_changes)) + ' files have successful run but no qc/extra file')
-        check.full_output['files_without_changes'] = missing_meta_changes
-        check.status = 'WARN'
-    check.summary = check.summary.strip()
-    if not check.brief_output:
-        check.brief_output = ['All Good!']
-    return check
-
-
-def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False):
-    """Check run status for each set in res, and report missing runs and completed process"""
-    for a_set in res:
-        # get all related items
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
-        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
-        now = datetime.utcnow()
-        print(a_set['accession'], (now-start).seconds)
-        if (now-start).seconds > lambda_limit:
-            break
-        # missing run
-        missing_run = []
-        # still running
-        running = []
-        # problematic cases
-        problematic_run = []
-        # if all runs are complete, add the patch info for processed files and tag
-        complete = {'patch_opf': [],
-                    'add_tag': []}
-        set_summary = ""
-        set_acc = a_set['accession']
-        part3 = 'ready'
-        # references dict content
-        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
-        exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
-        # if no files were found
-        if all(not value for value in exp_files.values()):
-            set_summary += "| skipped - no usable file"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
-            continue
-        # skip if missing reference
-        if not refs['bwa_ref'] or not refs['chrsize_ref']:
-            set_summary += "| skipped - no chrsize/bwa"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
-            continue
-        if not refs['enz_ref'] and not nore:
-            set_summary += "| skipped - no enz"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no enz'})
-            continue
-        set_pairs = []
-        # cycle through the experiments, skip the ones without usable files
-        for exp in exp_files.keys():
-            if not exp_files.get(exp):
-                continue
-            # Check Part 1 and See if all are okay
-            exp_bams = []
-            part2 = 'ready'
-            for pair in exp_files[exp]:
-                pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs=all_wfrs)
-                # if successful
-                if step1_result['status'] == 'complete':
-                    exp_bams.append(step1_result['out_bam'])
-                # if still running
-                elif step1_result['status'] == 'running':
-                    part2 = 'not ready'
-                    running.append(['step1', exp, pair])
-                # if run is not successful
-                elif step1_result['status'].startswith("no complete run, too many"):
-                    part2 = 'not ready'
-                    problematic_run.append(['step1', exp, pair])
-                else:
-                    part2 = 'not ready'
-                    # add part 1
-                    inp_f = {'fastq1': pair[0], 'fastq2': pair[1], 'bwa_index': refs['bwa_ref']}
-                    name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
-                    missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
-            # stop progress to part2 and 3
-            if part2 is not 'ready':
-                part3 = 'not ready'
-                # skip part 2 checks
-                continue
-            # make sure all input bams went through same last step2
-            all_step2s = []
-            for bam in exp_bams:
-                bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
-                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs=all_wfrs)
-                all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
-            # all bams should have same wfr
-            assert len(list(set(all_step2s))) == 1
-            # check if part 2 run already
-            if step2_result['status'] == 'complete':
-                # accumulate pairs files for step3
-                set_pairs.append(step2_result['filtered_pairs'])
-                # add files for experiment opf
-                patch_data = [step2_result['annotated_bam'], step2_result['filtered_pairs']]
-                complete['patch_opf'].append([exp, patch_data])
-                continue
-            # if still running
-            elif step2_result['status'] == 'running':
-                part3 = 'not ready'
-                running.append(['step2', exp])
-                continue
-            # problematic runs with repeated fails
-            elif step2_result['status'].startswith("no complete run, too many"):
-                part3 = 'not ready'
-                problematic_run.append(['step2', exp])
-                continue
-            # if run is not successful
-            else:
-                part3 = 'not ready'
-                # Add part2
-                inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
-                missing_run.append(['step2', ['hi-c-processing-bam', refs['organism'], {}], inp_f, exp])
-        if part3 is not 'ready':
-            if running:
-                set_summary += "| running step 1/2"
-            elif missing_run:
-                set_summary += "| missing step 1/2"
-            elif problematic_run:
-                set_summary += "| problem in step 1/2"
-
-        if part3 is 'ready':
-            # if we made it to this step, there should be files in set_pairs
-            assert set_pairs
-            # make sure all input bams went through same last step3
-            all_step3s = []
-            for a_pair in set_pairs:
-                a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
-                all_step3s.append((step3_result['status'], step3_result.get('mcool')))
-            # make sure existing step3s are matching
-            if len(list(set(all_step3s))) == 1:
-                # if successful
-                if step3_result['status'] == 'complete':
-                    set_summary += '| completed runs'
-                    patch_data = [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]
-                    complete['patch_opf'].append([set_acc, patch_data])
-                    complete['add_tag'] = [set_acc, tag]
-                # if still running
-                elif step3_result['status'] == 'running':
-                    running.append(['step3', set_acc])
-                    set_summary += "| running step3"
-                # problematic runs with repeated fails
-                elif step3_result['status'].startswith("no complete run, too many"):
-                    set_summary += "| problems in step3"
-                    problematic_run.append(['step3', set_acc])
-                # if run is not successful
-                else:
-                    set_summary += "| missing step3"
-                    inp_f = {'input_pairs': set_pairs,
-                             'chromsizes': refs['chrsize_ref']}
-                    if not nore:
-                        inp_f['restriction_file'] = refs['enz_ref']
-                    overwrite = {}
-                    if nonorm:
-                        overwrite = {'parameters': {"no_balance": True}}
-                    missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite],
-                                        inp_f, set_acc])
-            else:
-                problematic_run.append(['step3-not_unique', set_acc])
-                set_summary += "| problem in step 3- not unique"
-        check.brief_output.append(set_summary)
-        if running:
-            check.full_output['running_runs'].append({set_acc: running})
-        if missing_run:
-            check.full_output['needs_runs'].append({set_acc: missing_run})
-        if problematic_run:
-            check.full_output['problematic_runs'].append({set_acc: problematic_run})
-        # if made it till the end
-        if complete.get('add_tag'):
-            assert not running
-            assert not problematic_run
-            assert not missing_run
-            check.full_output['completed_runs'].append(complete)
-    # complete check values
-    if check.full_output['running_runs']:
-        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
-    if check.full_output['skipped']:
-        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
-        check.status = 'WARN'
-    if check.full_output['needs_runs']:
-        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
-        check.status = 'WARN'
-        check.allow_action = True
-    if check.full_output['completed_runs']:
-        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
-        check.status = 'WARN'
-        check.allow_action = True
-    if check.full_output['problematic_runs']:
-        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
-        check.status = 'WARN'
-    return check
 
 

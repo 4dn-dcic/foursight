@@ -110,7 +110,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         }
             },
             {  # step 6
-                'app_name': 'workflow_gatk-BaseRecalibrator-check',
+                'app_name': 'workflow_gatk-BaseRecalibrator',
                 'workflow_uuid': '455b3056-64ca-4a9b-b546-294b01c9ca92',
                 'parameters': {},
                 "config": {
@@ -131,8 +131,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'workflow_uuid': '6c9c6f49-f954-4e76-8dfb-d385cddcebd6',
                 'parameters': {},
                 "config": {
-                    "instance_type": "",
-                    "ebs_size": "",
+                    "instance_type": "t3.micro",
+                    "ebs_size": "2.5x",
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
                 },
