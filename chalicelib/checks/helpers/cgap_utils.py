@@ -2,7 +2,7 @@ from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
 from . import wfrset_cgap_utils
-from tibanna_4dn.core import API
+import json
 
 lambda_limit = wfrset_cgap_utils.lambda_limit
 
@@ -316,9 +316,9 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
     # TEMP
     input_json['step_function_name'] = 'tibanna_pony_dev'
     try:
-        e = API().run_workflow(input_json, sfn='tibanna_pony_dev')
-        # url = json.loads(e['input'])['_tibanna']['url']
-        return 'startred run'
+        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
+        url = json.loads(e['input'])['_tibanna']['url']
+        return url
     except Exception as e:
         return str(e)
 
