@@ -1,4 +1,3 @@
-import json
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
@@ -286,6 +285,8 @@ def start_missing_run(run_info, auth, env):
                 if isinstance(attr_file, list):
                     attr_file = attr_file[0]
                 break
+    # use pony_dev
+
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
@@ -311,6 +312,9 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "run_id": run_name}
 
     input_json['env_name'] = 'fourfront-webdev'
+
+    # TEMP
+    input_json['step_function_name'] = 'tibanna_pony_dev'
     try:
         e = API().run_workflow(input_json, sfn='tibanna_pony_dev')
         # url = json.loads(e['input'])['_tibanna']['url']
@@ -382,3 +386,46 @@ def find_fastq_info(exp, fastq_files):
     return files, refs
 
 
+def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='hic'):
+    started_runs = 0
+    patched_md = 0
+    action.description = ""
+    action_log = {'started_runs': [], 'failed_runs': [], 'patched_meta': [], 'failed_meta': []}
+    if missing_runs:
+        for a_case in missing_runs:
+            now = datetime.utcnow()
+            acc = list(a_case.keys())[0]
+            print((now-start).seconds, acc)
+            if (now-start).seconds > lambda_limit:
+                action.description = 'Did not complete action due to time limitations.'
+                break
+
+            for a_run in a_case[acc]:
+                started_runs += 1
+                url = start_missing_run(a_run, my_auth, my_env)
+                log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
+                if url.startswith('http'):
+                    action_log['started_runs'].append([log_message, url])
+                else:
+                    action_log['failed_runs'].append([log_message, url])
+    if patch_meta:
+        action_log['patched_meta'] = []
+        for a_completed_info in patch_meta:
+            exp_acc = a_completed_info[0]
+            patch_body = a_completed_info[1]
+            if (now-start).seconds > lambda_limit:
+                action.description = 'Did not complete action due to time limitations.'
+                break
+            patched_md += 1
+            ff_utils.patch_metadata(patch_body, exp_acc, my_auth)
+            action_log['patched_meta'].append(exp_acc)
+
+    # did we complete without running into time limit
+    for k in action_log:
+        if action_log[k]:
+            add_desc = "| {}: {} ".format(k, str(len(action_log[k])))
+            action.description += add_desc
+
+    action.output = action_log
+    action.status = 'DONE'
+    return action

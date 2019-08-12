@@ -1215,5 +1215,17 @@
                 }
             }
         }
+    },
+    "cgap_status" : {
+        "title": "a) CGAP",
+        "group": "CGAP checks",
+        "schedule": {
+            "hourly_checks": {
+                "webdev": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }

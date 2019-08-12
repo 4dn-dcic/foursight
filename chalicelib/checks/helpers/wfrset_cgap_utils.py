@@ -139,8 +139,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'custom_pf_fields': {
                     'recalibrated_bam': {
                         'genome_assembly': genome,
-                        'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'file_type': 'alignments',
+                        'description': 'processed output from cgap pipeline'}
                         }
             },
             {  # step 8
