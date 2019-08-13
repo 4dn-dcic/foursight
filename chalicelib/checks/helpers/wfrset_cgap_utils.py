@@ -60,7 +60,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {
                 'app_name': 'workflow_merge_bam-check',
-                'workflow_uuid': '4dn-dcic-lab:workflow_merge_bam-check_v8',
+                'workflow_uuid': '30802d8c-20c3-4eea-82dd-dd34621569c6',
                 'parameters': {},
                 "config": {
                     "instance_type": "t3.medium",
