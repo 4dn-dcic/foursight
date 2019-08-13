@@ -19,7 +19,7 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
-    "workflow_merge_bam-check": {
+    "workflow_merge-bam-check": {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },

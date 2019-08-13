@@ -45,7 +45,7 @@ def cgap_status(connection, **kwargs):
 
     step1_name = 'workflow_bwa-mem_no_unzip-check'
     step2_name = 'workflow_add-readgroups-check'
-    step3_name = 'workflow_merge_bam-check'
+    step3_name = 'workflow_merge-bam-check'
     step4_name = 'workflow_picard-MarkDuplicates-check'
     step5_name = 'workflow_sort-bam-check'
     step6_name = 'workflow_gatk-BaseRecalibrator'
