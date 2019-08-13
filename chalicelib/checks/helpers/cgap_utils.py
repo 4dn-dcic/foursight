@@ -13,7 +13,7 @@ lambda_limit = wfrset_cgap_utils.lambda_limit
 workflow_details = {
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v8"]
+        "accepted_versions": ["v9"]
     },
     "workflow_readgroups-check": {
         "run_time": 12,
@@ -21,7 +21,7 @@ workflow_details = {
     },
     "workflow_merge_bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v8"]
+        "accepted_versions": ["v9"]
     },
     "workflow_picard-markduplicates-check": {
         "run_time": 12,
