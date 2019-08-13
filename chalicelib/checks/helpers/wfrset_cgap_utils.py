@@ -76,7 +76,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         }
             },
             {  # step 4
-                'app_name': 'workflow_picard-markduplicates-check',
+                'app_name': 'workflow_picard-MarkDuplicates-check',
                 'workflow_uuid': 'beb2b340-94ee-4afe-b4e3-66caaf063397',
                 'parameters': {},
                 "config": {
