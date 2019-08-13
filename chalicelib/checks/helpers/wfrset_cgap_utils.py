@@ -42,7 +42,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         }
             },
             {
-                'app_name': 'workflow_readgroups-check',
+                'app_name': 'workflow_add-readgroups-check',
                 'workflow_uuid': '548e63a4-1936-4f68-8e8d-8e4658767911',
                 'parameters': {},
                 "config": {

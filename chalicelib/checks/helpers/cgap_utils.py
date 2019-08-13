@@ -15,7 +15,7 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
-    "workflow_readgroups-check": {
+    "workflow_add-readgroups-check": {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
