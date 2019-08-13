@@ -59,7 +59,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         }
             },
             {
-                'app_name': 'workflow_merge_bam-check',
+                'app_name': 'workflow_merge-bam-check',
                 'workflow_uuid': '30802d8c-20c3-4eea-82dd-dd34621569c6',
                 'parameters': {},
                 "config": {
@@ -76,7 +76,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         }
             },
             {  # step 4
-                'app_name': 'workflow_picard-markduplicates-check',
+                'app_name': 'workflow_picard-MarkDuplicates-check',
                 'workflow_uuid': 'beb2b340-94ee-4afe-b4e3-66caaf063397',
                 'parameters': {},
                 "config": {
