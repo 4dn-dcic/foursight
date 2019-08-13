@@ -994,7 +994,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1006,7 +1006,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1018,7 +1018,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1030,7 +1030,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1042,7 +1042,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1054,7 +1054,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1066,7 +1066,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1078,7 +1078,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1090,7 +1090,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1102,7 +1102,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1114,7 +1114,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1126,7 +1126,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1138,7 +1138,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1150,7 +1150,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1162,7 +1162,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1174,7 +1174,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
