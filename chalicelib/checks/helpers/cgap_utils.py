@@ -417,6 +417,7 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
         for a_completed_info in patch_meta:
             exp_acc = a_completed_info[0]
             patch_body = a_completed_info[1]
+            now = datetime.utcnow()
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations.'
                 break
