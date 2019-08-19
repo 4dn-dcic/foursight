@@ -28,7 +28,7 @@ workflow_details = {
         "accepted_versions": ["0.2.5", "0.2.6"]
     },
     "hi-c-processing-bam": {
-        "run_time": 50,
+        "run_time": 200,
         "accepted_versions": ["0.2.6"]
     },
     "hi-c-processing-pairs": {
