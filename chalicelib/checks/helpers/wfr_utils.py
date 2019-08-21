@@ -118,7 +118,7 @@ accepted_versions = {
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
-    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_2'],
+    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_3'],
     # Preliminary - Released to network
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
@@ -1094,10 +1094,7 @@ def start_missing_run(run_info, auth, env):
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
             break
-    print('here')
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
-    print(attributions)
-    print(run_settings)
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
     return url
