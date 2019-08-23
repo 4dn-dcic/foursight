@@ -28,7 +28,7 @@ def get_reference_files(connection):
     # first, find and cache the reference files
     reference_files_by_ga = {}
     ref_search_q = '/search/?type=File&tags=higlass_reference&higlass_uid!=No+value&genome_assembly!=No+value&file_format.file_format=beddb&file_format.file_format=chromsizes&field=genome_assembly&field=file_format&field=accession'
-    ref_res = ff_utils.search_metadata(ref_search_q, key=connection.ff_keys, ff_env=connection.ff_env)
+    ref_res = ff_utils.search_metadata(ref_search_q, key=connection.ff_keys)
     for ref in ref_res:
         # file_format should be 'chromsizes' or 'beddb'
         ref_format = ref.get('file_format', {}).get('file_format')
@@ -96,7 +96,7 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
 
         try:
             viewconf_res = ff_utils.post_metadata(viewconf_description, 'higlass-view-configs',
-                                                  key=connection.ff_keys, ff_env=connection.ff_env)
+                                                  key=connection.ff_keys)
             view_conf_uuid = viewconf_res['@graph'][0]['uuid']
             return {
                 "view_config_uuid": view_conf_uuid,
@@ -198,8 +198,7 @@ def add_viewconf_static_content_to_file(connection, item_uuid, higlass_item_uuid
         ff_utils.patch_metadata(
             {'static_content': patched_static_content},
             obj_id=item_uuid,
-            key=connection.ff_keys,
-            ff_env=connection.ff_env
+            key=connection.ff_keys
         )
     except Exception as e:
         return False, str(e)
@@ -383,7 +382,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
         file_search_query = "/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value" + query + fields_to_include
 
         # Query the files
-        search_res = ff_utils.search_metadata(file_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        search_res = ff_utils.search_metadata(file_search_query, key=connection.ff_keys)
 
         # Collate the results into a dict of ExpSets, ordered by accession
         for found_file in search_res:
@@ -832,7 +831,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
         processed_expsets_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
 
         # Query the Experiment Sets
-        search_res = ff_utils.search_metadata(processed_expsets_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        search_res = ff_utils.search_metadata(processed_expsets_query, key=connection.ff_keys)
 
         # Collate the results into a dict of ExpSets, ordered by accession
         for expset in search_res:
@@ -1204,13 +1203,13 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
         expset_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
 
         # Store results by accession
-        search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys)
         for expset in search_res:
             expsets_by_accession[ expset["accession"] ] = expset
 
     # I'll need more specific file information, so get the files, statuses.
     file_query = '/search/?type=File&higlass_uid%21=No+value&field=status&field=accession&limit=all'
-    search_res = ff_utils.search_metadata(file_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(file_query, key=connection.ff_keys)
     file_statuses = { res["accession"] : res["status"] for res in search_res if "accession" in res }
 
     # Get reference files
@@ -1511,8 +1510,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
             ff_utils.patch_metadata(
                 {'other_processed_files': expsets_to_update[accession]["other_processed_files"]},
                 obj_id=accession,
-                key=connection.ff_keys,
-                ff_env=connection.ff_env
+                key=connection.ff_keys
             )
             number_of_viewconfs_updated += number_of_posted_viewconfs
         except Exception as e:
@@ -1664,7 +1662,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             continue
 
         # Query all possible files
-        possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys)
 
         for procfile in possibly_reg:
             # If we've taken more than 270 seconds to complete, break immediately
@@ -1892,7 +1890,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 if 'higlass_uid' not in hit or hit['higlass_uid'] != response_higlass_uid:
                     patch_data = {'higlass_uid': response_higlass_uid}
                     try:
-                        ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
+                        ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys)
                     except Exception as e:
                         action_logs['patch_failure'][hit['accession']] = "{type}: {message}".format(
                             type = type(e),
@@ -1933,7 +1931,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     # Search for all Higlass View Config that are deleted and have the deleted_by_cypress_test tag.
     search_query = '/search/?type=Item&status=deleted&tags=deleted_by_cypress_test'
-    search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys)
 
     check.full_output['items_to_purge'] = [ s["uuid"] for s in search_response ]
 
@@ -1985,7 +1983,7 @@ def purge_cypress_items(connection, **kwargs):
             time_expired = True
             break
 
-        purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys, ff_env=connection.ff_env)
+        purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys)
         if purge_response['status'] == 'success':
             action_logs['items_purged'].append(view_conf_uuid)
         else:
@@ -2057,8 +2055,7 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
                 viewconf_res = ff_utils.patch_metadata(
                     viewconf_description,
                     obj_id=higlass_item["uuid"],
-                    key=connection.ff_keys,
-                    ff_env=connection.ff_env
+                    key=connection.ff_keys
                 )
                 return {
                     "item_uuid": higlass_item["uuid"],
@@ -2069,8 +2066,7 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
                 viewconf_res = ff_utils.post_metadata(
                     viewconf_description,
                     'higlass-view-configs',
-                    key=connection.ff_keys,
-                    ff_env=connection.ff_env
+                    key=connection.ff_keys
                 )
                 view_conf_uuid = viewconf_res['@graph'][0]['uuid']
                 return {

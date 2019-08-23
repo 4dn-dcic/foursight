@@ -427,10 +427,10 @@ def experiment_set_reporting_data(connection, **kwargs):
     check.status = 'IGNORE'
     exp_sets = {}
     search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
-    set_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=20)
+    set_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=20)
     # run a second search for status=deleted and status=replaced
     set_hits_del = ff_utils.search_metadata(search_query + '&status=deleted&status=replaced',
-                                            ff_env=connection.ff_env, page_limit=20)
+                                            key=connection.ff_keys, page_limit=20)
     set_hits.extend(set_hits_del)
     for hit in set_hits:
         add_to_report(hit, exp_sets)
@@ -624,10 +624,10 @@ def publish_data_release_updates(connection, **kwargs):
     posted_updates = []
     for update in updates_to_post:
         # should be in good shape to post as-is
-        resp = ff_utils.post_metadata(update, 'data-release-updates', key=connection.ff_keys, ff_env=connection.ff_env)
+        resp = ff_utils.post_metadata(update, 'data-release-updates', key=connection.ff_keys)
         posted_updates.append({'update': update, 'response': resp})
     if section_to_post:
-        resp = ff_utils.post_metadata(section_to_post, 'static-sections', key=connection.ff_keys, ff_env=connection.ff_env)
+        resp = ff_utils.post_metadata(section_to_post, 'static-sections', key=connection.ff_keys)
         posted_section = {'static_section': section_to_post, 'response': resp}
     else:
         posted_section = None
