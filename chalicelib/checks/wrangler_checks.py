@@ -798,8 +798,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
         if uuid in full_output['success']:
             return
         try:
-            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys,
-                                    key=connection.ff_keys)
+            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys)
         except Exception as exc:
             # log something about str(exc)
             full_output['failure'].append('%s. %s' % (uuid, str(exc)))
@@ -812,7 +811,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     # input for test pseudo hi-c-processing-bam
     response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
-                                     key=connection.ff_keys, key=connection.ff_keys)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
@@ -823,14 +822,14 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
-                                     key=connection.ff_keys, key=connection.ff_keys)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
-                                     key=connection.ff_keys, key=connection.ff_keys)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
