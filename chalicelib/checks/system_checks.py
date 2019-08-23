@@ -232,7 +232,8 @@ def fourfront_performance_metrics(connection, **kwargs):
         performance[check_url] = {}
         try:
             # set timeout really high
-            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url, timeout=1000)
+            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url,
+                                                  auth=connection.ff_keys, timeout=1000)
         except Exception as e:
             performance[check_url]['error'] = str(e)
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
@@ -297,7 +298,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     # get the maximum sid at the start of deduplication and update it if we
     # encounter a higher sid
     max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
-                                               key=connection.ff_keys).json()
+                                               auth=connection.ff_keys).json()
     if max_sid_resp['status'] != 'success':
         check.status = 'FAIL'
         check.summary = 'Could not retrieve max_sid from the server'
