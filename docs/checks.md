@@ -51,14 +51,13 @@ def items_created_in_the_past_day(connection, **kwargs):
     return check
 ```
 
-At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. To actually get our check to do something, let's import ff_utils module from the central dcicutils package, which allows us to easily make requests to Fourfront. Imports should generally be done at the top level of your checks file, but they are shown in the function here for completeness. It's important to note that we can always get the current Fourfront enviroment (such as `foufront-webdev` or `fourfront-webprod`) using the `connection.ff_env` field. This is leveraged to make connections in the ff_utils module.
+At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. To actually get our check to do something, let's import ff_utils module from the central dcicutils package, which allows us to easily make requests to Fourfront. Imports should generally be done at the top level of your checks file, but they are shown in the function here for completeness. It's important to note that we can always get Fourfront access keys through `connection.ff_keys`. Likewise, the current Fourfront environment (such as `foufront-webdev` or `fourfront-webprod`) using the `connection.ff_env` field. These are leveraged when using the ff_utils package.
 
 ```
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     from dcicutils import ff_utils
     check = init_check_res(connection, 'items_created_in_the_past_day')
-    # can get Fourfront environment with connection.ff_env
     check.status = 'PASS'
     check.description = 'Working description.'
     return check
@@ -77,7 +76,7 @@ def items_created_in_the_past_day(connection, **kwargs):
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join(['search/?type=', item_type, '&q=date_created:>=', date_str, '&frame=object'])
     # this will return a list of hits from the search
-    search_res = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     full_output = {}
     item_output = []
     for res in search_res:

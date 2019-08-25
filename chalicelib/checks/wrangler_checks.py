@@ -132,7 +132,7 @@ def biorxiv_is_now_published(connection, **kwargs):
         suffix = 'journal=bioRxiv&type=Publication&status=current&limit=all'
     # run the check
     search_query = search + suffix
-    biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not biorxivs:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
@@ -439,7 +439,7 @@ def item_counts_by_type(connection, **kwargs):
     item_counts = {}
     warn_item_counts = {}
     req_location = ''.join([connection.ff_server, 'counts?format=json'])
-    counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
+    counts_res = ff_utils.authorized_request(req_location, auth=connection.ff_keys)
     if counts_res.status_code >= 400:
         check.status = 'ERROR'
         check.description = 'Error (bad status code %s) connecting to the counts endpoint at: %s.' % (counts_res.status_code, req_location)
@@ -507,10 +507,10 @@ def change_in_item_counts(connection, **kwargs):
     search_query = ''.join(['search/?type=Item&type=OntologyTerm&type=TrackingItem',
                             '&frame=object&date_created.from=',
                             from_date, '&date_created.to=', to_date])
-    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     # add deleted/replaced items
     search_query += '&status=deleted&status=replaced'
-    search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env))
+    search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys))
     search_output = []
     for res in search_resp:
         # convert type to index name. e.g. ExperimentSet --> experiment_set
@@ -572,7 +572,7 @@ def identify_files_without_filesize(connection, **kwargs):
             addon = '&' + addon
         search_query += addon
     problem_files = []
-    file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
+    file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     if not file_hits:
         check.status = 'PASS'
         return check
@@ -619,7 +619,7 @@ def patch_file_size(connection, **kwargs):
         else:
             patch_data = {'file_size': head_info['ContentLength']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
@@ -668,7 +668,7 @@ def new_or_updated_items(connection, **kwargs):
         if user in seen and user not in dcic:
             return seen.get(user)
 
-        user_item = ff_utils.get_metadata(user, ff_env=connection.ff_env)
+        user_item = ff_utils.get_metadata(user, key=connection.ff_keys)
         seen[user] = user_item.get('display_title')
         if user_item.get('lab').get('display_title') == dciclab:
             dcic[user] = True
@@ -710,7 +710,7 @@ def new_or_updated_items(connection, **kwargs):
     types2chk = ['ExperimentSet', 'Experiment']
     for itype in types2chk:
         chk_query = search.format(type=itype)
-        item_results = ff_utils.search_metadata(chk_query, ff_env=connection.ff_env, page_limit=200)
+        item_results = ff_utils.search_metadata(chk_query, key=connection.ff_keys, page_limit=200)
         for item in item_results:
             submitter = None
             modifier = None
@@ -798,8 +798,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
         if uuid in full_output['success']:
             return
         try:
-            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys,
-                                    ff_env=connection.ff_env)
+            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys)
         except Exception as exc:
             # log something about str(exc)
             full_output['failure'].append('%s. %s' % (uuid, str(exc)))
@@ -812,7 +811,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     # input for test pseudo hi-c-processing-bam
     response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
@@ -823,14 +822,14 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
@@ -856,7 +855,7 @@ def validate_entrez_geneids(connection, **kwargs):
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
-    genes = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    genes = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not genes:
         check.status = "FAIL"
         check.description = "Could not retrieve gene records from fourfront"
@@ -919,7 +918,7 @@ def users_with_pending_lab(connection, **kwargs):
         emails = [mail.strip() for mail in scope.split(',')]
         for an_email in emails:
             search_q += '&email=' + an_email
-    search_res = ff_utils.search_metadata(search_q, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(search_q, key=connection.ff_keys)
     for res in search_res:
         user_fields = ['uuid', 'email', 'pending_lab', 'lab', 'title', 'job_title']
         user_append = {k: res.get(k) for k in user_fields}
@@ -933,11 +932,11 @@ def users_with_pending_lab(connection, **kwargs):
         if user_append['pending_lab'] not in cached_items:
             to_cache = {}
             pending_meta = ff_utils.get_metadata(user_append['pending_lab'], key=connection.ff_keys,
-                                                 ff_env=connection.ff_env, add_on='frame=object')
+                                                 add_on='frame=object')
             to_cache['lab_title'] = pending_meta['display_title']
             if 'pi' in pending_meta:
                 pi_meta = ff_utils.get_metadata(pending_meta['pi'], key=connection.ff_keys,
-                                                ff_env=connection.ff_env, add_on='frame=object')
+                                                add_on='frame=object')
                 to_cache['lab_PI_email'] = pi_meta['email']
                 to_cache['lab_PI_title'] = pi_meta['title']
                 to_cache['lab_PI_viewing_groups'] = pi_meta['viewing_groups']
@@ -974,7 +973,7 @@ def finalize_user_pending_labs(connection, **kwargs):
         # patch lab and delete pending_lab in one request
         try:
             ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
-                                    ff_env=connection.ff_env, add_on='delete_fields=pending_lab')
+                                    add_on='delete_fields=pending_lab')
         except Exception as e:
             action_logs['patch_failure'].append({user['uuid']: str(e)})
         else:
@@ -1151,7 +1150,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "immunofluorescence": "Immunofluorescence"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
-                                        ff_env=connection.ff_env)
+                                        key=connection.ff_keys)
     auto_patch = {}
     manual = {}
     for exptype in exptypes:
@@ -1199,7 +1198,7 @@ def patch_assay_subclass_short(connection, **kwargs):
     action_logs = {'patch_success': [], 'patch_failure': []}
     for k, v in check_res['full_output']['Patch by action'].items():
         try:
-            ff_utils.patch_metadata({'assay_subclass_short': v['new subclass_short']}, k, ff_env=connection.ff_env)
+            ff_utils.patch_metadata({'assay_subclass_short': v['new subclass_short']}, k, key=connection.ff_keys)
         except Exception as e:
             action_logs['patch_failure'].append({k: str(e)})
         else:
