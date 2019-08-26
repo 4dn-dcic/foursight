@@ -421,7 +421,8 @@ def check_status_mismatch(connection, **kwargs):
                     mismatches.setdefault(iid, []).append(lid)
 
         if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
-            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=200, is_generator=True)
+            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=connection.ff_keys,
+                                                  chunk_size=200, is_generator=True)
             for litem in linked2chk:
                 luuid = litem.get('uuid')
                 listatus = litem.get('properties').get('status', 'in review by lab')
