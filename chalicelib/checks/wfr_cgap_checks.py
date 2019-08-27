@@ -39,7 +39,7 @@ def cgap_status(connection, **kwargs):
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-    q = '/search/?type=ExperimentSeq&experiment_type=WGS&processed_files.uuid=No+value'
+    q = '/search/?type=Sample&processed_files.display_title=No+value&files.display_title%21=No+value'
     all_exps = ff_utils.search_metadata(q, my_auth)
     print(len(all_exps))
 

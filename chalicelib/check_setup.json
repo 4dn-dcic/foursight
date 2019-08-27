@@ -435,7 +435,11 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -960,6 +964,10 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -982,6 +990,10 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgap": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1221,8 +1233,8 @@
         "group": "CGAP checks",
         "schedule": {
             "hourly_checks": {
-                "webdev": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
+                "cgap": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }

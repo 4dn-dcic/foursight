@@ -324,7 +324,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
                 'groups': grouped_results
             })
     # prioritize these environments
-    env_order = ['data', 'staging', 'webdev', 'hotseat']
+    env_order = ['data', 'staging', 'webdev', 'hotseat', 'cgap']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
     template = jin_env.get_template('view_groups.html')
     # get queue information
@@ -334,7 +334,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
-        load_time = get_load_time(),
+        load_time=get_load_time(),
         is_admin=is_admin,
         domain=domain,
         context=context,
@@ -383,7 +383,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
-        load_time = get_load_time(),
+        load_time=get_load_time(),
         is_admin=is_admin,
         domain=domain,
         context=context,
@@ -447,7 +447,7 @@ def process_view_result(connection, res, is_admin):
     else:
         res['admin_output'] = None
 
-    ### LOGIC FOR VIEWING ACTION ###
+    # ### LOGIC FOR VIEWING ACTION ###
     # if this check has already run an action, display that. Otherwise, allow
     # action to be run.
     # For now also get the latest result for the checks action
