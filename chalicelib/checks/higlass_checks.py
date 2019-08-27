@@ -1543,23 +1543,25 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
     action.output = action_logs
     return action
 
-@check_function(confirm_on_higlass=False, filetype='all', higlass_server=None)
+@check_function(confirm_on_higlass=False, filetype='all', higlass_server=None, time_limit=270)
 def files_not_registered_with_higlass(connection, **kwargs):
     """
     Used to check registration of files on higlass and also register them
     through the patch_file_higlass_uid action.
 
-    If confirm_on_higlass is True, check each file by making a request to the
+    If `confirm_on_higlass` is True, check each file by making a request to the
     higlass server. Otherwise, just look to see if a higlass_uid is present in
     the metadata.
 
-    The filetype arg allows you to specify which filetypes to operate on.
+    The `filetype` arg allows you to specify which filetypes to operate on.
     Must be one of: 'all', 'bigbed', 'mcool', 'bg', 'bw', 'beddb', 'chromsizes'.
     'chromsizes' and 'beddb' are from the raw files bucket; all other filetypes
     are from the processed files bucket.
 
-    higlass_server may be passed in if you want to use a server other than
+    `higlass_server` may be passed in if you want to use a server other than
     higlass.4dnucleome.org.
+
+    Set `time_limit` kwarg to 0 or None to disable time limit.
 
     Since 'chromsizes' file defines the coordSystem (assembly) used to register
     other files in higlass, these go first.
@@ -1600,7 +1602,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     higlass_key = connection.ff_s3.get_higlass_key()
     higlass_server = kwargs['higlass_server'] if kwargs['higlass_server'] else higlass_key['server']
 
-    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    # Keep track of how long this task has lasted.
     start_time = time.time()
     time_expired = False
 
@@ -1665,8 +1667,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys)
 
         for procfile in possibly_reg:
-            # If we've taken more than 270 seconds to complete, break immediately
-            if time.time() - start_time > 270:
+            if kwargs['time_limit'] and time.time() - start_time > kwargs['time_limit']:
                 time_expired = True
                 break
 
@@ -1778,10 +1779,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
     return check
 
-@action_function(file_accession=None, force_new_higlass_uid=False)
+@action_function(file_accession=None, force_new_higlass_uid=False, time_limit=270)
 def patch_file_higlass_uid(connection, **kwargs):
-    """ After running "files_not_registered_with_higlass",
+    """
+    After running "files_not_registered_with_higlass",
     Try to register files with higlass.
+
+    Set `time_limit` kwarg to 0 or None to disable time limit.
 
     Args:
         connection: The connection to Fourfront.
@@ -1820,7 +1824,7 @@ def patch_file_higlass_uid(connection, **kwargs):
         'Accept': 'application/json'
     }
 
-    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    # Keep track of how long this task has lasted.
     start_time = time.time()
     time_expired = False
 
@@ -1830,8 +1834,7 @@ def patch_file_higlass_uid(connection, **kwargs):
         if time_expired:
             break
         for hit in hits:
-            # If we've taken more than 270 seconds to complete, break immediately
-            if time.time() - start_time > 270:
+            if kwargs['time_limit'] and time.time() - start_time > kwargs['time_limit']:
                 time_expired = True
                 break
 
