@@ -654,7 +654,7 @@ def process_download_tracking_items(connection, **kwargs):
             counts['released'] += 1
         else:
             counts['deleted'] += 1
-    if check.brief_output:
+    if any(check.brief_output.values()):
         check.status = 'WARN'
     else:
         check.status = 'PASS'
