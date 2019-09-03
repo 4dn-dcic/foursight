@@ -43,7 +43,7 @@ def build_config_and_deploy(stage):
     client_secret = os.environ.get("CLIENT_SECRET")
     dev_secret = os.environ.get("DEV_SECRET")
     admin = os.environ.get("FS_ADMIN")
-    if not (akey_secret and client_id and client_secret and dev_secret):
+    if not (s3_enc_secret and client_id and client_secret and dev_secret):
         print(''.join(['ERROR. You are missing one more more environment ',
                        'variables needed to deploy Foursight.\n',
                        'Need: S3_ENCRYPT_KEY, CLIENT_ID, CLIENT_SECRET, DEV_SECRET, FS_ADMIN.'])

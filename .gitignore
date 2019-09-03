@@ -1,6 +1,4 @@
-.chalice/deployments/
-.chalice/venv/
-.chalice/config.json
+.chalice/*
 *.pyc
 __pycache__
 .coverage
