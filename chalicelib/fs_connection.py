@@ -30,17 +30,7 @@ class FSConnection(object):
         self.ff_es = fs_environ_info.get('es')
         if not test:
             self.ff_s3 = s3Utils(env=self.ff_env)
-            # transition code
-            # try to get the foursight keys, if not possible fall back to default admin keys
-            try:
-                self.ff_keys = self.ff_s3.get_access_keys(name='illnevertell_foursight',
-                                                          secret="S3_ENCRYPT_KEY")
-            except:
-                try:
-                    self.ff_keys = self.ff_s3.get_access_keys()
-                except Exception as e:
-                    raise Exception('Could not initiate connection to Fourfront; it is probably a bad ff_env. '
-                                    'You gave: %s. Error message: %s' % (self.ff_env, str(e)))
+            self.ff_keys = self.ff_s3.get_access_keys('access_key_foursight')
         else:
             self.ff_s3 = None
             self.ff_keys = None
