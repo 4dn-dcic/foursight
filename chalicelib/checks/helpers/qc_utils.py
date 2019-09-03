@@ -36,6 +36,43 @@ def calculate_qc_metric_pairsqc(file_uuid, key):
     return res
 
 
+def calculate_qc_metric_margi_pairsqc(file_uuid, key):
+    '''Patching a pairs file object from margi with quality_metric summary'''
+    import pdb; pdb.set_trace()
+    res = ff_utils.get_metadata(file_uuid, key=key)
+    qc_uuid = res['quality_metric']['uuid']
+    quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
+    qc_summary = []
+
+    def percent_interactions(numVal):
+        '''convert to percentage of Total interactions in combined pairs'''
+        return round((int(numVal) / int(quality_metric['Total number of interactions'])) * 100 * 1000) / 1000
+
+    def million(numVal):
+        return str(round(int(numVal) / 10000) / 100) + "m"
+
+    def tooltip(numVal):
+        return "Percent of total interactions (=%s)" % million(int(numVal))
+
+    qc_summary.append({"title": "Filtered Reads",
+                       "value": str(quality_metric["Total number of interactions"]),
+                       "numberType": "integer"})
+    qc_summary.append({"title": "Cis reads (>%s)" % quality_metric["Type"],
+                       "value": str(percent_interactions(quality_metric["Distal"])),
+                       "tooltip": tooltip(quality_metric["Distal"]),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Short cis reads",
+                       "value": str(percent_interactions(quality_metric["Proximal"])),
+                       "tooltip": tooltip(quality_metric["Proximal"]),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Trans Reads",
+                       "value": str(percent_interactions(quality_metric["Inter-chromosome interactions"])),
+                       "tooltip": tooltip(quality_metric["Inter-chromosome interactions"]),
+                       "numberType": "percent"})
+    res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
+    return res
+
+
 def parse_formatstr(file_format_str):
     if not file_format_str:
         return None
@@ -106,16 +143,16 @@ def calculate_qc_metric_tagalign(file_uuid, key):
     # mitochondrial rate (only for ATAC-seq)
     qc_type = quality_metric['@type'][0]
     if qc_type == 'QualityMetricAtacseq':
-        total = quality_metric[pref + "dup_qc"][0]["paired_reads"] + quality_metric[pref + "dup_qc"][0]["unpaired_reads"] 
+        total = quality_metric[pref + "dup_qc"][0]["paired_reads"] + quality_metric[pref + "dup_qc"][0]["unpaired_reads"]
         nonmito = quality_metric[pref + "pbc_qc"][0]["total_read_pairs"]
         mito_rate = round2((1 - (float(nonmito) / float(total))) * 100)
         qc_summary.append({"title": "Percent mitochondrial reads",
                                               "value": str(mito_rate),
-                                              "numberType": "percent"}) 
+                                              "numberType": "percent"})
     qc_summary.append({"title": "Nonredundant Read Fraction (NRF)",
                                           "value": str(round2(quality_metric[pref + "pbc_qc"][0]["NRF"])),
                                           "tooltip": "distinct non-mito read pairs / total non-mito read pairs",
-                                          "numberType": "float"}) 
+                                          "numberType": "float"})
     qc_summary.append({"title": "PCR Bottleneck Coefficient (PBC)",
                                           "value": str(round2(quality_metric[pref + "pbc_qc"][0]["PBC1"])),
                                           "tooltip": "one-read non-mito read pairs / distinct non-mito read pairs",

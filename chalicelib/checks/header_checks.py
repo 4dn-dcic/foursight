@@ -24,12 +24,10 @@ def find_items_for_header_processing(connection, check, header, add_search=None,
     # sets the full_output of the check!
     check.full_output = {'static_section': header, 'to_add': {}, 'to_remove': {}}
     # this GET will fail if the static header does not exist
-    header_res = ff_utils.get_metadata(header, key=connection.ff_keys, ff_env=connection.ff_env)
+    header_res = ff_utils.get_metadata(header, key=connection.ff_keys)
     # add entries keyed by item uuid with value of the static headers
     if add_search:
-        search_res_add = ff_utils.search_metadata(add_search,
-                                                  key=connection.ff_keys,
-                                                  ff_env=connection.ff_env)
+        search_res_add = ff_utils.search_metadata(add_search, key=connection.ff_keys)
         for search_res in search_res_add:
             curr_headers = search_res.get('static_headers', [])
             # handle case where frame != object
@@ -41,8 +39,7 @@ def find_items_for_header_processing(connection, check, header, add_search=None,
 
     if remove_search:
         search_res_remove = ff_utils.search_metadata(remove_search,
-                                                     key=connection.ff_keys,
-                                                     ff_env=connection.ff_env)
+                                                     key=connection.ff_keys)
         for search_res in search_res_remove:
             curr_headers = search_res.get('static_headers', [])
             # handle case where frame != object
@@ -84,7 +81,7 @@ def patch_items_with_headers(connection, action, kwargs):
         # if all headers are deleted, use ff_utils.delete_field
         if headers == []:
             try:
-                ff_utils.delete_field(item, 'static_headers', key=connection.ff_keys, ff_env=connection.ff_env)
+                ff_utils.delete_field(item, 'static_headers', key=connection.ff_keys)
             except Exception as e:
                 patch_error = '\n'.join([item, str(e)])
                 action_logs['patch_failure'].append(patch_error)
@@ -93,7 +90,7 @@ def patch_items_with_headers(connection, action, kwargs):
         else:
             patch_data = {'static_headers': headers}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=item, key=connection.ff_keys, ff_env=connection.ff_env)
+                ff_utils.patch_metadata(patch_data, obj_id=item, key=connection.ff_keys)
             except Exception as e:
                 patch_error = '\n'.join([item, str(e)])
                 action_logs['patch_failure'].append(patch_error)

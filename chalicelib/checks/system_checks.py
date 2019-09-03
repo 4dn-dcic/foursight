@@ -232,7 +232,8 @@ def fourfront_performance_metrics(connection, **kwargs):
         performance[check_url] = {}
         try:
             # set timeout really high
-            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url, ff_env=connection.ff_env, timeout=1000)
+            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url,
+                                                  auth=connection.ff_keys, timeout=1000)
         except Exception as e:
             performance[check_url]['error'] = str(e)
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
@@ -297,7 +298,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     # get the maximum sid at the start of deduplication and update it if we
     # encounter a higher sid
     max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
-                                               ff_env=connection.ff_env).json()
+                                               auth=connection.ff_keys).json()
     if max_sid_resp['status'] != 'success':
         check.status = 'FAIL'
         check.summary = 'Could not retrieve max_sid from the server'
@@ -548,6 +549,8 @@ def process_download_tracking_items(connection, **kwargs):
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
+    # hold warning messages
+    check.brief_output = {'cannot_parse_date_created': []}
     range_cache = {}
     # duration we want to consolidate range queries over
     # search older entries since range_consolidation_hrs * 2 to avoid duplication
@@ -557,12 +560,15 @@ def process_download_tracking_items(connection, **kwargs):
     range_search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
                                   '&download_tracking.range_query=true&sort=-date_created',
                                   '&status=released&q=last_modified.date_modified:>=', cons_date])
-    cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys)
     for tracking in cons_query:
         dl_info = tracking['download_tracking']
         range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
                                dl_info['user_agent'], dl_info['user_uuid']])
         parsed_date = parse_datetime_to_utc(tracking['date_created'])
+        # check for date parsing error
+        if parsed_date is None:
+            continue
         if range_key in range_cache:
             range_cache[range_key].append(parsed_date)
         else:
@@ -583,8 +589,7 @@ def process_download_tracking_items(connection, **kwargs):
     search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
                             '&download_tracking.geo_country=No+value',
                             '&status=in+review+by+lab&sort=-date_created&limit=', str(search_limit)])
-    search_page = ff_utils.search_metadata(search_query, key=connection.ff_keys,
-                                           ff_env=connection.ff_env, page_limit=200)
+    search_page = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     counts = {'proc': 0, 'deleted': 0, 'released': 0}
 
     page_ips = set([tracking['download_tracking']['remote_ip'] for tracking in search_page])
@@ -625,28 +630,33 @@ def process_download_tracking_items(connection, **kwargs):
             range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
                                    dl_info['user_agent'], dl_info['user_uuid']])
             parsed_date = parse_datetime_to_utc(tracking['date_created'])
-            if range_key in range_cache:
-                # for all reference range queries with this info, see if this one
-                # was created within one hour of it. if so, it is redundant and delete
-                for range_reference in range_cache[range_key]:
-                    compare_date_low = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
-                    compare_date_high = range_reference + datetime.timedelta(hours=range_consolidation_hrs)
-                    if parsed_date > compare_date_low and parsed_date < compare_date_high:
-                        patch_body['status'] = 'deleted'
-                        break
-                if patch_body['status'] != 'deleted':
-                    range_cache[range_key].append(parsed_date)
+            if parsed_date is not None:
+                if range_key in range_cache:
+                    # for all reference range queries with this info, see if this one
+                    # was created within one hour of it. if so, it is redundant and delete
+                    for range_reference in range_cache[range_key]:
+                        compare_date_low = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
+                        compare_date_high = range_reference + datetime.timedelta(hours=range_consolidation_hrs)
+                        if parsed_date > compare_date_low and parsed_date < compare_date_high:
+                            patch_body['status'] = 'deleted'
+                            break
+                    if patch_body['status'] != 'deleted':
+                        range_cache[range_key].append(parsed_date)
+                else:
+                    # set the upper limit for for range queries to consolidate
+                    range_cache[range_key] = [parsed_date]
             else:
-                # set the upper limit for for range queries to consolidate
-                range_cache[range_key] = [parsed_date]
-        ff_utils.patch_metadata(patch_body, tracking['uuid'],
-                                key=connection.ff_keys, ff_env=connection.ff_env)
+                check.brief_output['cannot_parse_date_created'].append(tracking['uuid'])
+
+        ff_utils.patch_metadata(patch_body, tracking['uuid'], key=connection.ff_keys)
         counts['proc'] += 1
         if patch_body['status'] == 'released':
             counts['released'] += 1
         else:
             counts['deleted'] += 1
-    if check.status != 'WARN':
+    if any(check.brief_output.values()):
+        check.status = 'WARN'
+    else:
         check.status = 'PASS'
     check.summary = 'Successfully processed %s download tracking items' % counts['proc']
     check.description = '%s. Released %s items and deleted %s items' % (check.summary, counts['released'], counts['deleted'])
@@ -672,21 +682,19 @@ def purge_download_tracking_items(connection, **kwargs):
     t0 = time.time()
     check.full_output = {}  # purged items by item type
     search = '/search/?type=TrackingItem&tracking_type=download_tracking&status=deleted&field=uuid&limit=300'
-    search_res = ff_utils.search_metadata(search, key=connection.ff_keys,
-                                          ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
     search_uuids = [res['uuid'] for res in search_res]
     client = es_utils.create_es_client(connection.ff_es, True)
     # a bit convoluted, but we want the frame=raw, which does not include uuid
     # use get_es_metadata to handle this. Use it as a generator
     for to_purge in ff_utils.get_es_metadata(search_uuids, es_client=client, is_generator=True,
-                                    key=connection.ff_keys, ff_env=connection.ff_env):
+                                             key=connection.ff_keys):
         if round(time.time() - t0, 2) > time_limit:
             break
         purge_properties = to_purge['properties']
         purge_properties['uuid'] = to_purge['uuid']  # add uuid to frame=raw
         try:
-            purge_res = ff_utils.purge_metadata(to_purge['uuid'], key=connection.ff_keys,
-                                                ff_env=connection.ff_env)
+            purge_res = ff_utils.purge_metadata(to_purge['uuid'], key=connection.ff_keys)
         except Exception as exc:
             purge_status = 'error'
             purge_detail = str(exc)

@@ -47,7 +47,7 @@ def biosource_cell_line_value(connection, **kwargs):
                        "in vitro differentiated cells", "induced pluripotent stem cell line",
                        "stem cell", "stem cell derived cell line"]
     biosources = ff_utils.search_metadata('search/?type=Biosource&frame=object',
-                                          ff_env=connection.ff_env, page_limit=200)
+                                          key=connection.ff_keys, page_limit=200)
     missing = []
     for biosource in biosources:
         # check if the biosource type is a cell/cell line
@@ -78,7 +78,7 @@ def external_expsets_without_pub(connection, **kwargs):
     check = init_check_res(connection, 'external_expsets_without_pub')
 
     ext = ff_utils.search_metadata('search/?award.project=External&type=ExperimentSet&frame=object',
-                                   ff_env=connection.ff_env, page_limit=50)
+                                   key=connection.ff_keys, page_limit=50)
     no_pub = []
     for expset in ext:
         if not expset.get('publications_of_set') and not expset.get('produced_in_pub'):
@@ -109,7 +109,7 @@ def expset_opfsets_unique_titles(connection, **kwargs):
     check = init_check_res(connection, 'expset_opfsets_unique_titles')
 
     opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value&frame=object',
-                                           ff_env=connection.ff_env, page_limit=50)
+                                           key=connection.ff_keys, page_limit=50)
     errors = []
     for expset in opf_expsets:
         e = []
@@ -152,7 +152,7 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     check = init_check_res(connection, 'expset_opf_unique_files_in_experiments')
 
     opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value',
-                                           ff_env=connection.ff_env, page_limit=25)
+                                           key=connection.ff_keys, page_limit=25)
     errors = []
     for expset in opf_expsets:
         expset_titles = {fileset.get('title'): fileset.get('files') for fileset in expset['other_processed_files'] if fileset.get('title')}
@@ -203,8 +203,8 @@ def paired_end_info_consistent(connection, **kwargs):
     search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
     search2 = 'search/?type=FileFastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
 
-    results1 = ff_utils.search_metadata(search1 + '&frame=object', ff_env=connection.ff_env)
-    results2 = ff_utils.search_metadata(search2 + '&frame=object', ff_env=connection.ff_env)
+    results1 = ff_utils.search_metadata(search1 + '&frame=object', key=connection.ff_keys)
+    results2 = ff_utils.search_metadata(search2 + '&frame=object', key=connection.ff_keys)
 
     results = {'paired with file missing paired_end number':
                [result1['@id'] for result1 in results1],
@@ -232,7 +232,7 @@ def workflow_properties(connection, **kwargs):
     check = init_check_res(connection, 'workflow_properties')
 
     workflows = ff_utils.search_metadata('search/?type=Workflow&category!=provenance&frame=object',
-                                         ff_env=connection.ff_env)
+                                         key=connection.ff_keys)
     bad = {'Duplicate Input Names in Workflow Step': [],
            'Duplicate Output Names in Workflow Step': [],
            'Duplicate Input Source Names in Workflow Step': [],
@@ -311,7 +311,7 @@ def page_children_routes(connection, **kwargs):
     check = init_check_res(connection, 'page_children_routes')
 
     page_search = 'search/?type=Page&format=json&children.name%21=No+value'
-    results = ff_utils.search_metadata(page_search, ff_env=connection.ff_env)
+    results = ff_utils.search_metadata(page_search, key=connection.ff_keys)
     problem_routes = {}
     for result in results:
         bad_children = [child['name'] for child in result['children'] if
@@ -336,9 +336,9 @@ def page_children_routes(connection, **kwargs):
 def check_help_page_urls(connection, **kwargs):
     check = init_check_res(connection, 'check_help_page_urls')
 
-    server = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)['server']
+    server = connection.ff_keys['server']
     results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body',
-                                       ff_env=connection.ff_env)
+                                       key=connection.ff_keys)
     sections_w_broken_links = {}
     for result in results:
         broken_links = []
@@ -369,7 +369,6 @@ def check_help_page_urls(connection, **kwargs):
 def check_status_mismatch(connection, **kwargs):
     check = init_check_res(connection, 'check_status_mismatch')
     id_list = kwargs['id_list']
-    ffkey = ff_utils.get_authentication_with_server(ff_env=connection.ff_env)
 
     MIN_CHUNK_SIZE = 200
     # embedded sub items should have an equal or greater level
@@ -389,9 +388,9 @@ def check_status_mismatch(connection, **kwargs):
         itemids = re.split(',|\s+', id_list)
         itemids = [id for id in itemids if id]
     else:
-        itemres = ff_utils.search_metadata(item_search, key=ffkey, page_limit=500)
+        itemres = ff_utils.search_metadata(item_search, key=connection.ff_keys, page_limit=500)
         itemids = [item.get('uuid') for item in itemres]
-    es_items = ff_utils.get_es_metadata(itemids, key=ffkey, chunk_size=200, is_generator=True)
+    es_items = ff_utils.get_es_metadata(itemids, key=connection.ff_keys, chunk_size=200, is_generator=True)
     for es_item in es_items:
         label = es_item.get('embedded').get('display_title')
         desc = es_item.get('object').get('description')
@@ -422,7 +421,8 @@ def check_status_mismatch(connection, **kwargs):
                     mismatches.setdefault(iid, []).append(lid)
 
         if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
-            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=ffkey, chunk_size=200, is_generator=True)
+            linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=connection.ff_keys,
+                                                  chunk_size=200, is_generator=True)
             for litem in linked2chk:
                 luuid = litem.get('uuid')
                 listatus = litem.get('properties').get('status', 'in review by lab')
@@ -480,8 +480,8 @@ def check_opf_status_mismatch(connection, **kwargs):
     opf_exp = ('search/?type=ExperimentSet&other_processed_files.title=No+value'
                '&experiments_in_set.other_processed_files.title%21=No+value'
                '&field=experiments_in_set.other_processed_files&field=status')
-    opf_set_results = ff_utils.search_metadata(opf_set, ff_env=connection.ff_env)
-    opf_exp_results = ff_utils.search_metadata(opf_exp, ff_env=connection.ff_env)
+    opf_set_results = ff_utils.search_metadata(opf_set, key=connection.ff_keys)
+    opf_exp_results = ff_utils.search_metadata(opf_exp, key=connection.ff_keys)
     results = opf_set_results + opf_exp_results
     # extract file uuids
     files = []
@@ -494,7 +494,7 @@ def check_opf_status_mismatch(connection, **kwargs):
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, ff_env=connection.ff_env)
+    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, key=connection.ff_keys)
     status_dict = {f['uuid']: f['properties']['status'] for f in resp}
     check.full_output = {}
     for result in results:
@@ -540,7 +540,7 @@ def check_validation_errors(connection, **kwargs):
     check = init_check_res(connection, 'check_validation_errors')
 
     search_url = 'search/?validation_errors.name!=No+value&type=Item'
-    results = ff_utils.search_metadata(search_url + '&field=@id', ff_env=connection.ff_env)
+    results = ff_utils.search_metadata(search_url + '&field=@id', key=connection.ff_keys)
     if results:
         types = {item for result in results for item in result['@type'] if item != 'Item'}
         check.status = 'WARN'
@@ -590,18 +590,18 @@ def check_bio_feature_organism_name(connection, **kwargs):
 
     # create some mappings
     organism_search = 'search/?type=Organism'
-    organisms = ff_utils.search_metadata(organism_search, ff_env=connection.ff_env)
+    organisms = ff_utils.search_metadata(organism_search, key=connection.ff_keys)
     orgn2name = {o.get('@id'): o.get('name') for o in organisms}
     # add special cases
     orgn2name['unspecified'] = 'unspecified'
     orgn2name['multiple organisms'] = 'multiple organisms'
     genome2orgn = {o.get('genome_assembly'): o.get('@id') for o in organisms if 'genome_assembly' in o}
     gene_search = 'search/?type=Gene'
-    genes = ff_utils.search_metadata(gene_search, ff_env=connection.ff_env)
+    genes = ff_utils.search_metadata(gene_search, key=connection.ff_keys)
     gene2org = {g.get('@id'): g.get('organism').get('@id') for g in genes}
     # get all BioFeatures
     biofeat_search = 'search/?type=BioFeature'
-    biofeatures = ff_utils.search_metadata(biofeat_search, ff_env=connection.ff_env)
+    biofeatures = ff_utils.search_metadata(biofeat_search, key=connection.ff_keys)
 
     matches = 0
     name_trumps_guess = 0
@@ -629,7 +629,8 @@ def check_bio_feature_organism_name(connection, **kwargs):
                             assembly_in_dt = True
                             break
                     if not assembly_in_dt:
-                        gr_res = ff_utils.get_es_metadata([genreg.get('uuid')], ff_env=connection.ff_env, sources=['properties.genome_assembly'])
+                        gr_res = ff_utils.get_es_metadata([genreg.get('uuid')],
+                                                          key=connection.ff_keys, sources=['properties.genome_assembly'])
                         try:
                             gr_ass = gr_res[0].get('properties').get('genome_assembly')
                         except AttributeError:
@@ -720,7 +721,7 @@ def patch_bio_feature_organism_name(connection, **kwargs):
     if patches:
         for uid, val in patches.items():
             try:
-                res = ff_utils.patch_metadata(val, uid, ff_env=connection.ff_env)
+                res = ff_utils.patch_metadata(val, uid, key=connection.ff_keys)
             except:
                 action_logs['patch_failure'].append(uid)
             else:

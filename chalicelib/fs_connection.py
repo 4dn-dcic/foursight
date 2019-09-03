@@ -25,12 +25,20 @@ class FSConnection(object):
         self.s3_connection = S3Connection(fs_environ_info.get('bucket'))
 
         # FOURFRONT information
-        self.ff_server = fs_environ_info.get('fourfront')
-        self.ff_env = fs_environ_info.get('ff_env')
-        self.ff_es = fs_environ_info.get('es')
+        self.ff_server = fs_environ_info['fourfront']
+        self.ff_env = fs_environ_info['ff_env']
+        self.ff_es = fs_environ_info['es']
         if not test:
             self.ff_s3 = s3Utils(env=self.ff_env)
-            self.ff_keys = self.ff_s3.get_access_keys('access_key_foursight')
+            try:
+                self.ff_keys = self.ff_s3.get_access_keys('access_key_foursight')
+            except Exception as e:
+                raise Exception('Could not initiate connection to Fourfront; it is probably a bad ff_env. '
+                      'You gave: %s. Error message: %s' % (self.ff_env, str(e)))
+            # ensure ff_keys has server, and make sure it does not end with '/'
+            if 'server' not in self.ff_keys:
+                server = self.ff_server[:-1] if self.ff_server.endswith('/') else self.ff_server
+                self.ff_keys['server'] = server
         else:
             self.ff_s3 = None
             self.ff_keys = None

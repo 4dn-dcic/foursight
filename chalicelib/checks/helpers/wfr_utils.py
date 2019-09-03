@@ -85,15 +85,15 @@ workflow_details = {
     },
     'imargi-processing-fastq': {
         "run_time": 50,
-        "accepted_versions": ["1.1.1"]
+        "accepted_versions": ["1.1.1_dcic_3"]
     },
     'imargi-processing-bam': {
         "run_time": 50,
-        "accepted_versions": ["1.1.1"]
+        "accepted_versions": ["1.1.1_dcic_3"]
     },
     'imargi-processing-pairs': {
         "run_time": 200,
-        "accepted_versions": ["1.1.1"]
+        "accepted_versions": ["1.1.1_dcic_3"]
     }
 }
 
@@ -118,7 +118,7 @@ accepted_versions = {
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
-    'MARGI':         ['MARGI_Pipeline_1.1.1'],
+    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_3'],
     # Preliminary - Released to network
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
@@ -180,8 +180,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
          }
 
 
-# re bed files for MARGI pipeline - AluI is the enzyme for margi exps
-re_fragment = {"human": '/files-reference/4DNFIL1I5TSP/'}
+# re bed files for MARGI pipeline
+re_fragment = {"human": {'AluI': '/files-reference/4DNFIL1I5TSP/'}}
 
 
 # max_distance for species (used for pairsqc)
@@ -311,7 +311,10 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
                 if output.get('format'):
                     # get the arg name
                     arg_name = output['workflow_argument_name']
-                    out_files[arg_name] = output['value']['@id']
+                    try:
+                        out_files[arg_name] = output['value']['@id']
+                    except KeyError:
+                        out_files[arg_name] = None
             if out_files:
                 out_files['status'] = 'complete'
                 return out_files
@@ -905,7 +908,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', all_wfrs=all_wfrs)
                 # if successful
                 if step2_result['status'] == 'complete':
-                    exp_pairs.append(step2_result['final_pairs'])
+                    exp_pairs.append(step2_result['out_pairs'])
                 # if still running
                 elif step2_result['status'] == 'running':
                     part2_5 = 'not ready'
@@ -968,7 +971,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 else:
                     set_summary += "| missing step3"
                     inp_f = {'input_pairs': set_pairs}
-                    missing_run.append(['step3', ['imargi-processing-pairs', refs['organism']],
+                    missing_run.append(['step3', ['imargi-processing-pairs', refs['organism'], {}],
                                         inp_f, set_acc])
             else:
                 problematic_run.append(['step3-not_unique', set_acc])
@@ -1012,7 +1015,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
-              'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files"}
+              'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
+              'margi': "iMARGI Processing Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
