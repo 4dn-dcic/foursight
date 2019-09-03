@@ -38,6 +38,7 @@ def calculate_qc_metric_pairsqc(file_uuid, key):
 
 def calculate_qc_metric_margi_pairsqc(file_uuid, key):
     '''Patching a pairs file object from margi with quality_metric summary'''
+    import pdb; pdb.set_trace()
     res = ff_utils.get_metadata(file_uuid, key=key)
     qc_uuid = res['quality_metric']['uuid']
     quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
@@ -53,21 +54,21 @@ def calculate_qc_metric_margi_pairsqc(file_uuid, key):
     def tooltip(numVal):
         return "Percent of total interactions (=%s)" % million(int(numVal))
 
-        qc_summary.append({"title": "Filtered Reads",
-                           "value": str(quality_metric["Total number of interactions"]),
-                           "numberType": "integer"})
-        qc_summary.append({"title": "Trans Reads",
-                           "value": str(percent_interactions(quality_metric["Inter-chromosome interactions"])),
-                           "tooltip": tooltip(quality_metric["Inter-chromosome interactions"]),
-                           "numberType": "percent"})
-        qc_summary.append({"title": "Cis reads (>%s)" % quality_metric["Type"],
-                           "value": str(percent_interactions(quality_metric["Distal"])),
-                           "tooltip": tooltip(quality_metric["Distal"]),
-                           "numberType": "percent"})
-        qc_summary.append({"title": "Short cis reads",
-                           "value": str(percent_interactions(quality_metric["Proximal"])),
-                           "tooltip": tooltip(quality_metric["Proximal"]),
-                           "numberType": "percent"})
+    qc_summary.append({"title": "Filtered Reads",
+                       "value": str(quality_metric["Total number of interactions"]),
+                       "numberType": "integer"})
+    qc_summary.append({"title": "Cis reads (>%s)" % quality_metric["Type"],
+                       "value": str(percent_interactions(quality_metric["Distal"])),
+                       "tooltip": tooltip(quality_metric["Distal"]),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Short cis reads",
+                       "value": str(percent_interactions(quality_metric["Proximal"])),
+                       "tooltip": tooltip(quality_metric["Proximal"]),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Trans Reads",
+                       "value": str(percent_interactions(quality_metric["Inter-chromosome interactions"])),
+                       "tooltip": tooltip(quality_metric["Inter-chromosome interactions"]),
+                       "numberType": "percent"})
     res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
     return res
 
