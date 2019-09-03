@@ -180,8 +180,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
          }
 
 
-# re bed files for MARGI pipeline - AluI is the enzyme for margi exps
-re_fragment = {"human": '/files-reference/4DNFIL1I5TSP/'}
+# re bed files for MARGI pipeline
+re_fragment = {"human": {'AluI': '/files-reference/4DNFIL1I5TSP/'}}
 
 
 # max_distance for species (used for pairsqc)
@@ -1015,7 +1015,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
-              'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files"}
+              'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
+              'margi': "iMARGI Processing Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
