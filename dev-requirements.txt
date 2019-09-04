@@ -1,0 +1,5 @@
+pytest
+pytest-cov
+pytest-runner
+flaky
+-e git+git://github.com/4dn-dcic/chalice.git#egg=chalice
