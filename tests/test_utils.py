@@ -1,12 +1,4 @@
-from chalicelib import (
-    app_utils,
-    check_utils,
-    utils
-)
-from dcicutils import s3_utils
-from dateutil import tz
-import datetime
-import pytest
+from conftest import *
 
 class TestUtils():
     environ = 'mastertest' # hopefully this is up

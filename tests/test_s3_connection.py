@@ -1,14 +1,4 @@
-from dcicutils import s3_utils, ff_utils
-from chalicelib import (
-    app_utils,
-    check_utils,
-    utils,
-    run_result,
-    fs_connection,
-    s3_connection
-)
-import pytest
-import json
+from conftest import *
 
 class TestS3Connection():
     environ = 'mastertest'

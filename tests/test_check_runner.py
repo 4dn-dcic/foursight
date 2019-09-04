@@ -1,22 +1,8 @@
-from dcicutils import s3_utils, ff_utils
-import chalice
-from chalicelib import (
-    app_utils,
-    check_utils,
-    utils,
-    run_result,
-    fs_connection,
-    s3_connection
-)
-import os
-import json
-import time
-import sys
-from contextlib import contextmanager
-import pytest
+from conftest import *
 
 def delay_rerun(*args):
     time.sleep(90)
+    return True
 
 pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
 
@@ -41,6 +27,7 @@ def captured_output():
 
 class TestCheckRunner():
     environ = 'mastertest'
+    app.set_stage('test')
     connection = app_utils.init_connection(environ)
     # set up a queue for test checks
     stage_info = utils.get_stage_info()

@@ -1,18 +1,4 @@
-from dcicutils import s3_utils, ff_utils
-import chalice
-from chalicelib import (
-    app_utils,
-    check_utils,
-    utils,
-    run_result,
-    fs_connection,
-    s3_connection
-)
-import os
-import json
-import time
-import datetime
-import pytest
+from conftest import *
 
 class TestCheckResult():
     # use a fake check name and store on mastertest

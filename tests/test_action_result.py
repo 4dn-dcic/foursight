@@ -1,8 +1,4 @@
-from chalicelib import (
-    app_utils,
-    run_result
-)
-import pytest
+from conftest import *
 
 class TestActionResult():
     act_name = 'test_only_action'
