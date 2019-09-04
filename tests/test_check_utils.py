@@ -169,6 +169,7 @@ class TestCheckUtils():
             assert (isinstance(group['_statuses'], dict))
             assert (len(group.keys()) > 2)
 
+    @pytest.mark.flaky
     def test_run_check_or_action(self):
         test_uuid = datetime.datetime.utcnow().isoformat()
         check = utils.init_check_res(self.connection, 'test_random_nums')

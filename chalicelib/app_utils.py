@@ -11,6 +11,7 @@ import copy
 from itertools import chain
 from dateutil import tz
 from base64 import b64decode
+from dcicutils import ff_utils
 from .fs_connection import FSConnection
 from .check_utils import (
     get_grouped_check_results,
@@ -108,7 +109,7 @@ def init_response(environ):
     return connection, response
 
 
-def check_authorization(request_dict):
+def check_authorization(request_dict, env=None):
     """
     Manual authorization, since the builtin chalice @app.authorizer() was not
     working for me and was limited by a requirement that the authorization
@@ -127,9 +128,14 @@ def check_authorization(request_dict):
     auth0_secret = os.environ.get('CLIENT_SECRET', None)
     if auth0_client and auth0_secret and token:
         try:
+            if env is None:
+                return False  # we have no env to check auth
             # leeway accounts for clock drift between us and auth0
             payload = jwt.decode(token, b64decode(auth0_secret, '-_'), audience=auth0_client, leeway=30)
-            if payload.get('email') == os.environ.get('ADMIN', '') and payload.get('email_verified') is True:
+            env_info = init_environments(env)
+            user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(), 
+                                            ff_env=env_info[env]['ff_env'], add_on='frame=object')
+            if 'admin' in user_res['groups'] and payload.get('email_verified'):
                 # fully authorized
                 return True
         except:
