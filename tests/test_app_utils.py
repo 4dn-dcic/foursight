@@ -66,6 +66,44 @@ class TestAppUtils():
         auth = app_utils.check_authorization({})
         assert not auth
 
+    def test_check_jwt_authorization(self):
+        """ Tests same functionality as above except with a valid jwt """
+        from unittest import mock
+        payload1 = {
+            "email": "William_Ronchetti@hms.harvard.edu",  # use something else?
+            "email_verified": True,
+            "sub": "1234567890",
+            "name": "Dummy",
+            "iat": 1516239022
+        }  # mock a 'correct' jwt decode
+        with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
+            with mock.patch('jwt.decode', return_value=payload1):
+                auth = app_utils.check_authorization({}, env='mastertest')
+            assert auth
+            # Unverified email should fail
+            payload2 = {
+                "email": "william_ronchetti@hms.harvard.edu",
+                "email_verified": False,
+                "sub": "1234567890",
+                "name": "Dummy",
+                "iat": 1516239022
+            }
+            with mock.patch('jwt.decode', return_value=payload2):
+                auth = app_utils.check_authorization({}, env='mastertest')
+            assert not auth
+            # Email not found
+            payload3 = {
+                "email": "blah@blah",
+                "email_verified": True,
+                "sub": "1234567890",
+                "name": "Dummy",
+                "iat": 1516239022
+            }
+            with mock.patch('jwt.decode', return_value=payload3):
+                auth = app_utils.check_authorization({}, env='mastertest')
+            assert not auth
+
+
     def test_forbidden_response(self):
         res = app_utils.forbidden_response()
         assert (res.status_code == 403)
