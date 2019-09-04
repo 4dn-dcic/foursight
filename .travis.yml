@@ -8,7 +8,6 @@ install:
 - pip install coveralls
 script:
 - pytest tests
-- coverage report -m
 after_success:
 - coveralls
 - echo $TRAVIS_PULL_REQUEST
