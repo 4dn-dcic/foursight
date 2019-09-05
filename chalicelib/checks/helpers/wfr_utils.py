@@ -547,8 +547,9 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
         enz_file = None
     # if margi, enzyme is predifined as AluI in a separate dict
     if type == 'MARGI':
-        enz = 'AluI'
-        enz_file = re_fragment.get(organism)
+        enz_file = re_fragment[organism].get(enz)
+    else:
+        enz_file = None
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
     refs = {'pairing': paired,
