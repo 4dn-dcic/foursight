@@ -549,6 +549,8 @@ def process_download_tracking_items(connection, **kwargs):
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
+    # hold warning messages
+    check.brief_output = {'cannot_parse_date_created': []}
     range_cache = {}
     # duration we want to consolidate range queries over
     # search older entries since range_consolidation_hrs * 2 to avoid duplication
@@ -564,6 +566,9 @@ def process_download_tracking_items(connection, **kwargs):
         range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
                                dl_info['user_agent'], dl_info['user_uuid']])
         parsed_date = parse_datetime_to_utc(tracking['date_created'])
+        # check for date parsing error
+        if parsed_date is None:
+            continue
         if range_key in range_cache:
             range_cache[range_key].append(parsed_date)
         else:
@@ -625,27 +630,33 @@ def process_download_tracking_items(connection, **kwargs):
             range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
                                    dl_info['user_agent'], dl_info['user_uuid']])
             parsed_date = parse_datetime_to_utc(tracking['date_created'])
-            if range_key in range_cache:
-                # for all reference range queries with this info, see if this one
-                # was created within one hour of it. if so, it is redundant and delete
-                for range_reference in range_cache[range_key]:
-                    compare_date_low = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
-                    compare_date_high = range_reference + datetime.timedelta(hours=range_consolidation_hrs)
-                    if parsed_date > compare_date_low and parsed_date < compare_date_high:
-                        patch_body['status'] = 'deleted'
-                        break
-                if patch_body['status'] != 'deleted':
-                    range_cache[range_key].append(parsed_date)
+            if parsed_date is not None:
+                if range_key in range_cache:
+                    # for all reference range queries with this info, see if this one
+                    # was created within one hour of it. if so, it is redundant and delete
+                    for range_reference in range_cache[range_key]:
+                        compare_date_low = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
+                        compare_date_high = range_reference + datetime.timedelta(hours=range_consolidation_hrs)
+                        if parsed_date > compare_date_low and parsed_date < compare_date_high:
+                            patch_body['status'] = 'deleted'
+                            break
+                    if patch_body['status'] != 'deleted':
+                        range_cache[range_key].append(parsed_date)
+                else:
+                    # set the upper limit for for range queries to consolidate
+                    range_cache[range_key] = [parsed_date]
             else:
-                # set the upper limit for for range queries to consolidate
-                range_cache[range_key] = [parsed_date]
+                check.brief_output['cannot_parse_date_created'].append(tracking['uuid'])
+
         ff_utils.patch_metadata(patch_body, tracking['uuid'], key=connection.ff_keys)
         counts['proc'] += 1
         if patch_body['status'] == 'released':
             counts['released'] += 1
         else:
             counts['deleted'] += 1
-    if check.status != 'WARN':
+    if any(check.brief_output.values()):
+        check.status = 'WARN'
+    else:
         check.status = 'PASS'
     check.summary = 'Successfully processed %s download tracking items' % counts['proc']
     check.description = '%s. Released %s items and deleted %s items' % (check.summary, counts['released'], counts['deleted'])

@@ -2,6 +2,7 @@ from __future__ import print_function, unicode_literals
 from .s3_connection import S3Connection
 from dcicutils.s3_utils import s3Utils
 
+
 class FSConnection(object):
     """
     Contains the foursight (FS) and fourfront (FF) connections needed to
@@ -30,7 +31,7 @@ class FSConnection(object):
         if not test:
             self.ff_s3 = s3Utils(env=self.ff_env)
             try:
-                self.ff_keys = self.ff_s3.get_access_keys()
+                self.ff_keys = self.ff_s3.get_access_keys('access_key_foursight')
             except Exception as e:
                 raise Exception('Could not initiate connection to Fourfront; it is probably a bad ff_env. '
                       'You gave: %s. Error message: %s' % (self.ff_env, str(e)))
