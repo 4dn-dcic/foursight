@@ -1234,7 +1234,7 @@
         "schedule": {
             "morning_checks": {
                 "all": {
-                    "kwargs": {}
+                    "kwargs" : {"primary": true}
                 }
             }        
         }
