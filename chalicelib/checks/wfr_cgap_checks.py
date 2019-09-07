@@ -5,29 +5,28 @@ from ..utils import (
     action_function,
     init_action_res
 )
-from dcicutils import ff_utils
-from .helpers import cgap_utils
-from .helpers import wfrset_cgap_utils
+from dcicutils import ff_utils, s3Utils
+from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
 
 @check_function(file_type='File', start_date=None)
-def md5run_status(connection, **kwargs):
+def md5runCGAP_status(connection, **kwargs):
     """Searches for files that are uploaded to s3, but not went though md5 run.
     This check makes certain assumptions
-    -all files that have a status<= uploaded, went through md5run
-    -all files status uploading/upload failed, and no s3 file are pending, and skipped by this check.
+    -all files that have a status<= uploaded, went through md5runCGAP
+    -all files status uploading/upload failed, and no s3 file are pending,
+    and skipped by this check.
     if you change status manually, it might fail to show up in this checkself.
     Keyword arguments:
     file_type -- limit search to a file type, i.e. FileFastq (default=File)
-    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
-    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    start_date -- limit search to files generated since date  YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'md5run_status')
+    check = init_check_res(connection, 'md5runCGAP_status')
     my_auth = connection.ff_keys
-    check.action = "md5run_start"
+    check.action = "md5runCGAP_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -75,8 +74,8 @@ def md5run_status(connection, **kwargs):
         # find bucket
         if 'FileProcessed' in a_file['@type']:
                 my_bucket = out_bucket
-        elif 'FileVistrack' in a_file['@type']:
-                my_bucket = out_bucket
+        # elif 'FileVistrack' in a_file['@type']:
+        #         my_bucket = out_bucket
         else:  # covers cases of FileFastq, FileReference, FileMicroscopy
                 my_bucket = raw_bucket
         # check if file is in s3
@@ -85,7 +84,7 @@ def md5run_status(connection, **kwargs):
         if not head_info:
             no_s3_file.append(file_id)
             continue
-        md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
+        md5_report = cgap_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
         elif md5_report['status'].startswith("no complete run, too many"):
@@ -102,8 +101,8 @@ def md5run_status(connection, **kwargs):
         check.brief_output.append(msg)
         check.full_output['files_pending_upload'] = no_s3_file
     if running:
-        check.summary = 'Some files are running md5run'
-        msg = str(len(running)) + ' files are still running md5run.'
+        check.summary = 'Some files are running md5runCGAP'
+        msg = str(len(running)) + ' files are still running md5runCGAP.'
         check.brief_output.append(msg)
         check.full_output['files_running_md5'] = running
     if problems:
@@ -117,7 +116,7 @@ def md5run_status(connection, **kwargs):
         check.summary = 'Some files are missing md5 runs'
         msg = str(len(missing_md5)) + ' file(s) lack a successful md5 run'
         check.brief_output.append(msg)
-        check.full_output['files_without_md5run'] = missing_md5
+        check.full_output['files_without_md5runCGAP'] = missing_md5
         check.status = 'WARN'
     if not_switched_status:
         check.allow_action = True
@@ -133,19 +132,19 @@ def md5run_status(connection, **kwargs):
 
 
 @action_function(start_missing=True, start_not_switched=True)
-def md5run_start(connection, **kwargs):
+def md5runCGAP_start(connection, **kwargs):
     """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'md5run_start')
+    action = init_action_res(connection, 'md5runCGAP_start')
     action_logs = {'runs_started': [], "runs_failed": []}
     my_auth = connection.ff_keys
-    md5run_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
-    action_logs['check_output'] = md5run_check_result
+    md5runCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    action_logs['check_output'] = md5runCGAP_check_result
     targets = []
     if kwargs.get('start_missing'):
-        targets.extend(md5run_check_result.get('files_without_md5run', []))
+        targets.extend(md5runCGAP_check_result.get('files_without_md5runCGAP', []))
     if kwargs.get('start_not_switched'):
-        targets.extend(md5run_check_result.get('files_with_run_and_wrong_status', []))
+        targets.extend(md5runCGAP_check_result.get('files_with_run_and_wrong_status', []))
     action_logs['targets'] = targets
     for a_target in targets:
         now = datetime.utcnow()
@@ -153,11 +152,11 @@ def md5run_start(connection, **kwargs):
             action.description = 'Did not complete action due to time limitations'
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
-        attributions = wfr_utils.get_attribution(a_file)
+        attributions = cgap_utils.get_attribution(a_file)
         inp_f = {'input_file': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
+        wfr_setup = wfrset_cgap_utils.step_settings('md5', 'no_organism', attributions)
 
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -168,18 +167,17 @@ def md5run_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
-def fastqc_status(connection, **kwargs):
-    """Searches for fastq files that don't have fastqc
+@check_function(start_date=None)
+def fastqcCGAP_status(connection, **kwargs):
+    """Searches for fastq files that don't have fastqcCGAP
     Keyword arguments:
-    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'fastqc_status')
+    check = init_check_res(connection, 'fastqcCGAP_status')
     my_auth = connection.ff_keys
-    check.action = "fastqc_start"
+    check.action = "fastqcCGAP_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -197,7 +195,7 @@ def fastqc_status(connection, **kwargs):
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
-    # fastqc not properly reporting for long reads
+    # fastqcCGAP not properly reporting for long reads
     skip_instruments = ['PromethION', 'GridION', 'MinION', 'PacBio RS II']
     skip_add = "".join(['&instrument!=' + i for i in skip_instruments])
     query += skip_add
@@ -206,42 +204,38 @@ def fastqc_status(connection, **kwargs):
     s_date = kwargs.get('start_date')
     if s_date:
         query += '&date_created.from=' + s_date
-    # add lab
-    lab = kwargs.get('lab_title')
-    if lab:
-        query += '&lab.display_title=' + lab
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'fastqc-0-11-4-1', my_auth, start)
+    check = cgap_utils.check_runs_without_output(res, check, 'fastqcCGAP-0-11-4-1', my_auth, start)
     return check
 
 
 @action_function(start_missing_run=True, start_missing_meta=True)
-def fastqc_start(connection, **kwargs):
-    """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
+def fastqcCGAP_start(connection, **kwargs):
+    """Start fastqcCGAP runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'fastqc_start')
+    action = init_action_res(connection, 'fastqcCGAP_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
-    fastqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    fastqcCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
     if kwargs.get('start_missing_run'):
-        targets.extend(fastqc_check_result.get('files_without_run', []))
+        targets.extend(fastqcCGAP_check_result.get('files_without_run', []))
     if kwargs.get('start_missing_meta'):
-        targets.extend(fastqc_check_result.get('files_without_changes', []))
+        targets.extend(fastqcCGAP_check_result.get('files_without_changes', []))
     for a_target in targets:
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
             action.description = 'Did not complete action due to time limitations'
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
-        attributions = wfr_utils.get_attribution(a_file)
+        attributions = cgap_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        wfr_setup = wfrset_cgap_utils.step_settings('fastqcCGAP-0-11-4-1', 'no_organism', attributions)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -252,18 +246,10 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-
-
-
-
-
-
-
-@check_function(lab_title=None, start_date=None)
+@check_function(start_date=None)
 def cgap_status(connection, **kwargs):
     """
     Keyword arguments:
-    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead
     """

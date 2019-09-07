@@ -9,7 +9,7 @@ lambda_limit = wfrset_utils.lambda_limit
 # check at the end
 # check extract_file_info has 4 arguments
 
-# wfr_name, accepted versions, expected run time
+# wfr_name, accepted versions, expected run time # wfr_name, accepted versions,
 workflow_details = {
     "md5": {
         "run_time": 12,

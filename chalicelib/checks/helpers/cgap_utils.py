@@ -11,6 +11,14 @@ lambda_limit = wfrset_cgap_utils.lambda_limit
 
 # wfr_name, accepted versions, expected run time
 workflow_details = {
+    "md5": {
+        "run_time": 12,
+        "accepted_versions": ["0.0.4", "0.2.6"]
+    },
+    "fastqc-0-11-4-1": {
+        "run_time": 50,
+        "accepted_versions": ["0.2.0"]
+    },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
         "accepted_versions": ["v9"]
@@ -51,12 +59,12 @@ accepted_versions = {
     }
 
 # Reference Files
-bwa_index = {"human": "4DNFIYU3FC57"}
+bwa_index = {'human': 'GAPFI4U1HXIY'}
 
-chr_size = {"human": "4DNFI823LSII",
-            "mouse": "4DNFI3UBJ3HZ",
-            "fruit-fly": '4DNFIBEEN92C',
-            "chicken": "4DNFIQFZW4DX"}
+# chr_size = {"human": "4DNFI823LSII",
+#             "mouse": "4DNFI3UBJ3HZ",
+#             "fruit-fly": '4DNFIBEEN92C',
+#             "chicken": "4DNFIQFZW4DX"}
 
 
 def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
@@ -379,13 +387,13 @@ def find_fastq_info(exp, fastq_files):
             f2 = paired_files[0]
             files.append((f1, f2))
     bwa = bwa_index.get(organism)
-    chrsize = chr_size.get(organism)
+    # chrsize = chr_size.get(organism)
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
     refs = {'pairing': paired,
             'organism': organism,
             'bwa_ref': bwa,
-            'chrsize_ref': chrsize,
+            # 'chrsize_ref': chrsize,
             'f_size': str(f_size)+'GB'}
     return files, refs
 
