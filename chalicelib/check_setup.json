@@ -123,7 +123,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -135,7 +135,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -147,7 +147,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -159,7 +159,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": ["expset_opfsets_unique_titles"]
                 }
@@ -171,7 +171,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -223,7 +223,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -235,7 +235,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -247,7 +247,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -259,7 +259,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -295,7 +295,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -307,7 +307,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -331,7 +331,7 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -451,7 +451,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -518,6 +518,10 @@
                 "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -533,7 +537,7 @@
         "group": "Static headers checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1229,7 +1233,31 @@
         }
     },
     "cgap_status" : {
-        "title": "a) CGAP",
+        "title": "a) md5 runs",
+        "group": "CGAP run checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "md5runCGAP_status" : {
+        "title": "b) fastqc runs",
+        "group": "CGAP run checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastqcCGAP_status" : {
+        "title": "c) CGAP pipeline",
         "group": "CGAP checks",
         "schedule": {
             "hourly_checks": {
