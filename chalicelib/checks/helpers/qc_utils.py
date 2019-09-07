@@ -38,7 +38,7 @@ def calculate_qc_metric_pairsqc(file_uuid, key):
 
 def calculate_qc_metric_margi_pairsqc(file_uuid, key):
     '''Patching a pairs file object from margi with quality_metric summary'''
-    import pdb; pdb.set_trace()
+
     res = ff_utils.get_metadata(file_uuid, key=key)
     qc_uuid = res['quality_metric']['uuid']
     quality_metric = ff_utils.get_metadata(qc_uuid, key=key)

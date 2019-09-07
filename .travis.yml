@@ -4,11 +4,10 @@ python:
 - '3.6'
 install:
 - pip install -r requirements.txt
-- pip install coverage
+- pip install -r dev-requirements.txt
 - pip install coveralls
 script:
-- coverage run test.py
-- coverage report -m
+- pytest --cov chalicelib tests
 after_success:
 - coveralls
 - echo $TRAVIS_PULL_REQUEST
