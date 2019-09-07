@@ -130,10 +130,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
     run_status = 'did not run'
-    print(wfr_name)
-    for i in workflows:
-        print(i['display_title'])
-    print()
+
     my_workflows = [i for i in workflows if i['display_title'].startswith(wfr_name)]
     if not my_workflows:
         return {'status': "no workflow on file"}

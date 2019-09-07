@@ -116,7 +116,7 @@ def md5runCGAP_status(connection, **kwargs):
         check.summary = 'Some files are missing md5 runs'
         msg = str(len(missing_md5)) + ' file(s) lack a successful md5 run'
         check.brief_output.append(msg)
-        check.full_output['files_without_md5runCGAP'] = missing_md5
+        check.full_output['files_without_md5run'] = missing_md5
         check.status = 'WARN'
     if not_switched_status:
         check.allow_action = True
@@ -142,7 +142,7 @@ def md5runCGAP_start(connection, **kwargs):
     action_logs['check_output'] = md5runCGAP_check_result
     targets = []
     if kwargs.get('start_missing'):
-        targets.extend(md5runCGAP_check_result.get('files_without_md5runCGAP', []))
+        targets.extend(md5runCGAP_check_result.get('files_without_md5run', []))
     if kwargs.get('start_not_switched'):
         targets.extend(md5runCGAP_check_result.get('files_with_run_and_wrong_status', []))
     action_logs['targets'] = targets
@@ -209,7 +209,7 @@ def fastqcCGAP_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = cgap_utils.check_runs_without_output(res, check, 'fastqcCGAP-0-11-4-1', my_auth, start)
+    check = cgap_utils.check_runs_without_output(res, check, 'fastqc-0-11-4-1', my_auth, start)
     return check
 
 
@@ -234,7 +234,7 @@ def fastqcCGAP_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = cgap_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfrset_cgap_utils.step_settings('fastqcCGAP-0-11-4-1', 'no_organism', attributions)
+        wfr_setup = wfrset_cgap_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
         url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
