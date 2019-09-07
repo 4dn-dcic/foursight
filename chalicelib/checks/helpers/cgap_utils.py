@@ -203,26 +203,9 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
 def get_attribution(file_json):
     """give file response in embedded frame and extract attribution info"""
     attributions = {
-        'lab': file_json['lab']['@id'],
-        'award': file_json['award']['@id']
+        'project': file_json['project']['@id'],
+        'institution': file_json['institution']['@id']
     }
-    cont_labs = []
-    if file_json.get('contributing_labs'):
-        cont_labs = [i['@id'] for i in file_json['contributing_labs']]
-    appendFDN = True
-    if attributions['lab'] == '/labs/4dn-dcic-lab/':
-        appendFDN = False
-    if cont_labs:
-        if appendFDN:
-            cont_labs.append('/labs/4dn-dcic-lab/')
-            cont_labs = list(set(cont_labs))
-        attributions['contributing_labs'] = cont_labs
-    else:
-        if appendFDN:
-            cont_labs = ['/labs/4dn-dcic-lab/']
-            attributions['contributing_labs'] = cont_labs
-        else:
-            pass
     return attributions
 
 
@@ -326,7 +309,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
     input_json['env_name'] = 'fourfront-webdev'
 
     # TEMP
-    input_json['step_function_name'] = 'tibanna_pony_dev'
+    input_json['step_function_name'] = 'tibanna_zebra'
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']

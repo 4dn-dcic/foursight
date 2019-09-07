@@ -13,7 +13,7 @@ pairs_mapper = {"GRCh38": "hg38",
 
 def step_settings(step_name, my_organism, attribution, overwrite=None):
     """Return a setting dict for given step, and modify variables in
-    output files; genome assembly, file_type, desc, contributing lab.
+    output files; genome assembly, file_type, desc
     overwrite is a dictionary, if given will overwrite keys in resulting template
     overwrite = {'config': {"a": "b"},
                  'parameters': {'c': "d"}
