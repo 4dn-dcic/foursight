@@ -21,6 +21,32 @@ import time
 
 
 @check_function()
+def elastic_search_space(connection, **kwargs):
+    """ Checks that our ES nodes all have a certain amount of space remaining """
+    check = init_check_res(connection, 'elastic_search_space')
+    full_output = {}
+    client = es_utils.create_es_client(connection.ff_es, True)
+    # use cat.nodes to get id,diskAvail for all nodes, filter out empties
+    node_space_entries = filter(None, [data.split() for data in client.cat.nodes(h='id,diskAvail').split('\n')])
+    check.summary = check.description = None
+    full_output['nodes'] = {}
+    for _id, remaining_space in node_space_entries:
+        if 'gb' not in remaining_space:
+            if 'mb' not in remaining_space:
+                check.status = 'FAIL'
+                check.summary = check.description = 'At least one of the nodes in this env has no space remaining'
+            else:
+                check.status = 'WARN'
+                check.summary = check.description = 'At least one of the nodes in this env is low on space'
+        full_output['nodes'][_id.strip()] = { 'remaining_space': remaining_space }
+    if check.summary is None:
+        check.status = 'PASS'
+        check.summary = check.description = 'All nodes have >1gb remaining disk space'
+    check.full_output = full_output
+    return check
+
+
+@check_function()
 def elastic_beanstalk_health(connection, **kwargs):
     """
     Check both environment health and health of individual instances
