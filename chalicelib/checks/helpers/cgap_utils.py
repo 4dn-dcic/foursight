@@ -3,9 +3,6 @@ from datetime import datetime
 from operator import itemgetter
 from . import wfrset_cgap_utils
 import json
-
-from tibanna.core import API
-
 lambda_limit = wfrset_cgap_utils.lambda_limit
 
 # check at the end
