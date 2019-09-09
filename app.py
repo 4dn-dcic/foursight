@@ -82,7 +82,7 @@ def auth0_callback():
     domain, context = get_domain_and_context(req_dict)
     # extract redir cookie
     cookies = req_dict.get('headers', {}).get('cookie')
-    redir_url = None
+    redir_url = context + 'view/' + DEFAULT_ENV
     for cookie in cookies.split(';'):
         name, val = cookie.strip().split('=')
         if name == 'redir':
