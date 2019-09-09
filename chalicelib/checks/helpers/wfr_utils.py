@@ -9,7 +9,7 @@ lambda_limit = wfrset_utils.lambda_limit
 # check at the end
 # check extract_file_info has 4 arguments
 
-# wfr_name, accepted versions, expected run time
+# wfr_name, accepted versions, expected run time # wfr_name, accepted versions,
 workflow_details = {
     "md5": {
         "run_time": 12,
@@ -432,6 +432,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
+    input_json['step_function_name'] = 'tibanna_pony'
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
@@ -1207,9 +1208,9 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
             part2 = 'ready'  # switch for watching the exp
             for pair in exp_files[exp]:
                 if paired == 'Yes':
-                    pair_resp = [i for i in all_items['file_fastq'] if i['@id']==pair[0]][0]
+                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
                 elif paired == 'No':
-                    pair_resp = [i for i in all_items['file_fastq'] if i['@id']==pair][0]
+                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
                 step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':

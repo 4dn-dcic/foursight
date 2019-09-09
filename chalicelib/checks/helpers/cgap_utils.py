@@ -3,7 +3,6 @@ from datetime import datetime
 from operator import itemgetter
 from . import wfrset_cgap_utils
 import json
-
 lambda_limit = wfrset_cgap_utils.lambda_limit
 
 # check at the end
@@ -11,6 +10,14 @@ lambda_limit = wfrset_cgap_utils.lambda_limit
 
 # wfr_name, accepted versions, expected run time
 workflow_details = {
+    "md5": {
+        "run_time": 12,
+        "accepted_versions": ["0.0.4", "0.2.6"]
+    },
+    "fastqc-0-11-4-1": {
+        "run_time": 50,
+        "accepted_versions": ["0.2.0"]
+    },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
         "accepted_versions": ["v9"]
@@ -51,12 +58,12 @@ accepted_versions = {
     }
 
 # Reference Files
-bwa_index = {"human": "4DNFIYU3FC57"}
+bwa_index = {'human': 'GAPFI4U1HXIY'}
 
-chr_size = {"human": "4DNFI823LSII",
-            "mouse": "4DNFI3UBJ3HZ",
-            "fruit-fly": '4DNFIBEEN92C',
-            "chicken": "4DNFIQFZW4DX"}
+# chr_size = {"human": "4DNFI823LSII",
+#             "mouse": "4DNFI3UBJ3HZ",
+#             "fruit-fly": '4DNFIBEEN92C',
+#             "chicken": "4DNFIQFZW4DX"}
 
 
 def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
@@ -122,10 +129,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
     run_status = 'did not run'
-    print(wfr_name)
-    for i in workflows:
-        print(i['display_title'])
-    print()
+
     my_workflows = [i for i in workflows if i['display_title'].startswith(wfr_name)]
     if not my_workflows:
         return {'status': "no workflow on file"}
@@ -195,26 +199,9 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
 def get_attribution(file_json):
     """give file response in embedded frame and extract attribution info"""
     attributions = {
-        'lab': file_json['lab']['@id'],
-        'award': file_json['award']['@id']
+        'project': file_json['project']['@id'],
+        'institution': file_json['institution']['@id']
     }
-    cont_labs = []
-    if file_json.get('contributing_labs'):
-        cont_labs = [i['@id'] for i in file_json['contributing_labs']]
-    appendFDN = True
-    if attributions['lab'] == '/labs/4dn-dcic-lab/':
-        appendFDN = False
-    if cont_labs:
-        if appendFDN:
-            cont_labs.append('/labs/4dn-dcic-lab/')
-            cont_labs = list(set(cont_labs))
-        attributions['contributing_labs'] = cont_labs
-    else:
-        if appendFDN:
-            cont_labs = ['/labs/4dn-dcic-lab/']
-            attributions['contributing_labs'] = cont_labs
-        else:
-            pass
     return attributions
 
 
@@ -314,17 +301,70 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
-
-    input_json['env_name'] = 'fourfront-webdev'
-
-    # TEMP
-    input_json['step_function_name'] = 'tibanna_pony_dev'
+    input_json['env_name'] = 'fourfront-cgap'
+    input_json['step_function_name'] = 'tibanna_zebra'
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
         return url
     except Exception as e:
         return str(e)
+
+
+def check_runs_without_output(res, check, run_name, my_auth, start):
+    """Common processing for checks that are running on files and not producing output files
+    like qcs ones producing extra files"""
+    # no successful run
+    missing_run = []
+    # successful run but no expected metadata change (qc or extra file)
+    missing_meta_changes = []
+    # still running
+    running = []
+    # multiple failed runs
+    problems = []
+
+    for a_file in res:
+        # lambda has a time limit (300sec), kill before it is reached so we get some results
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            check.brief_output.append('did not complete checking all')
+            break
+        file_id = a_file['accession']
+        report = get_wfr_out(a_file, run_name,  key=my_auth, md_qc=True)
+        if report['status'] == 'running':
+            running.append(file_id)
+        elif report['status'].startswith("no complete run, too many"):
+            problems.append(file_id)
+        elif report['status'] != 'complete':
+            missing_run.append(file_id)
+        # There is a successful run, but no extra_file
+        elif report['status'] == 'complete':
+            missing_meta_changes.append(file_id)
+    if running:
+        check.summary = 'Some files are running'
+        check.brief_output.append(str(len(running)) + ' files are still running.')
+        check.full_output['running'] = running
+    if problems:
+        check.summary = 'Some files have problems'
+        check.brief_output.append(str(len(problems)) + ' files have multiple failed runs')
+        check.full_output['problems'] = problems
+        check.status = 'WARN'
+    if missing_run:
+        check.allow_action = True
+        check.summary = 'Some files are missing runs'
+        check.brief_output.append(str(len(missing_run)) + ' files lack a successful run')
+        check.full_output['files_without_run'] = missing_run
+        check.status = 'WARN'
+    if missing_meta_changes:
+        check.allow_action = True
+        check.summary = 'Some files are missing runs'
+        check.brief_output.append(str(len(missing_meta_changes)) + ' files have successful run but no qc/extra file')
+        check.full_output['files_without_changes'] = missing_meta_changes
+        check.status = 'WARN'
+    check.summary = check.summary.strip()
+    if not check.brief_output:
+        check.brief_output = ['All Good!']
+    return check
 
 
 def find_fastq_info(exp, fastq_files):
@@ -343,9 +383,7 @@ def find_fastq_info(exp, fastq_files):
     # check pairing for the first file, and assume all same
     paired = ""
     total_f_size = 0
-    biosample = exp['biosample']
-    organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
-    organism = organisms[0]
+    organism = 'human'
     exp_files = exp['files']
 
     for fastq_file in exp_files:
@@ -379,13 +417,13 @@ def find_fastq_info(exp, fastq_files):
             f2 = paired_files[0]
             files.append((f1, f2))
     bwa = bwa_index.get(organism)
-    chrsize = chr_size.get(organism)
+    # chrsize = chr_size.get(organism)
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
     refs = {'pairing': paired,
             'organism': organism,
             'bwa_ref': bwa,
-            'chrsize_ref': chrsize,
+            # 'chrsize_ref': chrsize,
             'f_size': str(f_size)+'GB'}
     return files, refs
 
