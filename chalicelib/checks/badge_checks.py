@@ -178,7 +178,8 @@ def yellow_flag_biosamples(connection, **kwargs):
         ploidy = False
         bccs = result.get('cell_culture_details', [])
         if not bccs:
-            messages.append('Biosample missing Cell Culture Details')
+            if len([t for t in bs_types if t in ['primary cell', 'tissue', 'multicellular organism']]) == len(bs_types):
+                messages.append('Biosample missing Cell Culture Details')
         else:
             for bcc in bccs:
                 for item in [
