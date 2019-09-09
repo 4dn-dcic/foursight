@@ -1207,9 +1207,9 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
             part2 = 'ready'  # switch for watching the exp
             for pair in exp_files[exp]:
                 if paired == 'Yes':
-                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
+                    pair_resp = [i for i in all_items['file_fastq'] if i['@id']==pair[0]][0]
                 elif paired == 'No':
-                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
+                    pair_resp = [i for i in all_items['file_fastq'] if i['@id']==pair][0]
                 step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
@@ -1245,7 +1245,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                 # add files for experiment opf
                 complete['patch_opf'].append([exp, all_files])
             else:
-                part3 == 'not ready'
+                part3 = 'not ready'
         if part3 == 'ready':
             # add the tag
             set_summary += "| completed runs"
