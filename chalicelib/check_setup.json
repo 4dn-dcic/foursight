@@ -1227,5 +1227,16 @@
                 }
             }
         }
+    },
+    "elastic_search_space" : {
+        "title": "ES Disk Space Check",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs" : {"primary": true}
+                }
+            }        
+        }
     }
 }
