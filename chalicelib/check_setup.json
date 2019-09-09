@@ -1232,21 +1232,9 @@
             }
         }
     },
-    "cgap_status" : {
-        "title": "a) md5 runs",
-        "group": "CGAP run checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "md5runCGAP_status" : {
-        "title": "b) fastqc runs",
-        "group": "CGAP run checks",
+        "title": "a) md5 runs",
+        "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
                 "cgap": {
@@ -1257,8 +1245,20 @@
         }
     },
     "fastqcCGAP_status" : {
+        "title": "b) fastqc runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgap_status" : {
         "title": "c) CGAP pipeline",
-        "group": "CGAP checks",
+        "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
                 "cgap": {
@@ -1276,7 +1276,7 @@
                 "all": {
                     "kwargs" : {"primary": true}
                 }
-            }        
+            }
         }
     }
 }
