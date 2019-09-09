@@ -369,8 +369,8 @@ def cgap_status(connection, **kwargs):
         if step5_status != 'complete':
             step6_status = ""
         else:
-            s6_input_files = {'input_bam': step5_output, 'known-sites-snp': '4DNFI2RDOLUQ',
-                              'known-sites-indels': '4DNFIBN3576F', 'reference': '4DNFIBH13WES'}
+            s6_input_files = {'input_bam': step5_output, 'known-sites-snp': 'GAPFI4LJRN98',
+                              'known-sites-indels': 'GAPFIAX2PPYB', 'reference': 'GAPFIXRDPDK5'}
             running, problematic_run, missing_run, step6_status, step6_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
                                                                                                    'step6', an_exp['accession'], step5_output,
                                                                                                    s6_input_files,  step6_name, 'recalibration_report', {}, 'human')
@@ -379,7 +379,7 @@ def cgap_status(connection, **kwargs):
         if step6_status != 'complete':
             step7_status = ""
         else:
-            s7_input_files = {'input_bam': step5_output, 'reference': '4DNFIBH13WES', 'recalibration_report': step6_output}
+            s7_input_files = {'input_bam': step5_output, 'reference': 'GAPFIXRDPDK5', 'recalibration_report': step6_output}
             running, problematic_run, missing_run, step7_status, step7_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
                                                                                                    'step7', an_exp['accession'], step6_output,
                                                                                                    s7_input_files,  step7_name, 'recalibrated_bam', {}, 'human')

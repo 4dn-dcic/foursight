@@ -318,7 +318,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
     #     return str(e)
 
     try:
-        e = API().run_workflow(input_json=input_json, sfn='tibanna_zebra')
+        e = API().run_workflow(input_json=input_json, sfn='tibanna_zebra', open_browser=False)
         url = json.loads(e['input'])['_tibanna']['url']
         return url
     except Exception as e:
