@@ -968,10 +968,6 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
-                },
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
                 }
             }
         }
@@ -994,10 +990,6 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "cgap": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
