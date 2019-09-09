@@ -5,17 +5,251 @@ from ..utils import (
     action_function,
     init_action_res
 )
-from dcicutils import ff_utils
-from .helpers import cgap_utils
-
+from dcicutils import ff_utils, s3Utils
+from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(file_type='File', start_date=None)
+def md5runCGAP_status(connection, **kwargs):
+    """Searches for files that are uploaded to s3, but not went though md5 run.
+    This check makes certain assumptions
+    -all files that have a status<= uploaded, went through md5runCGAP
+    -all files status uploading/upload failed, and no s3 file are pending,
+    and skipped by this check.
+    if you change status manually, it might fail to show up in this checkself.
+    Keyword arguments:
+    file_type -- limit search to a file type, i.e. FileFastq (default=File)
+    start_date -- limit search to files generated since date  YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'md5runCGAP_status')
+    my_auth = connection.ff_keys
+    check.action = "md5runCGAP_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    # Build the query
+    query = '/search/?status=uploading&status=upload failed'
+    # add file type
+    f_type = kwargs.get('file_type')
+    query += '&type=' + f_type
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    # if there are files, make sure they are not on s3
+    no_s3_file = []
+    running = []
+    missing_md5 = []
+    not_switched_status = []
+    # multiple failed runs
+    problems = []
+    my_s3_util = s3Utils(env=connection.ff_env)
+    raw_bucket = my_s3_util.raw_file_bucket
+    out_bucket = my_s3_util.outfile_bucket
+    for a_file in res:
+        # lambda has a time limit (300sec), kill before it is reached so we get some results
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            check.brief_output.append('did not complete checking all')
+            break
+        # find bucket
+        if 'FileProcessed' in a_file['@type']:
+                my_bucket = out_bucket
+        # elif 'FileVistrack' in a_file['@type']:
+        #         my_bucket = out_bucket
+        else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                my_bucket = raw_bucket
+        # check if file is in s3
+        file_id = a_file['accession']
+        head_info = my_s3_util.does_key_exist(a_file['upload_key'], my_bucket)
+        if not head_info:
+            no_s3_file.append(file_id)
+            continue
+        md5_report = cgap_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
+        if md5_report['status'] == 'running':
+            running.append(file_id)
+        elif md5_report['status'].startswith("no complete run, too many"):
+            problems.append(file_id)
+        # Most probably the trigger did not work, and we run it manually
+        elif md5_report['status'] != 'complete':
+            missing_md5.append(file_id)
+        # There is a successful run, but status is not switched, happens when a file is reuploaded.
+        elif md5_report['status'] == 'complete':
+            not_switched_status.append(file_id)
+    if no_s3_file:
+        check.summary = 'Some files are pending upload'
+        msg = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
+        check.brief_output.append(msg)
+        check.full_output['files_pending_upload'] = no_s3_file
+    if running:
+        check.summary = 'Some files are running md5runCGAP'
+        msg = str(len(running)) + ' files are still running md5runCGAP.'
+        check.brief_output.append(msg)
+        check.full_output['files_running_md5'] = running
+    if problems:
+        check.summary = 'Some files have problems'
+        msg = str(len(problems)) + ' file(s) have problems.'
+        check.brief_output.append(msg)
+        check.full_output['problems'] = problems
+        check.status = 'WARN'
+    if missing_md5:
+        check.allow_action = True
+        check.summary = 'Some files are missing md5 runs'
+        msg = str(len(missing_md5)) + ' file(s) lack a successful md5 run'
+        check.brief_output.append(msg)
+        check.full_output['files_without_md5run'] = missing_md5
+        check.status = 'WARN'
+    if not_switched_status:
+        check.allow_action = True
+        check.summary += ' Some files are have wrong status with a successful run'
+        msg = str(len(not_switched_status)) + ' file(s) are have wrong status with a successful run'
+        check.brief_output.append(msg)
+        check.full_output['files_with_run_and_wrong_status'] = not_switched_status
+        check.status = 'WARN'
+    if not check.brief_output:
+        check.brief_output = ['All Good!', ]
+    check.summary = check.summary.strip()
+    return check
+
+
+@action_function(start_missing=True, start_not_switched=True)
+def md5runCGAP_start(connection, **kwargs):
+    """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'md5runCGAP_start')
+    action_logs = {'runs_started': [], "runs_failed": []}
+    my_auth = connection.ff_keys
+    md5runCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    action_logs['check_output'] = md5runCGAP_check_result
+    targets = []
+    if kwargs.get('start_missing'):
+        targets.extend(md5runCGAP_check_result.get('files_without_md5run', []))
+    if kwargs.get('start_not_switched'):
+        targets.extend(md5runCGAP_check_result.get('files_with_run_and_wrong_status', []))
+    action_logs['targets'] = targets
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = cgap_utils.get_attribution(a_file)
+        inp_f = {'input_file': a_file['@id']}
+        wfr_setup = wfrset_cgap_utils.step_settings('md5', 'no_organism', attributions)
+
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(start_date=None)
+def fastqcCGAP_status(connection, **kwargs):
+    """Searches for fastq files that don't have fastqcCGAP
+    Keyword arguments:
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'fastqcCGAP_status')
+    my_auth = connection.ff_keys
+    check.action = "fastqcCGAP_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    # Build the query (skip to be uploaded by workflow)
+    query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
+             "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
+    # fastqcCGAP not properly reporting for long reads
+    skip_instruments = ['PromethION', 'GridION', 'MinION', 'PacBio RS II']
+    skip_add = "".join(['&instrument!=' + i for i in skip_instruments])
+    query += skip_add
+
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = cgap_utils.check_runs_without_output(res, check, 'fastqc-0-11-4-1', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def fastqcCGAP_start(connection, **kwargs):
+    """Start fastqcCGAP runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'fastqcCGAP_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    fastqcCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(fastqcCGAP_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(fastqcCGAP_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = cgap_utils.get_attribution(a_file)
+        inp_f = {'input_fastq': a_file['@id']}
+        wfr_setup = wfrset_cgap_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(start_date=None)
 def cgap_status(connection, **kwargs):
     """
     Keyword arguments:
-    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead
     """
@@ -39,7 +273,7 @@ def cgap_status(connection, **kwargs):
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-    q = '/search/?type=ExperimentSeq&experiment_type=WGS&processed_files.uuid=No+value'
+    q = '/search/?type=Sample&processed_files.display_title=No+value&files.display_title%21=No+value'
     all_exps = ff_utils.search_metadata(q, my_auth)
     print(len(all_exps))
 
@@ -135,8 +369,8 @@ def cgap_status(connection, **kwargs):
         if step5_status != 'complete':
             step6_status = ""
         else:
-            s6_input_files = {'input_bam': step5_output, 'known-sites-snp': '4DNFI2RDOLUQ',
-                              'known-sites-indels': '4DNFIBN3576F', 'reference': '4DNFIBH13WES'}
+            s6_input_files = {'input_bam': step5_output, 'known-sites-snp': 'GAPFI4LJRN98',
+                              'known-sites-indels': 'GAPFIAX2PPYB', 'reference': 'GAPFIXRDPDK5'}
             running, problematic_run, missing_run, step6_status, step6_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
                                                                                                    'step6', an_exp['accession'], step5_output,
                                                                                                    s6_input_files,  step6_name, 'recalibration_report', {}, 'human')
@@ -145,7 +379,7 @@ def cgap_status(connection, **kwargs):
         if step6_status != 'complete':
             step7_status = ""
         else:
-            s7_input_files = {'input_bam': step5_output, 'reference': '4DNFIBH13WES', 'recalibration_report': step6_output}
+            s7_input_files = {'input_bam': step5_output, 'reference': 'GAPFIXRDPDK5', 'recalibration_report': step6_output}
             running, problematic_run, missing_run, step7_status, step7_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
                                                                                                    'step7', an_exp['accession'], step6_output,
                                                                                                    s7_input_files,  step7_name, 'recalibrated_bam', {}, 'human')

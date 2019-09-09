@@ -13,7 +13,7 @@ pairs_mapper = {"GRCh38": "hg38",
 
 def step_settings(step_name, my_organism, attribution, overwrite=None):
     """Return a setting dict for given step, and modify variables in
-    output files; genome assembly, file_type, desc, contributing lab.
+    output files; genome assembly, file_type, desc
     overwrite is a dictionary, if given will overwrite keys in resulting template
     overwrite = {'config': {"a": "b"},
                  'parameters': {'c': "d"}
@@ -24,6 +24,14 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     # int_n_rep = "This is an intermediate file in the Repliseq processing pipeline"
 
     wf_dict = [
+            {
+                'app_name': 'md5',
+                'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6'
+            },
+            {
+                'app_name': 'fastqc-0-11-4-1',
+                'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
+            },
             {
                 'app_name': 'workflow_bwa-mem_no_unzip-check',
                 'workflow_uuid': '9e094699-561b-4396-8d6a-ffc45f98c5e1',

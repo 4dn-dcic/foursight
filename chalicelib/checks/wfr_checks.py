@@ -56,7 +56,6 @@ def md5run_status(connection, **kwargs):
     if you change status manually, it might fail to show up in this checkself.
     Keyword arguments:
     file_type -- limit search to a file type, i.e. FileFastq (default=File)
-    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """

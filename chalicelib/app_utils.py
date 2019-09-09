@@ -330,7 +330,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
                 'groups': grouped_results
             })
     # prioritize these environments
-    env_order = ['data', 'staging', 'webdev', 'hotseat']
+    env_order = ['data', 'staging', 'webdev', 'hotseat', 'cgap']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
     template = jin_env.get_template('view_groups.html')
     # get queue information
@@ -340,7 +340,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
-        load_time = get_load_time(),
+        load_time=get_load_time(),
         is_admin=is_admin,
         domain=domain,
         context=context,
@@ -389,7 +389,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
-        load_time = get_load_time(),
+        load_time=get_load_time(),
         is_admin=is_admin,
         domain=domain,
         context=context,
@@ -453,7 +453,7 @@ def process_view_result(connection, res, is_admin):
     else:
         res['admin_output'] = None
 
-    ### LOGIC FOR VIEWING ACTION ###
+    # ### LOGIC FOR VIEWING ACTION ###
     # if this check has already run an action, display that. Otherwise, allow
     # action to be run.
     # For now also get the latest result for the checks action
@@ -759,10 +759,13 @@ def queue_scheduled_checks(sched_environ, schedule_name, conditions=None):
     """
     queue = get_sqs_queue()
     if schedule_name is not None:
-        if sched_environ != 'all' and sched_environ not in list_environments():
+        if sched_environ not in ['all', 'all_4dn'] and sched_environ not in list_environments():
             print('-RUN-> %s is not a valid environment. Cannot queue.' % sched_environ)
             return
-        sched_environs = list_environments() if sched_environ == 'all' else [sched_environ]
+        sched_environs = list_environments() if sched_environ in ['all', 'all_4dn'] else [sched_environ]
+        # remove any environments with 'cgap' if all_4dn
+        if sched_environ == 'all_4dn':
+            sched_environs = [env for env in sched_environ if 'cgap' not in env]
         check_schedule = get_check_schedule(schedule_name, conditions)
         if not check_schedule:
             print('-RUN-> %s is not a valid schedule. Cannot queue.' % schedule_name)
@@ -770,6 +773,9 @@ def queue_scheduled_checks(sched_environ, schedule_name, conditions=None):
         for environ in sched_environs:
             # add the run info from 'all' as well as this specific environ
             check_vals = copy.copy(check_schedule.get('all', []))
+            # also add 'all_4dn' if we are in a non-cgap environment
+            if 'cgap' not in environ:
+                check_vals.extend(check_schedule.get('all_4dn', []))
             check_vals.extend(check_schedule.get(environ, []))
             send_sqs_messages(queue, environ, check_vals)
     runner_input = {'sqs_url': queue.url}
