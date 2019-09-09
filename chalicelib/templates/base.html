@@ -305,6 +305,12 @@
     <script type="text/javascript">
         var domain = $("#fs_domain").data("domain");
         var context = $("#fs_context").data("context");
+        // set cookie containing the location we were at when we tried to Login
+        // this cookie is re-loaded at /callback and parsed for the url, which
+        // it redirects to upon finishing authentication
+        var expr = new Date();
+        expr.setFullYear(expr.getFullYear() + 1);
+        document.cookie = "redir=" + window.location.href + "; path=/; expires=" + expr.toUTCString();
         var lock = new Auth0Lock('DPxEwsZRnKDpk0VfVAxrStRKukN14ILB', 'hms-dbmi.auth0.com', {
             auth: {
                 redirectUrl: 'https://' + domain + context + 'callback/',
