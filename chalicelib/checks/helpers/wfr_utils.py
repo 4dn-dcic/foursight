@@ -432,6 +432,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
+    input_json['step_function_name'] = 'tibanna_pony'
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
