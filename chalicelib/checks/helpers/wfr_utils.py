@@ -1229,12 +1229,12 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                     # add part 1
                     if paired == 'Yes':
                         inp_f = {'fastq': pair[0], 'fastq2': pair[1],
-                                 'bwa_index': refs['bwa_ref'],
+                                 'bwaIndex': refs['bwa_ref'],
                                  'chromsizes': refs['chrsize_ref']}
                         name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
                     elif paired == 'No':
                         inp_f = {'fastq': pair,
-                                 'bwa_index': refs['bwa_ref'],
+                                 'bwaIndex': refs['bwa_ref'],
                                  'chromsizes': refs['chrsize_ref']}
                         name_tag = pair.split('/')[2]
                     overwrite = {}

@@ -284,7 +284,7 @@
         {% else %}
             <h5 class="center-element">
                 <span>{{'Not logged in as admin'}}</span>
-                <button class="login-w-hover in-line" onclick="lock.show();">Log in</button>
+                <button class="login-w-hover in-line" onclick="create_redir_cookie(); lock.show();">Log in</button>
             </h5>
         {% endif %}
         {% if running_checks != '0' or queued_checks != '0' %}
@@ -302,6 +302,16 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script src="https://cdn.auth0.com/js/lock/10.24.1/lock.min.js"></script>
+    <script type="text/javascript">
+      // set cookie containing the location we were at when we tried to Login
+      // this cookie is re-loaded at /callback and parsed for the url, which
+      // it redirects to upon finishing authentication
+      function create_redir_cookie() {
+        var expr = new Date();
+        expr.setFullYear(expr.getFullYear() + 1);
+        document.cookie = "redir=" + window.location.href + "; path=/; expires=" + expr.toUTCString();
+      }
+    </script>
     <script type="text/javascript">
         var domain = $("#fs_domain").data("domain");
         var context = $("#fs_context").data("context");
