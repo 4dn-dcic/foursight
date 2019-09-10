@@ -108,6 +108,7 @@ class TestCheckResult():
             chk_date = datetime.datetime.strptime(chk[2]['uuid'], '%Y-%m-%dT%H:%M:%S.%f')
             assert chk_date >= after_date
 
+
     def test_filename_to_datetime(self):
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
         check_result = check.store_result()

@@ -133,6 +133,38 @@ class RunResult(object):
         resp = s3_connection.put_object(record_key, json.dumps(self.status))
         return resp is not None
 
+    def clean_s3_files(self, prior_date=None, primary=True):
+        """
+        Goes through all check files deleting by default all non-primary
+        checks. If a prior_date (datetime) is given, then only non-primary
+        results prior to the date will be cleaned. If primary is False then
+        primary results will be cleaned as well.
+        """
+        keys_to_delete = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
+
+        # if given a prior date, remove all keys after that date so long as they aren't primary
+        if prior_date is not None:
+            keys_to_delete = list(filter(lambda k: self.filename_to_datetime(k) <= prior_date, keys_to_delete))
+
+        # if primary is true, filter out primary results (so they arent deleted)
+        if primary:
+            def is_not_primary(key):
+                obj = self.get_s3_object(key)
+                return not obj['kwargs'].get('primary')
+            keys_to_delete = list(filter(is_not_primary, keys_to_delete)) 
+
+        # aws API maximum
+        if len(keys_to_delete) > 1000:
+            keys_to_delete = keys_to_delete[:1000]
+        self.s3_connection.delete_keys(keys_to_delete)
+
+    def get_n_results(self):
+        """
+        Returns the number of results associated with this run
+        Helper function for testing
+        """    
+        return len(self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True))
+
     def get_result_history(self, start, limit, after_date=None):
         """
         Used to get the uuid, status, and kwargs for a specific check.
