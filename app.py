@@ -80,7 +80,14 @@ def auth0_callback():
     request = app.current_request
     req_dict = request.to_dict()
     domain, context = get_domain_and_context(req_dict)
-    resp_headers = {'Location': context + 'view/' + DEFAULT_ENV}
+    # extract redir cookie
+    cookies = req_dict.get('headers', {}).get('cookie')
+    redir_url = context + 'view/' + DEFAULT_ENV
+    for cookie in cookies.split(';'):
+        name, val = cookie.strip().split('=')
+        if name == 'redir':
+            redir_url = val
+    resp_headers = {'Location': redir_url}
     params = req_dict.get('query_params')
     if not params:
         return forbidden_response()
