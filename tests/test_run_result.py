@@ -18,7 +18,6 @@ class TestRunResult():
         while (after_post < nChecks):
             time.sleep(1)  # make sure s3 has recieved all
             after_post = run.get_n_results()
-        import pdb; pdb.set_trace()
         run.clean_s3_files(prior_date=datetime.datetime.now()) # this will not remove primary results
         after_clean = run.get_n_results()
         assert after_clean < after_post
