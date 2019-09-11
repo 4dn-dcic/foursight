@@ -26,10 +26,11 @@ class TestRunResult():
         res = primary_check.store_result()
         num_deleted = self.run.delete_results(prior_date=datetime.datetime.utcnow())
         assert num_deleted == 5 # primary result should not have been deleted
-        queried_primary = self.run.get_primary_result()
+        queried_primary = self.run.get_result_by_uuid(res['kwargs']['uuid'])
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
         primary_deleted = self.run.delete_results(primary=False)
         assert primary_deleted >= 1 # now primary result should be gone
+        assert not self.run.get_result_by_uuid(res['kwargs']['uuid'])
 
     @pytest.mark.flaky
     def test_delete_results_primary(self):
@@ -41,10 +42,11 @@ class TestRunResult():
         check.status = 'PASS'
         check.kwargs = {'primary': True}
         res = check.store_result()
-        queried_primary = self.run.get_primary_result()
+        queried_primary = self.run.get_result_by_uuid(res['kwargs']['uuid'])
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
         num_deleted = self.run.delete_results(primary=False)
         assert num_deleted == 1
+        assert not self.run.get_result_by_uuid(res['kwargs']['uuid'])
 
     @pytest.mark.flaky
     def test_delete_results_custom_filter(self):
