@@ -141,6 +141,7 @@ class RunResult(object):
         primary results will be cleaned as well.
         If a custom filter is given, that filter will be applied as well, prior
         to the above filters.
+        Returns the number of keys deleted
         """
         keys_to_delete = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
 
@@ -164,14 +165,19 @@ class RunResult(object):
             keys_to_delete = list(filter(is_not_primary, keys_to_delete))
 
         # batch delete calls at aws maximum of 1000 if necessary
+        num_deleted = 0
         if len(keys_to_delete) > 1000:
             start, end = 0, 1000
             while start < len(keys_to_delete):
-                self.s3_connection.delete_keys(keys_to_delete[start:end])
+                resp = self.s3_connection.delete_keys(keys_to_delete[start:end])
+                num_deleted += len(resp['Deleted'])
                 start += 1000
                 end += 1000
         else:
-            self.s3_connection.delete_keys(keys_to_delete)
+            resp = self.s3_connection.delete_keys(keys_to_delete)
+            num_deleted += len(resp['Deleted'])
+
+        return num_deleted
 
     def get_n_results(self):
         """

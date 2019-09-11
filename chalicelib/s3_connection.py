@@ -55,7 +55,7 @@ class S3Connection(object):
         # make sure prefix ends with a slash (bucket format)
         prefix = ''.join([prefix, '/']) if not prefix.endswith('/') else prefix
         # this will exclude 'primary' and 'latest' in records_only == True
-        # use '2' because is is the first digit of year (in uuid) 
+        # use '2' because is is the first digit of year (in uuid)
         use_prefix = ''.join([prefix, '2' ])if records_only else prefix
         while not reached_end:
             try:
@@ -103,7 +103,7 @@ class S3Connection(object):
     def delete_keys(self, key_list):
         # boto3 requires this setup
         to_delete = {'Objects' : [{'Key': key} for key in key_list]}
-        self.client.delete_objects(Bucket=self.bucket, Delete=to_delete)
+        return self.client.delete_objects(Bucket=self.bucket, Delete=to_delete)
 
 
     def test_connection(self):
