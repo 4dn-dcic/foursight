@@ -133,14 +133,24 @@ class RunResult(object):
         resp = s3_connection.put_object(record_key, json.dumps(self.status))
         return resp is not None
 
-    def delete_results(self, prior_date=None, primary=True):
+    def delete_results(self, prior_date=None, primary=True, custom_filter=None):
         """
         Goes through all check files deleting by default all non-primary
         checks. If a prior_date (datetime) is given then all results prior to the
         given time will be delete (including primaries). If primary is False then
         primary results will be cleaned as well.
+        If a custom filter is given, that filter will be applied as well, prior
+        to the above filters.
         """
         keys_to_delete = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
+
+        # if given a custom filter, apply it
+        if custom_filter is not None:
+            try:
+                keys_to_delete = list(filter(custom_filter, keys_to_delete))
+            except Exception as e:
+                raise Exception('delete_results encountered an error when applying'
+                                ' a custom filter. Error message: %s', e)
 
         # if given a prior date, remove all keys after that date so long as they aren't primary
         if prior_date is not None:

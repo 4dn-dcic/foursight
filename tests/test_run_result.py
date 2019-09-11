@@ -52,3 +52,44 @@ class TestRunResult():
         time.sleep(3)
         after_second_primary_delete = run.get_n_results()
         assert after_second_primary_delete <= nChecks # other test compatibility
+
+    @pytest.mark.flaky
+    def test_delete_results_custom_filter(self):
+        """
+        Post some checks with a term in the description that we filter out
+        based on a custom_filter
+        """
+        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
+        def term_in_descr(key):
+            obj = run.get_s3_object(key)
+            if obj.get('description') is not None:
+                return 'bad_term' in obj.get('description')
+            return False
+
+        # post some checks to be filtered
+        nChecks = run.get_n_results()
+        for _ in range(5):
+            check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+            check.description = 'This check contains bad_term which should be filtered.'
+            check.status = 'PASS'
+            check.store_result()
+        time.sleep(3)
+        for _ in range(5):
+            check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+            check.description = 'This is a normal check.'
+            check.status = 'PASS'
+            check.store_result()
+        run.delete_results(custom_filter=term_in_descr)
+        time.sleep(3)
+        after_filter = run.get_n_results()
+        assert after_filter == (nChecks + 5) # we added 10, 5 should have been deleted
+        run.delete_results()
+        time.sleep(3)
+        after_filter = run.get_n_results()
+        assert after_filter <= nChecks # now all 10 should have been deleted
+
+        # test that bad filter throws Exception
+        def bad_filter(key):
+            raise Exception
+        with pytest.raises(Exception):
+            run.delete_results(custom_filter=bad_filter)
