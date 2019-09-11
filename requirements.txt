@@ -1,5 +1,5 @@
-dcicutils>=0.8.0
-requests==2.20.0
+dcicutils>=0.8.1
+requests==2.21.0
 click==6.7
 PyJWT==1.5.3
 Jinja2==2.10.1
