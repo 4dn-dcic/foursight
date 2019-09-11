@@ -164,6 +164,11 @@ class RunResult(object):
                 return not obj['kwargs'].get('primary')
             keys_to_delete = list(filter(is_not_primary, keys_to_delete))
 
+        # if there is nothing to delete return 0 instead of throwing an Exception
+        # in botocore
+        if len(keys_to_delete) == 0:
+            return 0
+
         # batch delete calls at aws maximum of 1000 if necessary
         num_deleted = 0
         if len(keys_to_delete) > 1000:

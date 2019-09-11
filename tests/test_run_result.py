@@ -80,8 +80,85 @@ class TestRunResult():
         num_deleted = run.delete_results()
         assert num_deleted == 3
 
-        # test that bad filter throws Exception
+    @pytest.mark.flaky
+    def test_delete_results_bad_filter(self):
+        """
+        Posts a check then attempts to delete it with an invalid custom_filter
+        Should raise an exception. Check is then deleted.
+        """
+        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
+
+        # filter function raises an Exception
         def bad_filter(key):
             raise Exception
+
+        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check.description = 'This is a normal check.'
+        check.status = 'PASS'
+        check.store_result()
         with pytest.raises(Exception):
             run.delete_results(custom_filter=bad_filter)
+        num_deleted = run.delete_results()
+        assert num_deleted == 1
+
+    @pytest.mark.flaky
+    def test_delete_results_primary_custom_filter(self):
+        """
+        Posts two primary checks, deletes more recent one based on custom filter
+        and checks get_primary_result gives the second one still since it will
+        have been copied
+        """
+        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
+        one_uuid = datetime.datetime.utcnow().isoformat()
+        two_uuid = datetime.datetime.utcnow().isoformat()
+
+        # this function will look to delete a specific primary check based on
+        # it's uuid
+        def filter_specific_uuid(key):
+            obj = run.get_s3_object(key)
+            return obj['kwargs']['uuid'] == two_uuid
+
+        # setup, post checks
+        p_check_one = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        p_check_one.description = "This is the first primary check"
+        p_check_one.status = 'PASS'
+        p_check_one.kwargs = {'primary': True, 'uuid': one_uuid}
+        p_check_one.store_result()
+        p_check_two = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        p_check_two.description = "This is the second primary check"
+        p_check_two.status = 'PASS'
+        p_check_two.kwargs = {'primary': True, 'uuid': two_uuid}
+        p_check_two.store_result()
+        queried_primary = run.get_primary_result()
+        assert queried_primary['kwargs']['uuid'] == two_uuid
+        num_deleted = run.delete_results(primary=False, custom_filter=filter_specific_uuid)
+        assert num_deleted == 1
+        queried_primary = run.get_primary_result()
+        assert queried_primary['kwargs']['uuid'] == two_uuid
+
+    @pytest.mark.flaky
+    def test_delete_results_error_filter(self):
+        """
+        Posts two checks - one successful, one fail, deletes the failed check
+        using a custom filter, deletes the successful check after
+        """
+        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
+
+        # checks obj status to see if it ERROR'd
+        def filter_error(key):
+            obj = run.get_s3_object(key)
+            return obj['status'] == 'ERROR'
+
+        check_one = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check_one.description = "This is the first check, it failed"
+        check_one.status = 'ERROR'
+        check_one.store_result()
+        check_two = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check_two.description = "This is the second check, it passed"
+        check_two.status = 'PASS'
+        resp = check_two.store_result()
+        num_deleted = run.delete_results(custom_filter=filter_error)
+        assert num_deleted == 1
+        assert run.get_result_by_uuid(resp['uuid'])
+        num_deleted = run.delete_results()
+        assert num_deleted == 1
