@@ -177,29 +177,33 @@ def yellow_flag_biosamples(connection, **kwargs):
         diff_auth = False
         ploidy = False
         bccs = result.get('cell_culture_details', [])
-        for bcc in bccs:
-            for item in [
-                'culture_harvest_date', 'doubling_number', 'passage_number', 'culture_duration', 'morphology_image'
-            ]:
-                if not bcc.get(item):
-                    messages.append('Biosample missing {}'.format(item))
-            if bcc.get('karyotype'):
-                karyotype = True
-            for protocol in bcc.get('authentication_protocols', []):
-                protocol_item = ff_utils.get_metadata(protocol['@id'], key=connection.ff_keys)
-                auth_type = protocol_item.get('protocol_classification')
-                if not karyotype and auth_type == 'Karyotype Authentication':
+        if not bccs:
+            if len([t for t in bs_types if t in ['primary cell', 'tissue', 'multicellular organism']]) != len(bs_types):
+                messages.append('Biosample missing Cell Culture Details')
+        else:
+            for bcc in bccs:
+                for item in [
+                    'culture_harvest_date', 'doubling_number', 'passage_number', 'culture_duration', 'morphology_image'
+                ]:
+                    if not bcc.get(item):
+                        messages.append('Biosample missing {}'.format(item))
+                if bcc.get('karyotype'):
                     karyotype = True
-                elif auth_type == 'Differentiation Authentication':
-                    diff_auth = True
-                elif auth_type == 'Ploidy Authentication':
-                    ploidy = True
-            passages = bcc.get('passage_number', 0)
-            if 'tem cell' in ''.join(bs_types) and not karyotype:
-                if passages > 10:
-                    messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
-                elif not passages:
-                    messages.append('Biosample is a stem cell line with unknown passage number missing karyotype')
+                for protocol in bcc.get('authentication_protocols', []):
+                    protocol_item = ff_utils.get_metadata(protocol['@id'], key=connection.ff_keys)
+                    auth_type = protocol_item.get('protocol_classification')
+                    if not karyotype and auth_type == 'Karyotype Authentication':
+                        karyotype = True
+                    elif auth_type == 'Differentiation Authentication':
+                        diff_auth = True
+                    elif auth_type == 'Ploidy Authentication':
+                        ploidy = True
+                passages = bcc.get('passage_number', 0)
+                if 'tem cell' in ''.join(bs_types) and not karyotype:
+                    if passages > 10:
+                        messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
+                    elif not passages:
+                        messages.append('Biosample is a stem cell line with unknown passage number missing karyotype')
         if result.get('biosample_type') == 'In vitro differentiated cells' and not diff_auth:
             messages.append('Differentiated biosample missing differentiation authentication')
         if 'HAP-1' in result.get('biosource_summary') and not ploidy:
