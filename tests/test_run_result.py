@@ -39,7 +39,6 @@ class TestRunResult():
         """
         run = run_result.RunResult(self.connection.s3_connection, self.check_name)
         # post a primary check
-        nChecks = run.get_n_results()
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'

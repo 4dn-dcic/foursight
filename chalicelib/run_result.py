@@ -179,13 +179,6 @@ class RunResult(object):
 
         return num_deleted
 
-    def get_n_results(self):
-        """
-        Returns the number of results associated with this run
-        Helper function for testing
-        """
-        return len(self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True))
-
     def get_result_history(self, start, limit, after_date=None):
         """
         Used to get the uuid, status, and kwargs for a specific check.
