@@ -4,6 +4,7 @@ class TestRunResult():
     check_name = 'test_only_check'
     environ = 'mastertest'
     connection = app_utils.init_connection(environ)
+    run = run_result.RunResult(connection.s3_connection, check_name)
 
     @pytest.mark.flaky
     def test_delete_results_nonprimary(self):
@@ -11,7 +12,6 @@ class TestRunResult():
         Makes 5 non-primary checks and 1 primary check, deletes those 5 checks,
         verifies only those 5 were deleted, then deletes the primary check
         """
-        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
         # post some new checks
         for _ in range(5):
             check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
@@ -24,12 +24,11 @@ class TestRunResult():
         primary_check.description = 'This is a primary check - it should persist'
         primary_check.kwargs = {'primary': True}
         res = primary_check.store_result()
-        time.sleep(3)
-        num_deleted = run.delete_results(prior_date=datetime.datetime.utcnow())
+        num_deleted = self.run.delete_results(prior_date=datetime.datetime.utcnow())
         assert num_deleted == 5 # primary result should not have been deleted
-        queried_primary = run.get_primary_result()
+        queried_primary = self.run.get_primary_result()
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
-        primary_deleted = run.delete_results(primary=False)
+        primary_deleted = self.run.delete_results(primary=False)
         assert primary_deleted >= 1 # now primary result should be gone
 
     @pytest.mark.flaky
@@ -37,17 +36,14 @@ class TestRunResult():
         """
         Tests deleting a primary check
         """
-        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
-        # post a primary check
         check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
         check.kwargs = {'primary': True}
         res = check.store_result()
-        time.sleep(3)
-        queried_primary = run.get_primary_result()
+        queried_primary = self.run.get_primary_result()
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
-        num_deleted = run.delete_results(primary=False)
+        num_deleted = self.run.delete_results(primary=False)
         assert num_deleted == 1
 
     @pytest.mark.flaky
@@ -56,9 +52,8 @@ class TestRunResult():
         Post some checks with a term in the description that we filter out
         based on a custom_filter
         """
-        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
         def term_in_descr(key):
-            obj = run.get_s3_object(key)
+            obj = self.run.get_s3_object(key)
             if obj.get('description') is not None:
                 return 'bad_term' in obj.get('description')
             return False
@@ -74,10 +69,9 @@ class TestRunResult():
             check.description = 'This is a normal check.'
             check.status = 'PASS'
             check.store_result()
-        time.sleep(3)
-        num_deleted = run.delete_results(custom_filter=term_in_descr)
+        num_deleted = self.run.delete_results(custom_filter=term_in_descr)
         assert num_deleted == 5
-        num_deleted = run.delete_results()
+        num_deleted = self.run.delete_results()
         assert num_deleted == 3
 
     @pytest.mark.flaky
@@ -86,9 +80,6 @@ class TestRunResult():
         Posts a check then attempts to delete it with an invalid custom_filter
         Should raise an exception. Check is then deleted.
         """
-        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
-
-        # filter function raises an Exception
         def bad_filter(key):
             raise Exception
 
@@ -98,7 +89,7 @@ class TestRunResult():
         check.store_result()
         with pytest.raises(Exception):
             run.delete_results(custom_filter=bad_filter)
-        num_deleted = run.delete_results()
+        num_deleted = self.run.delete_results()
         assert num_deleted == 1
 
     @pytest.mark.flaky
@@ -108,14 +99,13 @@ class TestRunResult():
         and checks get_primary_result gives the second one still since it will
         have been copied
         """
-        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
         one_uuid = datetime.datetime.utcnow().isoformat()
         two_uuid = datetime.datetime.utcnow().isoformat()
 
         # this function will look to delete a specific primary check based on
-        # it's uuid
+        # two_uuid (ie: it should only delete that uuid)
         def filter_specific_uuid(key):
-            obj = run.get_s3_object(key)
+            obj = self.run.get_s3_object(key)
             return obj['kwargs']['uuid'] == two_uuid
 
         # setup, post checks
@@ -129,11 +119,11 @@ class TestRunResult():
         p_check_two.status = 'PASS'
         p_check_two.kwargs = {'primary': True, 'uuid': two_uuid}
         p_check_two.store_result()
-        queried_primary = run.get_primary_result()
+        queried_primary = self.run.get_primary_result()
         assert queried_primary['kwargs']['uuid'] == two_uuid
-        num_deleted = run.delete_results(primary=False, custom_filter=filter_specific_uuid)
+        num_deleted = self.run.delete_results(primary=False, custom_filter=filter_specific_uuid)
         assert num_deleted == 1
-        queried_primary = run.get_primary_result()
+        queried_primary = self.run.get_primary_result()
         assert queried_primary['kwargs']['uuid'] == two_uuid
 
     @pytest.mark.flaky
@@ -142,11 +132,8 @@ class TestRunResult():
         Posts two checks - one successful, one fail, deletes the failed check
         using a custom filter, deletes the successful check after
         """
-        run = run_result.RunResult(self.connection.s3_connection, self.check_name)
-
-        # checks obj status to see if it ERROR'd
         def filter_error(key):
-            obj = run.get_s3_object(key)
+            obj = self.run.get_s3_object(key)
             return obj['status'] == 'ERROR'
 
         check_one = run_result.CheckResult(self.connection.s3_connection, self.check_name)
@@ -157,8 +144,8 @@ class TestRunResult():
         check_two.description = "This is the second check, it passed"
         check_two.status = 'PASS'
         resp = check_two.store_result()
-        num_deleted = run.delete_results(custom_filter=filter_error)
+        num_deleted = self.run.delete_results(custom_filter=filter_error)
         assert num_deleted == 1
-        assert run.get_result_by_uuid(resp['uuid'])
-        num_deleted = run.delete_results()
+        assert self.run.get_result_by_uuid(resp['uuid'])
+        num_deleted = self.run.delete_results()
         assert num_deleted == 1
