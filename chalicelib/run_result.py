@@ -133,6 +133,57 @@ class RunResult(object):
         resp = s3_connection.put_object(record_key, json.dumps(self.status))
         return resp is not None
 
+    def delete_results(self, prior_date=None, primary=True, custom_filter=None):
+        """
+        Goes through all check files deleting by default all non-primary
+        checks. If a prior_date (datetime) is given then all results prior to the
+        given time will be delete (including primaries). If primary is False then
+        primary results will be cleaned as well.
+        If a custom filter is given, that filter will be applied as well, prior
+        to the above filters.
+        Returns the number of keys deleted
+        """
+        keys_to_delete = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
+
+        # if given a custom filter, apply it
+        if custom_filter is not None:
+            try:
+                keys_to_delete = list(filter(custom_filter, keys_to_delete))
+            except Exception as e:
+                raise Exception('delete_results encountered an error when applying'
+                                ' a custom filter. Error message: %s', e)
+
+        # if given a prior date, remove all keys after that date so long as they aren't primary
+        if prior_date is not None:
+            keys_to_delete = list(filter(lambda k: self.filename_to_datetime(k) <= prior_date, keys_to_delete))
+
+        # if primary is true, filter out primary results (so they arent deleted)
+        if primary:
+            def is_not_primary(key):
+                obj = self.get_s3_object(key)
+                return not obj['kwargs'].get('primary')
+            keys_to_delete = list(filter(is_not_primary, keys_to_delete))
+
+        # if there is nothing to delete return 0 instead of throwing an Exception
+        # in botocore
+        if len(keys_to_delete) == 0:
+            return 0
+
+        # batch delete calls at aws maximum of 1000 if necessary
+        num_deleted = 0
+        if len(keys_to_delete) > 1000:
+            start, end = 0, 1000
+            while start < len(keys_to_delete):
+                resp = self.s3_connection.delete_keys(keys_to_delete[start:end])
+                num_deleted += len(resp['Deleted'])
+                start += 1000
+                end += 1000
+        else:
+            resp = self.s3_connection.delete_keys(keys_to_delete)
+            num_deleted += len(resp['Deleted'])
+
+        return num_deleted
+
     def get_result_history(self, start, limit, after_date=None):
         """
         Used to get the uuid, status, and kwargs for a specific check.
