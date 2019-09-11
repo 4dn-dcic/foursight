@@ -136,8 +136,8 @@ class RunResult(object):
     def delete_results(self, prior_date=None, primary=True):
         """
         Goes through all check files deleting by default all non-primary
-        checks. If a prior_date (datetime) is given, then only non-primary
-        results prior to the date will be cleaned. If primary is False then
+        checks. If a prior_date (datetime) is given then all results prior to the
+        given time will be delete (including primaries). If primary is False then
         primary results will be cleaned as well.
         """
         keys_to_delete = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
@@ -151,19 +151,23 @@ class RunResult(object):
             def is_not_primary(key):
                 obj = self.get_s3_object(key)
                 return not obj['kwargs'].get('primary')
-            keys_to_delete = list(filter(is_not_primary, keys_to_delete)) 
+            keys_to_delete = list(filter(is_not_primary, keys_to_delete))
 
-        # batch delete calls at aws maximum of 1000
-        start = 0
-        for i in range(1000, len(keys_to_delete), 1000):
-            self.s3_connection.delete_keys(keys_to_delete[start:i])
-            start += 1000
+        # batch delete calls at aws maximum of 1000 if necessary
+        if len(keys_to_delete) > 1000:
+            start, end = 0, 1000
+            while start < len(keys_to_delete):
+                self.s3_connection.delete_keys(keys_to_delete[start:end])
+                start += 1000
+                end += 1000
+        else:
+            self.s3_connection.delete_keys(keys_to_delete)
 
     def get_n_results(self):
         """
         Returns the number of results associated with this run
         Helper function for testing
-        """    
+        """
         return len(self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True))
 
     def get_result_history(self, start, limit, after_date=None):
