@@ -133,7 +133,7 @@ class RunResult(object):
         resp = s3_connection.put_object(record_key, json.dumps(self.status))
         return resp is not None
 
-    def clean_s3_files(self, prior_date=None, primary=True):
+    def delete_results(self, prior_date=None, primary=True):
         """
         Goes through all check files deleting by default all non-primary
         checks. If a prior_date (datetime) is given, then only non-primary
@@ -153,10 +153,11 @@ class RunResult(object):
                 return not obj['kwargs'].get('primary')
             keys_to_delete = list(filter(is_not_primary, keys_to_delete)) 
 
-        # aws API maximum
-        if len(keys_to_delete) > 1000:
-            keys_to_delete = keys_to_delete[:1000]
-        self.s3_connection.delete_keys(keys_to_delete)
+        # batch delete calls at aws maximum of 1000
+        start = 0
+        for i in range(1000, len(keys_to_delete), 1000):
+            self.s3_connection.delete_keys(keys_to_delete[start:i])
+            start += 1000
 
     def get_n_results(self):
         """
