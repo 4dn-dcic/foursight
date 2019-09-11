@@ -19,8 +19,7 @@ class TestRunResult():
             check.status = 'PASS'
             check.store_result()
         time.sleep(3)
-        now = datetime.datetime.now() + datetime.timedelta(days=1) # XXX: necessary because of time drift?
-        run.delete_results(prior_date=now)
+        run.delete_results(prior_date=datetime.datetime.utcnow())
         time.sleep(3)
         after_clean = run.get_n_results()
         assert after_clean == nChecks
@@ -41,8 +40,7 @@ class TestRunResult():
         check.kwargs = {'primary': True}
         check.store_result()
         time.sleep(3)
-        now = datetime.datetime.now() + datetime.timedelta(days=1) # XXX: necessary because of time drift?
-        run.delete_results(prior_date=now, primary=False)
+        run.delete_results(prior_date=datetime.datetime.utcnow(), primary=False)
         time.sleep(3)
         after_primary_delete = run.get_n_results()
         assert after_primary_delete <= nChecks # other test compatibility
