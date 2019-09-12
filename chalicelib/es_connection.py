@@ -8,9 +8,10 @@ class ESConnection(AbstractConnection):
 
     ESConnection is intended to work with only a single index.
     """
-    def __init__(self, index=None):
+    def __init__(self, index=None, doc_type='result'):
         self.es = Elasticsearch(['http://localhost:9200']) # use local es for now
         self.index = index
+        self.doc_type = doc_type
 
     def create_index(self, name):
         """
@@ -45,7 +46,7 @@ class ESConnection(AbstractConnection):
         if not self.index:
             return False
         try:
-            res = self.es.index(index=self.index, id=key, doc_type='check', body=value)
+            res = self.es.index(index=self.index, id=key, doc_type=self.doc_type, body=value)
             return res['result'] == 'created'
         except:
             return False
@@ -57,7 +58,7 @@ class ESConnection(AbstractConnection):
         """
         if not self.index:
             return None
-        return self.es.get(index=self.index, id=key)['_source']
+        return self.es.get(index=self.index, doc_type=self.doc_type, id=key)['_source']
 
     def list_all_keys(self, full=False):
         """
@@ -74,11 +75,11 @@ class ESConnection(AbstractConnection):
             }
         }
         if not full:
-            res = self.es.search(index=self.index, doc_type='', body=doc,
+            res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
                                  filter_path=['hits.hits._id'])
             return [obj['_id'] for obj in res['hits']['hits']] if (len(res) > 0) else []
         else:
-            res = self.es.search(index=self.index, body=doc, doc_type='',
+            res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
                                  filter_path=['hits.hits.*'])
             return [obj['_source'] for obj in res['hits']['hits']] if len(res) > 0 else []
 
@@ -94,7 +95,7 @@ class ESConnection(AbstractConnection):
         a slow operation, but probably still not as slow as s3
         """
         for key in key_list:
-            res = self.es.delete(index=self.index, doc_type='check', id=key)
+            res = self.es.delete(index=self.index, doc_type=self.doc_type, id=key)
 
     def test_connection(self):
         """

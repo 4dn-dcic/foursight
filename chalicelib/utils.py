@@ -64,7 +64,7 @@ def init_check_res(connection, name, init_uuid=None):
 
     This function will be deprecated in an upcoming version.
     """
-    return CheckResult(connection.connections, name, init_uuid=init_uuid)
+    return CheckResult(connection, name, init_uuid=init_uuid)
 
 
 def init_action_res(connection, name):
@@ -73,7 +73,7 @@ def init_action_res(connection, name):
 
     This function will be deprecated in an upcoming version.
     """
-    return ActionResult(connection.connections, name)
+    return ActionResult(connection, name)
 
 
 def get_methods_by_deco(cls, decorator):

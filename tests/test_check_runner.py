@@ -77,7 +77,7 @@ class TestCheckRunner():
         """
         cleared = self.clear_queue_and_runners()
         assert (cleared)
-        check = run_result.CheckResult(self.connection.connections, 'test_random_nums')
+        check = run_result.CheckResult(self.connection, 'test_random_nums')
         prior_res = check.get_latest_result()
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})

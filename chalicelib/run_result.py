@@ -11,14 +11,8 @@ class RunResult(object):
     to both.
     """
     def __init__(self, connections, name):
-        self.connections = {}
-        # support both FSConnection and FSConnection.connections argument
-        if isinstance(connections, dict):
-            conns = connections.items()
-        else:
-            conns = connections.connections.items()
-        for env, conn in conns:
-            self.connections[env] = conn
+        self.fs_conn = connections
+        self.connections = connections.connections
         if 's3' not in self.connections:
             raise Exception('RunResult did not find an s3 connection, aborting')
         self.name = name
@@ -278,10 +272,7 @@ class CheckResult(RunResult):
         if init_uuid:
             # maybe make this '.json' dynamic with parent's self.extension?
             ts_key = ''.join([name, '/', init_uuid, '.json'])
-            if isinstance(connections, dict):
-                stamp_res = connections['s3'].get_object(ts_key)
-            else:
-                stamp_res = connections.connections['s3'].get_object(ts_key)
+            stamp_res = connections.connections['s3'].get_object(ts_key)
             if stamp_res:
                 # see if json
                 try:
@@ -409,7 +400,7 @@ class ActionResult(RunResult):
         """
         assc_name = kwargs['check_name']
         called_by = kwargs['called_by']
-        check = CheckResult(self.connections, assc_name)
+        check = CheckResult(self.fs_conn, assc_name)
         return check.get_result_by_uuid(called_by)
 
 

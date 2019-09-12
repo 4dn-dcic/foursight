@@ -4,7 +4,7 @@ class TestRunResult():
     check_name = 'test_only_check'
     environ = 'mastertest'
     connection = app_utils.init_connection(environ)
-    run = run_result.RunResult(connection.connections, check_name)
+    run = run_result.RunResult(connection, check_name)
 
     @pytest.mark.flaky
     def test_delete_results_nonprimary(self):
@@ -14,13 +14,13 @@ class TestRunResult():
         """
         # post some new checks
         for _ in range(5):
-            check = run_result.CheckResult(self.connection.connections, self.check_name)
+            check = run_result.CheckResult(self.connection, self.check_name)
             check.description = 'This check is just for testing purposes.'
             check.status = 'PASS'
             check.store_result()
 
         # post a primary check (should persist)
-        primary_check = run_result.CheckResult(self.connection.connections, self.check_name)
+        primary_check = run_result.CheckResult(self.connection, self.check_name)
         primary_check.description = 'This is a primary check - it should persist'
         primary_check.kwargs = {'primary': True}
         res = primary_check.store_result()
@@ -37,7 +37,7 @@ class TestRunResult():
         """
         Tests deleting a primary check
         """
-        check = run_result.CheckResult(self.connection.connections, self.check_name)
+        check = run_result.CheckResult(self.connection, self.check_name)
         check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
         check.kwargs = {'primary': True}
@@ -62,12 +62,12 @@ class TestRunResult():
 
         # post some checks to be filtered
         for _ in range(5):
-            check = run_result.CheckResult(self.connection.connections, self.check_name)
+            check = run_result.CheckResult(self.connection, self.check_name)
             check.description = 'This check contains bad_term which should be filtered.'
             check.status = 'PASS'
             check.store_result()
         for _ in range(3):
-            check = run_result.CheckResult(self.connection.connections, self.check_name)
+            check = run_result.CheckResult(self.connection, self.check_name)
             check.description = 'This is a normal check.'
             check.status = 'PASS'
             check.store_result()
@@ -85,7 +85,7 @@ class TestRunResult():
         def bad_filter(key):
             raise Exception
 
-        check = run_result.CheckResult(self.connection.connections, self.check_name)
+        check = run_result.CheckResult(self.connection, self.check_name)
         check.description = 'This is a normal check.'
         check.status = 'PASS'
         check.store_result()
@@ -111,12 +111,12 @@ class TestRunResult():
             return obj['kwargs']['uuid'] == two_uuid
 
         # setup, post checks
-        p_check_one = run_result.CheckResult(self.connection.connections, self.check_name)
+        p_check_one = run_result.CheckResult(self.connection, self.check_name)
         p_check_one.description = "This is the first primary check"
         p_check_one.status = 'PASS'
         p_check_one.kwargs = {'primary': True, 'uuid': one_uuid}
         p_check_one.store_result()
-        p_check_two = run_result.CheckResult(self.connection.connections, self.check_name)
+        p_check_two = run_result.CheckResult(self.connection, self.check_name)
         p_check_two.description = "This is the second primary check"
         p_check_two.status = 'PASS'
         p_check_two.kwargs = {'primary': True, 'uuid': two_uuid}
@@ -138,11 +138,11 @@ class TestRunResult():
             obj = self.run.get_s3_object(key)
             return obj['status'] == 'ERROR'
 
-        check_one = run_result.CheckResult(self.connection.connections, self.check_name)
+        check_one = run_result.CheckResult(self.connection, self.check_name)
         check_one.description = "This is the first check, it failed"
         check_one.status = 'ERROR'
         check_one.store_result()
-        check_two = run_result.CheckResult(self.connection.connections, self.check_name)
+        check_two = run_result.CheckResult(self.connection, self.check_name)
         check_two.description = "This is the second check, it passed"
         check_two.status = 'PASS'
         resp = check_two.store_result()
