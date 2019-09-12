@@ -5,43 +5,94 @@ class ESConnection(AbstractConnection):
     """
     ESConnection right now is a stub that will eventually implement the same
     functionality as defined in the AbstractConnection class.
-    """
 
-    def __init__(self):
-        self.es = Elasticsearch()
+    ESConnection is intended to work with only a single index.
+    """
+    def __init__(self, index=None):
+        self.es = Elasticsearch(['http://localhost:9200']) # use local es for now
+        self.index = index
+
+    def create_index(self, name):
+        """
+        Creates an ES index called name. Returns true in success
+        """
+        res = self.es.indices.create(index=name, ignore=[400])
+        if res['acknowledged']:
+            self.index = name
+            return True
+        return False
+
+    def delete_index(self, name):
+        """
+        Deletes the given index name from this es
+        """
+        self.es.indices.delete(index=name, ignore=[400, 404])
+        return True
+
+    def refresh_index(self):
+        """
+        Refreshes the index - sometimes necessary to see that a deletion happened
+        """
+        self.es.indices.refresh(index=self.index)
 
     def put_object(self, key, value):
         """
-        Adds a new object to es
+        Index a new item into es. Returns true in success
         """
-        pass
+        if not self.index:
+            return False
+        res = self.es.index(index=self.index, id=key, doc_type='check', body=value)
+        return res['result'] == 'created'
 
     def get_object(self, key):
         """
-        Gets object with uuid=key from es
+        Gets object with uuid=key from es. Returns None if not found or no index
+        has been specified.
         """
-        pass
+        if not self.index:
+            return None
+        return self.es.get(index=self.index, id=key)['_source']
 
-    def list_all_keys(self):
+    def list_all_keys(self, full=False):
         """
-        Generic search on es that will return all uuids
+        Generic search on es that will return all ids of indexed items
+        full is an optional argument that, if specified, will give the full data
+        instead of just the _ids
         """
-        pass
+        if not self.index:
+            return []
+        doc = {
+            'size': 10000,
+            'query': {
+                'match_all' : {}
+            }
+        }
+        if not full:
+            res = self.es.search(index=self.index, doc_type='', body=doc,
+                                 filter_path=['hits.hits._id'])
+            return [obj['_id'] for obj in res['hits']['hits']] if (len(res) > 0) else []
+        else:
+            res = self.es.search(index=self.index, body=doc, doc_type='',
+                                 filter_path=['hits.hits.*'])
+            return res['hits']['hits'] if len(res) > 0 else []
+
 
     def get_all_objects(self):
         """
-        Same as the above method but instead of just uuids it has all the data
+        Calls list_all_keys with full=True to get all the objects
         """
-        pass
+        return self.list_all_keys(full=True)
 
     def delete_keys(self, key_list):
         """
-        Deletes all uuids in key_list from es
+        Deletes all uuids in key_list from es. If key_list is large this will be
+        a slow operation, but probably still not as slow as s3
         """
-        pass
+        for key in key_list:
+            res = self.es.delete(index=self.index, doc_type='check', id=key)
 
     def test_connection(self):
         """
         Hits health route on es to verify that it is up
         """
-        pass
+        return self.es.ping()
