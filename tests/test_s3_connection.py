@@ -5,7 +5,7 @@ class TestS3Connection():
     conn = app_utils.init_connection(environ)
 
     def test_s3_conn_fields(self):
-        s3_conn = self.conn.s3_connection
+        s3_conn = self.conn.connections['s3']
         assert (s3_conn.bucket)
         assert (s3_conn.location)
         assert (s3_conn.status_code != 404)

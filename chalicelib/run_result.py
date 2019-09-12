@@ -10,8 +10,10 @@ class RunResult(object):
     Generic class for CheckResult and ActionResult. Contains methods common
     to both.
     """
-    def __init__(self, s3_connection, name):
-        self.s3_connection = s3_connection
+    def __init__(self, connections, name):
+        self.connections = {}
+        for env, conn in connections.items():
+            self.connections[env] = conn
         self.name = name
         self.extension = ".json"
         self.kwargs = {}
@@ -44,7 +46,7 @@ class RunResult(object):
         # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix, records_only=True)
+        relevant_checks = self.connections['s3'].list_all_keys_w_prefix(s3_prefix, records_only=True)
         if not relevant_checks:
             raise Exception('Could not find any results for prefix: %s' % s3_prefix)
         # now use only s3 objects with a valid uuid
@@ -86,7 +88,7 @@ class RunResult(object):
         """
         Returns None if not present, otherwise returns a JSON parsed res.
         """
-        result = self.s3_connection.get_object(key)
+        result = self.connections['s3'].get_object(key)
         if result is None:
             return None
         # see if data is in json format
@@ -109,11 +111,11 @@ class RunResult(object):
         """
         all_results = []
         s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.s3_connection.list_all_keys_w_prefix(s3_prefix, records_only=True)
+        relevant_checks = self.connections['s3'].list_all_keys_w_prefix(s3_prefix, records_only=True)
         for n in range(len(relevant_checks)):
             check = relevant_checks[n]
             if check.startswith(s3_prefix) and check.endswith(self.extension):
-                result = self.s3_connection.get_object(check)
+                result = self.connections['s3'].get_object(check)
                 try:
                     result = json.loads(result)
                 except ValueError:
@@ -142,7 +144,7 @@ class RunResult(object):
         results after that point will be returned.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-        all_keys = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
+        all_keys = self.connections['s3'].list_all_keys_w_prefix(self.name, records_only=True)
 
         # sort them from newest to oldest
         all_keys.sort(key=self.filename_to_datetime, reverse=True)
@@ -181,12 +183,12 @@ class RunResult(object):
         primary_key = ''.join([self.name, '/primary', self.extension])
         s3_formatted = json.dumps(formatted)
         # store the timestamped result
-        self.s3_connection.put_object(time_key, s3_formatted)
+        self.connections['s3'].put_object(time_key, s3_formatted)
         # put result as 'latest' key
-        self.s3_connection.put_object(latest_key, s3_formatted)
+        self.connections['s3'].put_object(latest_key, s3_formatted)
         # if primary, store as the primary result
         if primary:
-            self.s3_connection.put_object(primary_key, s3_formatted)
+            self.connections['s3'].put_object(primary_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
 
@@ -214,13 +216,13 @@ class CheckResult(RunResult):
     check.descritpion = ...
     check.store_result()
     """
-    def __init__(self, s3_connection, name, init_uuid=None):
+    def __init__(self, connections, name, init_uuid=None):
         # init_uuid arg used if you want to initialize using an existing check
         # init_uuid is in the stringified datetime format
         if init_uuid:
             # maybe make this '.json' dynamic with parent's self.extension?
             ts_key = ''.join([name, '/', init_uuid, '.json'])
-            stamp_res = s3_connection.get_object(ts_key)
+            stamp_res = connections['s3'].get_object(ts_key)
             if stamp_res:
                 # see if json
                 try:
@@ -230,7 +232,7 @@ class CheckResult(RunResult):
                 for key, val in parsed_res.items():
                     if key not in ['uuid', 'kwargs']: # dont copy these
                         setattr(self, key, val)
-                super().__init__(s3_connection, name)
+                super().__init__(connections, name)
                 return
         # summary will be displayed next to title when set
         self.summary = None
@@ -247,7 +249,7 @@ class CheckResult(RunResult):
         self.action = None
         self.allow_action = False # by default do not allow the action to be run
         self.action_message = 'Are you sure you want to run this action?'
-        super().__init__(s3_connection, name)
+        super().__init__(connections, name)
 
     def format_result(self, uuid):
         # use summary as description if descrip is missing
@@ -300,13 +302,13 @@ class ActionResult(RunResult):
     """
     Inherits from RunResult and is meant to be used with actions
     """
-    def __init__(self, s3_connection, name):
+    def __init__(self, connections, name):
         self.description = None
         # valid values are: 'DONE', 'FAIL', 'PEND'
         # start with PEND as the default status
         self.status = 'PEND'
         self.output = None
-        super().__init__(s3_connection, name)
+        super().__init__(connections, name)
 
     def format_result(self, uuid):
         return {
@@ -348,7 +350,7 @@ class ActionResult(RunResult):
         """
         assc_name = kwargs['check_name']
         called_by = kwargs['called_by']
-        check = CheckResult(self.s3_connection, assc_name)
+        check = CheckResult(self.connections, assc_name)
         return check.get_result_by_uuid(called_by)
 
 

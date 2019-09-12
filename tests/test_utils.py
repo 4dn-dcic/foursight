@@ -74,12 +74,12 @@ class TestUtils():
     def test_init_check_res(self):
         check = utils.init_check_res(self.conn, 'test_check')
         assert (check.name == 'test_check')
-        assert (check.s3_connection is not None)
+        assert (check.connections['s3'] is not None)
 
     def test_init_action_res(self):
         action = utils.init_action_res(self.conn, 'test_action')
         assert (action.name == 'test_action')
-        assert (action.s3_connection is not None)
+        assert (action.connections['s3'] is not None)
 
     def test_BadCheckOrAction(self):
         test_exc = utils.BadCheckOrAction()

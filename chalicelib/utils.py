@@ -62,14 +62,14 @@ def init_check_res(connection, name, init_uuid=None):
     init_uuid is a a result uuid that the check will look for upon initialization.
     If found, the check fields will be pre-populated with its results.
     """
-    return CheckResult(connection.s3_connection, name, init_uuid=init_uuid)
+    return CheckResult(connection.connections, name, init_uuid=init_uuid)
 
 
 def init_action_res(connection, name):
     """
     Similar to init_check_res, but meant to be used for ActionResult items
     """
-    return ActionResult(connection.s3_connection, name)
+    return ActionResult(connection.connections, name)
 
 
 def get_methods_by_deco(cls, decorator):

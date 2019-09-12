@@ -1,9 +1,10 @@
 from __future__ import print_function, unicode_literals
+from .abstract_connection import AbstractConnection
 import requests
 import boto3
 import datetime
 
-class S3Connection(object):
+class S3Connection(AbstractConnection):
     def __init__(self, bucket_name):
         self.client = boto3.client('s3')
         self.bucket = bucket_name
@@ -55,7 +56,7 @@ class S3Connection(object):
         # make sure prefix ends with a slash (bucket format)
         prefix = ''.join([prefix, '/']) if not prefix.endswith('/') else prefix
         # this will exclude 'primary' and 'latest' in records_only == True
-        # use '2' because is is the first digit of year (in uuid) 
+        # use '2' because is is the first digit of year (in uuid)
         use_prefix = ''.join([prefix, '2' ])if records_only else prefix
         while not reached_end:
             try:

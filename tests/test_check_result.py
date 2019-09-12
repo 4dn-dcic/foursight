@@ -9,7 +9,7 @@ class TestCheckResult():
     connection = app_utils.init_connection(environ)
 
     def test_check_result_methods(self):
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection.connections, self.check_name)
         # default status
         assert (check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
@@ -39,7 +39,7 @@ class TestCheckResult():
         assert (all_res[-1].get('description') == res.get('description'))
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
-        check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, init_uuid=res_uuid)
+        check_copy = run_result.CheckResult(self.connection.connections, self.check_name, init_uuid=res_uuid)
         # should not have 'uuid' or 'kwargs' attrs with init_uuid
         assert (getattr(check_copy, 'uuid', None) is None)
         assert (getattr(check_copy, 'kwargs', {}) == {})
@@ -47,7 +47,7 @@ class TestCheckResult():
         assert (res == check_copy.store_result())
 
     def test_get_closest_result(self):
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection.connections, self.check_name)
         check.status = 'ERROR'
         res = check.store_result()
         err_uuid = res['uuid']
@@ -59,11 +59,11 @@ class TestCheckResult():
         closest_res_no_error = check.get_closest_result(diff_mins=0)
         assert (pass_uuid == closest_res_no_error['uuid'])
         # bad cases: no results and all results are ERROR
-        bad_check = run_result.CheckResult(self.connection.s3_connection, 'not_a_real_check')
+        bad_check = run_result.CheckResult(self.connection.connections, 'not_a_real_check')
         with pytest.raises(Exception) as exc:
             bad_check.get_closest_result(diff_hours=0, diff_mins=0)
         assert ('Could not find any results' in str(exc.value))
-        error_check = run_result.CheckResult(self.connection.s3_connection, self.error_check_name)
+        error_check = run_result.CheckResult(self.connection.connections, self.error_check_name)
         error_check.status = 'ERROR'
         error_check.store_result()
         with pytest.raises(Exception) as exc:
@@ -74,7 +74,7 @@ class TestCheckResult():
         """
         This relies on the check having been run enough times. If not, return
         """
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection.connections, self.check_name)
         # ensure at least one entry present
         check.status = 'IGNORE'
         check.summary = 'TEST HISTORY'
@@ -109,7 +109,7 @@ class TestCheckResult():
             assert chk_date >= after_date
 
     def test_filename_to_datetime(self):
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection.connections, self.check_name)
         check_result = check.store_result()
         time_key = ''.join([check.name, '/', check_result['uuid'], check.extension])
         filename_date = check.filename_to_datetime(time_key)

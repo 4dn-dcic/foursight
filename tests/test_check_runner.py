@@ -4,7 +4,7 @@ def delay_rerun(*args):
     time.sleep(90)
     return True
 
-pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
+#pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
 
 # thanks to Rob Kennedy on S.O. for this bit of code
 @contextmanager
@@ -77,7 +77,7 @@ class TestCheckRunner():
         """
         cleared = self.clear_queue_and_runners()
         assert (cleared)
-        check = run_result.CheckResult(self.connection.s3_connection, 'test_random_nums')
+        check = run_result.CheckResult(self.connection.connections, 'test_random_nums')
         prior_res = check.get_latest_result()
         # first, bad input
         bad_res = app_utils.run_check_runner({'sqs_url': None})
@@ -151,7 +151,7 @@ class TestCheckRunner():
 
         # ensure that the action_record was written correctly
         action_rec_key = '/'.join(['test_random_nums/action_records', run_uuid])
-        assc_action_key = self.connection.s3_connection.get_object(action_rec_key)
+        assc_action_key = self.connection.connections['s3'].get_object(action_rec_key)
         assert (assc_action_key is not None)
         assc_action_key = assc_action_key.decode()  # in bytes
         # expect the contents of the action record to be s3 location of action

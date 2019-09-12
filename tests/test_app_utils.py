@@ -10,7 +10,7 @@ class TestAppUtils():
     def test_init_connection(self):
         # test the fs connection
         assert (self.conn.fs_env == 'mastertest')
-        assert (self.conn.s3_connection)
+        assert (self.conn.connections)
         # test the ff connection
         assert (self.conn.ff_server)
         assert (self.conn.ff_es)

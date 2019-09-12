@@ -22,8 +22,9 @@ class FSConnection(object):
     def __init__(self, fs_environ, fs_environ_info, test=False):
         # FOURSIGHT information
         self.fs_env = fs_environ
-        self.s3_connection = S3Connection(fs_environ_info.get('bucket'))
-
+        self.connections = {
+            's3': S3Connection(fs_environ_info.get('bucket'))
+        }
         # FOURFRONT information
         self.ff_server = fs_environ_info['fourfront']
         self.ff_env = fs_environ_info['ff_env']

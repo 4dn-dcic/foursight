@@ -11,7 +11,7 @@ class TestFSConnection():
 
     def test_connection_fields(self):
         assert (self.connection.fs_env == 'test')
-        assert (self.connection.s3_connection.status_code == 404)
+        assert (self.connection.connections['s3'].status_code == 404)
         assert (self.connection.ff_server == 'test1')
         assert (self.connection.ff_es == 'test2')
         assert (self.connection.ff_env == 'test3')
@@ -28,7 +28,7 @@ class TestFSConnection():
         test_check = utils.init_check_res(self.connection, 'test_check')
         test_check.summary = 'Unittest check'
         test_check.ff_link = 'not_a_real_http_link'
-        assert (test_check.s3_connection.status_code == 404)
+        assert (test_check.connections['s3'].status_code == 404)
         assert (test_check.get_latest_result() is None)
         assert (test_check.get_primary_result() is None)
         with pytest.raises(Exception) as exec_info:

@@ -133,7 +133,7 @@ def check_authorization(request_dict, env=None):
             # leeway accounts for clock drift between us and auth0
             payload = jwt.decode(token, b64decode(auth0_secret, '-_'), audience=auth0_client, leeway=30)
             env_info = init_environments(env)
-            user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(), 
+            user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(),
                                             ff_env=env_info[env]['ff_env'], add_on='frame=object')
             if 'admin' in user_res['groups'] and payload.get('email_verified'):
                 # fully authorized
@@ -462,10 +462,10 @@ def process_view_result(connection, res, is_admin):
         action = init_action_res(connection, res.get('action'))
         if action:
             action_record_key = '/'.join([res['name'], 'action_records', res['uuid']])
-            assc_action_key = connection.s3_connection.get_object(action_record_key)
+            assc_action_key = connection.connections['s3'].get_object(action_record_key)
             if assc_action_key:
                 assc_action_key = assc_action_key.decode()  # in bytes
-                assc_action = connection.s3_connection.get_object(assc_action_key)
+                assc_action = connection.connections['s3'].get_object(assc_action_key)
                 # If assc_action_key is written but assc_action is None, then
                 # it most likely means the action is still running
                 if assc_action is not None:
@@ -935,7 +935,7 @@ def run_check_runner(runner_input, propogate=True):
         # if this is an action, ensure we have not already written an action record
         if 'check_name' in run_kwargs and 'called_by' in run_kwargs:
             rec_key = '/'.join([run_kwargs['check_name'], 'action_records', run_kwargs['called_by']])
-            found_rec = connection.s3_connection.get_object(rec_key)
+            found_rec = connection.connections['s3'].get_object(rec_key)
             if found_rec is not None:
                 # the action record has been written. Abort and propogate
                 print('-RUN-> Found existing action record: %s. Skipping' % rec_key)
@@ -946,7 +946,7 @@ def run_check_runner(runner_input, propogate=True):
                 # action name is the second part of run_name
                 act_name = run_name.split('/')[-1]
                 rec_body = ''.join([act_name, '/', run_uuid, '.json'])
-                connection.s3_connection.put_object(rec_key, rec_body)
+                connection.connections['s3'].put_object(rec_key, rec_body)
                 print('-RUN-> Wrote action record: %s' % rec_key)
         run_result = run_check_or_action(connection, run_name, run_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
