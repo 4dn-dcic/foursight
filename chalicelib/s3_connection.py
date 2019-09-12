@@ -104,7 +104,7 @@ class S3Connection(AbstractConnection):
     def delete_keys(self, key_list):
         # boto3 requires this setup
         to_delete = {'Objects' : [{'Key': key} for key in key_list]}
-        self.client.delete_objects(Bucket=self.bucket, Delete=to_delete)
+        return self.client.delete_objects(Bucket=self.bucket, Delete=to_delete)
 
 
     def test_connection(self):
