@@ -200,7 +200,7 @@ def validate_run_result(result, is_check=True):
     if is_check and class_name != 'CheckResult':
         error_message = 'Check function must return a CheckResult object. Initialize one with CheckResult.'
     elif not is_check and class_name != 'ActionResult':
-        error_message = 'Action functions must return a ActionResult object. Initialize one with CheckResult.'
+        error_message = 'Action functions must return a ActionResult object. Initialize one with ActionResult.'
     else:
         pass
     store_method = getattr(result, 'store_result', None)

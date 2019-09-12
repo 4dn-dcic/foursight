@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
@@ -41,7 +40,7 @@ def biosource_cell_line_value(connection, **kwargs):
     '''
     checks cell line biosources to make sure they have an associated ontology term
     '''
-    check = init_check_res(connection, 'biosource_cell_line_value')
+    check = CheckResult(connection, 'biosource_cell_line_value')
 
     cell_line_types = ["primary cell", "primary cell line", "immortalized cell line",
                        "in vitro differentiated cells", "induced pluripotent stem cell line",
@@ -75,7 +74,7 @@ def external_expsets_without_pub(connection, **kwargs):
     '''
     checks external experiment sets to see if they are attributed to a publication
     '''
-    check = init_check_res(connection, 'external_expsets_without_pub')
+    check = CheckResult(connection, 'external_expsets_without_pub')
 
     ext = ff_utils.search_metadata('search/?award.project=External&type=ExperimentSet&frame=object',
                                    key=connection.ff_keys, page_limit=50)
@@ -106,7 +105,7 @@ def expset_opfsets_unique_titles(connection, **kwargs):
     checks experiment sets with other_processed_files to see if each collection
     of other_processed_files has a unique title within that experiment set
     '''
-    check = init_check_res(connection, 'expset_opfsets_unique_titles')
+    check = CheckResult(connection, 'expset_opfsets_unique_titles')
 
     opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value&frame=object',
                                            key=connection.ff_keys, page_limit=50)
@@ -149,7 +148,7 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     in child experiments to make sure that (1) the collections have titles and (2) that if the titles
     are shared with the parent experiment set, that the filenames contained within are unique
     '''
-    check = init_check_res(connection, 'expset_opf_unique_files_in_experiments')
+    check = CheckResult(connection, 'expset_opf_unique_files_in_experiments')
 
     opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value',
                                            key=connection.ff_keys, page_limit=25)
@@ -198,7 +197,7 @@ def paired_end_info_consistent(connection, **kwargs):
     '''
     Check that fastqs with a paired_end number have a paired_with related_file, and vice versa
     '''
-    check = init_check_res(connection, 'paired_end_info_consistent')
+    check = CheckResult(connection, 'paired_end_info_consistent')
 
     search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
     search2 = 'search/?type=FileFastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
@@ -229,7 +228,7 @@ def paired_end_info_consistent(connection, **kwargs):
 
 @check_function()
 def workflow_properties(connection, **kwargs):
-    check = init_check_res(connection, 'workflow_properties')
+    check = CheckResult(connection, 'workflow_properties')
 
     workflows = ff_utils.search_metadata('search/?type=Workflow&category!=provenance&frame=object',
                                          key=connection.ff_keys)
@@ -308,7 +307,7 @@ def workflow_properties(connection, **kwargs):
 
 @check_function()
 def page_children_routes(connection, **kwargs):
-    check = init_check_res(connection, 'page_children_routes')
+    check = CheckResult(connection, 'page_children_routes')
 
     page_search = 'search/?type=Page&format=json&children.name%21=No+value'
     results = ff_utils.search_metadata(page_search, key=connection.ff_keys)
@@ -334,7 +333,7 @@ def page_children_routes(connection, **kwargs):
 
 @check_function()
 def check_help_page_urls(connection, **kwargs):
-    check = init_check_res(connection, 'check_help_page_urls')
+    check = CheckResult(connection, 'check_help_page_urls')
 
     server = connection.ff_keys['server']
     results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body',
@@ -367,7 +366,7 @@ def check_help_page_urls(connection, **kwargs):
 
 @check_function(id_list=None)
 def check_status_mismatch(connection, **kwargs):
-    check = init_check_res(connection, 'check_status_mismatch')
+    check = CheckResult(connection, 'check_status_mismatch')
     id_list = kwargs['id_list']
 
     MIN_CHUNK_SIZE = 200
@@ -473,7 +472,7 @@ def check_opf_status_mismatch(connection, **kwargs):
     files in the other_processed_files collection (e.g., if the other_processed_files
     were released when the experiment set is in review by lab.)
     '''
-    check = init_check_res(connection, 'check_opf_status_mismatch')
+    check = CheckResult(connection, 'check_opf_status_mismatch')
 
     opf_set = ('search/?type=ExperimentSet&other_processed_files.title%21=No+value&field=status'
                '&field=other_processed_files&field=experiments_in_set.other_processed_files')
@@ -537,7 +536,7 @@ def check_validation_errors(connection, **kwargs):
     Counts number of items in fourfront with schema validation errors,
     returns link to search if found.
     '''
-    check = init_check_res(connection, 'check_validation_errors')
+    check = CheckResult(connection, 'check_validation_errors')
 
     search_url = 'search/?validation_errors.name!=No+value&type=Item'
     results = ff_utils.search_metadata(search_url + '&field=@id', key=connection.ff_keys)
@@ -585,7 +584,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
     Attempts to identify an organism to add to the organism_name field in BioFeature items
     checks the linked genes or the genomic regions and then description
     '''
-    check = init_check_res(connection, 'check_bio_feature_organism_name')
+    check = CheckResult(connection, 'check_bio_feature_organism_name')
     check.action = "patch_bio_feature_organism_name"
 
     # create some mappings
@@ -713,7 +712,7 @@ def _get_orgname_from_atid_list(atids, orgn2name):
 
 @action_function()
 def patch_bio_feature_organism_name(connection, **kwargs):
-    action = init_action_res(connection, 'patch_bio_feature_organism_name')
+    action = ActionResult(connection, 'patch_bio_feature_organism_name')
     action_logs = {'patch_failure': [], 'patch_success': []}
     check_res = action.get_associated_check_result(kwargs)
     output = check_res.get('full_output')

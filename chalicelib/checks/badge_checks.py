@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
@@ -165,7 +164,7 @@ def yellow_flag_biosamples(connection, **kwargs):
     4. Differentiation authentication for differentiated cells.
     5. HAP-1 biosamples must have ploidy authentication.
     '''
-    check = init_check_res(connection, 'yellow_flag_biosamples')
+    check = CheckResult(connection, 'yellow_flag_biosamples')
 
     results = ff_utils.search_metadata('search/?type=Biosample', key=connection.ff_keys)
     flagged = {}
@@ -249,7 +248,7 @@ def yellow_flag_biosamples(connection, **kwargs):
 
 @action_function()
 def patch_biosample_warning_badges(connection, **kwargs):
-    action = init_action_res(connection, 'patch_biosample_warning_badges')
+    action = ActionResult(connection, 'patch_biosample_warning_badges')
     bs_check_result = action.get_associated_check_result(kwargs)
 
     action.output = patch_badges(
@@ -273,7 +272,7 @@ def gold_biosamples(connection, **kwargs):
     authentication (eg. HAP-1 haploid line requires ploidy authentication).
     2. All required metadata present (does not have a biosample warning badge).
     '''
-    check = init_check_res(connection, 'gold_biosamples')
+    check = CheckResult(connection, 'gold_biosamples')
 
     search_url = ('search/?biosource.cell_line_tier=Tier+1&biosource.cell_line_tier=Tier+2'
                   '&type=Biosample&badges.badge.warning=No+value')
@@ -291,7 +290,7 @@ def gold_biosamples(connection, **kwargs):
         check.summary = 'Gold biosample badges need patching'
         check.description = '{} biosamples need gold badges patched. '.format(len(to_add) + len(to_remove.keys()))
         check.description += 'Yellow_flag_biosamples check must pass before patching.'
-        yellow_check = init_check_res(connection, 'yellow_flag_biosamples')
+        yellow_check = CheckResult(connection, 'yellow_flag_biosamples')
         latest_yellow = yellow_check.get_latest_result()
         if latest_yellow['status'] == 'PASS':
             check.allow_action = True
@@ -307,7 +306,7 @@ def gold_biosamples(connection, **kwargs):
 
 @action_function()
 def patch_gold_biosample_badges(connection, **kwargs):
-    action = init_action_res(connection, 'patch_gold_biosample_badges')
+    action = ActionResult(connection, 'patch_gold_biosample_badges')
     gold_check_result = action.get_associated_check_result(kwargs)
 
     action.output = patch_badges(
@@ -335,7 +334,7 @@ def repsets_have_bio_reps(connection, **kwargs):
 
     Action patches badges with a message detailing which of the above issues is relevant.
     '''
-    check = init_check_res(connection, 'repsets_have_bio_reps')
+    check = CheckResult(connection, 'repsets_have_bio_reps')
 
     results = ff_utils.search_metadata('search/?type=ExperimentSetReplicate&frame=object',
                                        key=connection.ff_keys, page_limit=50)
@@ -414,7 +413,7 @@ def repsets_have_bio_reps(connection, **kwargs):
 
 @action_function()
 def patch_badges_for_replicate_numbers(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_for_replicate_numbers')
+    action = ActionResult(connection, 'patch_badges_for_replicate_numbers')
     rep_check_result = action.get_associated_check_result(kwargs)
 
     action.output = patch_badges(rep_check_result['full_output'], 'replicate-numbers', connection.ff_keys)
@@ -433,7 +432,7 @@ def exp_has_raw_files(connection, **kwargs):
     Check for sequencing experiments that don't have raw files
     Action patches badges
     '''
-    check = init_check_res(connection, 'exp_has_raw_files')
+    check = CheckResult(connection, 'exp_has_raw_files')
     # search all experiments except microscopy experiments for missing files field
     no_files = ff_utils.search_metadata('search/?type=Experiment&%40type%21=ExperimentMic&files.uuid=No+value',
                                         key=connection.ff_keys)
@@ -484,7 +483,7 @@ def exp_has_raw_files(connection, **kwargs):
 
 @action_function()
 def patch_badges_for_raw_files(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_for_raw_files')
+    action = ActionResult(connection, 'patch_badges_for_raw_files')
     raw_check_result = action.get_associated_check_result(kwargs)
 
     action.output = patch_badges(
@@ -508,7 +507,7 @@ def consistent_replicate_info(connection, **kwargs):
     Action patches badges with a message detailing which fields have the inconsistencies
     and what the inconsistent values are.
     '''
-    check = init_check_res(connection, 'consistent_replicate_info')
+    check = CheckResult(connection, 'consistent_replicate_info')
 
     repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id&field=uuid&field=status&field=lab.display_title'
     exp_url = 'search/?type=Experiment&frame=object'
@@ -631,7 +630,7 @@ def consistent_replicate_info(connection, **kwargs):
 
 @action_function()
 def patch_badges_for_inconsistent_replicate_info(connection, **kwargs):
-    action = init_action_res(connection, 'patch_badges_for_inconsistent_replicate_info')
+    action = ActionResult(connection, 'patch_badges_for_inconsistent_replicate_info')
     rep_info_check_result = action.get_associated_check_result(kwargs)
 
     action.output = patch_badges(

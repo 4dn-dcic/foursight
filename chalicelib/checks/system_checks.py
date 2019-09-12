@@ -1,11 +1,10 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res,
     basestring
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import (
     ff_utils,
     es_utils,
@@ -23,7 +22,7 @@ import time
 @check_function()
 def elastic_search_space(connection, **kwargs):
     """ Checks that our ES nodes all have a certain amount of space remaining """
-    check = init_check_res(connection, 'elastic_search_space')
+    check = CheckResult(connection, 'elastic_search_space')
     full_output = {}
     client = es_utils.create_es_client(connection.ff_es, True)
     # use cat.nodes to get id,diskAvail for all nodes, filter out empties
@@ -51,7 +50,7 @@ def elastic_beanstalk_health(connection, **kwargs):
     """
     Check both environment health and health of individual instances
     """
-    check = init_check_res(connection, 'elastic_beanstalk_health')
+    check = CheckResult(connection, 'elastic_beanstalk_health')
     full_output = {}
     eb_client = boto3.client('elasticbeanstalk')
     resp = eb_client.describe_environment_health(
@@ -117,7 +116,7 @@ def elastic_beanstalk_health(connection, **kwargs):
 
 @check_function()
 def status_of_elasticsearch_indices(connection, **kwargs):
-    check = init_check_res(connection, 'status_of_elasticsearch_indices')
+    check = CheckResult(connection, 'status_of_elasticsearch_indices')
     ### the check
     client = es_utils.create_es_client(connection.ff_es, True)
     indices = client.cat.indices(v=True).split('\n')
@@ -150,9 +149,9 @@ def status_of_elasticsearch_indices(connection, **kwargs):
 
 @check_function()
 def indexing_progress(connection, **kwargs):
-    check = init_check_res(connection, 'indexing_progress')
+    check = CheckResult(connection, 'indexing_progress')
     # get latest and db/es counts closest to 10 mins ago
-    counts_check = init_check_res(connection, 'item_counts_by_type')
+    counts_check = CheckResult(connection, 'item_counts_by_type')
     latest = counts_check.get_primary_result()
     prior = counts_check.get_closest_result(diff_mins=30)
     if not latest.get('full_output') or not prior.get('full_output'):
@@ -184,7 +183,7 @@ def indexing_progress(connection, **kwargs):
 
 @check_function()
 def indexing_records(connection, **kwargs):
-    check = init_check_res(connection, 'indexing_records')
+    check = CheckResult(connection, 'indexing_records')
     client = es_utils.create_es_client(connection.ff_es, True)
     # make sure we have the index and items within it
     if (not client.indices.exists('indexing') or
@@ -230,17 +229,17 @@ def indexing_records(connection, **kwargs):
 # do_not_store parameter ensures running this check normally won't add to s3
 @check_function(do_not_store=True)
 def staging_deployment(connection, **kwargs):
-    check = init_check_res(connection, 'staging_deployment')
+    check = CheckResult(connection, 'staging_deployment')
     return check
 
 
 @check_function()
 def fourfront_performance_metrics(connection, **kwargs):
-    check = init_check_res(connection, 'fourfront_performance_metrics')
+    check = CheckResult(connection, 'fourfront_performance_metrics')
     full_output = {}  # contains ff_env, env_health, deploy_version, num instances, and performance
     performance = {}  # keyed by check_url
     # get information from elastic_beanstalk_health
-    eb_check = init_check_res(connection, 'elastic_beanstalk_health')
+    eb_check = CheckResult(connection, 'elastic_beanstalk_health')
     eb_info = eb_check.get_primary_result()['full_output']
     full_output['ff_env'] = connection.ff_env
     full_output['env_health'] = eb_info.get('health_status', 'Unknown')
@@ -295,7 +294,7 @@ def fourfront_performance_metrics(connection, **kwargs):
 @check_function()
 def secondary_queue_deduplication(connection, **kwargs):
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'secondary_queue_deduplication')
+    check = CheckResult(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
     if get_stage_info()['stage'] != 'prod':
         check.full_output = 'Will not run on dev foursight.'
@@ -455,7 +454,7 @@ def clean_up_travis_queues(connection, **kwargs):
     and the creation date. Only run on data for now
     """
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'clean_up_travis_queues')
+    check = CheckResult(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
     if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
@@ -486,7 +485,7 @@ def clean_up_travis_queues(connection, **kwargs):
 @check_function()
 def manage_old_filebeat_logs(connection, **kwargs):
     # import curator
-    check = init_check_res(connection, 'manage_old_filebeat_logs')
+    check = CheckResult(connection, 'manage_old_filebeat_logs')
 
     # temporary -- disable this check
     check.status = 'PASS'
@@ -543,7 +542,7 @@ def manage_old_filebeat_logs(connection, **kwargs):
 @check_function()
 def snapshot_rds(connection, **kwargs):
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'snapshot_rds')
+    check = CheckResult(connection, 'snapshot_rds')
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
@@ -576,7 +575,7 @@ def process_download_tracking_items(connection, **kwargs):
     """
     from ..utils import get_stage_info, parse_datetime_to_utc
     import geocoder
-    check = init_check_res(connection, 'process_download_tracking_items')
+    check = CheckResult(connection, 'process_download_tracking_items')
     # maybe handle this in check_setup.json
     if get_stage_info()['stage'] != 'prod':
         check.full_output = 'Will not run on dev foursight.'
@@ -705,7 +704,7 @@ def purge_download_tracking_items(connection, **kwargs):
     Ensure search includes limit, field=uuid, and status=deleted
     """
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'purge_download_tracking_items')
+    check = CheckResult(connection, 'purge_download_tracking_items')
 
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
@@ -760,7 +759,7 @@ def check_long_running_ec2s(connection, **kwargs):
     names, or if they have no name.
     """
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'check_long_running_ec2s')
+    check = CheckResult(connection, 'check_long_running_ec2s')
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
@@ -841,7 +840,7 @@ def check_long_running_ec2s(connection, **kwargs):
 @check_function(FS_dev='free', FF_hotseat='free', FF_mastertest='free', FF_webdev='free')
 def say_my_name(connection, **kwargs):
     """List the person working on each environment."""
-    check = init_check_res(connection, 'say_my_name')
+    check = CheckResult(connection, 'say_my_name')
     check.description = "Enter the new name or if you are done, use 'free' to clear your name"
     check.summary = ""
     check.brief_output = ""
