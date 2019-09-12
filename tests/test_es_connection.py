@@ -6,23 +6,71 @@ class TestESConnection():
     index = 'unit_test_index'
     es = es_connection.ESConnection(index)
 
+    @staticmethod
+    def load_json(fname):
+        path = os.path.join(os.path.dirname(__file__), fname)
+        with open(path, 'r') as f:
+            return json.load(f)
+
+    @staticmethod
+    def uuid(check):
+        return check['data']['uuid']
+
     @pytest.mark.skip
     def test_basic_indexing(self):
         """
-        Creates a test index, indexes a few check-like items, verifies they are
+        Creates a test index, indexes a few check items, verifies they are
         there, deletes the index. These operations should all succeed.
         """
         assert self.es.test_connection()
         self.es.create_index(self.index)
-        check = {'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day',
-                 'description': 'No items have been created in the past day.', 'status': 'PASS',
-                 'uuid': '2018-01-16T19:14:34.025445','brief_output': None,'full_output': {},
-                 'admin_output': None, 'ff_link': None}
-        assert self.es.put_object(check['uuid'], check)
-        obj = self.es.get_object(check['uuid'])
-        assert obj['uuid'] == check['uuid']
-        self.es.delete_keys([check['uuid']])
+        check = self.load_json('test_checks/check1.json')
+        uuid = self.uuid(check)
+        assert self.es.put_object(uuid, check)
+        obj = self.es.get_object(uuid)
+        assert obj['data']['uuid'] == uuid
+        self.es.delete_keys([uuid])
         self.es.refresh_index()
         with pytest.raises(Exception):
-            self.es.get_object(check['uuid'])
+            self.es.get_object(uuid)
+        assert self.es.delete_index(self.index)
+
+    @pytest.mark.skip
+    def test_indexing_methods(self):
+        """
+        Creates a test index, indexes a few check items, uses additional methods
+        to interact with the index, such as list_all_keys, get_all_objects
+        """
+        self.es.create_index(self.index)
+        check1 = self.load_json('test_checks/check1.json')
+        check2 = self.load_json('test_checks/check2.json')
+        check3 = self.load_json('test_checks/check3.json')
+        assert self.es.put_object(self.uuid(check1), check1)
+        assert self.es.put_object(self.uuid(check2), check2)
+        self.es.refresh_index()
+        keys = self.es.list_all_keys()
+        assert self.uuid(check1) in keys
+        assert self.uuid(check2) in keys
+        assert self.uuid(check3) not in keys
+        assert self.es.put_object(self.uuid(check3), check3)
+        self.es.refresh_index()
+        objs = self.es.get_all_objects()
+        assert len(objs) == 3
+        self.es.delete_keys([self.uuid(check1), self.uuid(check2)])
+        self.es.refresh_index()
+        keys = self.es.list_all_keys()
+        assert len(keys) == 1
+        assert self.uuid(check3) in keys
+        assert self.es.delete_index(self.index)
+
+    @pytest.mark.skip
+    def test_indexing_failures(self):
+        """
+        Tests some failure cases with indexing
+        """
+        assert self.es.create_index(self.index)
+        assert not self.es.create_index(self.index)
+        check1 = self.load_json('test_checks/check1.json')
+        assert self.es.put_object(self.uuid(check1), check1)
+        assert not self.es.put_object(self.uuid(check1), check1)
         assert self.es.delete_index(self.index)

@@ -16,17 +16,20 @@ class ESConnection(AbstractConnection):
         """
         Creates an ES index called name. Returns true in success
         """
-        res = self.es.indices.create(index=name, ignore=[400])
-        if res['acknowledged']:
-            self.index = name
+        try:
+            res = self.es.indices.create(index=name)
             return True
-        return False
+        except:
+            return False
 
     def delete_index(self, name):
         """
         Deletes the given index name from this es
         """
-        self.es.indices.delete(index=name, ignore=[400, 404])
+        try:
+            self.es.indices.delete(index=name, ignore=[400, 404])
+        except:
+            return False
         return True
 
     def refresh_index(self):
@@ -41,8 +44,11 @@ class ESConnection(AbstractConnection):
         """
         if not self.index:
             return False
-        res = self.es.index(index=self.index, id=key, doc_type='check', body=value)
-        return res['result'] == 'created'
+        try:
+            res = self.es.index(index=self.index, id=key, doc_type='check', body=value)
+            return res['result'] == 'created'
+        except:
+            return False
 
     def get_object(self, key):
         """
@@ -74,8 +80,7 @@ class ESConnection(AbstractConnection):
         else:
             res = self.es.search(index=self.index, body=doc, doc_type='',
                                  filter_path=['hits.hits.*'])
-            return res['hits']['hits'] if len(res) > 0 else []
-
+            return [obj['_source'] for obj in res['hits']['hits']] if len(res) > 0 else []
 
     def get_all_objects(self):
         """
