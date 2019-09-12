@@ -13,6 +13,7 @@ from dateutil import tz
 from base64 import b64decode
 from dcicutils import ff_utils
 from .fs_connection import FSConnection
+from .run_result import CheckResult, ActionResult
 from .check_utils import (
     get_grouped_check_results,
     get_check_strings,
@@ -21,8 +22,6 @@ from .check_utils import (
     get_schedule_names,
     get_check_schedule,
     run_check_or_action,
-    init_check_res,
-    init_action_res,
     init_check_or_action_res
 )
 from .utils import (
@@ -363,7 +362,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     except Exception:
         connection = None
     if connection:
-        res_check = init_check_res(connection, check)
+        res_check = CheckResult(connection, check)
         if res_check:
             data = res_check.get_result_by_uuid(uuid)
             if data is None:
@@ -459,7 +458,7 @@ def process_view_result(connection, res, is_admin):
     # For now also get the latest result for the checks action
     # TODO: replace latest_action with action history
     if res.get('action'):
-        action = init_action_res(connection, res.get('action'))
+        action = ActionResult(connection, res.get('action'))
         if action:
             action_record_key = '/'.join([res['name'], 'action_records', res['uuid']])
             assc_action_key = connection.connections['s3'].get_object(action_record_key)
@@ -613,7 +612,7 @@ def run_put_check(environ, check, put_data):
         response.status_code = 400
         return response
     put_uuid = put_data.get('uuid', datetime.datetime.utcnow().isoformat())
-    putCheck = init_check_res(connection, check, init_uuid=put_uuid)
+    putCheck = CheckResult(connection, check, init_uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'summary', 'description', 'brief_output', 'full_output', 'admin_output']:

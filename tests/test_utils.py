@@ -93,10 +93,10 @@ class TestUtils():
         # bad calls
         with pytest.raises(utils.BadCheckOrAction) as exc:
             utils.validate_run_result(action, is_check=True)
-        assert (str(exc.value) == 'Check function must return a CheckResult object. Initialize one with init_check_res.')
+        assert (str(exc.value) == 'Check function must return a CheckResult object. Initialize one with CheckResult.')
         with pytest.raises(utils.BadCheckOrAction) as exc:
             utils.validate_run_result(check, is_check=False)
-        assert (str(exc.value) == 'Action functions must return a ActionResult object. Initialize one with init_action_res.')
+        assert (str(exc.value) == 'Action functions must return a ActionResult object. Initialize one with ActionResult.')
         check.store_result = 'Not a fxn'
         with pytest.raises(utils.BadCheckOrAction) as exc:
             utils.validate_run_result(check, is_check=True)

@@ -12,8 +12,15 @@ class RunResult(object):
     """
     def __init__(self, connections, name):
         self.connections = {}
-        for env, conn in connections.items():
+        # support both FSConnection and FSConnection.connections argument
+        if isinstance(connections, dict):
+            conns = connections.items()
+        else:
+            conns = connections.connections.items()
+        for env, conn in conns:
             self.connections[env] = conn
+        if 's3' not in self.connections:
+            raise Exception('RunResult did not find an s3 connection, aborting')
         self.name = name
         self.extension = ".json"
         self.kwargs = {}
@@ -258,11 +265,9 @@ class RunResult(object):
 class CheckResult(RunResult):
     """
     Inherits from RunResult and is meant to be used with checks.
-    It is best to initialize this object using the init_check_res function in
-    utils.py.
 
     Usage:
-    check = init_check_res(connection, <name>)
+    check = CheckResult(connection, <name>)
     check.status = ...
     check.descritpion = ...
     check.store_result()
@@ -273,7 +278,10 @@ class CheckResult(RunResult):
         if init_uuid:
             # maybe make this '.json' dynamic with parent's self.extension?
             ts_key = ''.join([name, '/', init_uuid, '.json'])
-            stamp_res = connections['s3'].get_object(ts_key)
+            if isinstance(connections, dict):
+                stamp_res = connections['s3'].get_object(ts_key)
+            else:
+                stamp_res = connections.connections['s3'].get_object(ts_key)
             if stamp_res:
                 # see if json
                 try:

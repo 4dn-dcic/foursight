@@ -61,6 +61,8 @@ def init_check_res(connection, name, init_uuid=None):
 
     init_uuid is a a result uuid that the check will look for upon initialization.
     If found, the check fields will be pre-populated with its results.
+
+    This function will be deprecated in an upcoming version.
     """
     return CheckResult(connection.connections, name, init_uuid=init_uuid)
 
@@ -68,6 +70,8 @@ def init_check_res(connection, name, init_uuid=None):
 def init_action_res(connection, name):
     """
     Similar to init_check_res, but meant to be used for ActionResult items
+
+    This function will be deprecated in an upcoming version.
     """
     return ActionResult(connection.connections, name)
 
@@ -132,7 +136,7 @@ def check_function(*default_args, **default_kwargs):
                 validate_run_result(check, is_check=True)
             except Exception as e:
                 # connection should be the first (and only) positional arg
-                check = init_check_res(args[0], func.__name__)
+                check = CheckResult(args[0], func.__name__)
                 check.status = 'ERROR'
                 check.description = 'Check failed to run. See full output.'
                 check.full_output = traceback.format_exc().split('\n')
@@ -173,7 +177,7 @@ def action_function(*default_args, **default_kwargs):
                 validate_run_result(action, is_check=False)
             except Exception as e:
                 # connection should be the first (and only) positional arg
-                action = init_action_res(args[0], func.__name__)
+                action = ActionResult(args[0], func.__name__)
                 action.status = 'FAIL'
                 action.description = 'Action failed to run. See output.'
                 action.output = traceback.format_exc().split('\n')
@@ -194,9 +198,9 @@ def validate_run_result(result, is_check=True):
     error_message = None
     class_name = type(result).__name__
     if is_check and class_name != 'CheckResult':
-        error_message = 'Check function must return a CheckResult object. Initialize one with init_check_res.'
+        error_message = 'Check function must return a CheckResult object. Initialize one with CheckResult.'
     elif not is_check and class_name != 'ActionResult':
-        error_message = 'Action functions must return a ActionResult object. Initialize one with init_action_res.'
+        error_message = 'Action functions must return a ActionResult object. Initialize one with CheckResult.'
     else:
         pass
     store_method = getattr(result, 'store_result', None)
@@ -236,10 +240,10 @@ def timeout_handler(partials, signum, frame):
     or action with the appropriate information and then exits using sys.exit
     """
     if partials['is_check']:
-        result = init_check_res(partials['connection'], partials['name'])
+        result = CheckResult(partials['connection'], partials['name'])
         result.status = 'ERROR'
     else:
-        result = init_action_res(partials['connection'], partials['name'])
+        result = ActionResult(partials['connection'], partials['name'])
         result.status = 'FAIL'
     result.description = 'AWS lambda execution reached the time limit. Please see check/action code.'
     signal.alarm(0)

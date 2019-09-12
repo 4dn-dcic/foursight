@@ -2,14 +2,13 @@ from __future__ import print_function, unicode_literals
 from .utils import (
     get_methods_by_deco,
     check_method_deco,
-    init_check_res,
-    init_action_res,
     CHECK_DECO,
     ACTION_DECO,
     BadCheckSetup,
     basestring,
     list_environments
 )
+from .run_result import CheckResult, ActionResult
 # import modules that contain the checks
 from .checks import *
 from .checks import __all__ as CHECK_MODULES
@@ -226,7 +225,7 @@ def get_check_results(connection, checks=[], use_latest=False):
     if not checks:
         checks = [check_str.split('/')[1] for check_str in get_check_strings()]
     for check_name in checks:
-        tempCheck = init_check_res(connection, check_name)
+        tempCheck = CheckResult(connection, check_name)
         if use_latest:
             found = tempCheck.get_latest_result()
         else:
@@ -323,4 +322,4 @@ def init_check_or_action_res(connection, check):
         is_action = True
     if not check_str: # not a check or an action. abort
         return None
-    return init_action_res(connection, check) if is_action else init_check_res(connection, check)
+    return ActionResult(connection, check) if is_action else CheckResult(connection, check)
