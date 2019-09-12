@@ -43,7 +43,7 @@ def migrate_checks_to_es(connection, check=None):
     es = connection.connections['es']
     s3_keys = s3.get_all_keys()
     if check is not None:
-        s3_keys = list(filter(lambda k: return check in k, s3_keys))
+        s3_keys = list(filter(lambda k: check in k, s3_keys))
     n_migrated = 0
     for key in s3_keys:
         if round(time.time() - t0, 2) > time_limit:
