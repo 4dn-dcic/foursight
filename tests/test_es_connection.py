@@ -42,6 +42,7 @@ class TestESConnection():
         to interact with the index, such as list_all_keys, get_all_objects
         """
         self.es.create_index(self.index)
+        assert self.es.index_exists(self.index)
         check1 = self.load_json('test_checks/check1.json')
         check2 = self.load_json('test_checks/check2.json')
         check3 = self.load_json('test_checks/check3.json')
@@ -70,6 +71,7 @@ class TestESConnection():
         """
         assert self.es.create_index(self.index)
         assert not self.es.create_index(self.index)
+        assert not self.es.index_exists('i_dont_exist')
         check1 = self.load_json('test_checks/check1.json')
         assert self.es.put_object(self.uuid(check1), check1)
         assert not self.es.put_object(self.uuid(check1), check1)

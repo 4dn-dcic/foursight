@@ -24,7 +24,8 @@ class FSConnection(object):
         # FOURSIGHT information
         self.fs_env = fs_environ
         self.connections = {
-            's3': S3Connection(fs_environ_info.get('bucket'))
+            's3': S3Connection(fs_environ_info.get('bucket')),
+            'es': ESConnection(index=fs_environ_info.get('bucket')) # index name is same as s3 bucket
         }
         # FOURFRONT information
         self.ff_server = fs_environ_info['fourfront']

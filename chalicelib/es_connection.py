@@ -11,7 +11,15 @@ class ESConnection(AbstractConnection):
     def __init__(self, index=None, doc_type='result'):
         self.es = Elasticsearch(['http://localhost:9200']) # use local es for now
         self.index = index
+        if index and not self.index_exists(index):
+            self.create_index(index)
         self.doc_type = doc_type
+
+    def index_exists(self, name):
+        """
+        Checks if the given index name exists
+        """
+        return self.es.indices.exists(index=name)
 
     def create_index(self, name):
         """
