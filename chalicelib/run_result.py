@@ -145,7 +145,7 @@ class RunResult(object):
         to the above filters.
         Returns the number of keys deleted
         """
-        keys_to_delete = self.s3_connection.list_all_keys_w_prefix(self.name, records_only=True)
+        keys_to_delete = self.connections['s3'].list_all_keys_w_prefix(self.name, records_only=True)
 
         # if given a custom filter, apply it
         if custom_filter is not None:
@@ -176,12 +176,12 @@ class RunResult(object):
         if len(keys_to_delete) > 1000:
             start, end = 0, 1000
             while start < len(keys_to_delete):
-                resp = self.s3_connection.delete_keys(keys_to_delete[start:end])
+                resp = self.connections['s3'].delete_keys(keys_to_delete[start:end])
                 num_deleted += len(resp['Deleted'])
                 start += 1000
                 end += 1000
         else:
-            resp = self.s3_connection.delete_keys(keys_to_delete)
+            resp = self.connections['s3'].delete_keys(keys_to_delete)
             num_deleted += len(resp['Deleted'])
 
         return num_deleted
