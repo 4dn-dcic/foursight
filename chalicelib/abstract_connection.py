@@ -20,6 +20,12 @@ class AbstractConnection(object):
         """
         raise NotImplementedError
 
+    def get_size(self):
+        """
+        Returns the number of items stored on this connection
+        """
+        raise NotImplementedError
+
     def list_all_keys(self):
         """
         Lists all the keys stored on this connection.

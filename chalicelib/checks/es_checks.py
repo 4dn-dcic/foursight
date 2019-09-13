@@ -4,14 +4,15 @@ from ..utils import (
     action_function,
 )
 
-@check_function()
-def elasticsearch_s3_count_diff(connection):
+@check_function(time_limit=0)
+def elasticsearch_s3_count_diff(connection, **kwargs):
     """ Reports the difference between the number of files on s3 and es """
+    import pdb; pdb.set_trace()
     check = CheckResult(connection, 'elasticsearch_s3_count_diff')
     s3 = connection.connections['s3']
     es = connection.connections['es']
-    n_s3_keys = len(s3.list_all_keys())
-    n_es_keys = len(es.list_all_keys())
+    n_s3_keys = s3.get_size()
+    n_es_keys = es.get_size()
     difference = n_s3_keys - n_es_keys
     full_output = {}
     full_output['n_s3_keys'] = n_s3_keys

@@ -7,6 +7,7 @@ import datetime
 class S3Connection(AbstractConnection):
     def __init__(self, bucket_name):
         self.client = boto3.client('s3')
+        self.resource = boto3.resource('s3')
         self.bucket = bucket_name
         self.location = 'us-east-1'
         # create the bucket if it doesn't exist
@@ -17,7 +18,6 @@ class S3Connection(AbstractConnection):
             # get head_info again
             self.head_info = self.test_connection()
             self.status_code = self.head_info.get('ResponseMetadata', {}).get("HTTPStatusCode", 404)
-
 
     def put_object(self, key, value):
         try:
@@ -35,6 +35,13 @@ class S3Connection(AbstractConnection):
         except:
             return None
 
+    def get_size(self):
+        """
+        Gets the number of keys stored on this s3 connection. This is a very slow
+        operation since it has to enumerate all keys.
+        """
+        bucket = self.resource.Bucket(self.bucket)
+        return sum(1 for _ in bucket.objects.all())
 
     def list_all_keys_w_prefix(self, prefix, records_only=False):
         """

@@ -66,7 +66,20 @@ class ESConnection(AbstractConnection):
         """
         if not self.index:
             return None
-        return self.es.get(index=self.index, doc_type=self.doc_type, id=key)['_source']
+        try:
+            return self.es.get(index=self.index, doc_type=self.doc_type, id=key)['_source']
+        except:
+            return None
+
+    def get_size(self):
+        """
+        Returns the number of items indexed on this es instance. Returns -1 in
+        failure.
+        """
+        try:
+            return self.es.count(self.index).get('count')
+        except:
+            return -1
 
     def list_all_keys(self, full=False):
         """
