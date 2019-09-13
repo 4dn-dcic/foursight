@@ -545,7 +545,10 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
 
     # if margi, enzyme files are predifined in a separate dict
     if type == 'MARGI':
-        enz_file = re_fragment[organism].get(enz)
+        if re_fragment.get(organism):
+            enz_file = re_fragment[organism].get(enz)
+        else:
+            enz_file = None
     else:
         # get the enzyme file for organism and enzyme type
         if re_nz.get(organism):
