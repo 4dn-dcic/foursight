@@ -494,8 +494,8 @@ def check_opf_status_mismatch(connection, **kwargs):
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, key=connection.ff_keys)
-    status_dict = {f['uuid']: f['properties']['status'] for f in resp}
+    resp =  ff_utils.expand_es_metadata(files, key=connection.ff_keys)
+    status_dict = {f['uuid']: f['properties']['status'] for f in resp[0]}
     check.full_output = {}
     for result in results:
         titles = [item['title'] for item in result.get('other_processed_files', [])]
@@ -562,10 +562,14 @@ def _get_all_other_processed_files(item):
     # get directly linked other processed files
     for pfinfo in item.get('properties').get('other_processed_files', []):
         toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
+        # toignore.extend([pf['quality_metric'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
+        # qcs = [pf for pf in pfinfo.get('files', []) if pf is not None]
         hgv = pfinfo.get('higlass_view_config')
         if hgv:
             toignore.append(hgv)
     # experiment sets can also have linked opfs from experiment
+    for pfinfo in item['embedded'].get('other_processed_files', []):
+        toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files') if pf and pf.get('quality_metric')])
     expts = item.get('embedded').get('experiments_in_set')
     if expts is not None:
         for exp in expts:
@@ -573,6 +577,7 @@ def _get_all_other_processed_files(item):
             if opfs is not None:
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
+                    toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
                     hgv = pfinfo.get('higlass_view_config')
                     if hgv:
                         toignore.append(hgv)
