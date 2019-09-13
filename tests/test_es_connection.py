@@ -10,7 +10,7 @@ class TestESConnection():
     def uuid(check):
         return check['data']['uuid']
 
-    #@pytest.mark.skip
+    @pytest.mark.skip
     def test_basic_indexing(self):
         """
         Creates a test index, indexes a few check items, verifies they are
@@ -28,7 +28,7 @@ class TestESConnection():
         assert self.es.get_object(uuid) == None
         assert self.es.delete_index(self.index)
 
-    #@pytest.mark.skip
+    @pytest.mark.skip
     def test_indexing_methods(self):
         """
         Creates a test index, indexes a few check items, uses additional methods
@@ -57,7 +57,7 @@ class TestESConnection():
         assert self.uuid(check3) in keys
         assert self.es.delete_index(self.index)
 
-    #@pytest.mark.skip
+    @pytest.mark.skip
     def test_indexing_failures(self):
         """
         Tests some failure cases with indexing

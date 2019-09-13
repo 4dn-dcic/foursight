@@ -467,3 +467,10 @@ def load_json(rel, fname):
     path = os.path.join(os.path.dirname(rel), fname)
     with open(path, 'r') as f:
         return json.load(f)
+
+
+def store_json(rel, fname, data):
+    """ Stores json data into fname at rel/fname """
+    path = os.path.join(os.path.dirname(rel), fname)
+    with open(path, 'r') as f:
+        return json.dump(data, f)

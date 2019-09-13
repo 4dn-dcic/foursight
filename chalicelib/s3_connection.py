@@ -5,7 +5,7 @@ import boto3
 import datetime
 
 class S3Connection(AbstractConnection):
-    def __init__(self, bucket_name):
+    def __init__(self, bucket_name, cache=False):
         self.client = boto3.client('s3')
         self.resource = boto3.resource('s3')
         self.bucket = bucket_name
@@ -18,6 +18,17 @@ class S3Connection(AbstractConnection):
             # get head_info again
             self.head_info = self.test_connection()
             self.status_code = self.head_info.get('ResponseMetadata', {}).get("HTTPStatusCode", 404)
+        self.cache = None
+        if cache:
+            self.init_cache()
+
+    def __del__(self):
+        """ Persist the cache on teardown """
+        pass
+
+    def init_cache(self):
+        """ Initializes the cache """
+        pass
 
     def put_object(self, key, value):
         try:
@@ -39,9 +50,12 @@ class S3Connection(AbstractConnection):
         """
         Gets the number of keys stored on this s3 connection. This is a very slow
         operation since it has to enumerate all keys.
+
+        Because this operation is so slow should we cache this?
         """
         bucket = self.resource.Bucket(self.bucket)
         return sum(1 for _ in bucket.objects.all())
+
 
     def list_all_keys_w_prefix(self, prefix, records_only=False):
         """
