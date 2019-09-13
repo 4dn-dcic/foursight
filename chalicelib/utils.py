@@ -460,3 +460,10 @@ def get_sqs_attributes(sqs_url):
     except:
         return backup
     return result.get('Attributes', backup)
+
+
+def load_json(rel, fname):
+    """ Loads json file fname from rel/fname """
+    path = os.path.join(os.path.dirname(rel), fname)
+    with open(path, 'r') as f:
+        return json.load(f)

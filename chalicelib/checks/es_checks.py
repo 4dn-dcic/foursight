@@ -37,7 +37,7 @@ def migrate_checks_to_es(connection, **kwargs):
     checks will be migrated
     """
     t0 = time.time()
-    time_limit = 1000 # very long as this is very slow too
+    time_limit = 10000000 # very long as this is very slow too
     action = ActionResult(connection, 'migrate_checks_to_es')
     action_logs = {'time out': False}
     s3 = connection.connections['s3']
