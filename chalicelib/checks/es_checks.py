@@ -1,3 +1,4 @@
+import time
 from ..run_result import CheckResult, ActionResult
 from ..utils import (
     check_function,
@@ -7,11 +8,10 @@ from ..utils import (
 @check_function(time_limit=0)
 def elasticsearch_s3_count_diff(connection, **kwargs):
     """ Reports the difference between the number of files on s3 and es """
-    import pdb; pdb.set_trace()
     check = CheckResult(connection, 'elasticsearch_s3_count_diff')
     s3 = connection.connections['s3']
     es = connection.connections['es']
-    n_s3_keys = s3.get_size()
+    n_s3_keys = s3.get_size() # too slow for check
     n_es_keys = es.get_size()
     difference = n_s3_keys - n_es_keys
     full_output = {}
@@ -31,18 +31,18 @@ def elasticsearch_s3_count_diff(connection, **kwargs):
     return check
 
 @action_function()
-def migrate_checks_to_es(connection, check=None):
+def migrate_checks_to_es(connection, **kwargs):
     """
     Migrates checks from s3 to es. If a check name is given only those
     checks will be migrated
     """
     t0 = time.time()
-    time_limit = 270 # 4.5 minutes
+    time_limit = 1000 # very long as this is very slow too
     action = ActionResult(connection, 'migrate_checks_to_es')
     action_logs = {'time out': False}
     s3 = connection.connections['s3']
     es = connection.connections['es']
-    s3_keys = s3.get_all_keys()
+    s3_keys = s3.list_all_keys()
     if check is not None:
         s3_keys = list(filter(lambda k: check in k, s3_keys))
     n_migrated = 0
