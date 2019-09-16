@@ -19,19 +19,83 @@ class RunResult(object):
         self.extension = ".json"
         self.kwargs = {}
 
+    def get_s3_object(self, key):
+        """
+        Returns None if not present, otherwise returns a JSON parsed res.
+        """
+        result = self.connections['s3'].get_object(key)
+        if result is None:
+            return None
+        # see if data is in json format
+        try:
+            json_result = json.loads(result)
+        except ValueError:
+            return result
+        return json_result
+
+    def get_es_object(self, key):
+        """
+        Grabs an object from ES. Returns none if not present, json otherwise
+        """
+        return self.connections['es'].get_object(key)
+
+    def get_object(self, key, es=False):
+        """
+        Gets an object given a key from the data store.
+
+        XXX: For now, es defaults to false. Once this functionality is fully integrated
+        it should always be true.
+        """
+        if es:
+            return self.get_es_object(key)
+        else:
+            return self.get_s3_object(key)
+
+    def put_object(self, key, value, es=False):
+        """
+        Puts an object into the data stores
+
+        XXX: For now, es defaults to false. Once this functionality is fully integrated
+        it should always be true.
+        """
+        if es:
+            self.connections['es'].put_object(key, value)
+        self.connections['s3'].put_object(key, value)
+
     def get_latest_result(self):
         """
         Returns the latest result (the last check run)
         """
         latest_key = ''.join([self.name, '/latest', self.extension])
-        return self.get_s3_object(latest_key)
+        return self.get_object(latest_key)
 
     def get_primary_result(self):
         """
         Returns the most recent primary result run (with 'primary'=True in kwargs)
         """
         primary_key = ''.join([self.name, '/primary', self.extension])
-        return self.get_s3_object(primary_key)
+        return self.get_object(primary_key)
+
+    def get_result_by_uuid(self, uuid, es=False):
+        """
+        Returns result if it can be found by its uuid, otherwise None.
+        """
+        result_key = ''.join([self.name, '/', uuid, self.extension])
+        return self.get_object(result_key)
+
+    def get_all_results(self, es=False):
+        """
+        Return all results for this check. Should use with care
+        """
+        all_results = []
+        s3_prefix = ''.join([self.name, '/'])
+        relevant_checks = self.list_keys(records_only=True, prefix=s3_prefix)
+        for n in range(len(relevant_checks)):
+            check = relevant_checks[n]
+            if check.startswith(s3_prefix) and check.endswith(self.extension):
+                result = self.get_object(check)
+                all_results.append(result)
+        return all_results
 
     def get_closest_result(self, diff_hours=0, diff_mins=0, override_date=None):
         """
@@ -47,7 +111,7 @@ class RunResult(object):
         # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.connections['s3'].list_all_keys_w_prefix(s3_prefix, records_only=True)
+        relevant_checks = self.list_keys(records_only=True, prefix=s3_prefix)
         if not relevant_checks:
             raise Exception('Could not find any results for prefix: %s' % s3_prefix)
         # now use only s3 objects with a valid uuid
@@ -73,7 +137,7 @@ class RunResult(object):
             if not best_match or tries > 999:
                 raise Exception('Could not find closest non-ERROR result for prefix: %s. Attempted'
                                 ' with %s diff hours and %s diff mins.' % (s3_prefix, diff_hours, diff_mins))
-            possible_res = self.get_s3_object(best_match[0])
+            possible_res = self.get_object(best_match[0])
             if possible_res and possible_res.get('status', 'ERROR') != 'ERROR':
                 match_res = possible_res
             else:
@@ -85,44 +149,24 @@ class RunResult(object):
                 tries += 1
         return match_res
 
-    def get_s3_object(self, key):
+    def list_keys(self, records_only=True, prefix=None, es=False):
         """
-        Returns None if not present, otherwise returns a JSON parsed res.
-        """
-        result = self.connections['s3'].get_object(key)
-        if result is None:
-            return None
-        # see if data is in json format
-        try:
-            json_result = json.loads(result)
-        except ValueError:
-            return result
-        return json_result
+        Lists all keys. If given a prefix only keys with that prefix will be
+        returned.
 
-    def get_result_by_uuid(self, uuid):
+        XXX: For now, es defaults to false. Once this functionality is fully integrated
+        it should always be true.
         """
-        Returns result if it can be found by its uuid, otherwise None.
-        """
-        result_key = ''.join([self.name, '/', uuid, self.extension])
-        return self.get_s3_object(result_key)
-
-    def get_all_results(self):
-        """
-        Return all results for this check. Should use with care
-        """
-        all_results = []
-        s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.connections['s3'].list_all_keys_w_prefix(s3_prefix, records_only=True)
-        for n in range(len(relevant_checks)):
-            check = relevant_checks[n]
-            if check.startswith(s3_prefix) and check.endswith(self.extension):
-                result = self.connections['s3'].get_object(check)
-                try:
-                    result = json.loads(result)
-                except ValueError:
-                    pass
-                all_results.append(result)
-        return all_results
+        if es:
+            if prefix:
+                return self.connections['es'].list_all_keys_w_prefix(prefix)
+            else:
+                return self.connections['es'].list_all_keys()
+        else:
+            if prefix:
+                return self.connections['s3'].list_all_keys_w_prefix(prefix, records_only=records_only)
+            else:
+                return self.connections['s3'].list_all_keys()
 
     def record_run_info(self):
         """
@@ -145,6 +189,8 @@ class RunResult(object):
         If a custom filter is given, that filter will be applied as well, prior
         to the above filters.
         Returns the number of keys deleted
+
+        XXX: integrate es into deletion
         """
         keys_to_delete = self.connections['s3'].list_all_keys_w_prefix(self.name, records_only=True)
 
@@ -196,7 +242,7 @@ class RunResult(object):
         results after that point will be returned.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-        all_keys = self.connections['s3'].list_all_keys_w_prefix(self.name, records_only=True)
+        all_keys = self.list_keys(records_only=True, prefix=self.name)
 
         # sort them from newest to oldest
         all_keys.sort(key=self.filename_to_datetime, reverse=True)
@@ -209,14 +255,14 @@ class RunResult(object):
         all_keys = all_keys[start:start+limit]
         results = []
         for n in range(len(all_keys)):
-            s3_res = self.get_s3_object(all_keys[n])
+            res = self.get_object(all_keys[n])
             # order: status <str>, summary <str>, kwargs <dict>, is check? (boolean)
             # handle records that might be malformed
             res_val = [
-                s3_res.get('status', 'Not found'),
-                s3_res.get('summary', None),
-                s3_res.get('kwargs', {}),
-                s3_res.get('type') == 'check' or 'full_output' in s3_res
+                res.get('status', 'Not found'),
+                res.get('summary', None),
+                res.get('kwargs', {}),
+                res.get('type') == 'check' or 'full_output' in res
             ]
             # kwargs to remove from the history results. these will not be displayed
             for remove_key in ['_run_info']:
@@ -226,7 +272,7 @@ class RunResult(object):
 
     def store_formatted_result(self, uuid, formatted, primary):
         """
-        Store the result in s3. Always makes an entry with key equal to the
+        Store the result in s3/ES. Always makes an entry with key equal to the
         uuid timestamp. Will also store under (i.e. overwrite)the 'latest' key.
         If is_primary, will also overwrite the 'primary' key.
         """
@@ -235,12 +281,12 @@ class RunResult(object):
         primary_key = ''.join([self.name, '/primary', self.extension])
         s3_formatted = json.dumps(formatted)
         # store the timestamped result
-        self.connections['s3'].put_object(time_key, s3_formatted)
+        self.put_object(time_key, s3_formatted)
         # put result as 'latest' key
-        self.connections['s3'].put_object(latest_key, s3_formatted)
+        self.put_object(latest_key, s3_formatted)
         # if primary, store as the primary result
         if primary:
-            self.connections['s3'].put_object(primary_key, s3_formatted)
+            self.put_object(primary_key, s3_formatted)
         # return stored data in case we're interested
         return formatted
 
@@ -267,22 +313,17 @@ class CheckResult(RunResult):
     check.store_result()
     """
     def __init__(self, connections, name, init_uuid=None):
+        super().__init__(connections, name)
         # init_uuid arg used if you want to initialize using an existing check
         # init_uuid is in the stringified datetime format
         if init_uuid:
             # maybe make this '.json' dynamic with parent's self.extension?
             ts_key = ''.join([name, '/', init_uuid, '.json'])
-            stamp_res = connections.connections['s3'].get_object(ts_key)
+            stamp_res = self.get_object(ts_key)
             if stamp_res:
-                # see if json
-                try:
-                    parsed_res = json.loads(stamp_res)
-                except ValueError:
-                    parsed_res = stamp_res
-                for key, val in parsed_res.items():
+                for key, val in stamp_res.items():
                     if key not in ['uuid', 'kwargs']: # dont copy these
                         setattr(self, key, val)
-                super().__init__(connections, name)
                 return
         # summary will be displayed next to title when set
         self.summary = None
@@ -299,7 +340,6 @@ class CheckResult(RunResult):
         self.action = None
         self.allow_action = False # by default do not allow the action to be run
         self.action_message = 'Are you sure you want to run this action?'
-        super().__init__(connections, name)
 
     def format_result(self, uuid):
         # use summary as description if descrip is missing
