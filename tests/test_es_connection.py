@@ -4,7 +4,10 @@ class TestESConnection():
     environ = 'mastertest'
     conn = app_utils.init_connection(environ)
     index = 'unit_test_index'
-    es = es_connection.ESConnection(index)
+    try:
+        es = es_connection.ESConnection(index)
+    except:
+        es = None # tests should be marked as skip
 
     @staticmethod
     def uuid(check):
