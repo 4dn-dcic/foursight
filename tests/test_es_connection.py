@@ -22,7 +22,7 @@ class TestESConnection():
         uuid = self.uuid(check)
         assert self.es.put_object(uuid, check)
         obj = self.es.get_object(uuid)
-        assert obj['data']['uuid'] == uuid
+        assert (obj['data']['name'] + '/' + obj['data']['uuid']) == uuid
         self.es.delete_keys([uuid])
         self.es.refresh_index()
         assert self.es.get_object(uuid) == None
@@ -68,6 +68,7 @@ class TestESConnection():
         check1 = utils.load_json(__file__, 'test_checks/check1.json')
         assert self.es.put_object(self.uuid(check1), check1)
         assert not self.es.put_object(self.uuid(check1), check1)
+        self.es.refresh_index()
         assert len(self.es.list_all_keys_w_prefix('page_children_routes')) == 1
         assert len(self.es.list_all_keys_w_prefix('pag3_children_routes')) == 0
         assert self.es.delete_index(self.index)

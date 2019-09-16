@@ -121,8 +121,12 @@ class ESConnection(AbstractConnection):
         Deletes all uuids in key_list from es. If key_list is large this will be
         a slow operation, but probably still not as slow as s3
         """
-        for key in key_list:
-            res = self.es.delete(index=self.index, doc_type=self.doc_type, id=key)
+        query = {
+            'query': {
+                'terms': {'_id': key_list}
+            }
+        }
+        self.es.delete_by_query(index=self.index, body=query)
 
     def test_connection(self):
         """
