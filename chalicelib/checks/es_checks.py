@@ -42,9 +42,11 @@ def migrate_checks_to_es(connection, **kwargs):
     action_logs = {'time out': False}
     s3 = connection.connections['s3']
     es = connection.connections['es']
-    s3_keys = s3.list_all_keys()
+    check = kwargs.get('check')
     if check is not None:
-        s3_keys = list(filter(lambda k: check in k, s3_keys))
+        s3_keys = s3.list_all_keys_w_prefix(check)
+    else:
+        s3_keys = s3.list_all_keys()
     n_migrated = 0
     for key in s3_keys:
         if round(time.time() - t0, 2) > time_limit:
