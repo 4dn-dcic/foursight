@@ -8,7 +8,7 @@ class TestESConnection():
 
     @staticmethod
     def uuid(check):
-        return check['data']['uuid']
+        return check['data']['name'] + '/' + check['data']['uuid']
 
     @pytest.mark.skip
     def test_basic_indexing(self):
@@ -68,4 +68,6 @@ class TestESConnection():
         check1 = utils.load_json(__file__, 'test_checks/check1.json')
         assert self.es.put_object(self.uuid(check1), check1)
         assert not self.es.put_object(self.uuid(check1), check1)
+        assert len(self.es.list_all_keys_w_prefix('page_children_routes')) == 1
+        assert len(self.es.list_all_keys_w_prefix('pag3_children_routes')) == 0
         assert self.es.delete_index(self.index)

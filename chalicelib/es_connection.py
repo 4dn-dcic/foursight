@@ -104,6 +104,12 @@ class ESConnection(AbstractConnection):
                                  filter_path=['hits.hits.*'])
             return [obj['_source'] for obj in res['hits']['hits']] if len(res) > 0 else []
 
+    def list_all_keys_w_prefix(self, prefix):
+        """
+        Lists all id's in this ES that have the given prefix.
+        """
+        return [_id for _id in self.list_all_keys() if prefix in _id]
+
     def get_all_objects(self):
         """
         Calls list_all_keys with full=True to get all the objects

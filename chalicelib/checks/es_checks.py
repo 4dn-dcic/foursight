@@ -44,8 +44,10 @@ def migrate_checks_to_es(connection, **kwargs):
     es = connection.connections['es']
     check = kwargs.get('check')
     if check is not None:
+        action.description = 'Migrating check %s from s3 to ES' % check
         s3_keys = s3.list_all_keys_w_prefix(check)
     else:
+        action.description = 'Migrating all checks from s3 to ES'
         s3_keys = s3.list_all_keys()
     n_migrated = 0
     for key in s3_keys:
@@ -59,5 +61,27 @@ def migrate_checks_to_es(connection, **kwargs):
             n_migrated += 1
     action.status = 'DONE'
     action_logs['n_migrated'] = n_migrated
+    action.output = action_logs
+    return action
+
+@action_function()
+def clean_s3_es_checks(connection, **kwargs):
+    """
+    Cleans old checks from both s3 and es older than one month. Must be called
+    from a specific check as it will take too long otherwise.
+    """
+    check_to_clean = kwargs.get('called_by')
+    if not check_to_clean:
+        action.status = 'FAIL'
+        action.output = action_logs
+        return action
+    action = ActionResult(connection, check_to_clean)
+    action_logs = {'time out': False}
+    s3 = connection.connections['s3']
+    es = connection.connections['es']
+    one_month_ago = datetime.datetime.utcnow() - datetime.timedelta(days=30)
+    n_deleted = action.delete_results(prior_date=one_month_ago) # still needs to delete es
+    action_logs['n_deleted'] = n_deleted
+    action.status = 'DONE'
     action.output = action_logs
     return action
