@@ -81,6 +81,15 @@ class ESConnection(AbstractConnection):
         except:
             return -1
 
+    def get_size_bytes(self):
+        """
+        Returns number of bytes stored on this es instance
+        """
+        if not self.index:
+            return 0
+        resp = self.es.indices.stats(index=self.index, metric='store')
+        return resp['_all']['total']['store']['size_in_bytes']
+
     def list_all_keys(self, full=False):
         """
         Generic search on es that will return all ids of indexed items

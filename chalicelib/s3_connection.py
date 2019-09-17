@@ -8,6 +8,7 @@ class S3Connection(AbstractConnection):
     def __init__(self, bucket_name, cache=False):
         self.client = boto3.client('s3')
         self.resource = boto3.resource('s3')
+        self.cw = boto3.client('cloudwatch') # for s3 bucket stats
         self.bucket = bucket_name
         self.location = 'us-east-1'
         # create the bucket if it doesn't exist
@@ -18,17 +19,6 @@ class S3Connection(AbstractConnection):
             # get head_info again
             self.head_info = self.test_connection()
             self.status_code = self.head_info.get('ResponseMetadata', {}).get("HTTPStatusCode", 404)
-        self.cache = None
-        if cache:
-            self.init_cache()
-
-    def __del__(self):
-        """ Persist the cache on teardown """
-        pass
-
-    def init_cache(self):
-        """ Initializes the cache """
-        pass
 
     def put_object(self, key, value):
         try:
@@ -56,6 +46,22 @@ class S3Connection(AbstractConnection):
         bucket = self.resource.Bucket(self.bucket)
         return sum(1 for _ in bucket.objects.all())
 
+    def get_size_bytes(self):
+        """
+        Uses CloudWatch client to get the bucket size in bytes of this bucket.
+        Useful for checks - may need further configuration
+        """
+        now = datetime.datetime.utcnow()
+        resp = self.cw.get_metric_statistics(Namespace='AWS/S3',
+                                             MetricName='BucketSizeBytes',
+                                             Dimensions=[
+                                            {'Name': 'BucketName', 'Value': self.bucket},
+                                            {'Name': 'StorageType', 'Value': 'StandardStorage'}],
+                                            Statistics=['Average'],
+                                            Period=86400,
+                                            StartTime=(now-datetime.timedelta(days=1)).isoformat(),
+                                            EndTime=now.isoformat())
+        return resp['Datapoints']
 
     def list_all_keys_w_prefix(self, prefix, records_only=False):
         """
@@ -71,62 +77,34 @@ class S3Connection(AbstractConnection):
 
         Also see list_all_keys()
         """
-        reached_end = False
+        if not self.bucket:
+            return []
         all_keys = []
-        token = None # for the NextContinuationToken in s3 response
         # make sure prefix ends with a slash (bucket format)
         prefix = ''.join([prefix, '/']) if not prefix.endswith('/') else prefix
         # this will exclude 'primary' and 'latest' in records_only == True
         # use '2' because is is the first digit of year (in uuid)
         use_prefix = ''.join([prefix, '2' ])if records_only else prefix
-        while not reached_end:
-            try:
-                # will limit to 1000 objects
-                if token:
-                    response = self.client.list_objects_v2(
-                        Bucket=self.bucket,
-                        Prefix=use_prefix,
-                        ContinuationToken=token
-                    )
-                else:
-                    response = self.client.list_objects_v2(
-                        Bucket=self.bucket,
-                        Prefix=use_prefix
-                    )
-                token = response.get('NextContinuationToken', None)
-                contents = response.get('Contents', [])
-            except:
-                contents = []
-                response = {}
-                reached_end = True  # bail
-            all_keys.extend([obj['Key'] for obj in contents])
-            if not token and response.get('IsTruncated') is False:
-                reached_end = True
+        bucket = self.resource.Bucket(self.bucket)
+        for obj in bucket.objects.filter(Prefix=use_prefix):
+            all_keys.append(obj.key)
 
         # not sorted at this point
         return all_keys
 
-
     def list_all_keys(self):
-        reached_end = False
+        if not self.bucket:
+            return []
         all_keys = []
-        token = None
-        while not reached_end:
-            # will limit to 1000 objects
-            response = self.client.list_objects_v2(Bucket=self.bucket)
-            token = response.get('NextContinuationToken', None)
-            contents = response.get('Contents', [])
-            all_keys.extend([obj['Key'] for obj in contents])
-            if not token and response.get('IsTruncated') is False:
-                reached_end = True
+        bucket = self.resource.Bucket(self.bucket)
+        for obj in bucket.objects.all():
+            all_keys.append(obj.key)
         return all_keys
-
 
     def delete_keys(self, key_list):
         # boto3 requires this setup
         to_delete = {'Objects' : [{'Key': key} for key in key_list]}
         return self.client.delete_objects(Bucket=self.bucket, Delete=to_delete)
-
 
     def test_connection(self):
         try:
@@ -134,7 +112,6 @@ class S3Connection(AbstractConnection):
         except:
             return {'ResponseMetadata': {'HTTPStatusCode': 404}}
         return bucket_resp
-
 
     def create_bucket(self, manual_bucket=None):
         # us-east-1 is default location

@@ -21,6 +21,7 @@ class TestS3Connection():
         get_res = test_s3_conn.get_object(test_key)
         assert (json.loads(get_res) == test_value)
         prefix_keys = test_s3_conn.list_all_keys_w_prefix('test/')
+        assert test_s3_conn.get_size_bytes() is not None
         assert (len(prefix_keys) > 0)
         assert (test_key in prefix_keys)
         all_keys = test_s3_conn.list_all_keys()
@@ -29,10 +30,3 @@ class TestS3Connection():
         # now there should be 0
         all_keys = test_s3_conn.list_all_keys()
         assert (len(all_keys) == 0)
-
-    @pytest.mark.skip
-    def test_s3_cache(self):
-        """ Tests that we can get n_keys from the cache """
-        test_s3_conn = s3_connection.S3Connection('foursight-test-s3', cache=True)
-        n_keys_cache = test_s3_conn.get_size()
-        assert test_s3_conn.cache['env']['foursight-test-s3']['n_keys'] == n_keys_cache
