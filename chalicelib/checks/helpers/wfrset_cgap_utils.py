@@ -51,7 +51,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {
                 'app_name': 'workflow_add-readgroups-check',
-                'workflow_uuid': '548e63a4-1936-4f68-8e8d-8e4658767911',
+                'workflow_uuid': '1ebf697c-949d-46b2-b9a4-8b1a7699ef1f',
                 'parameters': {},
                 "config": {
                     "instance_type": "t3.large",
@@ -68,10 +68,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {
                 'app_name': 'workflow_merge-bam-check',
-                'workflow_uuid': '30802d8c-20c3-4eea-82dd-dd34621569c6',
+                'workflow_uuid': '4853a03a-8c0c-4624-a45d-c5206a72907b',
                 'parameters': {},
                 "config": {
-                    "instance_type": "t3.medium",
+                    "instance_type": "m5a.2xlarge",
                     "ebs_size": "2.2x",
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
