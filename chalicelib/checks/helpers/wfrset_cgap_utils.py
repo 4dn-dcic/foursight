@@ -71,7 +71,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'workflow_uuid': '4853a03a-8c0c-4624-a45d-c5206a72907b',
                 'parameters': {},
                 "config": {
-                    "instance_type": "m5a.2xlarge",
+                    "instance_type": "c5.2xlarge",
                     "ebs_size": "2.2x",
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
