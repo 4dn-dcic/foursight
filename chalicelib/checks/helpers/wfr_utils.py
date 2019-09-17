@@ -542,16 +542,19 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
 
     bwa = bwa_index.get(organism)
     chrsize = chr_size.get(organism)
-    # get the enzyme file for organism and enzyme type
-    if re_nz.get(organism):
-        enz_file = re_nz[organism].get(enz)
-    else:
-        enz_file = None
-    # if margi, enzyme is predifined as AluI in a separate dict
+
+    # if margi, enzyme files are predifined in a separate dict
     if type == 'MARGI':
-        enz_file = re_fragment[organism].get(enz)
+        if re_fragment.get(organism):
+            enz_file = re_fragment[organism].get(enz)
+        else:
+            enz_file = None
     else:
-        enz_file = None
+        # get the enzyme file for organism and enzyme type
+        if re_nz.get(organism):
+            enz_file = re_nz[organism].get(enz)
+        else:
+            enz_file = None
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
     refs = {'pairing': paired,
