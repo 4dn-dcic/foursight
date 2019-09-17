@@ -458,3 +458,94 @@ def cgap_start(connection, **kwargs):
         patch_meta = cgap_check_result.get('completed_runs')
     action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
+
+
+@check_function()
+def bamqcCGAP_status(connection, **kwargs):
+    """Searches for bam files that don't have bamqcCGAP
+    Keyword arguments:
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = init_check_res(connection, 'bamqcCGAP_status')
+    my_auth = connection.ff_keys
+    check.action = "bamqcCGAP_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    # if indexing_queue:
+    #     check.status = 'PASS'  # maybe use warn?
+    #     check.brief_output = ['Waiting for indexing queue to clear']
+    #     check.summary = 'Waiting for indexing queue to clear'
+    #     check.full_output = {}
+    #     return check
+
+    # Build the query (skip to be uploaded by workflow)
+    query = ("/search/?type=Sample&status%21=deleted&processed_files.uuid%21=No+value")
+    results = ff_utils.search_metadata(query, key=my_auth)
+    print(len(results), 'many results')
+    # List of bam files
+    bam_list = []
+    for a_sample in results:
+        for a_file in a_sample['processed_files']:
+            bam_uuid = a_file['uuid']
+            bam_list.append(bam_uuid)
+    print(len(bam_list), 'many bams')
+    res = []
+    for bam_file in bam_list:
+        results = ff_utils.get_metadata(bam_file, key=my_auth)
+        if not results.get('quality_metric'):
+            res.append(results)
+        else:
+            qc_results = ff_utils.get_metadata(results['quality_metric']['uuid'], key=my_auth)
+            if not qc_results.get('qc_list'):
+                res.append(results)
+            else:
+                for qc in qc_results['qc_list']:
+                    if 'QualityMetricWgsBamqc' not in qc['display_title']:
+                        res.append(results)
+
+    if not res:
+        check.summary = 'All Good!'
+        return check
+
+    check = cgap_utils.check_runs_without_output(res, check, 'workflow_qcboard-bam', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bamqcCGAP_start(connection, **kwargs):
+    """Start bamqcCGAP runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = init_action_res(connection, 'bamqcCGAP_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bamqcCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bamqcCGAP_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bamqcCGAP_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = cgap_utils.get_attribution(a_file)
+        inp_f = {'input_files': a_file['@id']}
+        wfr_setup = wfrset_cgap_utils.step_settings('workflow_qcboard-bam', 'no_organism', attributions)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
