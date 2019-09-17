@@ -497,7 +497,6 @@ def check_opf_status_mismatch(connection, **kwargs):
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
     resp =  ff_utils.expand_es_metadata(list(set(files)), key=connection.ff_keys)
-    # status_dict = {f['uuid']: f['properties']['status'] for f in resp[0]}
     opf_status_dict = {
         item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] in files
     }
@@ -522,9 +521,6 @@ def check_opf_status_mismatch(connection, **kwargs):
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
             statuses = set([opf_status_dict[f['uuid']] for f in file_list])
-            # if hg_dict.get(title):
-            #     statuses.append(opf_status_dict[hg_dict[title]])
-            #statuses = set(statuses)
             if len(statuses) > 1:  # status mismatch in opf collection
                 problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
                 if hg_dict.get(title):
@@ -545,9 +541,6 @@ def check_opf_status_mismatch(connection, **kwargs):
                         problem_dict[title][f['@id']]['quality_metric'] = {
                             'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[opf_linked_dict[f['uuid']]]
                         }
-#                     print(f['uuid'], opf_status_dict[f['uuid']])
-#                     print(opf_linked_dict[f['uuid']], opf_other_dict[opf_linked_dict[f['uuid']]])
-#                     print('')
         if problem_dict:
             check.full_output[result['@id']] = problem_dict
     if check.full_output:
