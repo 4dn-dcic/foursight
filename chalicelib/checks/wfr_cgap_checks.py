@@ -205,7 +205,15 @@ def fastqcCGAP_status(connection, **kwargs):
     if s_date:
         query += '&date_created.from=' + s_date
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    results = ff_utils.search_metadata(query, key=my_auth)
+    res = []
+    # check if the qc_metric is in the file
+    for a_file in results:
+        results = ff_utils.get_metadata(a_file, key=my_auth)
+        qc_metric = cgap_utils.is_there_my_qc_metric(results, 'QualityMetricFastqc', my_auth)
+        if not qc_metric:
+            res.append(results)
+
     if not res:
         check.summary = 'All Good!'
         return check
@@ -494,19 +502,14 @@ def bamqcCGAP_status(connection, **kwargs):
         for a_file in a_sample['processed_files']:
             bam_uuid = a_file['uuid']
             bam_list.append(bam_uuid)
+
     res = []
-    for bam_file in bam_list:
-        results = ff_utils.get_metadata(bam_file, key=my_auth)
-        if not results.get('quality_metric'):
+    # check if the qc_metric is in the file
+    for a_file in bam_list:
+        results = ff_utils.get_metadata(a_file, key=my_auth)
+        qc_metric = cgap_utils.is_there_my_qc_metric(results, 'QualityMetricWgsBamqc', my_auth)
+        if not qc_metric:
             res.append(results)
-        else:
-            qc_results = ff_utils.get_metadata(results['quality_metric']['uuid'], key=my_auth)
-            if not qc_results.get('qc_list'):
-                res.append(results)
-            else:
-                for qc in qc_results['qc_list']:
-                    if 'QualityMetricWgsBamqc' not in qc['value']['display_title']:
-                        res.append(results)
 
     if not res:
         check.summary = 'All Good!'

@@ -476,3 +476,17 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
     action.output = action_log
     action.status = 'DONE'
     return action
+
+
+def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
+    if not file_meta.get('quality_metric'):
+        return False
+    else:
+        qc_results = ff_utils.get_metadata(file_meta['quality_metric']['uuid'], key=my_auth)
+        if not qc_results.get('qc_list'):
+            return False
+        else:
+            for qc in qc_results['qc_list']:
+                if qc_metric_name not in qc['value']['display_title']:
+                    return False
+    return True
