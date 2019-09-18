@@ -13,7 +13,7 @@ import json
 import re
 from importlib import import_module
 from functools import wraps, partial
-from .run_result import CheckResult, ActionResult
+from .run_result import CheckResult, ActionResult, BadCheckOrAction
 from .s3_connection import S3Connection
 
 CHECK_DECO = 'check_function'
@@ -133,7 +133,8 @@ def check_function(*default_args, **default_kwargs):
             signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
             try:
                 check = func(*args, **kwargs)
-                validate_run_result(check, is_check=True)
+                check.validate()
+                #validate_run_result(check, is_check=True)
             except Exception as e:
                 # connection should be the first (and only) positional arg
                 check = CheckResult(args[0], func.__name__)
@@ -174,7 +175,7 @@ def action_function(*default_args, **default_kwargs):
                 if 'check_name' not in kwargs or 'called_by' not in kwargs:
                     raise BadCheckOrAction('Action requires check_name and called_by in its kwargs.')
                 action = func(*args, **kwargs)
-                validate_run_result(action, is_check=False)
+                action.validate(is_check=False)
             except Exception as e:
                 # connection should be the first (and only) positional arg
                 action = ActionResult(args[0], func.__name__)
@@ -188,38 +189,6 @@ def action_function(*default_args, **default_kwargs):
         wrapper.check_decorator = ACTION_DECO
         return wrapper
     return action_deco
-
-
-def validate_run_result(result, is_check=True):
-    """
-    Result should be an ActionResult or CheckResult. Raises an exception if not.
-    If is_check is false, assume we have an action.
-    """
-    error_message = None
-    class_name = type(result).__name__
-    if is_check and class_name != 'CheckResult':
-        error_message = 'Check function must return a CheckResult object. Initialize one with CheckResult.'
-    elif not is_check and class_name != 'ActionResult':
-        error_message = 'Action functions must return a ActionResult object. Initialize one with ActionResult.'
-    else:
-        pass
-    store_method = getattr(result, 'store_result', None)
-    if not callable(store_method):
-        error_message = 'Do not overwrite the store_result method of the check or action result.'
-    if error_message:
-        raise BadCheckOrAction(error_message)
-
-
-class BadCheckOrAction(Exception):
-    """
-    Generic exception for a badly written check or library.
-    __init__ takes some string error message
-    """
-    def __init__(self, message=None):
-        # default error message if none provided
-        if message is None:
-            message = "Check or action function seems to be malformed."
-        super().__init__(message)
 
 
 class BadCheckSetup(Exception):

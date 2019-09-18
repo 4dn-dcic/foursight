@@ -5,6 +5,17 @@ import json
 from .s3_connection import S3Connection
 
 
+class BadCheckOrAction(Exception):
+    """
+    Generic exception for a badly written check or library.
+    __init__ takes some string error message
+    """
+    def __init__(self, message=None):
+        # default error message if none provided
+        if message is None:
+            message = "Check or action function seems to be malformed."
+        super().__init__(message)
+
 class RunResult(object):
     """
     Generic class for CheckResult and ActionResult. Contains methods common
@@ -300,7 +311,27 @@ class RunResult(object):
         keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
         return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
 
+    def validate(self, is_check=True):
+        """
+        Validates that this run result is properly mapped with respect to the
+        elasticsearch mapping. Throws BadCheckOrAction in case of failure
 
+        This function is not meant to be called directly from a RunResult object.
+        It's behavior hinges on it's subclass.
+        """
+        error_message = None
+        class_name = type(self).__name__
+        if is_check and class_name != 'CheckResult':
+            error_message = 'Check function must return a CheckResult object. Initialize one with CheckResult.'
+        elif not is_check and class_name != 'ActionResult':
+            error_message = 'Action functions must return a ActionResult object. Initialize one with ActionResult.'
+        else:
+            pass
+        store_method = getattr(self, 'store_result', None)
+        if not callable(store_method):
+            error_message = 'Do not overwrite the store_result method of the check or action result.'
+        if error_message:
+            raise BadCheckOrAction(error_message)
 
 class CheckResult(RunResult):
     """
@@ -410,6 +441,23 @@ class ActionResult(RunResult):
             'kwargs': self.kwargs,
             'type': 'action'
         }
+
+    def __validate(self):
+        """
+        Validates that this action result is properly formatted with respect to
+        the elasticsearch mapping. Returns True if validated
+        """
+        if not isinstance(self.status, str):
+            return False
+        if not isinstance(self.description, str):
+            return False
+        if not isinstance(self.name, str):
+            return False
+        if not isinstance(self.output, dict):
+            return False
+        if not isinstance(self.kwargs, dict):
+            return False
+        return True
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this

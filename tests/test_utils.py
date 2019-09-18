@@ -92,14 +92,14 @@ class TestUtils():
         action = utils.init_action_res(self.conn, 'test_action')
         # bad calls
         with pytest.raises(utils.BadCheckOrAction) as exc:
-            utils.validate_run_result(action, is_check=True)
+            action.validate()
         assert (str(exc.value) == 'Check function must return a CheckResult object. Initialize one with CheckResult.')
         with pytest.raises(utils.BadCheckOrAction) as exc:
-            utils.validate_run_result(check, is_check=False)
+            check.validate(is_check=False)
         assert (str(exc.value) == 'Action functions must return a ActionResult object. Initialize one with ActionResult.')
         check.store_result = 'Not a fxn'
         with pytest.raises(utils.BadCheckOrAction) as exc:
-            utils.validate_run_result(check, is_check=True)
+            check.validate()
         assert (str(exc.value) == 'Do not overwrite the store_result method of the check or action result.')
 
     def parse_datetime_to_utc(self):
