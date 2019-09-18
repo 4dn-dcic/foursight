@@ -50,8 +50,11 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
+    "workflow_qcboard-bam": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
 }
-
 # accepted versions for completed pipelines
 accepted_versions = {
     'WGS':  ["WGS_Pipeline_V8"]

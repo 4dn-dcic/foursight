@@ -488,14 +488,12 @@ def bamqcCGAP_status(connection, **kwargs):
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=Sample&status%21=deleted&processed_files.uuid%21=No+value")
     results = ff_utils.search_metadata(query, key=my_auth)
-    print(len(results), 'many results')
     # List of bam files
     bam_list = []
     for a_sample in results:
         for a_file in a_sample['processed_files']:
             bam_uuid = a_file['uuid']
             bam_list.append(bam_uuid)
-    print(len(bam_list), 'many bams')
     res = []
     for bam_file in bam_list:
         results = ff_utils.get_metadata(bam_file, key=my_auth)
@@ -507,7 +505,7 @@ def bamqcCGAP_status(connection, **kwargs):
                 res.append(results)
             else:
                 for qc in qc_results['qc_list']:
-                    if 'QualityMetricWgsBamqc' not in qc['display_title']:
+                    if 'QualityMetricWgsBamqc' not in qc['value']['display_title']:
                         res.append(results)
 
     if not res:
