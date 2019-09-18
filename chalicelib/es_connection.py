@@ -1,16 +1,27 @@
 from .abstract_connection import AbstractConnection
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, RequestsHttpConnection
+from dcicutils import es_utils
+from .utils import load_json
+import json
+import time
+
+# configure ES info from here
+HOST = 'https://search-foursight-fourfront-ylxn33a5qytswm63z52uytgkm4.us-east-1.es.amazonaws.com'
 
 class ESConnection(AbstractConnection):
     """
-    ESConnection right now is a stub that will eventually implement the same
-    functionality as defined in the AbstractConnection class.
+    ESConnection is a handle to a remote ElasticSearch instance on AWS.
+    All Foursight connections make use of the same ES instance but have separate
+    indices for each one, such as 'foursight-dev-cgap', 'foursight-dev-data' etc
 
     ESConnection is intended to work with only a single index.
+
+    Implements the AbstractConnection 'interface'
     """
     def __init__(self, index=None, doc_type='result'):
-        self.es = Elasticsearch(['http://localhost:9200']) # use local es for now
+        self.es = es_utils.create_es_client(HOST, use_aws_url=True)
         self.index = index
+        self.mapping = self.load_mapping()
         if index and not self.index_exists(index):
             self.create_index(index)
         self.doc_type = doc_type
@@ -26,10 +37,24 @@ class ESConnection(AbstractConnection):
         Creates an ES index called name. Returns true in success
         """
         try:
-            res = self.es.indices.create(index=name)
+            res = self.es.indices.create(index=name,body={
+                "settings": {
+                    "index.mapper.dynamic": False,
+                    "index.mapping.ignore_malformed": True
+                },
+                "mappings": self.mapping['mappings']
+            })
             return True
-        except:
+        except Exception as e:
+            print('Index creation failed! Error: %s' % str(e))
             return False
+
+    def load_mapping(self, fname='mapping.json'):
+        """
+        Loads ES mapping from 'mapping.json' or another relative path from this
+        file location.
+        """
+        return load_json(__file__, fname)
 
     def delete_index(self, name):
         """
@@ -43,9 +68,10 @@ class ESConnection(AbstractConnection):
 
     def refresh_index(self):
         """
-        Refreshes the index - sometimes necessary to see that a deletion happened
+        Refreshes the index, then waits 3 seconds
         """
         self.es.indices.refresh(index=self.index)
+        time.sleep(3)
 
     def put_object(self, key, value):
         """
@@ -56,7 +82,8 @@ class ESConnection(AbstractConnection):
         try:
             res = self.es.index(index=self.index, id=key, doc_type=self.doc_type, body=value)
             return res['result'] == 'created'
-        except:
+        except Exception as e:
+            print('Failed to add object id: %s with error: %s' % (key, str(e)))
             return False
 
     def get_object(self, key):

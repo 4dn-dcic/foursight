@@ -38,6 +38,12 @@ class AbstractConnection(object):
         """
         raise NotImplementedError
 
+    def list_all_keys_w_prefix(self):
+        """
+        Given a prefix, return all keys that have that prefix.
+        """
+        raise NotImplementedError
+
     def get_all_objects(self):
         """
         Returns an array of the data values stored on this connection.

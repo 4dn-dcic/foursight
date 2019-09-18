@@ -5,13 +5,13 @@ from ..utils import (
     action_function,
 )
 
-@check_function(time_limit=0)
+@check_function()
 def elasticsearch_s3_count_diff(connection, **kwargs):
     """ Reports the difference between the number of files on s3 and es """
     check = CheckResult(connection, 'elasticsearch_s3_count_diff')
     s3 = connection.connections['s3']
     es = connection.connections['es']
-    n_s3_keys = s3.get_size() # too slow for check
+    n_s3_keys = s3.get_size()
     n_es_keys = es.get_size()
     difference = n_s3_keys - n_es_keys
     full_output = {}
@@ -54,6 +54,7 @@ def migrate_checks_to_es(connection, **kwargs):
         if round(time.time() - t0, 2) > time_limit:
             action.status = 'FAIL'
             action_logs['time out'] = True
+            action_logs['n_migrated'] = n_migrated
             action.output = action_logs
             return action
         if es.get_object(key) is None:

@@ -1,0 +1,172 @@
+{
+  "mappings": {
+      "result": {
+        "properties": {
+          "action": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "action_message": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "allow_action": {
+            "type": "boolean"
+          },
+          "brief_output": {
+            "enabled": false,
+            "type": "object",
+            "include_in_all": false
+          },
+          "description": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "ff_link": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "full_output": {
+            "enabled": false,
+            "type": "object",
+            "include_in_all": false
+          },
+          "kwargs": {
+            "properties": {
+              "_run_info": {
+                "properties": {
+                  "receipt": {
+                    "type": "text",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "run_id": {
+                    "type": "date"
+                  },
+                  "sqs_url": {
+                    "type": "text",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  }
+                }
+              },
+              "called_by": {
+                "type": "date"
+              },
+              "check_name": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "patch_completed": {
+                "type": "boolean"
+              },
+              "primary": {
+                "type": "boolean"
+              },
+              "queue_action": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "runtime_seconds": {
+                "type": "float"
+              },
+              "start_missing_meta": {
+                "type": "boolean"
+              },
+              "start_missing_run": {
+                "type": "boolean"
+              },
+              "start_runs": {
+                "type": "boolean"
+              },
+              "uuid": {
+                "type": "date"
+              }
+            }
+          },
+          "name": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "output": {
+            "enabled": false,
+            "type": "object",
+            "include_in_all": false
+          },
+          "status": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "summary": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "type": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "uuid": {
+            "type": "date"
+          }
+        }
+      }
+    }
+}
