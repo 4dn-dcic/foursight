@@ -9,7 +9,7 @@ class TestActionResult():
         action = run_result.ActionResult(self.connection, self.act_name)
         res = action.store_result()
         assert (res.get('status') == 'PEND')
-        assert (res.get('output') is None)
+        assert (res.get('output') == {})
         assert (res.get('type') == 'action')
         assert ('uuid' in res.get('kwargs'))
         action.kwargs = {'do_not_store': True}
