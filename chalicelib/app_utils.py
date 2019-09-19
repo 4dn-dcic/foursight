@@ -934,7 +934,7 @@ def run_check_runner(runner_input, propogate=True):
         # if this is an action, ensure we have not already written an action record
         if 'check_name' in run_kwargs and 'called_by' in run_kwargs:
             rec_key = '/'.join([run_kwargs['check_name'], 'action_records', run_kwargs['called_by']])
-            found_rec = connection.connections['s3'].get_object(rec_key)
+            found_rec = connection.get_object(rec_key)
             if found_rec is not None:
                 # the action record has been written. Abort and propogate
                 print('-RUN-> Found existing action record: %s. Skipping' % rec_key)
@@ -945,7 +945,7 @@ def run_check_runner(runner_input, propogate=True):
                 # action name is the second part of run_name
                 act_name = run_name.split('/')[-1]
                 rec_body = ''.join([act_name, '/', run_uuid, '.json'])
-                connection.connections['s3'].put_object(rec_key, rec_body)
+                connection.put_object(rec_key, rec_body)
                 print('-RUN-> Wrote action record: %s' % rec_key)
         run_result = run_check_or_action(connection, run_name, run_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))
