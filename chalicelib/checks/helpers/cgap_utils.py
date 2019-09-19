@@ -20,35 +20,35 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
     "workflow_picard-MarkDuplicates-check": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
     "workflow_sort-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
     "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
     "workflow_gatk-ApplyBQSR-check": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
     "workflow_index-sorted-bam": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v9", "v10"]
     },
 }
 
