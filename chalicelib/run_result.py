@@ -156,7 +156,7 @@ class RunResult(object):
                 tries += 1
         return match_res
 
-    def list_keys(self, records_only=True, prefix=None, es=False):
+    def list_keys(self, records_only=True, prefix=None, es=True):
         """
         Lists all keys. If given a prefix only keys with that prefix will be
         returned.

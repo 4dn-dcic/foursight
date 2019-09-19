@@ -45,3 +45,20 @@ class FSConnection(object):
         else:
             self.ff_s3 = None
             self.ff_keys = None
+
+    def get_object(self, key):
+        """
+        Queries ES for key - checks S3 if it doesn't find it
+        """
+        obj = self.connections['es'].get_object(key)
+        if obj is None:
+            obj = self.connections['es'].get_object(key)
+            self.connections['es'].put_object(key, obj)
+        return obj
+
+    def put_object(self, key, value):
+        """
+        Puts an object onto both ES and S3
+        """
+        self.connections['es'].put_object(key, value)
+        self.connections['s3'].put_object(key, value)
