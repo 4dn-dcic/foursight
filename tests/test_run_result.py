@@ -102,7 +102,7 @@ class TestRunResult():
             check.store_result()
         for _ in range(3):
             check = run_result.CheckResult(self.connection, self.check_name)
-            check.description = 'This is a normal check.'
+            check.description = 'This check is just for testing purposes.'
             check.status = 'PASS'
             check.store_result()
         num_deleted = self.run.delete_results(custom_filter=term_in_descr)
@@ -120,7 +120,7 @@ class TestRunResult():
             raise Exception
 
         check = run_result.CheckResult(self.connection, self.check_name)
-        check.description = 'This is a normal check.'
+        check.description = 'This check is just for testing purposes.'
         check.status = 'PASS'
         check.store_result()
         with pytest.raises(Exception):
