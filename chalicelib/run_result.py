@@ -83,14 +83,14 @@ class RunResult(object):
         primary_key = ''.join([self.name, '/primary', self.extension])
         return self.get_object(primary_key)
 
-    def get_result_by_uuid(self, uuid, es=False):
+    def get_result_by_uuid(self, uuid):
         """
         Returns result if it can be found by its uuid, otherwise None.
         """
         result_key = ''.join([self.name, '/', uuid, self.extension])
         return self.get_object(result_key)
 
-    def get_all_results(self, es=False):
+    def get_all_results(self):
         """
         Return all results for this check. Should use with care
         """
@@ -196,8 +196,6 @@ class RunResult(object):
         If a custom filter is given, that filter will be applied as well, prior
         to the above filters.
         Returns the number of keys deleted
-
-        XXX: integrate es into deletion
         """
         keys_to_delete = self.connections['s3'].list_all_keys_w_prefix(self.name, records_only=True)
 
@@ -243,27 +241,28 @@ class RunResult(object):
         results after that point will be returned.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-        all_keys = self.list_keys(records_only=True, prefix=self.name)
+        history = self.connections['es'].get_result_history(self.name)
 
-        # sort them from newest to oldest
-        all_keys.sort(key=self.filename_to_datetime, reverse=True)
+        def wrapper(obj):
+            filename = obj.get('data').get('uuid')
+            return self.filename_to_datetime(filename)
 
         # enforce after_date, if any
         if after_date is not None:
-            all_keys = list(filter(lambda k: self.filename_to_datetime(k) >= after_date, all_keys))
+            history = list(filter(wrapper >= after_date, history))
 
         # enforce limit and start
-        all_keys = all_keys[start:start+limit]
+        history = history[start:start+limit]
         results = []
-        for n in range(len(all_keys)):
-            res = self.get_object(all_keys[n])
+        for n in range(len(history)):
+            obj = history[n]
             # order: status <str>, summary <str>, kwargs <dict>, is check? (boolean)
             # handle records that might be malformed
             res_val = [
-                res.get('status', 'Not found'),
-                res.get('summary', None),
-                res.get('kwargs', {}),
-                res.get('type') == 'check' or 'full_output' in res
+                obj.get('status', 'Not found'),
+                obj.get('summary', None),
+                obj.get('kwargs', {}),
+                obj.get('type') == 'check' or 'full_output' in res
             ]
             # kwargs to remove from the history results. these will not be displayed
             for remove_key in ['_run_info']:
@@ -297,9 +296,12 @@ class RunResult(object):
         Key might look like `sync_google_analytics_data/2018-10-15T19:08:32.734656.json`
         We presume that timezone info is not important to allow us to use strptime.
         '''
-        prefixlen = len(self.name) + 1
-        keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
-        return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
+        try:
+            prefixlen = len(self.name) + 1
+            keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
+            return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
+        except:
+            return datetime.datetime.min # this is a latest or primary result
 
     @abstractmethod
     def validate(self):

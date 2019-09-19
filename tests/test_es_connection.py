@@ -73,3 +73,23 @@ class TestESConnection():
         assert len(self.es.list_all_keys_w_prefix('page_children_routes')) == 1
         assert len(self.es.list_all_keys_w_prefix('pag3_children_routes')) == 0
         assert self.es.delete_index(self.index)
+
+    def test_result_history(self):
+        """
+        Indexes some items, checks that we get them when we use history search
+        """
+        self.es.create_index(self.index)
+        check1 = utils.load_json(__file__, 'test_checks/check1.json')
+        check2 = utils.load_json(__file__, 'test_checks/check2.json')
+        check3 = utils.load_json(__file__, 'test_checks/check3.json')
+        check4 = utils.load_json(__file__, 'test_checks/check4.json')
+        self.es.put_object(self.uuid(check1), check1)
+        self.es.put_object(self.uuid(check2), check2)
+        self.es.put_object(self.uuid(check3), check3)
+        self.es.put_object(self.uuid(check4), check4)
+        self.es.refresh_index()
+        res = self.es.get_result_history('page_children_routes')
+        assert len(res) == 3
+        res = self.es.get_result_history('check_status_mismatch')
+        assert len(res) == 1
+        self.es.delete_index(self.index)

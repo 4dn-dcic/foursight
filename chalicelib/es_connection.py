@@ -117,6 +117,27 @@ class ESConnection(AbstractConnection):
         resp = self.es.indices.stats(index=self.index, metric='store')
         return resp['_all']['total']['store']['size_in_bytes']
 
+    def get_result_history(self, prefix):
+        """
+        ES handle to implement the get_result_history functionality of RunResult
+        """
+        if not self.index:
+            return []
+        doc = {
+            'size': 10000,
+            'sort': {
+                '_uid': {'order': 'asc'}
+            },
+            'query': {
+                'wildcard': {
+                    '_uid': '*' + prefix + '*'
+                }
+            }
+        }
+        res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
+                             filter_path=['hits.hits.*'])
+        return [obj['_source'] for obj in res['hits']['hits']] if len(res) > 0 else []
+
     def list_all_keys(self, full=False):
         """
         Generic search on es that will return all ids of indexed items
