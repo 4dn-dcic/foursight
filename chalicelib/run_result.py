@@ -51,24 +51,19 @@ class RunResult(object):
         """
         return self.connections['es'].get_object(key)
 
-    def get_object(self, key, es=False):
+    def get_object(self, key):
         """
         Gets an object given a key from the data store.
-
-        XXX: For now, es defaults to false. Once this functionality is fully integrated
-        it should always be true.
         """
-        if es:
-            return self.get_es_object(key)
-        else:
-            return self.get_s3_object(key)
+        obj = self.get_es_object(key)
+        if obj is None:
+            obj = self.get_s3_object(key) # fallback to s3, index into ES
+            self.connections['es'].put_object(key, obj)
+        return obj
 
-    def put_object(self, key, value, es=False):
+    def put_object(self, key, value, es=True):
         """
         Puts an object into the data stores
-
-        XXX: For now, es defaults to false. Once this functionality is fully integrated
-        it should always be true.
         """
         if es:
             self.connections['es'].put_object(key, value)
@@ -232,16 +227,10 @@ class RunResult(object):
 
         # batch delete calls at aws maximum of 1000 if necessary
         num_deleted = 0
-        if len(keys_to_delete) > 1000:
-            start, end = 0, 1000
-            while start < len(keys_to_delete):
-                resp = self.connections['s3'].delete_keys(keys_to_delete[start:end])
-                num_deleted += len(resp['Deleted'])
-                start += 1000
-                end += 1000
-        else:
-            resp = self.connections['s3'].delete_keys(keys_to_delete)
-            num_deleted += len(resp['Deleted'])
+        for i in range(0, len(keys_to_delete), 1000):
+            s3_resp = self.connections['s3'].delete_keys(keys_to_delete[i:i+1000])
+            self.connections['es'].delete_keys(keys_to_delete[i:i+1000])
+            num_deleted += len(s3_resp['Deleted'])
 
         return num_deleted
 

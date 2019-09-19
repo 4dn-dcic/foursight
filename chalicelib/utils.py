@@ -134,7 +134,6 @@ def check_function(*default_args, **default_kwargs):
             try:
                 check = func(*args, **kwargs)
                 check.validate()
-                #validate_run_result(check, is_check=True)
             except Exception as e:
                 # connection should be the first (and only) positional arg
                 check = CheckResult(args[0], func.__name__)
@@ -175,7 +174,7 @@ def action_function(*default_args, **default_kwargs):
                 if 'check_name' not in kwargs or 'called_by' not in kwargs:
                     raise BadCheckOrAction('Action requires check_name and called_by in its kwargs.')
                 action = func(*args, **kwargs)
-                action.validate(is_check=False)
+                action.validate()
             except Exception as e:
                 # connection should be the first (and only) positional arg
                 action = ActionResult(args[0], func.__name__)
