@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 import datetime
 from dateutil import tz
+from abc import abstractmethod
 import json
 from .s3_connection import S3Connection
 
@@ -311,27 +312,12 @@ class RunResult(object):
         keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
         return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
 
-    def validate(self, is_check=True):
+    @abstractmethod
+    def validate(self):
         """
-        Validates that this run result is properly mapped with respect to the
-        elasticsearch mapping. Throws BadCheckOrAction in case of failure
-
-        This function is not meant to be called directly from a RunResult object.
-        It's behavior hinges on it's subclass.
+        Validation method that must be implemented by the subclass
         """
-        error_message = None
-        class_name = type(self).__name__
-        if is_check and class_name != 'CheckResult':
-            error_message = 'Check function must return a CheckResult object. Initialize one with CheckResult.'
-        elif not is_check and class_name != 'ActionResult':
-            error_message = 'Action functions must return a ActionResult object. Initialize one with ActionResult.'
-        else:
-            pass
-        store_method = getattr(self, 'store_result', None)
-        if not callable(store_method):
-            error_message = 'Do not overwrite the store_result method of the check or action result.'
-        if error_message:
-            raise BadCheckOrAction(error_message)
+        raise NotImplementedError
 
 class CheckResult(RunResult):
     """
@@ -357,8 +343,8 @@ class CheckResult(RunResult):
                         setattr(self, key, val)
                 return
         # summary will be displayed next to title when set
-        self.summary = None
-        self.description = None
+        self.summary = ''
+        self.description = ''
         # valid values are: 'PASS', 'WARN', 'FAIL', 'ERROR', 'IGNORE'
         # start with IGNORE as the default check status
         self.status = 'IGNORE'
@@ -366,10 +352,10 @@ class CheckResult(RunResult):
         self.full_output = None
         # admin output is only seen by admins on the UI
         self.admin_output = None
-        self.ff_link = None
+        self.ff_link = ''
         # self.action_name is the function name of the action to link to check
-        self.action = None
-        self.allow_action = False # by default do not allow the action to be run
+        self.action = ''
+        self.allow_action = '' # by default do not allow the action to be run
         self.action_message = 'Are you sure you want to run this action?'
 
     def format_result(self, uuid):
@@ -394,6 +380,30 @@ class CheckResult(RunResult):
             'kwargs': self.kwargs,
             'type': 'check'
         }
+
+    def validate(self):
+        """
+        Validates this CheckResult against the elasticsearch mapping
+        Multiple errors are possible - the 'latest' wrt when it is checked below
+        is reported
+        """
+        error_msg = None
+        store_method = getattr(self, 'store_result', None)
+        if not callable(store_method):
+            error_msg = 'Do not overwrite the store_result method.'
+        def _validate(attr, t):
+            if not isinstance(attr, t):
+                nonlocal error_msg
+                error_msg = '%s is not of type %s' % (str(attr), str(t))
+        _validate(self.name, str)
+        _validate(self.summary, str)
+        _validate(self.description, str)
+        _validate(self.status, str)
+        _validate(self.ff_link, str)
+        _validate(self.action, str)
+        _validate(self.kwargs, dict)
+        if error_msg:
+            raise BadCheckOrAction(error_msg)
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this
@@ -424,11 +434,11 @@ class ActionResult(RunResult):
     Inherits from RunResult and is meant to be used with actions
     """
     def __init__(self, connections, name):
-        self.description = None
+        self.description = ''
         # valid values are: 'DONE', 'FAIL', 'PEND'
         # start with PEND as the default status
         self.status = 'PEND'
-        self.output = None
+        self.output = {}
         super().__init__(connections, name)
 
     def format_result(self, uuid):
@@ -442,22 +452,27 @@ class ActionResult(RunResult):
             'type': 'action'
         }
 
-    def __validate(self):
+    def validate(self):
         """
-        Validates that this action result is properly formatted with respect to
-        the elasticsearch mapping. Returns True if validated
+        Validates this action result against the elasticsearch mapping
+        Multiple errors are possible - the 'latest' wrt when it is checked below
+        is reported
         """
-        if not isinstance(self.status, str):
-            return False
-        if not isinstance(self.description, str):
-            return False
-        if not isinstance(self.name, str):
-            return False
-        if not isinstance(self.output, dict):
-            return False
-        if not isinstance(self.kwargs, dict):
-            return False
-        return True
+        error_msg = None
+        store_method = getattr(self, 'store_result', None)
+        if not callable(store_method):
+            error_msg = 'Do not overwrite the store_result method.'
+        def _validate(attr, t):
+            if not isinstance(attr, t):
+                nonlocal error_msg
+                error_msg = '%s is not of type %s' % (str(attr), str(t))
+        _validate(self.status, str)
+        _validate(self.description, str)
+        _validate(self.name, str)
+        _validate(self.output, dict)
+        _validate(self.kwargs, dict)
+        if error_msg:
+            raise BadCheckOrAction(error_msg)
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this

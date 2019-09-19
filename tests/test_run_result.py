@@ -6,6 +6,40 @@ class TestRunResult():
     connection = app_utils.init_connection(environ)
     run = run_result.RunResult(connection, check_name)
 
+    def setup_valid_check(self):
+        """ Sets up a 'valid' check according to ES """
+        check = run_result.CheckResult(self.connection, 'test_check')
+        check.summary = 'A string summary'
+        check.description = 'A string description'
+        check.ff_link = 'A string link'
+        check.action = 'A string action'
+        check.kwargs = {}
+        return check
+
+    def test_validate_run_result(self):
+        """ Tests some validation errors """
+        check = self.setup_valid_check()
+        check.store_result = 'Not a fxn'
+        with pytest.raises(run_result.BadCheckOrAction) as exc:
+            check.validate()
+        assert (str(exc.value) == 'Do not overwrite the store_result method.')
+        check = run_result.CheckResult(self.connection, 'test_check')
+        check.kwargs = 'this is a string, expected a dict'
+        with pytest.raises(run_result.BadCheckOrAction) as exc:
+            check.validate()
+        assert ("is not of type <class 'dict'>" in str(exc.value))
+        check = self.setup_valid_check()
+        check.name = 5
+        with pytest.raises(run_result.BadCheckOrAction) as exc:
+            check.validate()
+        assert ("is not of type <class 'str'>" in str(exc.value))
+
+    def test_BadCheckOrAction(self):
+        test_exc = utils.BadCheckOrAction()
+        assert (str(test_exc) == 'Check or action function seems to be malformed.')
+        test_exc = utils.BadCheckOrAction('Abcd')
+        assert (str(test_exc) == 'Abcd')
+
     @pytest.mark.flaky
     def test_delete_results_nonprimary(self):
         """
