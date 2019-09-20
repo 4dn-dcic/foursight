@@ -59,8 +59,7 @@ class ESConnection(AbstractConnection):
             })
             return True
         except Exception as e:
-            print('Index creation failed! Error: %s' % str(e))
-            return False
+            raise ElasticsearchException(str(e))
 
     def load_mapping(self, fname='mapping.json'):
         """

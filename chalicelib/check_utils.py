@@ -236,7 +236,10 @@ def get_check_results(connection, checks=[], use_latest=False):
                 if found and found.get('status') != 'IGNORE':
                     check_results.append(found)
     else:
-        check_results = connection.connections['es'].get_all_primary_checks()
+        if use_latest:
+            check_results = connection.connections['es'].get_all_latest_checks()
+        else:
+            check_results = connection.connections['es'].get_all_primary_checks()
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
     return sorted(

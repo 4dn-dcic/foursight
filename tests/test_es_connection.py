@@ -65,7 +65,8 @@ class TestESConnection():
         Tests some failure cases with indexing
         """
         self.es.create_index(self.index)
-        assert not self.es.create_index(self.index)
+        with pytest.raises(Exception):
+            self.es.create_index(self.index)
         assert not self.es.index_exists('i_dont_exist')
         check1 = utils.load_json(__file__, 'test_checks/check1.json')
         self.es.put_object(self.uuid(check1), check1)
