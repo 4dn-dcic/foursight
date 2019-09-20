@@ -8,8 +8,7 @@ class TestCheckResult():
     environ = 'mastertest' # hopefully this is up
     connection = app_utils.init_connection(environ)
 
-    # Lack of strong consistency causes this test to fail 
-    @pytest.mark.skip
+    @pytest.mark.flaky
     def test_check_result_methods(self):
         check = run_result.CheckResult(self.connection, self.check_name)
         # default status
@@ -46,6 +45,7 @@ class TestCheckResult():
         check_copy.kwargs = {'primary': True, 'uuid': prime_uuid}
         assert (res == check_copy.store_result())
 
+    @pytest.mark.flaky
     def test_get_closest_result(self):
         check = run_result.CheckResult(self.connection, self.check_name)
         check.status = 'ERROR'
@@ -70,7 +70,7 @@ class TestCheckResult():
             error_check.get_closest_result(diff_hours=0, diff_mins=0)
         assert ('Could not find closest non-ERROR result' in str(exc.value))
 
-    # when indexer is under heavy load this will fail since history is now grabbed from ES
+    # this always fails, not clear why
     @pytest.mark.skip
     def test_get_result_history(self):
         """

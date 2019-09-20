@@ -25,8 +25,9 @@ class RunResult(object):
     def __init__(self, connections, name):
         self.fs_conn = connections
         self.connections = connections.connections
-        if 's3' not in self.connections:
-            raise Exception('RunResult did not find an s3 connection, aborting')
+        self.es = True
+        if self.connections['es'] is None:
+            self.es = False
         self.name = name
         self.extension = ".json"
         self.kwargs = {}
@@ -49,6 +50,8 @@ class RunResult(object):
         """
         Grabs an object from ES. Returns none if not present, json otherwise
         """
+        if not self.es:
+            return None
         return self.connections['es'].get_object(key)
 
     def get_object(self, key):
@@ -61,11 +64,11 @@ class RunResult(object):
             self.connections['es'].put_object(key, obj)
         return obj
 
-    def put_object(self, key, value, es=True):
+    def put_object(self, key, value):
         """
         Puts an object into the data stores
         """
-        if es:
+        if self.es:
             self.connections['es'].put_object(key, value)
         self.connections['s3'].put_object(key, value)
 
@@ -156,7 +159,7 @@ class RunResult(object):
                 tries += 1
         return match_res
 
-    def list_keys(self, records_only=True, prefix=None, es=True):
+    def list_keys(self, records_only=True, prefix=None):
         """
         Lists all keys. If given a prefix only keys with that prefix will be
         returned.
@@ -164,7 +167,7 @@ class RunResult(object):
         XXX: For now, es defaults to false. Once this functionality is fully integrated
         it should always be true.
         """
-        if es:
+        if self.es:
             if prefix:
                 return self.connections['es'].list_all_keys_w_prefix(prefix)
             else:
@@ -227,7 +230,8 @@ class RunResult(object):
         num_deleted = 0
         for i in range(0, len(keys_to_delete), 1000):
             s3_resp = self.connections['s3'].delete_keys(keys_to_delete[i:i+1000])
-            self.connections['es'].delete_keys(keys_to_delete[i:i+1000])
+            if self.es:
+                self.connections['es'].delete_keys(keys_to_delete[i:i+1000])
             num_deleted += len(s3_resp['Deleted'])
 
         return num_deleted
@@ -241,15 +245,20 @@ class RunResult(object):
         results after that point will be returned.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-        history = self.connections['es'].get_result_history(self.name, start, limit)
+        if self.es:
+            history = self.connections['es'].get_result_history(self.name, start, limit)
+            def wrapper(obj):
+                filename = obj.get('_id')
+                return self.filename_to_datetime(filename)
 
-        def wrapper(obj):
-            filename = obj.get('_id')
-            return self.filename_to_datetime(filename)
-
-        # enforce after_date, if any
-        if after_date is not None:
-            history = list(filter(lambda k: wrapper(k) >= after_date, history))
+            if after_date is not None:
+                history = list(filter(lambda k: wrapper(k) >= after_date, history))
+        else:
+            all_keys = self.connections['s3'].list_all_keys_w_prefix(self.name, records_only=True)
+            all_keys.sort(key=self.filename_to_datetime, reverse=True)
+            if after_date is not None:
+                all_keys = list(filter(lambda k: self.filename_to_datetime(k) >= after_date, all_keys))
+            history = all_keys[start:start+limit]
 
         results = []
         for n in range(len(history)):
