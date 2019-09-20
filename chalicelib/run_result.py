@@ -57,8 +57,7 @@ class RunResult(object):
         """
         obj = self.get_es_object(key)
         if obj is None:
-            obj = self.get_s3_object(key) # fallback to s3, index into ES
-            self.connections['es'].put_object(key, obj)
+            obj = self.get_s3_object(key) # fallback to s3
         return obj
 
     def put_object(self, key, value, es=True):

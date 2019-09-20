@@ -117,12 +117,22 @@ class ESConnection(AbstractConnection):
         resp = self.es.indices.stats(index=self.index, metric='store')
         return resp['_all']['total']['store']['size_in_bytes']
 
+    def search(self, doc, key='_source'):
+        """
+        Inner function that passes doc as a search parameter to ES. Key is what is
+        to be returned from the data. We use _source for all data and is the default
+        but _id is also used.
+        """
+        if not self.index:
+            return []
+        res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
+                             filter_path=['hits.hits.*'])
+        return [obj[key] for obj in res['hits']['hits']] if len(res) > 0 else []
+
     def get_result_history(self, prefix):
         """
         ES handle to implement the get_result_history functionality of RunResult
         """
-        if not self.index:
-            return []
         doc = {
             'size': 10000,
             'sort': {
@@ -134,44 +144,77 @@ class ESConnection(AbstractConnection):
                 }
             }
         }
-        res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
-                             filter_path=['hits.hits.*'])
-        return [obj['_source'] for obj in res['hits']['hits']] if len(res) > 0 else []
+        return self.search(doc)
 
-    def list_all_keys(self, full=False):
+    def get_all_primary_checks(self):
+        """
+        ES handle to implement the get_check_results method in check_utils.py
+        using the search API
+        """
+        doc = {
+            'size': 10000,
+            'query': {
+                'wildcard': {
+                    '_uid': '*primary*'
+                }
+            }
+        }
+        return self.search(doc)
+
+    def get_all_latest_checks(self):
+        """
+        ES handle to implement the get_check_results method with above is latest
+        results are desired instead of primary
+        """
+        doc = {
+            'size': 10000,
+            'query': {
+                'wildcard': {
+                    '_uid': '*latest*'
+                }
+            }
+        }
+        return self.search(doc)
+
+    def list_all_keys(self):
         """
         Generic search on es that will return all ids of indexed items
         full is an optional argument that, if specified, will give the full data
         instead of just the _ids
         """
-        if not self.index:
-            return []
         doc = {
             'size': 10000,
             'query': {
                 'match_all' : {}
             }
         }
-        if not full:
-            res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
-                                 filter_path=['hits.hits._id'])
-            return [obj['_id'] for obj in res['hits']['hits']] if (len(res) > 0) else []
-        else:
-            res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
-                                 filter_path=['hits.hits.*'])
-            return [obj['_source'] for obj in res['hits']['hits']] if len(res) > 0 else []
+        return self.search(doc, key='_id')
 
     def list_all_keys_w_prefix(self, prefix):
         """
         Lists all id's in this ES that have the given prefix.
         """
-        return [_id for _id in self.list_all_keys() if prefix in _id]
+        doc = {
+            'size': 10000,
+            'query': {
+                'wildcard': {
+                    '_uid': '*' + prefix + '*'
+                }
+            }
+        }
+        return self.search(doc, key='_id')
 
     def get_all_objects(self):
         """
         Calls list_all_keys with full=True to get all the objects
         """
-        return self.list_all_keys(full=True)
+        doc = {
+            'size': 10000,
+            'query': {
+                'match_all' : {}
+            }
+        }
+        return self.search(doc)
 
     def delete_keys(self, key_list):
         """
