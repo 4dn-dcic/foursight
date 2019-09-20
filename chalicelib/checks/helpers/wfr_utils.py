@@ -85,15 +85,15 @@ workflow_details = {
     },
     'imargi-processing-fastq': {
         "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_3"]
+        "accepted_versions": ["1.1.1_dcic_4"]
     },
     'imargi-processing-bam': {
         "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_3"]
+        "accepted_versions": ["1.1.1_dcic_4"]
     },
     'imargi-processing-pairs': {
         "run_time": 200,
-        "accepted_versions": ["1.1.1_dcic_3"]
+        "accepted_versions": ["1.1.1_dcic_4"]
     }
 }
 
@@ -118,7 +118,7 @@ accepted_versions = {
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
-    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_3'],
+    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
     # Preliminary - Released to network
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
