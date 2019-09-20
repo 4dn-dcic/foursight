@@ -57,6 +57,8 @@ def migrate_checks_to_es(connection, **kwargs):
             action_logs['n_migrated'] = n_migrated
             action.output = action_logs
             return action
+        if 'action_records' in key: # ignore action_records for now
+            continue
         if es.get_object(key) is None:
             es.put_object(key, s3.get_object(key))
             n_migrated += 1

@@ -93,3 +93,29 @@ class TestESConnection():
         res = self.es.get_result_history('check_status_mismatch')
         assert len(res) == 1
         self.es.delete_index(self.index)
+
+    @pytest.mark.parametrize('type', ['primary', 'latest']) # needs latest as well
+    def test_get_checks(self, type):
+        """ Indexes some items, get primary result """
+        if type == 'primary':
+            func = self.es.get_all_primary_checks
+        else:
+            func = self.es.get_all_latest_checks
+        self.es.create_index(self.index)
+        check1 = utils.load_json(__file__, 'test_checks/check1.json')
+        check2 = utils.load_json(__file__, 'test_checks/check2.json')
+        check3 = utils.load_json(__file__, 'test_checks/check3.json')
+        check4 = utils.load_json(__file__, 'test_checks/check4.json')
+        self.es.put_object(self.uuid(check1), check1)
+        self.es.put_object(self.uuid(check2), check2)
+        self.es.put_object('page_children_routes/' + type + '.json', check3)
+        self.es.put_object('check_status_mismatch/' + type + '.json', check4)
+        self.es.refresh_index()
+        res = func()
+        assert len(res) == 2
+        self.es.delete_keys(['page_children_routes/'+ type + '.json',
+                             'check_status_mismatch/' + type + '.json'])
+        self.es.refresh_index()
+        res = func()
+        assert len(res) == 0
+        self.es.delete_index(self.index)

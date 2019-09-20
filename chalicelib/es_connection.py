@@ -1,5 +1,11 @@
 from .abstract_connection import AbstractConnection
-from elasticsearch import Elasticsearch, RequestsHttpConnection
+from elasticsearch import (
+    Elasticsearch,
+    TransportError,
+    RequestError,
+    ConnectionTimeout
+    )
+from elasticsearch_dsl import Search
 from dcicutils import es_utils
 from .utils import load_json
 import json
@@ -119,15 +125,29 @@ class ESConnection(AbstractConnection):
 
     def search(self, doc, key='_source'):
         """
-        Inner function that passes doc as a search parameter to ES. Key is what is
-        to be returned from the data. We use _source for all data and is the default
-        but _id is also used.
+        Inner function that passes doc as a search parameter to ES. Based on the
+        execute_search method in Fourfront
         """
         if not self.index:
             return []
-        res = self.es.search(index=self.index, doc_type=self.doc_type, body=doc,
-                             filter_path=['hits.hits.*'])
-        return [obj[key] for obj in res['hits']['hits']] if len(res) > 0 else []
+        err_msg = None
+        try:
+            s = Search(using=self.es, index=self.index)
+            s.update_from_dict(doc)
+            res = s.execute().to_dict()
+        except ConnectionTimeout as exc:
+            err_msg = 'The search failed due to a timeout. Please try a different query.'
+        except RequestError as exc:
+            try:
+                err_detail = str(exc.info['error']['root_cause'][0]['reason'])
+            except:
+                err_detail = str(exc)
+            err_msg = 'The search failed due to a request error: ' + err_detail
+        except Exception as exc:
+            err_msg = 'Search failed. Error: %s' % str(exc)
+        if err_msg:
+            raise HTTPBadRequest(explanation=err_msg)
+        return [obj[key] for obj in res['hits']['hits']] if len(res['hits']['hits']) > 0 else []
 
     def get_result_history(self, prefix):
         """
@@ -136,7 +156,7 @@ class ESConnection(AbstractConnection):
         doc = {
             'size': 10000,
             'sort': {
-                '_uid': {'order': 'asc'}
+                '_uid': {'order': 'desc'}
             },
             'query': {
                 'wildcard': {

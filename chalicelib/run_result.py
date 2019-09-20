@@ -243,12 +243,12 @@ class RunResult(object):
         history = self.connections['es'].get_result_history(self.name)
 
         def wrapper(obj):
-            filename = obj.get('data').get('uuid')
+            filename = obj.get('_id')
             return self.filename_to_datetime(filename)
 
         # enforce after_date, if any
         if after_date is not None:
-            history = list(filter(wrapper >= after_date, history))
+            history = list(filter(lambda k: wrapper(k) >= after_date, history))
 
         # enforce limit and start
         history = history[start:start+limit]

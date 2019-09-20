@@ -7,3 +7,5 @@ MarkupSafe==1.0
 google-api-python-client==1.7.4
 geocoder==1.38.1
 fuzzywuzzy==0.17.0
+elasticsearch==5.5.3
+elasticsearch-dsl==5.3.0
