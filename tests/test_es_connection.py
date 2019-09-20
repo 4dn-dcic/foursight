@@ -12,7 +12,7 @@ class TestESConnection():
 
     @staticmethod
     def uuid(check):
-        return check['data']['name'] + '/' + check['data']['uuid']
+        return check['name'] + '/' + check['uuid']
 
     def test_basic_indexing(self):
         """
@@ -23,9 +23,9 @@ class TestESConnection():
         self.es.create_index(self.index)
         check = utils.load_json(__file__, 'test_checks/check1.json')
         uuid = self.uuid(check)
-        assert self.es.put_object(uuid, check)
+        self.es.put_object(uuid, check)
         obj = self.es.get_object(uuid)
-        assert (obj['data']['name'] + '/' + obj['data']['uuid']) == uuid
+        assert (obj['name'] + '/' + obj['uuid']) == uuid
         self.es.delete_keys([uuid])
         self.es.refresh_index()
         assert self.es.get_object(uuid) == None
@@ -42,14 +42,14 @@ class TestESConnection():
         check1 = utils.load_json(__file__, 'test_checks/check1.json')
         check2 = utils.load_json(__file__, 'test_checks/check2.json')
         check3 = utils.load_json(__file__, 'test_checks/check3.json')
-        assert self.es.put_object(self.uuid(check1), check1)
-        assert self.es.put_object(self.uuid(check2), check2)
+        self.es.put_object(self.uuid(check1), check1)
+        self.es.put_object(self.uuid(check2), check2)
         self.es.refresh_index()
         keys = self.es.list_all_keys()
         assert self.uuid(check1) in keys
         assert self.uuid(check2) in keys
         assert self.uuid(check3) not in keys
-        assert self.es.put_object(self.uuid(check3), check3)
+        self.es.put_object(self.uuid(check3), check3)
         self.es.refresh_index()
         objs = self.es.get_all_objects()
         assert len(objs) == 3
@@ -68,7 +68,7 @@ class TestESConnection():
         assert not self.es.create_index(self.index)
         assert not self.es.index_exists('i_dont_exist')
         check1 = utils.load_json(__file__, 'test_checks/check1.json')
-        assert self.es.put_object(self.uuid(check1), check1)
+        self.es.put_object(self.uuid(check1), check1)
         assert not self.es.put_object(self.uuid(check1), check1)
         self.es.refresh_index()
         assert len(self.es.list_all_keys_w_prefix('page_children_routes')) == 1
