@@ -6,6 +6,7 @@ class TestESConnection():
     index = 'unit_test_index'
     try:
         es = es_connection.ESConnection(index)
+        es.delete_index(index)
     except:
         es = None # tests should be marked as skip
 
@@ -88,9 +89,9 @@ class TestESConnection():
         self.es.put_object(self.uuid(check3), check3)
         self.es.put_object(self.uuid(check4), check4)
         self.es.refresh_index()
-        res = self.es.get_result_history('page_children_routes')
+        res = self.es.get_result_history('page_children_routes', 0, 25)
         assert len(res) == 3
-        res = self.es.get_result_history('check_status_mismatch')
+        res = self.es.get_result_history('check_status_mismatch', 0, 25)
         assert len(res) == 1
         self.es.delete_index(self.index)
 

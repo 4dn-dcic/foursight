@@ -58,6 +58,7 @@ class RunResult(object):
         obj = self.get_es_object(key)
         if obj is None:
             obj = self.get_s3_object(key) # fallback to s3
+            self.connections['es'].put_object(key, obj)
         return obj
 
     def put_object(self, key, value, es=True):
@@ -240,7 +241,7 @@ class RunResult(object):
         results after that point will be returned.
         Returns a list of lists (inner lists: [status, kwargs])
         """
-        history = self.connections['es'].get_result_history(self.name)
+        history = self.connections['es'].get_result_history(self.name, start, limit)
 
         def wrapper(obj):
             filename = obj.get('_id')
@@ -250,8 +251,6 @@ class RunResult(object):
         if after_date is not None:
             history = list(filter(lambda k: wrapper(k) >= after_date, history))
 
-        # enforce limit and start
-        history = history[start:start+limit]
         results = []
         for n in range(len(history)):
             obj = history[n]
@@ -261,7 +260,7 @@ class RunResult(object):
                 obj.get('status', 'Not found'),
                 obj.get('summary', None),
                 obj.get('kwargs', {}),
-                obj.get('type') == 'check' or 'full_output' in res
+                obj.get('type') == 'check' or 'full_output' in obj
             ]
             # kwargs to remove from the history results. these will not be displayed
             for remove_key in ['_run_info']:

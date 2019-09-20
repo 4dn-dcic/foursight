@@ -464,7 +464,7 @@ def process_view_result(connection, res, is_admin):
             assc_action_key = connection.connections['s3'].get_object(action_record_key)
             if assc_action_key:
                 assc_action_key = assc_action_key.decode()  # in bytes
-                assc_action = connection.connections['s3'].get_object(assc_action_key)
+                assc_action = connection.get_object(assc_action_key)
                 # If assc_action_key is written but assc_action is None, then
                 # it most likely means the action is still running
                 if assc_action is not None:

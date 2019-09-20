@@ -14,6 +14,13 @@ import time
 # configure ES info from here
 HOST = 'https://search-foursight-fourfront-ylxn33a5qytswm63z52uytgkm4.us-east-1.es.amazonaws.com'
 
+class ElasticsearchException(Exception):
+    """ Generic exception for an elasticsearch failure """
+    def __init__(self, message=None):
+        if message is None:
+            message = "No error message given, this shouldn't happen!"
+        super().__init__(message)
+
 class ESConnection(AbstractConnection):
     """
     ESConnection is a handle to a remote ElasticSearch instance on AWS.
@@ -123,7 +130,7 @@ class ESConnection(AbstractConnection):
         resp = self.es.indices.stats(index=self.index, metric='store')
         return resp['_all']['total']['store']['size_in_bytes']
 
-    def search(self, doc, key='_source'):
+    def search(self, search, key='_source'):
         """
         Inner function that passes doc as a search parameter to ES. Based on the
         execute_search method in Fourfront
@@ -132,9 +139,7 @@ class ESConnection(AbstractConnection):
             return []
         err_msg = None
         try:
-            s = Search(using=self.es, index=self.index)
-            s.update_from_dict(doc)
-            res = s.execute().to_dict()
+            res = search.execute().to_dict()
         except ConnectionTimeout as exc:
             err_msg = 'The search failed due to a timeout. Please try a different query.'
         except RequestError as exc:
@@ -146,25 +151,34 @@ class ESConnection(AbstractConnection):
         except Exception as exc:
             err_msg = 'Search failed. Error: %s' % str(exc)
         if err_msg:
-            raise HTTPBadRequest(explanation=err_msg)
+            raise ElasticsearchException(message=err_msg)
         return [obj[key] for obj in res['hits']['hits']] if len(res['hits']['hits']) > 0 else []
 
-    def get_result_history(self, prefix):
+    def get_result_history(self, prefix, start, limit):
         """
         ES handle to implement the get_result_history functionality of RunResult
         """
         doc = {
-            'size': 10000,
+            'from': start,
+            'size': limit,
             'sort': {
                 '_uid': {'order': 'desc'}
             },
             'query': {
-                'wildcard': {
-                    '_uid': '*' + prefix + '*'
+                'bool': {
+                    'must_not': [
+                        {'term': {'_id': prefix + '/primary.json'}},
+                        {'term': {'_id': prefix + '/latest.json'}}
+                    ],
+                    'filter': {
+                        'term': {'name': prefix}
+                    }
                 }
             }
         }
-        return self.search(doc)
+        search = Search(using=self.es, index=self.index)
+        search.update_from_dict(doc)
+        return self.search(search)
 
     def get_all_primary_checks(self):
         """
@@ -174,12 +188,21 @@ class ESConnection(AbstractConnection):
         doc = {
             'size': 10000,
             'query': {
-                'wildcard': {
-                    '_uid': '*primary*'
+                'bool': {
+                    'must': {
+                        'wildcard': {
+                            '_uid': '*primary.json'
+                        }
+                    },
+                    'filter': {
+                        'term': {'type': 'check'}
+                    }
                 }
             }
         }
-        return self.search(doc)
+        search = Search(using=self.es, index=self.index)
+        search.update_from_dict(doc)
+        return self.search(search)
 
     def get_all_latest_checks(self):
         """
@@ -189,18 +212,25 @@ class ESConnection(AbstractConnection):
         doc = {
             'size': 10000,
             'query': {
-                'wildcard': {
-                    '_uid': '*latest*'
+                'bool': {
+                    'must': {
+                        'wildcard': {
+                            '_uid': '*latest.json'
+                        }
+                    },
+                    'filter': {
+                        'term': {'type': 'check'}
+                    }
                 }
             }
         }
-        return self.search(doc)
+        search = Search(using=self.es, index=self.index)
+        search.update_from_dict(doc)
+        return self.search(search)
 
     def list_all_keys(self):
         """
         Generic search on es that will return all ids of indexed items
-        full is an optional argument that, if specified, will give the full data
-        instead of just the _ids
         """
         doc = {
             'size': 10000,
@@ -208,7 +238,9 @@ class ESConnection(AbstractConnection):
                 'match_all' : {}
             }
         }
-        return self.search(doc, key='_id')
+        search = Search(using=self.es, index=self.index)
+        search.update_from_dict(doc)
+        return self.search(search, key='_id')
 
     def list_all_keys_w_prefix(self, prefix):
         """
@@ -222,7 +254,9 @@ class ESConnection(AbstractConnection):
                 }
             }
         }
-        return self.search(doc, key='_id')
+        search = Search(using=self.es, index=self.index)
+        search.update_from_dict(doc)
+        return self.search(search, key='_id')
 
     def get_all_objects(self):
         """
@@ -234,7 +268,9 @@ class ESConnection(AbstractConnection):
                 'match_all' : {}
             }
         }
-        return self.search(doc)
+        search = Search(using=self.es, index=self.index)
+        search.update_from_dict(doc)
+        return self.search(search)
 
     def delete_keys(self, key_list):
         """

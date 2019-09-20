@@ -224,15 +224,19 @@ def get_check_results(connection, checks=[], use_latest=False):
     check_results = []
     if not checks:
         checks = [check_str.split('/')[1] for check_str in get_check_strings()]
-    for check_name in checks:
-        tempCheck = CheckResult(connection, check_name)
-        if use_latest:
-            found = tempCheck.get_latest_result()
-        else:
-            found = tempCheck.get_primary_result()
-        # checks with no records will return None. Skip IGNORE checks
-        if found and found.get('status') != 'IGNORE':
-            check_results.append(found)
+
+    if connection.connections['es'] is None:
+        for check_name in checks:
+            tempCheck = CheckResult(connection, check_name)
+            if use_latest:
+                found = tempCheck.get_latest_result()
+            else:
+                found = tempCheck.get_primary_result()
+                # checks with no records will return None. Skip IGNORE checks
+                if found and found.get('status') != 'IGNORE':
+                    check_results.append(found)
+    else:
+        check_results = connection.connections['es'].get_all_primary_checks()
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
     return sorted(
