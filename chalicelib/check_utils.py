@@ -237,9 +237,13 @@ def get_check_results(connection, checks=[], use_latest=False):
                     check_results.append(found)
     else:
         if use_latest:
-            check_results = connection.connections['es'].get_main_page_checks()
-        else:
             check_results = connection.connections['es'].get_main_page_checks(primary=False)
+        else:
+            check_results = connection.connections['es'].get_main_page_checks()
+
+        # filter checks not in checks
+        check_results = list(filter(lambda obj: obj['name'] in checks, check_results))
+
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
     return sorted(

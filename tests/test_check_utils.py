@@ -134,7 +134,6 @@ class TestCheckUtils():
         checks_in_sched = check_utils.get_checks_within_schedule('not_a_real_schedule')
         assert (len(checks_in_sched) == 0)
 
-    @pytest.mark.skip # requires refactoring
     def test_get_check_results(self):
         # dict to compare uuids
         uuid_compares = {}
