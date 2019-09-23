@@ -24,6 +24,12 @@ class TestAppUtils():
             app_utils.init_connection('not_an_environment')
         assert ('invalid environment provided' in str(exc.value))
 
+    def test_bad_view_result(self):
+        """ Tests giving a bad response to process_view_result """
+        res = 'a string, not a dict response'
+        error = app_utils.process_view_result(self.conn, res, False)
+        assert error['status'] == 'ERROR'
+
     def test_init_environments(self):
         environments = app_utils.init_environments() # default to 'all' environments
         assert (self.environ in environments)

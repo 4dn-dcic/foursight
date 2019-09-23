@@ -68,6 +68,7 @@ class TestCheckRunner():
         assert (self.stage_info['queue_name'] == 'foursight-test-check_queue')
         assert (self.stage_info['runner_name'] == 'foursight-dev-check_runner')
 
+    @pytest.mark.flaky
     def test_check_runner_manually(self):
         """
         Queue a check and make sure it is run

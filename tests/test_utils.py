@@ -127,3 +127,12 @@ class TestUtils():
             assert ({'server', 'key', 'secret'} <= set(ff_keys.keys()))
             hg_keys = s3_obj.get_higlass_key()
             assert ({'server', 'key', 'secret'} <= set(hg_keys.keys()))
+
+    def test_load_store_json(self):
+        """ Loads JSON, stores it in temp, re-loads to see if its the same """
+        import os
+        j = utils.load_json(__file__, './test_checks/check1.json')
+        utils.store_json(__file__, './test_checks/test.json', j)
+        reloaded = utils.load_json(__file__, './test_checks/test.json')
+        assert j == reloaded
+        os.remove(os.path.join(os.path.dirname(__file__), './test_checks/test.json'))

@@ -440,5 +440,5 @@ def load_json(rel, fname):
 def store_json(rel, fname, data):
     """ Stores json data into fname at rel/fname """
     path = os.path.join(os.path.dirname(rel), fname)
-    with open(path, 'r') as f:
+    with open(path, 'w+') as f:
         return json.dump(data, f)
