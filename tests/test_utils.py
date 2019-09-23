@@ -86,7 +86,7 @@ class TestUtils():
         assert (action.name == 'test_action')
         assert (action.connections['s3'] is not None)
 
-    def parse_datetime_to_utc(self):
+    def test_parse_datetime_to_utc(self):
         [dt_tz_a, dt_tz_b, dt_tz_c] = ['None'] * 3
         for t_str in [self.timestr_1, self.timestr_2, self.timestr_3, self.timestr_4]:
             dt = utils.parse_datetime_to_utc(t_str)

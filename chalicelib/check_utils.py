@@ -238,11 +238,10 @@ def get_check_results(connection, checks=[], use_latest=False):
     else:
         if use_latest:
             check_results = connection.connections['es'].get_main_page_checks(primary=False)
-        else:
+            check_results = list(filter(lambda obj: obj['name'] in checks, check_results))
+        else: # also filter by IGNORE on primaries
             check_results = connection.connections['es'].get_main_page_checks()
-
-        # filter checks not in checks
-        check_results = list(filter(lambda obj: obj['name'] in checks, check_results))
+            check_results = list(filter(lambda obj: obj['status'] != 'IGNORE' and obj['name'] in checks, check_results))
 
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
