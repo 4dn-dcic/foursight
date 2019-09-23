@@ -50,7 +50,7 @@ class ESConnection(AbstractConnection):
         Creates an ES index called name. Returns true in success
         """
         try:
-            res = self.es.indices.create(index=name,body={
+            self.es.indices.create(index=name,body={
                 "settings": {
                     "index.mapper.dynamic": False,
                     "index.mapping.ignore_malformed": True
@@ -281,7 +281,11 @@ class ESConnection(AbstractConnection):
                 'terms': {'_id': key_list}
             }
         }
-        self.es.delete_by_query(index=self.index, body=query)
+        try:
+            res = self.es.delete_by_query(index=self.index, body=query)
+            return res['deleted']
+        except Exception as e:
+            return 0
 
     def test_connection(self):
         """

@@ -58,12 +58,14 @@ class TestRunResult():
         primary_check.description = 'This is a primary check - it should persist'
         primary_check.kwargs = {'primary': True}
         res = primary_check.store_result()
-        num_deleted = self.run.delete_results(prior_date=datetime.datetime.utcnow())
-        assert num_deleted == 5 # primary result should not have been deleted
+        num_deleted_s3, num_deleted_es = self.run.delete_results(prior_date=datetime.datetime.utcnow())
+        assert num_deleted_s3 == 5 # primary result should not have been deleted
+        assert num_deleted_es == 5
         queried_primary = self.run.get_result_by_uuid(res['kwargs']['uuid'])
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
-        primary_deleted = self.run.delete_results(primary=False)
-        assert primary_deleted >= 1 # now primary result should be gone
+        primary_deleted_s3, primary_deleted_es = self.run.delete_results(primary=False)
+        assert primary_deleted_s3 >= 1 # now primary result should be gone
+        assert primary_deleted_es >= 1
         assert not self.run.get_result_by_uuid(res['kwargs']['uuid'])
 
     @pytest.mark.flaky
@@ -78,8 +80,9 @@ class TestRunResult():
         res = check.store_result()
         queried_primary = self.run.get_result_by_uuid(res['kwargs']['uuid'])
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
-        num_deleted = self.run.delete_results(primary=False)
-        assert num_deleted == 1
+        num_deleted_s3, num_deleted_es = self.run.delete_results(primary=False)
+        assert num_deleted_s3 == 1
+        assert num_deleted_es == 1
         assert not self.run.get_result_by_uuid(res['kwargs']['uuid'])
 
     @pytest.mark.flaky
@@ -105,10 +108,12 @@ class TestRunResult():
             check.description = 'This check is just for testing purposes.'
             check.status = 'PASS'
             check.store_result()
-        num_deleted = self.run.delete_results(custom_filter=term_in_descr)
-        assert num_deleted == 5
-        num_deleted = self.run.delete_results()
-        assert num_deleted == 3
+        num_deleted_s3, num_deleted_es = self.run.delete_results(custom_filter=term_in_descr)
+        assert num_deleted_s3 == 5
+        assert num_deleted_es == 5
+        num_deleted_s3, num_deleted_es = self.run.delete_results()
+        assert num_deleted_s3 == 3
+        assert num_deleted_es == 3
 
     @pytest.mark.flaky
     def test_delete_results_bad_filter(self):
@@ -125,7 +130,7 @@ class TestRunResult():
         check.store_result()
         with pytest.raises(Exception):
             run.delete_results(custom_filter=bad_filter)
-        num_deleted = self.run.delete_results()
+        num_deleted, _ = self.run.delete_results()
         assert num_deleted == 1
 
     @pytest.mark.flaky
@@ -157,7 +162,7 @@ class TestRunResult():
         p_check_two.store_result()
         queried_primary = self.run.get_primary_result()
         assert queried_primary['kwargs']['uuid'] == two_uuid
-        num_deleted = self.run.delete_results(primary=False, custom_filter=filter_specific_uuid)
+        num_deleted, _ = self.run.delete_results(primary=False, custom_filter=filter_specific_uuid)
         assert num_deleted == 1
         queried_primary = self.run.get_primary_result()
         assert queried_primary['kwargs']['uuid'] == two_uuid
@@ -180,8 +185,8 @@ class TestRunResult():
         check_two.description = "This is the second check, it passed"
         check_two.status = 'PASS'
         resp = check_two.store_result()
-        num_deleted = self.run.delete_results(custom_filter=filter_error)
+        num_deleted, _ = self.run.delete_results(custom_filter=filter_error)
         assert num_deleted == 1
         assert self.run.get_result_by_uuid(resp['uuid'])
-        num_deleted = self.run.delete_results()
+        num_deleted, _ = self.run.delete_results()
         assert num_deleted == 1

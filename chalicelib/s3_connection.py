@@ -5,7 +5,7 @@ import boto3
 import datetime
 
 class S3Connection(AbstractConnection):
-    def __init__(self, bucket_name, cache=False):
+    def __init__(self, bucket_name):
         self.client = boto3.client('s3')
         self.resource = boto3.resource('s3')
         self.cw = boto3.client('cloudwatch') # for s3 bucket stats
@@ -40,8 +40,6 @@ class S3Connection(AbstractConnection):
         """
         Gets the number of keys stored on this s3 connection. This is a very slow
         operation since it has to enumerate all keys.
-
-        Because this operation is so slow should we cache this?
         """
         bucket = self.resource.Bucket(self.bucket)
         return sum(1 for _ in bucket.objects.all())

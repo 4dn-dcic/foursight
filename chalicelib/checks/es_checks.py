@@ -83,8 +83,9 @@ def clean_s3_es_checks(connection, **kwargs):
     s3 = connection.connections['s3']
     es = connection.connections['es']
     one_month_ago = datetime.datetime.utcnow() - datetime.timedelta(days=30)
-    n_deleted = action.delete_results(prior_date=one_month_ago) # still needs to delete es
-    action_logs['n_deleted'] = n_deleted
+    n_deleted_s3, n_deleted_es = action.delete_results(prior_date=one_month_ago) # still needs to delete es
+    action_logs['n_deleted_s3'] = n_deleted_s3
+    action_logs['n_deleted_es'] = n_deleted_es
     action.status = 'DONE'
     action.output = action_logs
     return action

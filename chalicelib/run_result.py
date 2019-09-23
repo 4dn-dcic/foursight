@@ -163,9 +163,6 @@ class RunResult(object):
         """
         Lists all keys. If given a prefix only keys with that prefix will be
         returned.
-
-        XXX: For now, es defaults to false. Once this functionality is fully integrated
-        it should always be true.
         """
         if self.es:
             if prefix:
@@ -198,8 +195,10 @@ class RunResult(object):
         primary results will be cleaned as well.
         If a custom filter is given, that filter will be applied as well, prior
         to the above filters.
-        Returns the number of keys deleted
+        Returns a pair of the number of results deleted from s3 and es respectively
         """
+
+        # since we fall back to s3 get the keys to delete from here
         keys_to_delete = self.connections['s3'].list_all_keys_w_prefix(self.name, records_only=True)
 
         # if given a custom filter, apply it
@@ -227,14 +226,14 @@ class RunResult(object):
             return 0
 
         # batch delete calls at aws maximum of 1000 if necessary
-        num_deleted = 0
+        num_deleted_s3, num_deleted_es = 0, 0
         for i in range(0, len(keys_to_delete), 1000):
             s3_resp = self.connections['s3'].delete_keys(keys_to_delete[i:i+1000])
             if self.es:
-                self.connections['es'].delete_keys(keys_to_delete[i:i+1000])
-            num_deleted += len(s3_resp['Deleted'])
+                num_deleted_es += self.connections['es'].delete_keys(keys_to_delete[i:i+1000])
+            num_deleted_s3 += len(s3_resp['Deleted'])
 
-        return num_deleted
+        return num_deleted_s3, num_deleted_es
 
     def get_result_history(self, start, limit, after_date=None):
         """
@@ -353,7 +352,7 @@ class CheckResult(RunResult):
         self.ff_link = ''
         # self.action_name is the function name of the action to link to check
         self.action = ''
-        self.allow_action = '' # by default do not allow the action to be run
+        self.allow_action = False # by default do not allow the action to be run
         self.action_message = 'Are you sure you want to run this action?'
 
     def format_result(self, uuid):

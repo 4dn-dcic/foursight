@@ -12,9 +12,9 @@ Using these kwargs allow you to easily get the correct run result from the check
 
 There are a few key requirements to keep in mind when writing an action:
 * Action functions must always start with the `@action_function()` decorator.
-* Action results should be initialized with `init_action_res`, which works just like `init_check_res`.
-* Action functions should return the action results (initialized with `init_action_res`).
-* The name of the action function must exactly match the name passed to `init_action_res`.
+* Action results should be initialized with `ActionResult` constructor, which works just like the `CheckResult` constructor.
+* Action functions should return the action results.
+* The name of the action function must exactly match the name passed to the constructor.
 * The name of the action function must exactly match the value of `check.action` to link a check to an action. Only one action can be linked to a check.
 * To allow an action to be executed, use `check.allow_action = True`.
 * Only users with administrator privileges can run actions.
@@ -27,7 +27,7 @@ Action results work much like check results, but have a smaller number of attrib
 
 Like check results, there are also a number of fields that are used internally:
 * **kwargs**: the key word arguments used to set the check. Should be set automatically.
-* **s3_connection**: is set automatically when you use `init_action_res`.
+* **connections**: is set automatically.
 * **name**: the string name of the action that should be exactly equal to the name of the function you want to execute.
 * **uuid**: timestamp of the action.
 
@@ -41,7 +41,7 @@ Before we write an action, we should set up a check to work with it. Let's write
 ```
 @check_function()
 def make_random_test_nums(connection, **kwargs):
-    check = init_check_res(connection, 'make_random_test_nums')
+    check = CheckResult(connection, 'make_random_test_nums')
     check.status = 'IGNORE'
     output = []
     for i in range(random.randint(1,20)):
@@ -56,7 +56,7 @@ As stated earlier, all actions run from the UI are guaranteed to have the `check
 
 ```
 <inside an action, so kwargs are available>
-    action = init_action_res(connection, 'make_random_test_nums')
+    action = ActionResult(connection, 'make_random_test_nums')
     check_data = action.get_associated_check_result(kwargs)
 ```
 
@@ -66,7 +66,7 @@ Let's write an action that adds up all the numbers in the list within `full_outp
 ```
 @action_function(offset=0)
 def add_random_nums(connection, **kwargs):
-    action = init_action_res(connection, 'add_random_nums')
+    action = ActionResult(connection, 'add_random_nums')
 
     # get the results from the check
     check_data = action.get_associated_check_result(kwargs)
@@ -88,7 +88,7 @@ Now that we've written both the check and action functions, it's time to create 
 ```
 @check_function()
 def make_random_test_nums(connection, **kwargs):
-    check = init_check_res(connection, 'make_random_test_nums')
+    check = CheckResult(connection, 'make_random_test_nums')
     check.status = 'IGNORE'
     output = []
     for i in range(random.randint(1,20)):
@@ -111,7 +111,7 @@ When executing an action from the UI, a message will be shown before the action 
 ```
 @check_function()
 def make_random_test_nums(connection, **kwargs):
-    check = init_check_res(connection, 'make_random_test_nums')
+    check = CheckResult(connection, 'make_random_test_nums')
     check.status = 'IGNORE'
     output = []
     for i in range(random.randint(1,20)):
