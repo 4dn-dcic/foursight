@@ -237,9 +237,9 @@ def get_check_results(connection, checks=[], use_latest=False):
                     check_results.append(found)
     else:
         if use_latest:
-            check_results = connection.connections['es'].get_all_latest_checks()
+            check_results = connection.connections['es'].get_main_page_checks()
         else:
-            check_results = connection.connections['es'].get_all_primary_checks()
+            check_results = connection.connections['es'].get_main_page_checks(primary=False)
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
     return sorted(

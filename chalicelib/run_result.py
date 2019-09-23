@@ -58,19 +58,13 @@ class RunResult(object):
         """
         Gets an object given a key from the data store.
         """
-        obj = self.get_es_object(key)
-        if obj is None:
-            obj = self.get_s3_object(key) # fallback to s3
-            self.connections['es'].put_object(key, obj)
-        return obj
+        return self.fs_conn.get_object(key)
 
     def put_object(self, key, value):
         """
         Puts an object into the data stores
         """
-        if self.es:
-            self.connections['es'].put_object(key, value)
-        self.connections['s3'].put_object(key, value)
+        return self.fs_conn.put_object(key, value)
 
     def get_latest_result(self):
         """
@@ -100,6 +94,8 @@ class RunResult(object):
         all_results = []
         s3_prefix = ''.join([self.name, '/'])
         relevant_checks = self.list_keys(records_only=True, prefix=s3_prefix)
+        if not relevant_checks:
+            relevant_checks = self.connections['s3'].list_all_keys_w_prefix(records_only=True, prefix=s3_prefix)
         for n in range(len(relevant_checks)):
             check = relevant_checks[n]
             if check.startswith(s3_prefix) and check.endswith(self.extension):
@@ -122,6 +118,8 @@ class RunResult(object):
         check_tuples = []
         s3_prefix = ''.join([self.name, '/'])
         relevant_checks = self.list_keys(records_only=True, prefix=s3_prefix)
+        if not relevant_checks:
+            relevant_checks = self.connections['s3'].list_all_keys_w_prefix(records_only=True, prefix=s3_prefix)
         if not relevant_checks:
             raise Exception('Could not find any results for prefix: %s' % s3_prefix)
         # now use only s3 objects with a valid uuid
@@ -307,7 +305,7 @@ class RunResult(object):
             keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
             return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
         except:
-            return datetime.datetime.min # this is a latest or primary result
+            return datetime.datetime.min
 
     @abstractmethod
     def validate(self):
@@ -384,14 +382,14 @@ class CheckResult(RunResult):
         Multiple errors are possible - the 'latest' wrt when it is checked below
         is reported
         """
-        error_msg = None
+        error_msg = ''
         store_method = getattr(self, 'store_result', None)
         if not callable(store_method):
             error_msg = 'Do not overwrite the store_result method.'
         def _validate(attr, t):
             if not isinstance(attr, t):
                 nonlocal error_msg
-                error_msg = '%s is not of type %s' % (str(attr), str(t))
+                error_msg += '%s is not of type %s' % (str(attr), str(t)) + '\n'
         _validate(self.name, str)
         _validate(self.summary, str)
         _validate(self.description, str)
@@ -399,7 +397,7 @@ class CheckResult(RunResult):
         _validate(self.ff_link, str)
         _validate(self.action, str)
         _validate(self.kwargs, dict)
-        if error_msg:
+        if error_msg != '':
             raise BadCheckOrAction(error_msg)
 
     def store_result(self):
@@ -435,7 +433,7 @@ class ActionResult(RunResult):
         # valid values are: 'DONE', 'FAIL', 'PEND'
         # start with PEND as the default status
         self.status = 'PEND'
-        self.output = {}
+        self.output = None
         super().__init__(connections, name)
 
     def format_result(self, uuid):
@@ -455,20 +453,19 @@ class ActionResult(RunResult):
         Multiple errors are possible - the 'latest' wrt when it is checked below
         is reported
         """
-        error_msg = None
+        error_msg = ''
         store_method = getattr(self, 'store_result', None)
         if not callable(store_method):
             error_msg = 'Do not overwrite the store_result method.'
         def _validate(attr, t):
             if not isinstance(attr, t):
                 nonlocal error_msg
-                error_msg = '%s is not of type %s' % (str(attr), str(t))
+                error_msg += '%s is not of type %s' % (str(attr), str(t))
         _validate(self.status, str)
         _validate(self.description, str)
         _validate(self.name, str)
-        _validate(self.output, dict)
         _validate(self.kwargs, dict)
-        if error_msg:
+        if error_msg != '':
             raise BadCheckOrAction(error_msg)
 
     def store_result(self):

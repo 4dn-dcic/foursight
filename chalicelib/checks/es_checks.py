@@ -9,6 +9,8 @@ from ..utils import (
 def elasticsearch_s3_count_diff(connection, **kwargs):
     """ Reports the difference between the number of files on s3 and es """
     check = CheckResult(connection, 'elasticsearch_s3_count_diff')
+    check.action = 'migrate_checks_to_es'
+    check.allow_action = True
     s3 = connection.connections['s3']
     es = connection.connections['es']
     n_s3_keys = s3.get_size()
@@ -37,7 +39,7 @@ def migrate_checks_to_es(connection, **kwargs):
     checks will be migrated
     """
     t0 = time.time()
-    time_limit = 10000000 # very long as this is very slow too
+    time_limit = 270 if kwargs.get('timeout') is None else kwargs.get('timeout')
     action = ActionResult(connection, 'migrate_checks_to_es')
     action_logs = {'time out': False}
     s3 = connection.connections['s3']
@@ -59,21 +61,21 @@ def migrate_checks_to_es(connection, **kwargs):
             return action
         if 'action_records' in key: # ignore action_records for now
             continue
-        if es.get_object(key) is None:
-            es.put_object(key, s3.get_object(key))
+        if es.put_object(key, s3.get_object(key)): # put object by default
             n_migrated += 1
     action.status = 'DONE'
     action_logs['n_migrated'] = n_migrated
     action.output = action_logs
     return action
 
-@action_function()
+@check_function()
 def clean_s3_es_checks(connection, **kwargs):
     """
     Cleans old checks from both s3 and es older than one month. Must be called
     from a specific check as it will take too long otherwise.
     """
-    check_to_clean = kwargs.get('called_by')
+    check_to_clean = kwargs.get('to_clean')
+    time_limit = 270 if kwargs.get('timeout') is None else kwargs.get('timeout')
     if not check_to_clean:
         action.status = 'FAIL'
         action.output = action_logs
@@ -83,7 +85,13 @@ def clean_s3_es_checks(connection, **kwargs):
     s3 = connection.connections['s3']
     es = connection.connections['es']
     one_month_ago = datetime.datetime.utcnow() - datetime.timedelta(days=30)
-    n_deleted_s3, n_deleted_es = action.delete_results(prior_date=one_month_ago) # still needs to delete es
+    try:
+        n_deleted_s3, n_deleted_es = action.delete_results(prior_date=one_month_ago)
+    except:
+        action_logs['timeout'] = True
+        action.status = 'FAIL'
+        action.output = action_logs
+        return action
     action_logs['n_deleted_s3'] = n_deleted_s3
     action_logs['n_deleted_es'] = n_deleted_es
     action.status = 'DONE'

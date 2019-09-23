@@ -70,8 +70,6 @@ class TestCheckResult():
             error_check.get_closest_result(diff_hours=0, diff_mins=0)
         assert ('Could not find closest non-ERROR result' in str(exc.value))
 
-    # this always fails, not clear why
-    @pytest.mark.skip
     def test_get_result_history(self):
         """
         This relies on the check having been run enough times. If not, return
@@ -83,6 +81,7 @@ class TestCheckResult():
         check.kwargs['test'] = 'yea'
         res = check.store_result()
         ignore_uuid = res['uuid']
+        check.connections['es'].refresh_index()
         hist_10 = check.get_result_history(0, 10)
         assert isinstance(hist_10, list)
         for chk in hist_10:

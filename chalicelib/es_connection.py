@@ -13,6 +13,7 @@ import time
 
 # configure ES info from here
 HOST = 'https://search-foursight-fourfront-ylxn33a5qytswm63z52uytgkm4.us-east-1.es.amazonaws.com'
+SEARCH_SIZE = 10000
 
 class ElasticsearchException(Exception):
     """ Generic exception for an elasticsearch failure """
@@ -34,7 +35,7 @@ class ESConnection(AbstractConnection):
     def __init__(self, index=None, doc_type='result'):
         self.es = es_utils.create_es_client(HOST, use_aws_url=True)
         self.index = index
-        self.mapping = self.load_mapping()
+        self.mapping = {} # only needed if we create the index
         if index and not self.index_exists(index):
             self.create_index(index)
         self.doc_type = doc_type
@@ -50,13 +51,13 @@ class ESConnection(AbstractConnection):
         Creates an ES index called name. Returns true in success
         """
         try:
+            self.mapping = self.load_mapping()
             self.es.indices.create(index=name,body={
                 "settings": {
-                    "index.mapper.dynamic": False,
-                    "index.mapping.ignore_malformed": True
+                    "index.mapper.dynamic": False
                 },
-                "mappings": self.mapping['mappings']
-            })
+                "mappings": self.mapping.get('mappings')
+            }, ignore=400)
             return True
         except Exception as e:
             raise ElasticsearchException(str(e))
@@ -179,42 +180,22 @@ class ESConnection(AbstractConnection):
         search.update_from_dict(doc)
         return self.search(search)
 
-    def get_all_primary_checks(self):
+    def get_main_page_checks(self, primary=True):
         """
-        ES handle to implement the get_check_results method in check_utils.py
-        using the search API
+        Gets all checks for the main page. If primary is true then all checks will
+        be primary, otherwise we use latest.
         """
+        if primary:
+            t = 'primary'
+        else:
+            t = 'latest'
         doc = {
-            'size': 10000,
+            'size': SEARCH_SIZE,
             'query': {
                 'bool': {
                     'must': {
                         'wildcard': {
-                            '_uid': '*primary.json'
-                        }
-                    },
-                    'filter': {
-                        'term': {'type': 'check'}
-                    }
-                }
-            }
-        }
-        search = Search(using=self.es, index=self.index)
-        search.update_from_dict(doc)
-        return self.search(search)
-
-    def get_all_latest_checks(self):
-        """
-        ES handle to implement the get_check_results method with above is latest
-        results are desired instead of primary
-        """
-        doc = {
-            'size': 10000,
-            'query': {
-                'bool': {
-                    'must': {
-                        'wildcard': {
-                            '_uid': '*latest.json'
+                            '_uid': '*' + t + '.json'
                         }
                     },
                     'filter': {
@@ -232,7 +213,7 @@ class ESConnection(AbstractConnection):
         Generic search on es that will return all ids of indexed items
         """
         doc = {
-            'size': 10000,
+            'size': SEARCH_SIZE,
             'query': {
                 'match_all' : {}
             }
@@ -246,10 +227,12 @@ class ESConnection(AbstractConnection):
         Lists all id's in this ES that have the given prefix.
         """
         doc = {
-            'size': 10000,
+            'size': SEARCH_SIZE,
             'query': {
-                'wildcard': {
-                    '_uid': '*' + prefix + '*'
+                'bool': {
+                    'filter': {
+                        'term': {'name': prefix}
+                    }
                 }
             }
         }
@@ -262,7 +245,7 @@ class ESConnection(AbstractConnection):
         Calls list_all_keys with full=True to get all the objects
         """
         doc = {
-            'size': 10000,
+            'size': SEARCH_SIZE,
             'query': {
                 'match_all' : {}
             }
