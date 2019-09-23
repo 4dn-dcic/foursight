@@ -180,7 +180,6 @@ class TestCheckRunner():
         assert (test_success)
         assert (runner_res is None)
 
-    @pytest.mark.skip
     def test_queue_check_group(self):
         # find the checks we will be using
         use_schedule = 'ten_min_checks'
