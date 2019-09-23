@@ -595,8 +595,9 @@ def process_download_tracking_items(connection, **kwargs):
     cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys)
     for tracking in cons_query:
         dl_info = tracking['download_tracking']
+        user_agent = dl_info.get('user_agent', 'unknown_user_agent').lower()
         range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
-                               dl_info['user_agent'], dl_info['user_uuid']])
+                               user_agent, dl_info['user_uuid']])
         parsed_date = parse_datetime_to_utc(tracking['date_created'])
         # check for date parsing error
         if parsed_date is None:
@@ -644,6 +645,7 @@ def process_download_tracking_items(connection, **kwargs):
         if round(time.time() - t0, 2) > time_limit:
             break
         dl_info = tracking['download_tracking']
+        user_agent = dl_info.get('user_agent', 'unknown_user_agent').lower()
         # remove request_headers, which may contain sensitive information
         if 'request_headers' in dl_info:
             del dl_info['request_headers']
@@ -651,16 +653,16 @@ def process_download_tracking_items(connection, **kwargs):
         dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
         patch_body = {'status': 'released', 'download_tracking': dl_info}
         # delete items from bot user agents
-        if (any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_agents)
+        if (any(bot_str in user_agent for bot_str in bot_agents)
             and dl_info['user_uuid'] == 'anonymous'):
             patch_body['status'] = 'deleted'
         # set range_query=True for select user agents
-        if (any(ua_str in dl_info['user_agent'].lower() for ua_str in range_query_agents)):
+        if (any(ua_str in user_agent for ua_str in range_query_agents)):
             dl_info['range_query'] = True
         # deduplicate range query requests by ip/filename/user_agent/user_uuid
         if patch_body['status'] != 'deleted' and dl_info['range_query'] is True:
             range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
-                                   dl_info['user_agent'], dl_info['user_uuid']])
+                                   user_agent, dl_info['user_uuid']])
             parsed_date = parse_datetime_to_utc(tracking['date_created'])
             if parsed_date is not None:
                 if range_key in range_cache:
