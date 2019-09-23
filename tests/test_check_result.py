@@ -81,7 +81,8 @@ class TestCheckResult():
         check.kwargs['test'] = 'yea'
         res = check.store_result()
         ignore_uuid = res['uuid']
-        check.connections['es'].refresh_index()
+        if check.connections['es'] is not None:
+            check.connections['es'].refresh_index()
         hist_10 = check.get_result_history(0, 10)
         assert isinstance(hist_10, list)
         for chk in hist_10:

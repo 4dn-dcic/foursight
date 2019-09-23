@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 from .abstract_connection import AbstractConnection
+import json
 import requests
 import boto3
 import datetime
@@ -32,7 +33,7 @@ class S3Connection(AbstractConnection):
         # return found bucket content or None on an error
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
-            return response['Body'].read()
+            return json.loads(response['Body'].read())
         except:
             return None
 

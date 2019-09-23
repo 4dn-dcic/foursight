@@ -36,15 +36,7 @@ class RunResult(object):
         """
         Returns None if not present, otherwise returns a JSON parsed res.
         """
-        result = self.connections['s3'].get_object(key)
-        if result is None:
-            return None
-        # see if data is in json format
-        try:
-            json_result = json.loads(result)
-        except ValueError:
-            return result
-        return json_result
+        return self.connections['s3'].get_object(key)
 
     def get_es_object(self, key):
         """
@@ -256,6 +248,8 @@ class RunResult(object):
             if after_date is not None:
                 all_keys = list(filter(lambda k: self.filename_to_datetime(k) >= after_date, all_keys))
             history = all_keys[start:start+limit]
+            for idx, key in enumerate(history):
+                history[idx] = self.get_s3_object(key)
 
         results = []
         for n in range(len(history)):

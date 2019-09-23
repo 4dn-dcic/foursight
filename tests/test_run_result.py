@@ -58,16 +58,19 @@ class TestRunResult():
         primary_check.description = 'This is a primary check - it should persist'
         primary_check.kwargs = {'primary': True}
         res = primary_check.store_result()
-        primary_check.connections['es'].refresh_index()
+        if primary_check.connections['es'] is not None:
+            primary_check.connections['es'].refresh_index()
         num_deleted_s3, num_deleted_es = self.run.delete_results(prior_date=datetime.datetime.utcnow())
         assert num_deleted_s3 == 5 # primary result should not have been deleted
-        assert num_deleted_es == 5
+        if primary_check.connections['es'] is not None:
+            assert num_deleted_es == 5
+            assert primary_check.get_es_object('test_only_check/' + res['kwargs']['uuid'] + '.json')
         queried_primary = self.run.get_result_by_uuid(res['kwargs']['uuid'])
-        assert primary_check.get_es_object('test_only_check/' + res['kwargs']['uuid'] + '.json')
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
         primary_deleted_s3, primary_deleted_es = self.run.delete_results(primary=False)
         assert primary_deleted_s3 >= 1 # now primary result should be gone
-        assert primary_deleted_es >= 1
+        if primary_check.connections['es'] is not None:
+            assert primary_deleted_es >= 1
         assert not self.run.get_result_by_uuid(res['kwargs']['uuid'])
 
     @pytest.mark.flaky
@@ -84,7 +87,8 @@ class TestRunResult():
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
         num_deleted_s3, num_deleted_es = self.run.delete_results(primary=False)
         assert num_deleted_s3 == 1
-        assert num_deleted_es == 1
+        if check.connections['es'] is not None:
+            assert num_deleted_es == 1
         assert not self.run.get_result_by_uuid(res['kwargs']['uuid'])
 
     @pytest.mark.flaky
@@ -112,10 +116,12 @@ class TestRunResult():
             check.store_result()
         num_deleted_s3, num_deleted_es = self.run.delete_results(custom_filter=term_in_descr)
         assert num_deleted_s3 == 5
-        assert num_deleted_es == 5
+        if check.connections['es'] is not None:
+            assert num_deleted_es == 5
         num_deleted_s3, num_deleted_es = self.run.delete_results()
         assert num_deleted_s3 == 3
-        assert num_deleted_es == 3
+        if check.connections['es'] is not None:
+            assert num_deleted_es == 3
 
     @pytest.mark.flaky
     def test_delete_results_bad_filter(self):

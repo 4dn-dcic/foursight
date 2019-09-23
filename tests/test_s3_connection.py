@@ -19,7 +19,7 @@ class TestS3Connection():
         put_res = test_s3_conn.put_object(test_key, json.dumps(test_value))
         assert (put_res is not None)
         get_res = test_s3_conn.get_object(test_key)
-        assert (json.loads(get_res) == test_value)
+        assert (get_res == test_value)
         prefix_keys = test_s3_conn.list_all_keys_w_prefix('test/')
         assert test_s3_conn.get_size_bytes() is not None
         assert (len(prefix_keys) > 0)

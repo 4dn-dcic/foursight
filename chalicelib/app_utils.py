@@ -60,7 +60,7 @@ def init_environments(env='all'):
         else:
             return {} # provided env is not in s3
     for env_key in env_keys:
-        env_res = json.loads(s3_connection.get_object(env_key))
+        env_res = s3_connection.get_object(env_key)
         # check that the keys we need are in the object
         if isinstance(env_res, dict) and {'fourfront', 'es'} <= set(env_res):
             env_entry = {

@@ -55,8 +55,9 @@ class FSConnection(object):
         if self.connections['es'] is not None:
             obj = self.connections['es'].get_object(key)
         if obj is None:
-            obj = self.connections['es'].get_object(key)
-            self.connections['es'].put_object(key, obj)
+            obj = self.connections['s3'].get_object(key)
+            if self.connections['es'] is not None:
+                self.connections['es'].put_object(key, obj)
         return obj
 
     def put_object(self, key, value):
