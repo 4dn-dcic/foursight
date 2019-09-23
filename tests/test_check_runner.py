@@ -4,7 +4,7 @@ def delay_rerun(*args):
     time.sleep(90)
     return True
 
-pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
+#pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
 
 # thanks to Rob Kennedy on S.O. for this bit of code
 @contextmanager
@@ -68,7 +68,6 @@ class TestCheckRunner():
         assert (self.stage_info['queue_name'] == 'foursight-test-check_queue')
         assert (self.stage_info['runner_name'] == 'foursight-dev-check_runner')
 
-    @pytest.mark.flaky
     def test_check_runner_manually(self):
         """
         Queue a check and make sure it is run
@@ -113,8 +112,6 @@ class TestCheckRunner():
         assert ({'run_id', 'receipt', 'sqs_url'} <= set(post_res['kwargs']['_run_info'].keys()))
         assert (post_res['kwargs']['_run_info']['run_id'] == run_uuid)
 
-    # Dependent on action records, needs some discussion on how to fix
-    @pytest.mark.skip
     def test_check_runner_manually_with_associated_action(self):
         cleared = self.clear_queue_and_runners()
         assert (cleared)

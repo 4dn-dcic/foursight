@@ -33,7 +33,10 @@ class S3Connection(AbstractConnection):
         # return found bucket content or None on an error
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
-            return json.loads(response['Body'].read())
+            body = response['Body'].read()
+            return json.loads(body)
+        except json.JSONDecodeError:
+            return body
         except:
             return None
 
