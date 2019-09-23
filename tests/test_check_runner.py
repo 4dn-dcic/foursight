@@ -164,6 +164,7 @@ class TestCheckRunner():
         tries = 0
         test_success = False
         while tries < 10 and not test_success:
+            self.connection.connections['es'].refresh_index()
             tries += 1
             to_send = ['test_checks/add_random_test_nums', act_kwargs, []]
             app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
@@ -178,7 +179,7 @@ class TestCheckRunner():
         assert (test_success)
         assert (runner_res is None)
 
-    @pytest.mark.skip # same issue as above
+    @pytest.mark.skip
     def test_queue_check_group(self):
         # find the checks we will be using
         use_schedule = 'ten_min_checks'
@@ -199,6 +200,7 @@ class TestCheckRunner():
             if vis_messages == 0 and invis_messages == 0:
                 finished_count += 1
             else:
+                self.connection.connections['es'].refresh_index()
                 error_count += 1
                 # eat up residual messages
                 app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
@@ -206,7 +208,7 @@ class TestCheckRunner():
                 print('Could not find an empty foursight-test-queue.')
                 assert (False)
         # queue should be empty. check results
-        time.sleep(4)
+        self.connection.connections['es'].refresh_index()
         post_res = check_utils.get_check_results(self.connection, checks=use_checks, use_latest=True)
         # compare the runtimes to ensure checks have run
         res_compare = {}

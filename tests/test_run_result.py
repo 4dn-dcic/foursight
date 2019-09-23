@@ -58,10 +58,12 @@ class TestRunResult():
         primary_check.description = 'This is a primary check - it should persist'
         primary_check.kwargs = {'primary': True}
         res = primary_check.store_result()
+        primary_check.connections['es'].refresh_index()
         num_deleted_s3, num_deleted_es = self.run.delete_results(prior_date=datetime.datetime.utcnow())
         assert num_deleted_s3 == 5 # primary result should not have been deleted
         assert num_deleted_es == 5
         queried_primary = self.run.get_result_by_uuid(res['kwargs']['uuid'])
+        assert primary_check.get_es_object('test_only_check/' + res['kwargs']['uuid'] + '.json')
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
         primary_deleted_s3, primary_deleted_es = self.run.delete_results(primary=False)
         assert primary_deleted_s3 >= 1 # now primary result should be gone
@@ -185,6 +187,7 @@ class TestRunResult():
         check_two.description = "This is the second check, it passed"
         check_two.status = 'PASS'
         resp = check_two.store_result()
+        assert len(check_one.list_keys()) >= 2
         num_deleted, _ = self.run.delete_results(custom_filter=filter_error)
         assert num_deleted == 1
         assert self.run.get_result_by_uuid(resp['uuid'])

@@ -70,7 +70,7 @@ def migrate(env, stage):
     app.set_timeout(0)
     es = ESConnection(index=index_name)
     conn = app.init_connection(env)
-    args = {'check_name': None, 'called_by': None}
+    args = {'timeout': 1000000, 'check_name': None, 'called_by': None}
     migrate = app.run_check_or_action(conn, 'es_checks/migrate_checks_to_es', args)
     diff = app.run_check_or_action(conn, 'es_checks/elasticsearch_s3_count_diff', {})
     print(migrate)

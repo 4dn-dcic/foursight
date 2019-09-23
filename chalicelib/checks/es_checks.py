@@ -85,6 +85,7 @@ def clean_s3_es_checks(connection, **kwargs):
     s3 = connection.connections['s3']
     es = connection.connections['es']
     one_month_ago = datetime.datetime.utcnow() - datetime.timedelta(days=30)
+    # XXX: how to enforce timeout?
     try:
         n_deleted_s3, n_deleted_es = action.delete_results(prior_date=one_month_ago)
     except:

@@ -19,7 +19,9 @@ class ElasticsearchException(Exception):
     """ Generic exception for an elasticsearch failure """
     def __init__(self, message=None):
         if message is None:
-            message = "No error message given, this shouldn't happen!"
+            self.message = "No error message given, this shouldn't happen!"
+        else:
+            self.message = message
         super().__init__(message)
 
 class ESConnection(AbstractConnection):

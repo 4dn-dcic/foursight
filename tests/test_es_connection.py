@@ -14,6 +14,15 @@ class TestESConnection():
     def uuid(check):
         return check['name'] + '/' + check['uuid']
 
+    def test_Elasticsearch_Exception(self):
+        """
+        Tests creating an ES exception
+        """
+        ex = es_connection.ElasticsearchException()
+        assert ex.message == "No error message given, this shouldn't happen!"
+        ex = es_connection.ElasticsearchException('test message')
+        assert ex.message == 'test message'
+
     def test_basic_indexing(self):
         """
         Creates a test index, indexes a few check items, verifies they are
@@ -88,6 +97,7 @@ class TestESConnection():
         self.es.put_object(self.uuid(check3), check3)
         self.es.put_object(self.uuid(check4), check4)
         self.es.refresh_index()
+        assert self.es.get_size() == 4
         res = self.es.get_result_history('page_children_routes', 0, 25)
         assert len(res) == 3
         res = self.es.get_result_history('check_status_mismatch', 0, 25)
@@ -121,3 +131,10 @@ class TestESConnection():
             res = self.es.get_main_page_checks(primary=False)
         assert len(res) == 0
         self.es.delete_index(self.index)
+
+    def test_search_failures(self):
+        """
+        Tests some errors for search
+        """
+        with pytest.raises(es_connection.ElasticsearchException):
+            self.es.search(None)
