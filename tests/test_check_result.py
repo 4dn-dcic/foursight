@@ -8,7 +8,7 @@ class TestCheckResult():
     environ = 'mastertest' # hopefully this is up
     connection = app_utils.init_connection(environ)
 
-    @pytest.mark.flaky
+    @pytest.mark.flaky(max_runs=4) # very flaky for some reason
     @pytest.mark.parametrize('use_es', [True, False])
     def test_check_result_methods(self, use_es):
         check = run_result.CheckResult(self.connection, self.check_name)
@@ -52,7 +52,7 @@ class TestCheckResult():
         check_copy.kwargs = {'primary': True, 'uuid': prime_uuid}
         assert (res == check_copy.store_result())
 
-    @pytest.mark.flaky(max_runs=3)
+    @pytest.mark.flaky(max_runs=4) # very flaky for some reason
     @pytest.mark.parametrize('use_es', [True, False])
     def test_get_closest_result(self, use_es):
         check = run_result.CheckResult(self.connection, self.check_name)
