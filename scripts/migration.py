@@ -1,9 +1,10 @@
-import app
+import sys
 import datetime
 import boto3
 import json
-import sys
-from ..chalicelib.es_connection import ESConnection
+sys.path.append('..')
+import app
+from chalicelib.es_connection import ESConnection
 
 # XXX: To use this script, run 'python migration.py <env> <stage>' in the root
 # directory of this repository.
@@ -17,7 +18,7 @@ from ..chalicelib.es_connection import ESConnection
 ENVS = ['mastertest', 'hotseat', 'webdev', 'staging', 'cgap', 'data']
 STAGES = ['dev', 'prod']
 ONE_WEEK_AGO = datetime.datetime.utcnow() - datetime.timedelta(days=7)
-MIGRATE = True # set this option based on what you want to do
+MIGRATE = False # set this option based on what you want to do
 PRIMARY = False # set to true if you want to keep primary results
 
 def filename_to_datetime(key):

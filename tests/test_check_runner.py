@@ -29,6 +29,7 @@ class TestCheckRunner():
     environ = 'mastertest'
     app.set_stage('test')
     connection = app_utils.init_connection(environ)
+    connection.connections['es'] = None # disable es
     # set up a queue for test checks
     stage_info = utils.get_stage_info()
     queue = utils.get_sqs_queue()
@@ -117,8 +118,8 @@ class TestCheckRunner():
         assert (cleared)
         # queue a check with queue_action="dev" kwarg, meaning the associated
         # action will automatically be queued after completion
-        check = utils.init_check_res(self.connection, 'test_random_nums')
-        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        check = run_result.CheckResult(self.connection, 'test_random_nums')
+        action = run_result.ActionResult(self.connection, 'add_random_test_nums')
         to_send = ['test_checks/test_random_nums', {'primary': True, 'queue_action': 'dev'}, []]
         # send the check to the queue; the action will be queue automatically
         run_uuid = app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
@@ -162,8 +163,6 @@ class TestCheckRunner():
         tries = 0
         test_success = False
         while tries < 10 and not test_success:
-            if self.connection.connections['es'] is not None:
-                self.connection.connections['es'].refresh_index()
             tries += 1
             to_send = ['test_checks/add_random_test_nums', act_kwargs, []]
             app_utils.send_single_to_queue(self.environ, to_send, None, invoke_runner=False)
@@ -198,8 +197,6 @@ class TestCheckRunner():
             if vis_messages == 0 and invis_messages == 0:
                 finished_count += 1
             else:
-                if self.connection.connections['es'] is not None:
-                    self.connection.connections['es'].refresh_index()
                 error_count += 1
                 # eat up residual messages
                 app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
@@ -207,8 +204,6 @@ class TestCheckRunner():
                 print('Did not locate result.')
                 assert (False)
         # queue should be empty. check results
-        if self.connection.connections['es'] is not None:
-            self.connection.connections['es'].refresh_index()
         post_res = check_utils.get_check_results(self.connection, checks=use_checks, use_latest=True)
         # compare the runtimes to ensure checks have run
         res_compare = {}
@@ -221,7 +216,7 @@ class TestCheckRunner():
             assert (res_compare[check_name]['prior'] != res_compare[check_name]['post'])
 
     def test_queue_check(self):
-        check = utils.init_check_res(self.connection, 'test_random_nums')
+        check = run_result.CheckResult(self.connection, 'test_random_nums')
         run_uuid = app_utils.queue_check(self.environ, 'test_random_nums')
         # both check and action separately must make it through queue
         tries = 0
@@ -242,7 +237,7 @@ class TestCheckRunner():
 
     def test_queue_action(self):
         # this action will fail because it has no check-related kwargs
-        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        action = run_result.ActionResult(self.connection, 'add_random_test_nums')
         run_uuid = app_utils.queue_action(self.environ, 'add_random_test_nums')
         # both check and action separately must make it through queue
         tries = 0
@@ -254,7 +249,7 @@ class TestCheckRunner():
             else:
                 tries += 1
             if tries > 60:  # test should fail
-                print('Could not find an empty foursight-test-queue.')
+                print('Did not locate result.')
                 assert (False)
         # get the action by run_uuid
         run_action = action.get_result_by_uuid(run_uuid)

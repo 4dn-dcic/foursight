@@ -55,7 +55,7 @@ def migrate_checks_to_es(connection, **kwargs):
         s3_keys = s3.list_all_keys()
     n_migrated = 0
     for key in s3_keys:
-        if timeout and round(time.time() - t0, 2) > time_limit:
+        if kwargs.get('timeout') and round(time.time() - t0, 2) > time_limit:
             action_logs['time out'] = True
             break
         if 'action_records' in key: # ignore action_records for now
