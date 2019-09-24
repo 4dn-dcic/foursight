@@ -293,12 +293,9 @@ class RunResult(object):
         Key might look like `sync_google_analytics_data/2018-10-15T19:08:32.734656.json`
         We presume that timezone info is not important to allow us to use strptime.
         '''
-        try:
-            prefixlen = len(self.name) + 1
-            keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
-            return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
-        except:
-            return datetime.datetime.min
+        prefixlen = len(self.name) + 1
+        keydatestr = key[prefixlen:-5] # Remove prefix and .json from key.
+        return datetime.datetime.strptime(keydatestr, '%Y-%m-%dT%H:%M:%S.%f')
 
     @abstractmethod
     def validate(self):
