@@ -141,7 +141,7 @@ def get_viewconf_status(files):
         "deleted",
         "replaced",
         "revoked",
-        "archived",
+        # "archived",
         "pre-release",
         "to be uploaded by workflow"
     ]
