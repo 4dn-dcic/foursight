@@ -234,7 +234,9 @@ class RunResult(object):
         if self.es:
             history = self.connections['es'].get_result_history(self.name, start, limit)
             def wrapper(obj):
-                filename = obj.get('name') + '/' + obj.get('kwargs').get('uuid') + '.json'
+                filename = obj.get('_id')
+                if filename is None:
+                    filename = obj.get('name') + '/' + obj.get('kwargs').get('uuid') + '.json'
                 return self.filename_to_datetime(filename)
 
             if after_date is not None:

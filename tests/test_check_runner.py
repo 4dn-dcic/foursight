@@ -4,7 +4,7 @@ def delay_rerun(*args):
     time.sleep(90)
     return True
 
-pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
+#pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
 
 # thanks to Rob Kennedy on S.O. for this bit of code
 @contextmanager
