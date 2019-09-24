@@ -55,6 +55,10 @@ workflow_details = {
         "run_time": 24,
         "accepted_versions": ["v4"]
     },
+    "bedtomultivec": {
+        "run_time": 24,
+        "accepted_versions": ["v4"]
+    },
     "bedtobeddb": {
         "run_time": 24,
         "accepted_versions": ["v2"]
@@ -200,6 +204,21 @@ mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
           'chicken': 'galGal5'}
+
+# color map states bed file
+states_color_mapper = {'SPIN_states_v1': '/files-reference/4DNFI5GSVVMO/'}
+
+
+# check for a specific tag in a file
+def isthere_states_tag(a_file):
+    if a_file.get('tags'):
+        for tag in a_file['tags']:
+            if tag not in states_color_mapper:
+                return (False, 'invalid_tag')
+            else:
+                return (True, '')
+    else:
+        return (False, 'missing_tag')
 
 
 def extract_nz_chr(acc, auth):

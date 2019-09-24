@@ -146,6 +146,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "overwrite_input_extra": False
         },
         {
+        "app_name": "bedtomultivec",
+        "workflow_uuid": "a52b9b9d-1654-4967-883f-4d2adee77bc7",
+        'config': {'mem': 4, 'cpu': 4, 'EBS_optimized': 'true'},
+        "overwrite_input_extra": False
+        },
+        {
         "app_name": "bedGraphToBigWig",
         "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
         "overwrite_input_extra": False

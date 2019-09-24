@@ -27,10 +27,10 @@ def get_reference_files(connection):
     """
     # first, find and cache the reference files
     reference_files_by_ga = {}
-    ref_search_q = '/search/?type=File&tags=higlass_reference&higlass_uid!=No+value&genome_assembly!=No+value&file_format.file_format=beddb&file_format.file_format=chromsizes&field=genome_assembly&field=file_format&field=accession'
+    ref_search_q = '/search/?type=File&tags=higlass_reference&higlass_uid!=No+value&genome_assembly!=No+value&file_format.file_format=beddb&file_format.file_format=bed.multires.mv5&file_format.file_format=chromsizes&field=genome_assembly&field=file_format&field=accession'
     ref_res = ff_utils.search_metadata(ref_search_q, key=connection.ff_keys)
     for ref in ref_res:
-        # file_format should be 'chromsizes' or 'beddb'
+        # file_format should be 'chromsizes', 'beddb' or 'bed.multires.mv5'
         ref_format = ref.get('file_format', {}).get('file_format')
 
         # cache reference files by genome_assembly
@@ -1554,8 +1554,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
     the metadata.
 
     The `filetype` arg allows you to specify which filetypes to operate on.
-    Must be one of: 'all', 'bigbed', 'mcool', 'bg', 'bw', 'beddb', 'chromsizes'.
-    'chromsizes' and 'beddb' are from the raw files bucket; all other filetypes
+    Must be one of: 'all', 'bigbed', 'mcool', 'bg', 'bw', 'beddb', 'bed.multires.mv5','chromsizes'.
+    'chromsizes','beddb' and 'bed.multires.mv5'are from the raw files bucket; all other filetypes
     are from the processed files bucket.
 
     `higlass_server` may be passed in if you want to use a server other than
@@ -1578,7 +1578,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.description = "not able to get data from fourfront"
     # keep track of mcool, bg, and bw files separately
     valid_filetypes = {
-        "raw": ['chromsizes', 'beddb'],
+        "raw": ['chromsizes', 'beddb', 'bed.multires.mv5'],
         "proc": ['mcool', 'bg', 'bw', 'bed', 'bigbed'],
     }
 
@@ -1692,11 +1692,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
             # bg files use an bw file from extra files to register
             # bed files use a beddb file from extra files to regiser
             # don't FAIL if the bg is missing the bw, however
-            type2extra = {'bg': 'bw', 'bed': 'beddb'}
+            type2extra = {'bg': ['bw'], 'bed': ['beddb', 'bed.multires.mv5']}
             if file_format in type2extra:
                 # Get the first extra file of the needed type that has an upload_key and has been published.
                 for extra in procfile.get('extra_files', []):
-                    if extra['file_format'].get('display_title') == type2extra[file_format] \
+                    if extra['file_format'].get('display_title') in type2extra[file_format] \
                         and 'upload_key' in extra \
                         and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
@@ -1852,6 +1852,10 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'gene-annotation'
+            elif ftype == 'multires.mv5':
+                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
+                payload['filetype'] = 'multivec'
+                payload['datatype'] = 'multivec'
             elif ftype == 'mcool':
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'cooler'
