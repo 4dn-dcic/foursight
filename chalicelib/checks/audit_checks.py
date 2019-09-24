@@ -488,15 +488,26 @@ def check_opf_status_mismatch(connection, **kwargs):
         if result.get('other_processed_files'):
             for case in result['other_processed_files']:
                 files.extend([i['uuid'] for i in case['files']])
+                if case.get('higlass_view_config'):
+                    files.append(case['higlass_view_config'].get('uuid'))
         if result.get('experiments_in_set'):
             for exp in result['experiments_in_set']:
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, key=connection.ff_keys)
-    status_dict = {f['uuid']: f['properties']['status'] for f in resp}
+    resp =  ff_utils.expand_es_metadata(list(set(files)), key=connection.ff_keys)
+    opf_status_dict = {
+        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] in files
+    }
+    opf_linked_dict = {
+        item['uuid']: item.get('quality_metric') for val in resp[0].values() for item in val if item['uuid'] in files
+    }
+    opf_other_dict = {
+        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] not in files
+    }
     check.full_output = {}
     for result in results:
+        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid') for item in result.get('other_processed_files', [])}
         titles = [item['title'] for item in result.get('other_processed_files', [])]
         titles.extend([item['title'] for exp in result.get('experiments_in_set', [])
                        for item in exp.get('other_processed_files', [])])
@@ -508,13 +519,27 @@ def check_opf_status_mismatch(connection, **kwargs):
             file_list.extend([item for exp in result.get('experiments_in_set', [])
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
-            statuses = set([status_dict[f['uuid']] for f in file_list])
+            statuses = set([opf_status_dict[f['uuid']] for f in file_list])
             if len(statuses) > 1:  # status mismatch in opf collection
-                problem_dict[title] = {f['@id']: status_dict[f['uuid']] for f in file_list}
+                problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
+                if hg_dict.get(title):
+                    problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
+            elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
+                if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
+                    problem_dict[title] = {'files': list(statuses)[0], 'higlass_view_config': opf_status_dict[hg_dict[title]]}
             elif 'release' not in result['status'] and (
                 STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
             ):  # if ExpSet not released, and opf collection has higher status
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
+            for f in file_list:
+                if opf_linked_dict.get(f['uuid']):
+                    if (STATUS_LEVEL[opf_other_dict[opf_linked_dict[f['uuid']]]] !=
+                        STATUS_LEVEL[opf_status_dict[f['uuid']]]):
+                        if f['@id'] not in problem_dict[title]:
+                            problem_dict[title][f['@id']] = {}
+                        problem_dict[title][f['@id']]['quality_metric'] = {
+                            'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[opf_linked_dict[f['uuid']]]
+                        }
         if problem_dict:
             check.full_output[result['@id']] = problem_dict
     if check.full_output:
@@ -561,10 +586,14 @@ def _get_all_other_processed_files(item):
     # get directly linked other processed files
     for pfinfo in item.get('properties').get('other_processed_files', []):
         toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
+        # toignore.extend([pf['quality_metric'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
+        # qcs = [pf for pf in pfinfo.get('files', []) if pf is not None]
         hgv = pfinfo.get('higlass_view_config')
         if hgv:
             toignore.append(hgv)
     # experiment sets can also have linked opfs from experiment
+    for pfinfo in item['embedded'].get('other_processed_files', []):
+        toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files') if pf and pf.get('quality_metric')])
     expts = item.get('embedded').get('experiments_in_set')
     if expts is not None:
         for exp in expts:
@@ -572,6 +601,7 @@ def _get_all_other_processed_files(item):
             if opfs is not None:
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
+                    toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
                     hgv = pfinfo.get('higlass_view_config')
                     if hgv:
                         toignore.append(hgv)
