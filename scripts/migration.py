@@ -3,7 +3,7 @@ import datetime
 import boto3
 import json
 import sys
-from chalicelib.es_connection import ESConnection
+from ..chalicelib.es_connection import ESConnection
 
 # XXX: To use this script, run 'python migration.py <env> <stage>' in the root
 # directory of this repository.

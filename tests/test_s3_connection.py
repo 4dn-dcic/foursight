@@ -20,6 +20,8 @@ class TestS3Connection():
         assert (put_res is not None)
         get_res = test_s3_conn.get_object(test_key)
         assert (get_res == test_value)
+        n_keys = test_s3_conn.get_size()
+        assert n_keys == 1
         prefix_keys = test_s3_conn.list_all_keys_w_prefix('test/')
         assert test_s3_conn.get_size_bytes() is not None
         assert (len(prefix_keys) > 0)
@@ -30,3 +32,5 @@ class TestS3Connection():
         # now there should be 0
         all_keys = test_s3_conn.list_all_keys()
         assert (len(all_keys) == 0)
+        n_keys = test_s3_conn.get_size()
+        assert n_keys == 0

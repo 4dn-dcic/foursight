@@ -34,6 +34,8 @@ class TestCheckResult():
         assert (close_res == res)
         override_res = check.get_closest_result(override_date=datetime.datetime.utcnow())
         assert (override_res == res)
+        if check.es:
+            check.connections['es'].refresh_index()
         all_res = check.get_all_results()
         assert (len(all_res) > 0)
         # ensure that previous check results can be fetch using the uuid functionality
@@ -70,11 +72,14 @@ class TestCheckResult():
             error_check.get_closest_result(diff_hours=0, diff_mins=0)
         assert ('Could not find closest non-ERROR result' in str(exc.value))
 
-    def test_get_result_history(self):
+    @pytest.mark.parametrize('use_es', [True, False])
+    def test_get_result_history(self, use_es):
         """
         This relies on the check having been run enough times. If not, return
         """
         check = run_result.CheckResult(self.connection, self.check_name)
+        if not use_es:
+            check.es = False # trigger s3 fallback
         # ensure at least one entry present
         check.status = 'IGNORE'
         check.summary = 'TEST HISTORY'

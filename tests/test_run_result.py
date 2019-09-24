@@ -16,8 +16,8 @@ class TestRunResult():
         check.kwargs = {}
         return check
 
-    def test_validate_run_result(self):
-        """ Tests some validation errors """
+    def test_validate_check_result(self):
+        """ Tests some check validation errors """
         check = self.setup_valid_check()
         check.store_result = 'Not a fxn'
         with pytest.raises(run_result.BadCheckOrAction) as exc:
@@ -30,8 +30,27 @@ class TestRunResult():
         assert ("is not of type <class 'dict'>" in str(exc.value))
         check = self.setup_valid_check()
         check.name = 5
+        check.allow_action = 'yes please'
         with pytest.raises(run_result.BadCheckOrAction) as exc:
             check.validate()
+        assert ("is not of type <class 'str'>" in str(exc.value))
+        assert ("is not of type <class 'bool'>" in str(exc.value))
+
+    def test_validate_action_result(self):
+        """ Tests some action validation errors """
+        action = run_result.ActionResult(self.connection, 'test_check')
+        action.validate() # constructor should pass validation
+        action.store_result = 'Not a fxn'
+        with pytest.raises(run_result.BadCheckOrAction) as exc:
+            action.validate()
+        assert (str(exc.value) == 'Do not overwrite the store_result method.')
+        action.kwargs = 17
+        with pytest.raises(run_result.BadCheckOrAction) as exc:
+            action.validate()
+        assert ("is not of type <class 'dict'>" in str(exc.value))
+        action.name = {}
+        with pytest.raises(run_result.BadCheckOrAction) as exc:
+            action.validate()
         assert ("is not of type <class 'str'>" in str(exc.value))
 
     def test_BadCheckOrAction(self):

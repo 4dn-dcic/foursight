@@ -4,7 +4,7 @@ def delay_rerun(*args):
     time.sleep(90)
     return True
 
-#pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
+pytestmark = [pytest.mark.flaky(rerun_filter=delay_rerun)]
 
 # thanks to Rob Kennedy on S.O. for this bit of code
 @contextmanager
@@ -178,7 +178,6 @@ class TestCheckRunner():
         assert (test_success)
         assert (runner_res is None)
 
-    @pytest.mark.flaky
     def test_queue_check_group(self):
         # find the checks we will be using
         use_schedule = 'ten_min_checks'

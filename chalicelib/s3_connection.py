@@ -51,6 +51,8 @@ class S3Connection(AbstractConnection):
     def get_size_bytes(self):
         """
         Uses CloudWatch client to get the bucket size in bytes of this bucket.
+        Start and EndTime represent the window on which the bucket size will be
+        calculated. An average is taken across the entire window (Period=86400)
         Useful for checks - may need further configuration
         """
         now = datetime.datetime.utcnow()

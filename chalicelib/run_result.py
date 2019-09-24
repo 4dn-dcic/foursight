@@ -84,13 +84,10 @@ class RunResult(object):
         Return all results for this check. Should use with care
         """
         all_results = []
-        s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.list_keys(records_only=True, prefix=s3_prefix)
-        if not relevant_checks:
-            relevant_checks = self.connections['s3'].list_all_keys_w_prefix(records_only=True, prefix=s3_prefix)
+        relevant_checks = self.list_keys(records_only=True, prefix=self.name)
         for n in range(len(relevant_checks)):
             check = relevant_checks[n]
-            if check.startswith(s3_prefix) and check.endswith(self.extension):
+            if check.startswith(self.name) and check.endswith(self.extension):
                 result = self.get_object(check)
                 all_results.append(result)
         return all_results
@@ -108,16 +105,13 @@ class RunResult(object):
         """
         # check_tuples is a list of items of form (s3key, datetime uuid)
         check_tuples = []
-        s3_prefix = ''.join([self.name, '/'])
-        relevant_checks = self.list_keys(records_only=True, prefix=s3_prefix)
+        relevant_checks = self.list_keys(records_only=True, prefix=self.name)
         if not relevant_checks:
-            relevant_checks = self.connections['s3'].list_all_keys_w_prefix(records_only=True, prefix=s3_prefix)
-        if not relevant_checks:
-            raise Exception('Could not find any results for prefix: %s' % s3_prefix)
+            raise Exception('Could not find any results for prefix: %s' % self.name)
         # now use only s3 objects with a valid uuid
         for check in relevant_checks:
-            if check.startswith(s3_prefix) and check.endswith(self.extension):
-                time_str = check[len(s3_prefix):-len(self.extension)]
+            if check.startswith(self.name) and check.endswith(self.extension):
+                time_str = check[len(self.name) + 1:-len(self.extension)]
                 try:
                     check_time = datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
                 except ValueError:
@@ -136,7 +130,7 @@ class RunResult(object):
         while not match_res:
             if not best_match or tries > 999:
                 raise Exception('Could not find closest non-ERROR result for prefix: %s. Attempted'
-                                ' with %s diff hours and %s diff mins.' % (s3_prefix, diff_hours, diff_mins))
+                                ' with %s diff hours and %s diff mins.' % (self.name, diff_hours, diff_mins))
             possible_res = self.get_object(best_match[0])
             if possible_res and possible_res.get('status', 'ERROR') != 'ERROR':
                 match_res = possible_res
@@ -240,7 +234,7 @@ class RunResult(object):
         if self.es:
             history = self.connections['es'].get_result_history(self.name, start, limit)
             def wrapper(obj):
-                filename = obj.get('_id')
+                filename = obj.get('name') + '/' + obj.get('kwargs').get('uuid') + '.json'
                 return self.filename_to_datetime(filename)
 
             if after_date is not None:
@@ -379,23 +373,23 @@ class CheckResult(RunResult):
         Multiple errors are possible - the 'latest' wrt when it is checked below
         is reported
         """
-        error_msg = ''
+        error_msg = []
         store_method = getattr(self, 'store_result', None)
         if not callable(store_method):
-            error_msg = 'Do not overwrite the store_result method.'
+            error_msg.append('Do not overwrite the store_result method.')
         def _validate(attr, t):
             if not isinstance(attr, t):
-                nonlocal error_msg
-                error_msg += '%s is not of type %s' % (str(attr), str(t)) + '\n'
+                error_msg.append('%s is not of type %s' % (str(attr), str(t)))
         _validate(self.name, str)
         _validate(self.summary, str)
         _validate(self.description, str)
         _validate(self.status, str)
         _validate(self.ff_link, str)
         _validate(self.action, str)
+        _validate(self.allow_action, bool)
         _validate(self.kwargs, dict)
-        if error_msg != '':
-            raise BadCheckOrAction(error_msg)
+        if len(error_msg) > 0:
+            raise BadCheckOrAction('\n'.join(error_msg))
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this
@@ -450,20 +444,19 @@ class ActionResult(RunResult):
         Multiple errors are possible - the 'latest' wrt when it is checked below
         is reported
         """
-        error_msg = ''
+        error_msg = []
         store_method = getattr(self, 'store_result', None)
         if not callable(store_method):
-            error_msg = 'Do not overwrite the store_result method.'
+            error_msg.append('Do not overwrite the store_result method.')
         def _validate(attr, t):
             if not isinstance(attr, t):
-                nonlocal error_msg
-                error_msg += '%s is not of type %s' % (str(attr), str(t))
+                error_msg.append('%s is not of type %s' % (str(attr), str(t)))
         _validate(self.status, str)
         _validate(self.description, str)
         _validate(self.name, str)
         _validate(self.kwargs, dict)
-        if error_msg != '':
-            raise BadCheckOrAction(error_msg)
+        if len(error_msg) > 0:
+            raise BadCheckOrAction('\n'.join(error_msg))
 
     def store_result(self):
         # normalize status, probably not the optimal place to do this

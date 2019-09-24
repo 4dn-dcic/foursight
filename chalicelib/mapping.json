@@ -53,31 +53,6 @@
           },
           "kwargs": {
             "properties": {
-              "_run_info": {
-                "properties": {
-                  "receipt": {
-                    "type": "text",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "run_id": {
-                    "type": "date"
-                  },
-                  "sqs_url": {
-                    "type": "text",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  }
-                }
-              },
               "called_by": {
                 "type": "date"
               },
@@ -89,9 +64,6 @@
                     "ignore_above": 256
                   }
                 }
-              },
-              "patch_completed": {
-                "type": "boolean"
               },
               "primary": {
                 "type": "boolean"
@@ -107,15 +79,6 @@
               },
               "runtime_seconds": {
                 "type": "float"
-              },
-              "start_missing_meta": {
-                "type": "boolean"
-              },
-              "start_missing_run": {
-                "type": "boolean"
-              },
-              "start_runs": {
-                "type": "boolean"
               },
               "uuid": {
                 "type": "date"

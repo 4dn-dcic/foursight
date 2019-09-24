@@ -81,6 +81,8 @@ class TestESConnection():
         self.es.refresh_index()
         assert len(self.es.list_all_keys_w_prefix('page_children_routes')) == 1
         assert len(self.es.list_all_keys_w_prefix('pag3_children_routes')) == 0
+        fail_check = utils.load_json(__file__, 'test_checks/fail_check.json')
+        assert not self.es.put_object(self.uuid(fail_check), fail_check)
         assert self.es.delete_index(self.index)
 
     def test_result_history(self):
