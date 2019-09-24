@@ -140,7 +140,7 @@ class TestCheckUtils():
         uuid_compares = {}
         # will get primary results by default
         if not use_es:
-            self.connection.connectionsp['es'] = None
+            self.connection.connections['es'] = None
         all_res_primary = check_utils.get_check_results(self.connection)
         for check_res in all_res_primary:
             assert (isinstance(check_res, dict))
