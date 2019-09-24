@@ -1,11 +1,10 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res,
     parse_datetime_to_utc
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 from .helpers.google_utils import GoogleAPISyncer
 import copy
@@ -423,7 +422,7 @@ def experiment_set_reporting_data(connection, **kwargs):
     Get a snapshot of all experiment sets, their experiments, and files of
     all of the above. Include uuid, accession, status, and md5sum (for files).
     """
-    check = init_check_res(connection, 'experiment_set_reporting_data')
+    check = CheckResult(connection, 'experiment_set_reporting_data')
     check.status = 'IGNORE'
     exp_sets = {}
     search_query = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&sort=-date_created'
@@ -465,10 +464,10 @@ def data_release_updates(connection, **kwargs):
 
     Stores the information used by that action to actually build reports.
     """
-    check = init_check_res(connection, 'data_release_updates')
+    check = CheckResult(connection, 'data_release_updates')
     check.action = 'publish_data_release_updates'
     # find needed experiment_set_reporting_data results
-    data_check = init_check_res(connection, 'experiment_set_reporting_data')
+    data_check = CheckResult(connection, 'experiment_set_reporting_data')
     if kwargs.get('start_date', None) is not None:
         start_date = parse_datetime_to_utc(kwargs.get('start_date'), '%Y-%m-%d')
         # use 11 am UTC
@@ -615,7 +614,7 @@ def data_release_updates(connection, **kwargs):
 
 @action_function()
 def publish_data_release_updates(connection, **kwargs):
-    action = init_action_res(connection, 'publish_data_release_updates')
+    action = ActionResult(connection, 'publish_data_release_updates')
     report_result = action.get_associated_check_result(kwargs)
     action.description = "Publish data release updates to Fourfront."
     updates_to_post = report_result.get('brief_output', {}).get('release_updates', [])
@@ -651,7 +650,7 @@ def sync_google_analytics_data(connection, **kwargs):
 
     from ..utils import get_stage_info
 
-    check = init_check_res(connection, 'sync_google_analytics_data')
+    check = CheckResult(connection, 'sync_google_analytics_data')
 
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'

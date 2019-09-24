@@ -6,5 +6,6 @@
 __pycache__
 .coverage
 *.DS_Store
-
+htmlcov/
+coverage.xml
 *.ipynb

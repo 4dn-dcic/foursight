@@ -10,6 +10,8 @@ Where `<stage>` is either `dev` or `prod`. If there is a packaging issue with yo
 
 You will need a number of environment variables to be present locally to be able to deploy Foursight.
 
+You can also run a local deployment of the dev application by running 'chalice local'. This is the recommended method for testing fixes that do not require a true deployment to test.
+
 ## Automatic deployments
 The Github repository for Chalice is outfitted with Travis CI testing and will deploy automatically when code is merged into the production branch. When you merge into production and tests pass, automatic deployment to the prod stage will occur.
 

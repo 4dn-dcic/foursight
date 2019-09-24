@@ -1,10 +1,9 @@
 from datetime import datetime
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils, s3Utils
 from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
@@ -24,7 +23,7 @@ def md5runCGAP_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'md5runCGAP_status')
+    check = CheckResult(connection, 'md5runCGAP_status')
     my_auth = connection.ff_keys
     check.action = "md5runCGAP_start"
     check.brief_output = []
@@ -135,7 +134,7 @@ def md5runCGAP_status(connection, **kwargs):
 def md5runCGAP_start(connection, **kwargs):
     """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'md5runCGAP_start')
+    action = ActionResult(connection, 'md5runCGAP_start')
     action_logs = {'runs_started': [], "runs_failed": []}
     my_auth = connection.ff_keys
     md5runCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -175,7 +174,7 @@ def fastqcCGAP_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'fastqcCGAP_status')
+    check = CheckResult(connection, 'fastqcCGAP_status')
     my_auth = connection.ff_keys
     check.action = "fastqcCGAP_start"
     check.brief_output = []
@@ -217,7 +216,7 @@ def fastqcCGAP_status(connection, **kwargs):
 def fastqcCGAP_start(connection, **kwargs):
     """Start fastqcCGAP runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'fastqcCGAP_start')
+    action = ActionResult(connection, 'fastqcCGAP_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     fastqcCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -254,7 +253,7 @@ def cgap_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'cgap_status')
+    check = CheckResult(connection, 'cgap_status')
     my_auth = connection.ff_keys
     check.action = "cgap_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -446,7 +445,7 @@ def cgap_status(connection, **kwargs):
 def cgap_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'cgap_start')
+    action = ActionResult(connection, 'cgap_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     cgap_check_result = action.get_associated_check_result(kwargs).get('full_output', {})

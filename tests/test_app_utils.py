@@ -10,7 +10,7 @@ class TestAppUtils():
     def test_init_connection(self):
         # test the fs connection
         assert (self.conn.fs_env == 'mastertest')
-        assert (self.conn.s3_connection)
+        assert (self.conn.connections)
         # test the ff connection
         assert (self.conn.ff_server)
         assert (self.conn.ff_es)
@@ -23,6 +23,12 @@ class TestAppUtils():
         with pytest.raises(Exception) as exc:
             app_utils.init_connection('not_an_environment')
         assert ('invalid environment provided' in str(exc.value))
+
+    def test_bad_view_result(self):
+        """ Tests giving a bad response to process_view_result """
+        res = 'a string, not a dict response'
+        error = app_utils.process_view_result(self.conn, res, False)
+        assert error['status'] == 'ERROR'
 
     def test_init_environments(self):
         environments = app_utils.init_environments() # default to 'all' environments

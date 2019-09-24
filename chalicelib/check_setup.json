@@ -1270,5 +1270,16 @@
                 }
             }
         }
+    },
+    "elasticsearch_s3_count_diff" : {
+        "title": "S3/ES Check Count Differential",
+        "group": "Elasticsearch checks",
+        "schedule" : {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true}
+                }
+            }
+        }
     }
 }

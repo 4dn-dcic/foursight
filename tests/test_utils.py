@@ -16,6 +16,11 @@ class TestUtils():
     def test_function_dummy(*args, **kwargs):
         connection = app_utils.init_connection('mastertest')
         check = utils.init_check_res(connection, 'not_a_check')
+        check.summary = 'A string summary'
+        check.description = 'A string description'
+        check.ff_link = 'A string link'
+        check.action = 'A string action'
+        check.kwargs = {}
         return check
 
     def test_get_stage_info(self):
@@ -74,35 +79,14 @@ class TestUtils():
     def test_init_check_res(self):
         check = utils.init_check_res(self.conn, 'test_check')
         assert (check.name == 'test_check')
-        assert (check.s3_connection is not None)
+        assert (check.connections['s3'] is not None)
 
     def test_init_action_res(self):
         action = utils.init_action_res(self.conn, 'test_action')
         assert (action.name == 'test_action')
-        assert (action.s3_connection is not None)
+        assert (action.connections['s3'] is not None)
 
-    def test_BadCheckOrAction(self):
-        test_exc = utils.BadCheckOrAction()
-        assert (str(test_exc) == 'Check or action function seems to be malformed.')
-        test_exc = utils.BadCheckOrAction('Abcd')
-        assert (str(test_exc) == 'Abcd')
-
-    def test_validate_run_result(self):
-        check = utils.init_check_res(self.conn, 'test_check')
-        action = utils.init_action_res(self.conn, 'test_action')
-        # bad calls
-        with pytest.raises(utils.BadCheckOrAction) as exc:
-            utils.validate_run_result(action, is_check=True)
-        assert (str(exc.value) == 'Check function must return a CheckResult object. Initialize one with init_check_res.')
-        with pytest.raises(utils.BadCheckOrAction) as exc:
-            utils.validate_run_result(check, is_check=False)
-        assert (str(exc.value) == 'Action functions must return a ActionResult object. Initialize one with init_action_res.')
-        check.store_result = 'Not a fxn'
-        with pytest.raises(utils.BadCheckOrAction) as exc:
-            utils.validate_run_result(check, is_check=True)
-        assert (str(exc.value) == 'Do not overwrite the store_result method of the check or action result.')
-
-    def parse_datetime_to_utc(self):
+    def test_parse_datetime_to_utc(self):
         [dt_tz_a, dt_tz_b, dt_tz_c] = ['None'] * 3
         for t_str in [self.timestr_1, self.timestr_2, self.timestr_3, self.timestr_4]:
             dt = utils.parse_datetime_to_utc(t_str)
@@ -143,3 +127,12 @@ class TestUtils():
             assert ({'server', 'key', 'secret'} <= set(ff_keys.keys()))
             hg_keys = s3_obj.get_higlass_key()
             assert ({'server', 'key', 'secret'} <= set(hg_keys.keys()))
+
+    def test_load_store_json(self):
+        """ Loads JSON, stores it in temp, re-loads to see if its the same """
+        import os
+        j = utils.load_json(__file__, './test_checks/check1.json')
+        utils.store_json(__file__, './test_checks/test.json', j)
+        reloaded = utils.load_json(__file__, './test_checks/test.json')
+        assert j == reloaded
+        os.remove(os.path.join(os.path.dirname(__file__), './test_checks/test.json'))
