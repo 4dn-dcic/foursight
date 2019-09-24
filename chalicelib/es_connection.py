@@ -37,7 +37,6 @@ class ESConnection(AbstractConnection):
     def __init__(self, index=None, doc_type='result'):
         self.es = es_utils.create_es_client(HOST, use_aws_url=True)
         self.index = index
-        self.mapping = {} # only needed if we create the index
         if index and not self.index_exists(index):
             self.create_index(index)
         self.doc_type = doc_type
@@ -53,12 +52,12 @@ class ESConnection(AbstractConnection):
         Creates an ES index called name. Returns true in success
         """
         try:
-            self.mapping = self.load_mapping()
+            mapping = self.load_mapping()
             self.es.indices.create(index=name,body={
                 "settings": {
                     "index.mapper.dynamic": False
                 },
-                "mappings": self.mapping.get('mappings')
+                "mappings": mapping.get('mappings')
             }, ignore=400)
             return True
         except Exception as e:
@@ -121,7 +120,7 @@ class ESConnection(AbstractConnection):
         try:
             return self.es.count(self.index).get('count')
         except:
-            return -1
+            return 0
 
     def get_size_bytes(self):
         """

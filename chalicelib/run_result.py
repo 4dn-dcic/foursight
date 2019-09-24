@@ -177,7 +177,7 @@ class RunResult(object):
         resp = s3_connection.put_object(record_key, json.dumps(self.status))
         return resp is not None
 
-    def delete_results(self, prior_date=None, primary=True, custom_filter=None):
+    def delete_results(self, prior_date=None, primary=True, custom_filter=None, timeout=None):
         """
         Goes through all check files deleting by default all non-primary
         checks. If a prior_date (datetime) is given then all results prior to the
@@ -216,8 +216,11 @@ class RunResult(object):
             return 0
 
         # batch delete calls at aws maximum of 1000 if necessary
+        # if timeout is given and reached, return how many we did
         num_deleted_s3, num_deleted_es = 0, 0
         for i in range(0, len(keys_to_delete), 1000):
+            if timeout and round(time.time() - t0, 2) > timeout:
+                return num_deleted_s3, num_deleted_es
             s3_resp = self.connections['s3'].delete_keys(keys_to_delete[i:i+1000])
             if self.es:
                 num_deleted_es += self.connections['es'].delete_keys(keys_to_delete[i:i+1000])

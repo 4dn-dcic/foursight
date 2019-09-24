@@ -10,7 +10,6 @@ def elasticsearch_s3_count_diff(connection, **kwargs):
     """ Reports the difference between the number of files on s3 and es """
     check = CheckResult(connection, 'elasticsearch_s3_count_diff')
     check.action = 'migrate_checks_to_es'
-    check.allow_action = True
     s3 = connection.connections['s3']
     es = connection.connections['es']
     n_s3_keys = s3.get_size()
@@ -22,17 +21,20 @@ def elasticsearch_s3_count_diff(connection, **kwargs):
     full_output['difference'] = difference
     if difference > 1000:
         check.status = 'FAIL'
+        check.allow_action = True
         check.summary = check.description = 'There are >1000 checks not on ES'
     elif difference > 100:
         check.status = 'WARN'
+        check.allow_action = True
         check.summary = check.description = 'There are >100 but <1000 checks not on ES'
     else:
         check.status = 'PASS'
+        check.allow_action = False
         check.summary = check.description = 'There are <100 checks not on ES'
     check.full_output = full_output
     return check
 
-@action_function()
+@action_function(timeout=270)
 def migrate_checks_to_es(connection, **kwargs):
     """
     Migrates checks from s3 to es. If a check name is given only those
@@ -53,12 +55,9 @@ def migrate_checks_to_es(connection, **kwargs):
         s3_keys = s3.list_all_keys()
     n_migrated = 0
     for key in s3_keys:
-        if round(time.time() - t0, 2) > time_limit:
-            action.status = 'FAIL'
+        if timeout and round(time.time() - t0, 2) > time_limit:
             action_logs['time out'] = True
-            action_logs['n_migrated'] = n_migrated
-            action.output = action_logs
-            return action
+            break
         if 'action_records' in key: # ignore action_records for now
             continue
         if es.put_object(key, s3.get_object(key)): # put object by default
@@ -68,7 +67,7 @@ def migrate_checks_to_es(connection, **kwargs):
     action.output = action_logs
     return action
 
-@check_function()
+@check_function(timeout=270)
 def clean_s3_es_checks(connection, **kwargs):
     """
     Cleans old checks from both s3 and es older than one month. Must be called
@@ -76,25 +75,19 @@ def clean_s3_es_checks(connection, **kwargs):
     """
     check_to_clean = kwargs.get('to_clean')
     time_limit = 270 if kwargs.get('timeout') is None else kwargs.get('timeout')
+    check = CheckResult(connection, check_to_clean)
+    full_output = {}
     if not check_to_clean:
-        action.status = 'FAIL'
-        action.output = action_logs
-        return action
-    action = ActionResult(connection, check_to_clean)
-    action_logs = {'time out': False}
+        check.status = 'FAIL'
+        check.summary = check.description = 'A check must be given to be cleaned'
+        check.full_output = full_output
+        return check
     s3 = connection.connections['s3']
     es = connection.connections['es']
     one_month_ago = datetime.datetime.utcnow() - datetime.timedelta(days=30)
-    # XXX: how to enforce timeout?
-    try:
-        n_deleted_s3, n_deleted_es = action.delete_results(prior_date=one_month_ago)
-    except:
-        action_logs['timeout'] = True
-        action.status = 'FAIL'
-        action.output = action_logs
-        return action
-    action_logs['n_deleted_s3'] = n_deleted_s3
-    action_logs['n_deleted_es'] = n_deleted_es
-    action.status = 'DONE'
-    action.output = action_logs
+    n_deleted_s3, n_deleted_es = action.delete_results(prior_date=one_month_ago, timeout=time_limit)
+    full_output['n_deleted_s3'] = n_deleted_s3
+    full_output['n_deleted_es'] = n_deleted_es
+    check.status = 'DONE'
+    check.full_output = full_output
     return action

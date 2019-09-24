@@ -56,14 +56,12 @@ class FSConnection(object):
             obj = self.connections['es'].get_object(key)
         if obj is None:
             obj = self.connections['s3'].get_object(key)
-            if self.connections['es'] is not None:
-                self.connections['es'].put_object(key, obj)
         return obj
 
     def put_object(self, key, value):
         """
         Puts an object onto both ES and S3
         """
-        if self.connections['es'] is not None:
-            self.connections['es'].put_object(key, value)
-        self.connections['s3'].put_object(key, value)
+        for conn in self.connections.values():
+            if conn is not None:
+                conn.put_object(key, value)
