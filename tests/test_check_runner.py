@@ -204,7 +204,7 @@ class TestCheckRunner():
                 # eat up residual messages
                 app_utils.run_check_runner({'sqs_url': self.queue.url}, propogate=False)
             if error_count > 60:  # test should fail
-                print('Could not find an empty foursight-test-queue.')
+                print('Did not locate result.')
                 assert (False)
         # queue should be empty. check results
         if self.connection.connections['es'] is not None:
@@ -233,7 +233,7 @@ class TestCheckRunner():
             else:
                 tries += 1
             if tries > 60:  # test should fail
-                print('Could not find an empty foursight-test-queue.')
+                print('Did not locate result.')
                 assert (False)
         # get the check by run_uuid
         run_check = check.get_result_by_uuid(run_uuid)
