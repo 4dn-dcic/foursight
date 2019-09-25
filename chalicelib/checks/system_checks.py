@@ -803,7 +803,7 @@ def check_long_running_ec2s(connection, **kwargs):
                 flag_instance = True
                 # include all other tags if Name tag is empty
                 ec2_log['tags'] = other_tags
-            elif any([wn for wn in flag_names if wn in inst_name]):
+            elif any([wn for wn in flag_names if wn in ','.join(inst_name)]):
                 flag_instance = True
             else:
                 flag_instance = False
