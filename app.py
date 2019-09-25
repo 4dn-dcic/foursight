@@ -86,7 +86,14 @@ def auth0_callback():
     request = app.current_request
     req_dict = request.to_dict()
     domain, context = get_domain_and_context(req_dict)
-    resp_headers = {'Location': context + 'view/' + DEFAULT_ENV}
+    # extract redir cookie
+    cookies = req_dict.get('headers', {}).get('cookie')
+    redir_url = context + 'view/' + DEFAULT_ENV
+    for cookie in cookies.split(';'):
+        name, val = cookie.strip().split('=')
+        if name == 'redir':
+            redir_url = val
+    resp_headers = {'Location': redir_url}
     params = req_dict.get('query_params')
     if not params:
         return forbidden_response()
@@ -130,11 +137,11 @@ def index():
 
 
 @app.route('/introspect', methods=['GET'])
-def introspect():
+def introspect(environ):
     """
     Test route
     """
-    auth = check_authorization(app.current_request.to_dict())
+    auth = check_authorization(app.current_request.to_dict(), environ)
     if auth:
         return Response(status_code=200, body=json.dumps(app.current_request.to_dict()))
     else:
@@ -149,7 +156,7 @@ def view_run_route(environ, check, method):
     req_dict = app.current_request.to_dict()
     domain, context = get_domain_and_context(req_dict)
     query_params = req_dict.get('query_params', {})
-    if check_authorization(req_dict):
+    if check_authorization(req_dict, environ):
         if method == 'action':
             return view_run_action(environ, check, query_params, context)
         else:
@@ -165,7 +172,7 @@ def view_route(environ):
     """
     req_dict = app.current_request.to_dict()
     domain, context = get_domain_and_context(req_dict)
-    return view_foursight(environ, check_authorization(req_dict), domain, context)
+    return view_foursight(environ, check_authorization(req_dict, environ), domain, context)
 
 
 @app.route('/view/{environ}/{check}/{uuid}', methods=['GET'])
@@ -175,7 +182,7 @@ def view_check_route(environ, check, uuid):
     """
     req_dict = app.current_request.to_dict()
     domain, context = get_domain_and_context(req_dict)
-    if check_authorization(req_dict):
+    if check_authorization(req_dict, environ):
         return view_foursight_check(environ, check, uuid, True, domain, context)
     else:
         return forbidden_response()
@@ -193,7 +200,7 @@ def history_route(environ, check):
     limit = int(query_params.get('limit', '25')) if query_params else 25
     domain, context = get_domain_and_context(req_dict)
     return view_foursight_history(environ, check, start, limit,
-                                  check_authorization(req_dict), domain, context)
+                                  check_authorization(req_dict, environ), domain, context)
 
 
 @app.route('/checks/{environ}/{check}/{uuid}', methods=['GET'])
@@ -201,7 +208,7 @@ def get_check_with_uuid_route(environ, check, uuid):
     """
     Protected route
     """
-    if check_authorization(app.current_request.to_dict()):
+    if check_authorization(app.current_request.to_dict(), environ):
         return run_get_check(environ, check, uuid)
     else:
         return forbidden_response()
@@ -212,7 +219,7 @@ def get_check_route(environ, check):
     """
     Protected route
     """
-    if check_authorization(app.current_request.to_dict()):
+    if check_authorization(app.current_request.to_dict(), environ):
         return run_get_check(environ, check, None)
     else:
         return forbidden_response()
@@ -230,7 +237,7 @@ def put_check_route(environ, check):
     Protected route
     """
     request = app.current_request
-    if check_authorization(request.to_dict()):
+    if check_authorization(request.to_dict(), environ):
         put_data = request.json_body
         return run_put_check(environ, check, put_data)
     else:
@@ -248,7 +255,7 @@ def put_environment(environ):
     Protected route
     """
     request = app.current_request
-    if check_authorization(request.to_dict()):
+    if check_authorization(request.to_dict(), environ):
         env_data = request.json_body
         return run_put_environment(environ, env_data)
     else:
@@ -260,7 +267,7 @@ def get_environment_route(environ):
     """
     Protected route
     """
-    if check_authorization(app.current_request.to_dict()):
+    if check_authorization(app.current_request.to_dict(), environ):
         return run_get_environment(environ)
     else:
         return forbidden_response()

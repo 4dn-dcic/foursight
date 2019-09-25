@@ -6,7 +6,7 @@ It is assumed that you've already read the getting started documentation. If not
 
 ## Quick reference for important check requirements
 * Checks must always start with the `@check_function()` decorator.
-* Checks should always initialize their check results using the `init_check_res` function, with the first argument as the FS connection and the second argument as the **exact string name of the check**.
+* Checks should always initialize their check results using the constructor, with the first argument as the FS connection and the second argument as the **exact string name of the check**.
 * There should NOT be two checks with the same name. The tests will fail if this happens.
 * Attributes of the check result, such as status, are simply set like: `check.status = 'PASS'`.
 * Checks should always end by returning the value of the check result: `return check`.
@@ -14,10 +14,10 @@ It is assumed that you've already read the getting started documentation. If not
 * Due to lambda runtime limitations, checks will timeout and exit after running for a time set by the `CHECK_TIMEOUT` variable in `chalicelib/utils.py`. You must keep your check runtimes under this limit.
 
 ## Attributes you can set on a check result
-The check result (i.e. the output of running `init_check_res`) has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the check function should return the check result (object initialized by `init_check_res`). Any of the following attributes can be set like this:
+The check result has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the check function should return the check result object. Any of the following attributes can be set like this:
 
 ```
-check = init_check_res(connection, 'my_check_name')
+check = CheckResult(connection, 'my_check_name')
 check.status = 'PASS'
 check.summary = 'Test summary'
 check.<other_attr> = <value>
@@ -38,27 +38,26 @@ Here is a list of attributes that you will routinely use, with brief description
 
 Lastly, there are a number of attributes that are used internally. These do not usually need to be manually set, but can be.
 * **kwargs**: these are set to the value of the key word parameters used by the check, which is a combination of default arguments and any overriding arguments (defined in the check setup or a manual call to run the check).
-* **s3_connection**: is set automatically when you use `init_check_res`.
+* **connections**: is set automatically from `FSConnection`.
 * **name**: the string name of the check that should be exactly equal to the name of the function you want the result to represent.
 
 ## Our example check
-Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/checks/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator and `init_check_res` to initialize the result for the check.
+Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/checks/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the `check_function` decorator to initialize the result for the check.
 
 ```
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
-    check = init_check_res(connection, 'items_created_in_the_past_day')
+    check = CheckResult(connection, 'items_created_in_the_past_day')
     return check
 ```
 
-At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. To actually get our check to do something, let's import ff_utils module from the central dcicutils package, which allows us to easily make requests to Fourfront. Imports should generally be done at the top level of your checks file, but they are shown in the function here for completeness. It's important to note that we can always get the current Fourfront enviroment (such as `foufront-webdev` or `fourfront-webprod`) using the `connection.ff_env` field. This is leveraged to make connections in the ff_utils module.
+At the moment, this check won't do anything but write a result to the `items_created_in_the_past_day` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. To actually get our check to do something, let's import ff_utils module from the central dcicutils package, which allows us to easily make requests to Fourfront. Imports should generally be done at the top level of your checks file, but they are shown in the function here for completeness. It's important to note that we can always get Fourfront access keys through `connection.ff_keys`. Likewise, the current Fourfront environment (such as `foufront-webdev` or `fourfront-webprod`) using the `connection.ff_env` field. These are leveraged when using the ff_utils package.
 
 ```
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     from dcicutils import ff_utils
-    check = init_check_res(connection, 'items_created_in_the_past_day')
-    # can get Fourfront environment with connection.ff_env
+    check = CheckResult(connection, 'items_created_in_the_past_day')
     check.status = 'PASS'
     check.description = 'Working description.'
     return check
@@ -70,14 +69,14 @@ Okay, now we are ready to use the `ff_utils` module to connect to Fourfront. Nex
 @check_function()
 def items_created_in_the_past_day(connection, **kwargs):
     from dcicutils import ff_utils
-    check = init_check_res(connection, 'items_created_in_the_past_day')
+    check = CheckResult(connection, 'items_created_in_the_past_day')
     ### let item_type = 'Item for now'
     item_type = 'Item'
     # date string of approx. one day ago in form YYYY-MM-DD
     date_str = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     search_query = ''.join(['search/?type=', item_type, '&q=date_created:>=', date_str, '&frame=object'])
     # this will return a list of hits from the search
-    search_res = ff_utils.search_metadata(search_query, ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     full_output = {}
     item_output = []
     for res in search_res:
@@ -197,13 +196,13 @@ You should not have to set it directly, but the `uuid` key word argument is very
 The Foursight UI will automatically display the latest run check that was run with the `primary` key word argument set to `True`. In most cases, this argument should be set when defining the key word arguments in `check_setup.json`; in some cases, you may want to set it during testing. Omitting this argument or setting its value to `False` will still cause the check to store its record in AWS S3 and overwrite the `latest` result for that check, but that result will not be shown on the UI.
 
 ### The 'queue_action' key word argument
-This is a boolean kwarg that can be set to `True` to automatically queue the action associated with a check for running after the check is complete. This is best leveraged in the check setup for check/action combinations that you are confident in running without manual intervention. To queue an action, the check must have a valid `check.action` set and `check.allow_action` must be `True`.
+This is a boolean kwarg that can be set to automatically queue the action associated with a check for running after the check is complete. This is best leveraged in the check setup for check/action combinations that you are confident in running without manual intervention. To queue an action, the check must have a valid `check.action` set and `check.allow_action` must be True. To control on which stages actions are queued, `check.queue_action` must be a string that exactly matches the current Foursight stage. For example, if running the check on the `prod` stage, you must have `{"queue_action": "prod"}` in the check kwargs.
 
 ## Handling exceptions in checks
 Foursight will automatically catch any exceptions when running check code and automatically log the traceback of the exception to the `full_output` field. In such a case, the status of the check will be set to `ERROR` and the kwargs it was run with will be stored. All of this data is made available from the UI to facilitate debugging of the checks. For this reason, it is usually not necessary to write general try/except blocks in your check unless you are handling specific exceptions relevant to your code.
 
 ## Appending check results
-Sometimes you may want the same check to run multiple times and report results from all of the runs. Some possible examples would be a long running check that is split up by item type. This can be achieved by initializing the check results (with `init_check_res`) and passing in a `uuid` parameter of a previously run check. This will initialize the new check with the stored attributes of the old check and then allow you to add to them in your check function.
+Sometimes you may want the same check to run multiple times and report results from all of the runs. Some possible examples would be a long running check that is split up by item type. This can be achieved by initializing the check results and passing in a `uuid` parameter of a previously run check. This will initialize the new check with the stored attributes of the old check and then allow you to add to them in your check function.
 
 For example, let's use the check that we've been demonstrating over the past couple sections. It finds all items of a certain type that have been created in the past day and takes an `item_type` key word argument that determines the type. In addition, the `full_output` attribute is a dictionary keyed by the item type. So, we can easily pull a previous result from that check (that ran for `item_type = Experiment`, for example) and add another item type (say, `Biosample`) to it. The desired `full_output` would have the following form:
 
@@ -216,10 +215,10 @@ For example, let's use the check that we've been demonstrating over the past cou
 
 To achieve this, we will use manipulate the `item_type` key word argument and initialize the check running for `Biosample` with the results of the previous check that used `Experiment`. All we need to do is change a couple lines from the `items_created_in_the_past_day` check that we defined above
 
-First, add the `uuid` parameter to the `init_check_res` function. Read it from the kwargs. This will take care of initializing the check result with the attributes of the results of the check with the given uuid (if it exists).
+First, add the `uuid` parameter to the constructor. Read it from the kwargs. This will take care of initializing the check result with the attributes of the results of the check with the given uuid (if it exists).
 ```
 init_uuid = kwargs.get('uuid')
-check = init_check_res(connection, 'items_created_in_the_past_day', init_uuid=init_uuid)
+check = CheckResult(connection, 'items_created_in_the_past_day', init_uuid=init_uuid)
 ```
 
 Then, we just need to add the logic to use the `full_output` from previous results if available:
@@ -231,7 +230,7 @@ full_output = check.full_output if check.full_output else {}
 Another possibility for a check is to operate on the previous results of the same or other checks. To get results for the same check, you can use the same CheckResult object that is defined using the check name at the beginning of the check:
 
 ```
-check = init_check_res(connection, 'change_in_item_counts')
+check = CheckResult(connection, 'change_in_item_counts')
 ```
 
 Using the CheckResult `check` object, you have access to all CheckResult methods, which include the `get_primary_result`, `get_latest_result` and `get_closest_result` methods, which both return dictionary representations of those historic check results. Here's quick summary of what they do:
@@ -240,7 +239,7 @@ Using the CheckResult `check` object, you have access to all CheckResult methods
 * `get_closest_result` can be used to get the check result that is closest the given time difference from the current time. See the example below:
 
 ```
-check = init_check_res(connection, 'change_in_item_counts')
+check = CheckResult(connection, 'change_in_item_counts')
 
 # get the most recent primary result for this check (in dictionary form)
 primary = check.get_primary_result()
@@ -259,8 +258,8 @@ The functions can be used to easily make a check that is aware of its own previo
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
-    check = init_check_res(connection, 'change_in_item_counts')
-    counts_check = init_check_res(connection, 'item_counts_by_type')
+    check = CheckResult(connection, 'change_in_item_counts')
+    counts_check = CheckResult(connection, 'item_counts_by_type')
     primary = counts_check.get_primary_result()
     # get_item_counts run closest to 24 hours ago
     prior = counts_check.get_closest_result(diff_hours=24)

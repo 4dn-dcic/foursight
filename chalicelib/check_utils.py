@@ -2,14 +2,13 @@ from __future__ import print_function, unicode_literals
 from .utils import (
     get_methods_by_deco,
     check_method_deco,
-    init_check_res,
-    init_action_res,
     CHECK_DECO,
     ACTION_DECO,
     BadCheckSetup,
     basestring,
     list_environments
 )
+from .run_result import CheckResult, ActionResult
 # import modules that contain the checks
 from .checks import *
 from .checks import __all__ as CHECK_MODULES
@@ -80,7 +79,7 @@ def validate_check_setup(check_setup):
     """
     found_checks = {}
     all_check_strings = get_check_strings()
-    all_environments = list_environments() + ['all']
+    all_environments = list_environments() + ['all', 'all_4dn']
     # validate all checks
     for check_string in all_check_strings:
         check_mod, check_name = check_string.split('/')
@@ -225,15 +224,25 @@ def get_check_results(connection, checks=[], use_latest=False):
     check_results = []
     if not checks:
         checks = [check_str.split('/')[1] for check_str in get_check_strings()]
-    for check_name in checks:
-        tempCheck = init_check_res(connection, check_name)
+
+    if connection.connections['es'] is None:
+        for check_name in checks:
+            tempCheck = CheckResult(connection, check_name)
+            if use_latest:
+                found = tempCheck.get_latest_result()
+            else:
+                found = tempCheck.get_primary_result()
+                # checks with no records will return None. Skip IGNORE checks
+                if found and found.get('status') != 'IGNORE':
+                    check_results.append(found)
+    else:
         if use_latest:
-            found = tempCheck.get_latest_result()
-        else:
-            found = tempCheck.get_primary_result()
-        # checks with no records will return None. Skip IGNORE checks
-        if found and found.get('status') != 'IGNORE':
-            check_results.append(found)
+            check_results = connection.connections['es'].get_main_page_checks(primary=False)
+            check_results = list(filter(lambda obj: obj['name'] in checks, check_results))
+        else: # also filter by IGNORE on primaries
+            check_results = connection.connections['es'].get_main_page_checks()
+            check_results = list(filter(lambda obj: obj['status'] != 'IGNORE' and obj['name'] in checks, check_results))
+
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
     return sorted(
@@ -261,7 +270,8 @@ def get_grouped_check_results(connection):
         # make sure this environment displays this check
         used_envs = [env for sched in setup_info['schedule'].values() for env in sched]
         used_envs.extend(setup_info.get('display', []))
-        if 'all' in used_envs or connection.fs_env in used_envs:
+        if (connection.fs_env in used_envs or 'all' in used_envs or
+            ('all_4dn' in used_envs and 'cgap' not in connection.fs_env)):
             group = setup_info['group']
             if group not in grouped_results:
                 grouped_results[group] = {}
@@ -322,4 +332,4 @@ def init_check_or_action_res(connection, check):
         is_action = True
     if not check_str: # not a check or an action. abort
         return None
-    return init_action_res(connection, check) if is_action else init_check_res(connection, check)
+    return ActionResult(connection, check) if is_action else CheckResult(connection, check)

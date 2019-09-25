@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import requests
 import json
@@ -22,7 +21,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     problematic_provenance: stores uuid of deleted file, and the wfr that is not deleted
     problematic_wfr:        stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
     """
-    check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
+    check = CheckResult(connection, 'workflow_run_has_deleted_input_file')
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
     my_key = connection.ff_keys
@@ -85,7 +84,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
 
 @action_function()
 def patch_workflow_run_to_deleted(connection, **kwargs):
-    action = init_action_res(connection, 'patch_workflow_run_to_deleted')
+    action = ActionResult(connection, 'patch_workflow_run_to_deleted')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
     my_key = connection.ff_keys
@@ -108,72 +107,115 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(uuid_list=None, false_positives=None)
 def biorxiv_is_now_published(connection, **kwargs):
-    check = init_check_res(connection, 'biorxiv_is_now_published')
+    ''' To restrict the check to just certain biorxivs use a comma separated list
+        of biorxiv uuids in uuid_list kwarg.  This is useful if you want to
+        only perform the replacement on a subset of the potential matches - i.e.
+        re-run the check with a uuid list and then perform the actions on the result
+        of the restricted check.
+
+        Known cases of incorrect associations are stored in the check result in
+        the 'false_positive' field of full_output.  To add new entries to this field use the
+        'false_positive' kwarg with format "rxiv_uuid1: number_part_only_of_PMID, rxiv_uuid2: ID ..."
+         eg. fd3827e5-bc4c-4c03-bf22-919ee8f4351f:31010829 and to reset to empty use 'RESET'
+    '''
+    check = CheckResult(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
+    search = 'search/?'
+    if kwargs.get('uuid_list'):
+        suffix = '&'.join(['uuid={}'.format(u) for u in [uid.strip() for uid in kwargs.get('uuid_list').split(',')]])
+    else:
+        suffix = 'journal=bioRxiv&type=Publication&status=current&limit=all'
     # run the check
-    search_query = 'search/?journal=bioRxiv&type=Publication&status=current&limit=all'
-    biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_query = search + suffix
+    biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not biorxivs:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
         return check
 
-    pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&field=title&'
+    # here is where we get any previous or current false positives
+    last_result = check.get_primary_result()
+    # if last one was fail, find an earlier check with non-FAIL status
+    it = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        it += 1
+        # this is a daily check, so look for checks with 12h iteration
+        hours = it * 12
+        last_result = check.get_closest_result(diff_hours=hours)
+        # if this is going forever kill it
+        if hours > 100:
+            err_msg = 'Can not find a non-FAIL check in last 100 hours'
+            check.brief_output = err_msg
+            check.full_output = {}
+            check.status = 'ERROR'
+            return check
+    last_result = last_result.get('full_output')
+    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
+    try:
+        false_pos = last_result.get('false_positives', {})
+    except AttributeError:  # if check errored last result is a list of error rather than a dict
+        false_pos = {}
+    fp_input = kwargs.get('false_positives')
+    if fp_input:
+        fps = [fp.strip() for fp in fp_input.split(',')]
+        for fp in fps:
+            if fp == 'RESET':  # reset the saved dict to empty
+                false_pos = {}
+                continue
+            id_vals = [i.strip() for i in fp.split(':')]
+            false_pos.setdefault(id_vals[0], []).append(id_vals[1])
+    fulloutput['false_positives'] = false_pos
+    pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json'
     problems = {}
     fndcnt = 0
-    fulloutput = {}
     for bx in biorxivs:
         title = bx.get('title')
+        authors = bx.get('authors')
         buuid = bx.get('uuid')
-        if not title:
+        if not (title and authors):
             # problem with biorxiv record in ff
-            print("Biorxiv %s lacks a title" % buuid)
-            if problems.get('notitle'):
-                problems['notitle'].append(buuid)
-            else:
-                problems['notitle'] = [buuid]
+            problems.setdefault('missing metadata', []).append(buuid)
             if not chkstatus or chkstatus != 'WARN':
                 chkstatus = 'WARN'
-            if "some biorxiv records do not have a title\n" not in chkdesc:
-                chkdesc = chkdesc + "some biorxiv records do not have a title\n"
-            continue
-        term = 'term=%s' % title
-        pubmed_query = pubmed_url + term
+            msg = "some biorxiv records are missing metadata used for search\n"
+            if msg not in chkdesc:
+                chkdesc = chkdesc + msg
+        # first search with title
+        suffix = '&field=title&term={}'.format(title)
+        title_query = pubmed_url + suffix
         time.sleep(1)
-        res = requests.get(pubmed_query)
-        if res.status_code != 200:
-            print("We got a status code other than 200 for %s" % buuid)
-            # problem with request to pubmed
-            if problems.get('eutilsq'):
-                problems['eutilsq'].append(buuid)
+        do_author_search = False
+        ids = []
+        res = requests.get(title_query)
+        if res.status_code == 200:
+            result = res.json().get('esearchresult')
+            if not result or not result.get('idlist'):
+                do_author_search = True
             else:
-                problems['eutilsq'] = [buuid]
-            if not chkstatus or chkstatus != 'WARN':
-                chkstatus = 'WARN'
-            if "problem with eutils query for some records\n" not in chkdesc:
-                chkdesc = chkdesc + "problem with eutils query for some records\n"
-            continue
-        result = res.json().get('esearchresult')
-        if not result or result.get('idlist') is None:
-            # problem with format of results returned by esearch
-            if not chkstatus or chkstatus != 'WARN':
-                chkstatus = 'WARN'
-            if problems.get('pubmedresult'):
-                problems['pubmedresult'].append(buuid)
-            else:
-                problems['pubmedresult'] = [buuid]
-            if "problem with results format for some records\n" not in chkdesc:
-                chkdesc = chkdesc + "problem with results format for some records\n"
-            continue
-        ids = result.get('idlist')
+                ids = result.get('idlist')
+        else:
+            do_author_search = True  # problem with request to pubmed
+
+        if do_author_search and authors:
+            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(' ')[-1]) for a in authors])
+            author_query = pubmed_url + author_string
+            time.sleep(1)
+            res = requests.get(author_query)
+            if res.status_code == 200:
+                result = res.json().get('esearchresult')
+                if result and result.get('idlist'):
+                    ids = result.get('idlist')
+
+        if buuid in false_pos:
+            ids = [i for i in ids if i not in false_pos[buuid]]
         if ids:
             # we have possible article(s) - populate check_result
             fndcnt += 1
-            fulloutput[buuid] = ['PMID:' + id for id in ids]
+            fulloutput['biorxivs2check'][buuid] = ['PMID:' + id for id in ids]
 
     if fndcnt != 0:
         chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
@@ -196,10 +238,11 @@ def biorxiv_is_now_published(connection, **kwargs):
 
 @action_function()
 def add_pub_and_replace_biorxiv(connection, **kwargs):
-    action = init_action_res(connection, 'add_pub_2_replace_biorxiv')
+    action = ActionResult(connection, 'add_pub_and_replace_biorxiv')
     action_log = {}
     biorxiv_check_result = action.get_associated_check_result(kwargs)
-    to_replace = biorxiv_check_result.get('full_output', {})
+    check_output = biorxiv_check_result.get('full_output', {})
+    to_replace = check_output.get('biorxivs2check', {})
     for buuid, pmids in to_replace.items():
         error = ''
         if len(pmids) > 1:
@@ -228,13 +271,19 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
             'exp_sets_used_in_pub', 'published_by'
         ]
+        fields2flag = ['static_headers', 'static_content']
         post_metadata = {f: biorxiv.get(f) for f in fields2transfer if biorxiv.get(f) is not None}
         post_metadata['ID'] = pmid
+        post_metadata['status'] = 'current'
         if 'url' in biorxiv:
             post_metadata['aka'] = biorxiv.get('url')
+        flags = {f: biorxiv.get(f) for f in fields2flag if biorxiv.get(f) is not None}
+        if flags:
+            action_log[buuid] = 'Static content to check: ' + str(flags)
 
         # first try to post the pub
         pub_upd_res = None
+        pub = None
         try:
             pub_upd_res = ff_utils.post_metadata(post_metadata, 'publication', key=connection.ff_keys)
         except Exception as e:
@@ -243,7 +292,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             if pub_upd_res.get('status') != 'success':
                 error = pub_upd_res.get('status')
         if error:
-            if "'code': 409" in error:
+            if "'code': 422" in error:
                 # there is a conflict-see if pub is already in portal
                 pub_search_res = None
                 error = ''  # reset error
@@ -251,7 +300,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
                     search = 'search/?type=Publication&ID={}&frame=object'.format(post_metadata['ID'])
                     pub_search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
                 except Exception as e:
-                        error = 'SEARCH failure for {} - msg: {}'.format(pmid, str(e))
+                    error = 'SEARCH failure for {} - msg: {}'.format(pmid, str(e))
                 else:
                     if not pub_search_res or len(pub_search_res) != 1:
                         error = 'SEARCH for {} returned zero or multiple results'.format(pmid)
@@ -261,8 +310,11 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
                 # a single pub with that pmid is found - try to patch it
                 pub = pub_search_res[0]
+
                 for f, v in post_metadata.items():
-                    if f in pub and pub.get(f):
+                    if pub.get(f):
+                        if f == 'status' and pub.get(f) != v:
+                            fields_to_patch[f] = v
                         if f != 'ID':
                             existing_fields[f] = pub.get(f)
                     else:
@@ -290,11 +342,62 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             else:
                 error = 'POST failure for {} msg: {}'.format(pmid, error)
                 action_log[buuid] = error
+                continue
+        else:
+            pub = pub_upd_res['@graph'][0]
 
         # here we have successfully posted or patched a pub
-        # set status of biorxiv to replaced
+        # generate a static header with link to new pub and set status of biorxiv to replaced
+        if not pub:
+            action_log[buuid] = 'NEW PUB INFO NOT AVAILABLE'
+            continue
+
+        header_alias = "static_header:replaced_biorxiv_{}_by_{}".format(biorxiv.get('uuid'), pmid.replace(':', '_'))
+        header_name = "static-header.replaced_item_{}".format(biorxiv.get('uuid'))
+        header_post = {
+            "body": "This biorxiv set was replaced by [{0}]({2}{1}/).".format(pmid, pub.get('uuid'), connection.ff_server),
+            "award": biorxiv.get('award'),
+            "lab": biorxiv.get('lab'),
+            "name": header_name,
+            "section_type": "Item Page Header",
+            "options": {"title_icon": "info", "default_open": True, "filetype": "md", "collapsible": False},
+            "title": "Note: Replaced Biorxiv",
+            "status": 'released',
+            "aliases": [header_alias]
+        }
+        huuid = None
+        try_search = False
         try:
-            replace_res = ff_utils.patch_metadata({'status': 'replaced'}, buuid, key=connection.ff_keys)
+            header_res = ff_utils.post_metadata(header_post, 'static_section', key=connection.ff_keys)
+        except Exception as e:
+            error = 'FAILED TO POST STATIC SECTION {} - msg: '.format(str(e))
+            try_search = True
+        else:
+            try:
+                huuid = header_res['@graph'][0].get('uuid')
+            except (KeyError, AttributeError) as e:  # likely a conflict - search for existing section by name
+                try_search = True
+        if try_search:
+            try:
+                search = 'search/?type=UserContent&name={}&frame=object'.format(header_name)
+                header_search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
+            except Exception as e:
+                error = 'SEARCH failure for {} - msg: {}'.format(header_name, str(e))
+            else:
+                if header_search_res and len(header_search_res) == 1:
+                    huuid = header_search_res[0].get('uuid')
+                else:
+                    error = 'PROBLEM WITH STATIC SECTION CREATION - manual intervention needed'
+        if error:
+            action_log[buuid] = error
+
+        patch_json = {'status': 'replaced'}
+        if huuid:  # need to see if other static content exists and add this one
+            existing_content = biorxiv.get('static_content', [])
+            existing_content.append({'content': huuid, 'location': 'header'})
+            patch_json['static_content'] = existing_content
+        try:
+            replace_res = ff_utils.patch_metadata(patch_json, buuid, key=connection.ff_keys)
         except Exception as e:
             error = 'FAILED TO UPDATE STATUS FOR {} - msg: '.format(buuid, str(e))
         else:
@@ -330,12 +433,12 @@ def item_counts_by_type(connection, **kwargs):
         ret[split_str[2].strip(':')] = int(split_str[3])
         return ret
 
-    check = init_check_res(connection, 'item_counts_by_type')
+    check = CheckResult(connection, 'item_counts_by_type')
     # run the check
     item_counts = {}
     warn_item_counts = {}
     req_location = ''.join([connection.ff_server, 'counts?format=json'])
-    counts_res = ff_utils.authorized_request(req_location, ff_env=connection.ff_env)
+    counts_res = ff_utils.authorized_request(req_location, auth=connection.ff_keys)
     if counts_res.status_code >= 400:
         check.status = 'ERROR'
         check.description = 'Error (bad status code %s) connecting to the counts endpoint at: %s.' % (counts_res.status_code, req_location)
@@ -368,8 +471,8 @@ def item_counts_by_type(connection, **kwargs):
 def change_in_item_counts(connection, **kwargs):
     from ..utils import convert_camel_to_snake
     # use this check to get the comparison
-    check = init_check_res(connection, 'change_in_item_counts')
-    counts_check = init_check_res(connection, 'item_counts_by_type')
+    check = CheckResult(connection, 'change_in_item_counts')
+    counts_check = CheckResult(connection, 'item_counts_by_type')
     latest_check = counts_check.get_primary_result()
     # get_item_counts run closest to 10 mins
     prior_check = counts_check.get_closest_result(diff_hours=24)
@@ -403,10 +506,10 @@ def change_in_item_counts(connection, **kwargs):
     search_query = ''.join(['search/?type=Item&type=OntologyTerm&type=TrackingItem',
                             '&frame=object&date_created.from=',
                             from_date, '&date_created.to=', to_date])
-    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     # add deleted/replaced items
     search_query += '&status=deleted&status=replaced'
-    search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env))
+    search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys))
     search_output = []
     for res in search_resp:
         # convert type to index name. e.g. ExperimentSet --> experiment_set
@@ -450,7 +553,7 @@ def change_in_item_counts(connection, **kwargs):
 
 @check_function(file_type=None, status=None, file_format=None, search_add_on=None)
 def identify_files_without_filesize(connection, **kwargs):
-    check = init_check_res(connection, 'identify_files_without_filesize')
+    check = CheckResult(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
     check.action = "patch_file_size"
     default_filetype = 'File'
@@ -468,7 +571,7 @@ def identify_files_without_filesize(connection, **kwargs):
             addon = '&' + addon
         search_query += addon
     problem_files = []
-    file_hits = ff_utils.search_metadata(search_query, ff_env=connection.ff_env, page_limit=200)
+    file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     if not file_hits:
         check.status = 'PASS'
         return check
@@ -503,7 +606,7 @@ def identify_files_without_filesize(connection, **kwargs):
 
 @action_function()
 def patch_file_size(connection, **kwargs):
-    action = init_action_res(connection, 'patch_file_size')
+    action = ActionResult(connection, 'patch_file_size')
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get the associated identify_files_without_filesize run result
     filesize_check_result = action.get_associated_check_result(kwargs)
@@ -515,7 +618,7 @@ def patch_file_size(connection, **kwargs):
         else:
             patch_data = {'file_size': head_info['ContentLength']}
             try:
-                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
+                ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys)
             except Exception as e:
                 acc_and_error = '\n'.join([hit['accession'], str(e)])
                 action_logs['patch_failure'].append(acc_and_error)
@@ -564,14 +667,14 @@ def new_or_updated_items(connection, **kwargs):
         if user in seen and user not in dcic:
             return seen.get(user)
 
-        user_item = ff_utils.get_metadata(user, ff_env=connection.ff_env)
+        user_item = ff_utils.get_metadata(user, key=connection.ff_keys)
         seen[user] = user_item.get('display_title')
         if user_item.get('lab').get('display_title') == dciclab:
             dcic[user] = True
             return None
         return user_item.get('display_title')
 
-    check = init_check_res(connection, 'new_or_updated_items')
+    check = CheckResult(connection, 'new_or_updated_items')
     rundate = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
     last_result = check.get_latest_result()
     if last_result is None or last_result.get('status') == 'ERROR' or kwargs.get('reset') is True:
@@ -606,7 +709,7 @@ def new_or_updated_items(connection, **kwargs):
     types2chk = ['ExperimentSet', 'Experiment']
     for itype in types2chk:
         chk_query = search.format(type=itype)
-        item_results = ff_utils.search_metadata(chk_query, ff_env=connection.ff_env, page_limit=200)
+        item_results = ff_utils.search_metadata(chk_query, key=connection.ff_keys, page_limit=200)
         for item in item_results:
             submitter = None
             modifier = None
@@ -694,8 +797,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
         if uuid in full_output['success']:
             return
         try:
-            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys,
-                                    ff_env=connection.ff_env)
+            ff_utils.patch_metadata(patch_json, uuid, key=connection.ff_keys)
         except Exception as exc:
             # log something about str(exc)
             full_output['failure'].append('%s. %s' % (uuid, str(exc)))
@@ -703,12 +805,12 @@ def clean_up_webdev_wfrs(connection, **kwargs):
             # successful patch
             full_output['success'].append(uuid)
 
-    check = init_check_res(connection, 'clean_up_webdev_wfrs')
+    check = CheckResult(connection, 'clean_up_webdev_wfrs')
     check.full_output = {'success': [], 'failure': []}
 
     # input for test pseudo hi-c-processing-bam
     response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
@@ -719,14 +821,14 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
 
     # input for test md5 and bwa-mem
     response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
-                                     key=connection.ff_keys, ff_env=connection.ff_env)
+                                     key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
         patch_wfr_and_log(entry, check.full_output)
@@ -748,11 +850,11 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
-    check = init_check_res(connection, 'validate_entrez_geneids')
+    check = CheckResult(connection, 'validate_entrez_geneids')
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
-    genes = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    genes = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not genes:
         check.status = "FAIL"
         check.description = "Could not retrieve gene records from fourfront"
@@ -799,7 +901,7 @@ def validate_entrez_geneids(connection, **kwargs):
 def users_with_pending_lab(connection, **kwargs):
     """Define comma seperated emails in scope
     if you want to work on a subset of all the results"""
-    check = init_check_res(connection, 'users_with_pending_lab')
+    check = CheckResult(connection, 'users_with_pending_lab')
     check.action = 'finalize_user_pending_labs'
     check.full_output = []
     check.status = 'PASS'
@@ -815,7 +917,7 @@ def users_with_pending_lab(connection, **kwargs):
         emails = [mail.strip() for mail in scope.split(',')]
         for an_email in emails:
             search_q += '&email=' + an_email
-    search_res = ff_utils.search_metadata(search_q, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(search_q, key=connection.ff_keys)
     for res in search_res:
         user_fields = ['uuid', 'email', 'pending_lab', 'lab', 'title', 'job_title']
         user_append = {k: res.get(k) for k in user_fields}
@@ -829,11 +931,11 @@ def users_with_pending_lab(connection, **kwargs):
         if user_append['pending_lab'] not in cached_items:
             to_cache = {}
             pending_meta = ff_utils.get_metadata(user_append['pending_lab'], key=connection.ff_keys,
-                                                 ff_env=connection.ff_env, add_on='frame=object')
+                                                 add_on='frame=object')
             to_cache['lab_title'] = pending_meta['display_title']
             if 'pi' in pending_meta:
                 pi_meta = ff_utils.get_metadata(pending_meta['pi'], key=connection.ff_keys,
-                                                ff_env=connection.ff_env, add_on='frame=object')
+                                                add_on='frame=object')
                 to_cache['lab_PI_email'] = pi_meta['email']
                 to_cache['lab_PI_title'] = pi_meta['title']
                 to_cache['lab_PI_viewing_groups'] = pi_meta['viewing_groups']
@@ -860,7 +962,7 @@ def users_with_pending_lab(connection, **kwargs):
 
 @action_function()
 def finalize_user_pending_labs(connection, **kwargs):
-    action = init_action_res(connection, 'finalize_user_pending_labs')
+    action = ActionResult(connection, 'finalize_user_pending_labs')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
@@ -870,7 +972,7 @@ def finalize_user_pending_labs(connection, **kwargs):
         # patch lab and delete pending_lab in one request
         try:
             ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
-                                    ff_env=connection.ff_env, add_on='delete_fields=pending_lab')
+                                    add_on='delete_fields=pending_lab')
         except Exception as e:
             action_logs['patch_failure'].append({user['uuid']: str(e)})
         else:
@@ -892,7 +994,7 @@ def users_with_doppelganger(connection, **kwargs):
     Result:
      full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
     """
-    check = init_check_res(connection, 'users_with_doppelganger')
+    check = CheckResult(connection, 'users_with_doppelganger')
     check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
     # do we want to add current results to ignore list
     ignore_current = False
@@ -1021,7 +1123,7 @@ def users_with_doppelganger(connection, **kwargs):
 
 @check_function()
 def check_assay_classification_short_names(connection, **kwargs):
-    check = init_check_res(connection, 'check_assay_classification_short_names')
+    check = CheckResult(connection, 'check_assay_classification_short_names')
     check.action = 'patch_assay_subclass_short'
 
     subclass_dict = {
@@ -1047,7 +1149,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "immunofluorescence": "Immunofluorescence"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
-                                        ff_env=connection.ff_env)
+                                        key=connection.ff_keys)
     auto_patch = {}
     manual = {}
     for exptype in exptypes:
@@ -1090,12 +1192,12 @@ def check_assay_classification_short_names(connection, **kwargs):
 
 @action_function()
 def patch_assay_subclass_short(connection, **kwargs):
-    action = init_action_res(connection, 'patch_assay_subclass_short')
+    action = ActionResult(connection, 'patch_assay_subclass_short')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_success': [], 'patch_failure': []}
     for k, v in check_res['full_output']['Patch by action'].items():
         try:
-            ff_utils.patch_metadata({'assay_subclass_short': v['new subclass_short']}, k, ff_env=connection.ff_env)
+            ff_utils.patch_metadata({'assay_subclass_short': v['new subclass_short']}, k, key=connection.ff_keys)
         except Exception as e:
             action_logs['patch_failure'].append({k: str(e)})
         else:

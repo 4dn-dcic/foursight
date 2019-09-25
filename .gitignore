@@ -1,9 +1,11 @@
 .chalice/deployments/
+.chalice/deployed/
 .chalice/venv/
 .chalice/config.json
 *.pyc
 __pycache__
 .coverage
 *.DS_Store
-
+htmlcov/
+coverage.xml
 *.ipynb

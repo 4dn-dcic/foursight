@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from .helpers import qc_utils
 from dcicutils import ff_utils
 import time
@@ -15,7 +14,7 @@ def identify_files_without_qc_summary_pairs(connection, **kwargs):
     fileformat = 'pairs'
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
-    check = init_check_res(connection, 'identify_files_without_qc_summary_pairs')
+    check = CheckResult(connection, 'identify_files_without_qc_summary_pairs')
     # must set this to be the function name of the action
     check.action = 'patch_quality_metric_summary_pairs'
     default_filetype = 'FileProcessed'  # skip fastq
@@ -72,7 +71,7 @@ def identify_files_without_qc_summary_bb(connection, **kwargs):
     fileformat = 'bigbed'
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
-    check = init_check_res(connection, 'identify_files_without_qc_summary_bb')
+    check = CheckResult(connection, 'identify_files_without_qc_summary_bb')
     # must set this to be the function name of the action
     check.action = 'patch_quality_metric_summary_bb'
     default_filetype = 'FileProcessed'  # skip fastq
@@ -129,7 +128,7 @@ def identify_files_without_qc_summary_bed(connection, **kwargs):
     fileformat = 'bed'
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
-    check = init_check_res(connection, 'identify_files_without_qc_summary_bed')
+    check = CheckResult(connection, 'identify_files_without_qc_summary_bed')
     # must set this to be the function name of the action
     check.action = 'patch_quality_metric_summary_bed'
     default_filetype = 'FileProcessed'  # skip fastq
@@ -185,7 +184,7 @@ def identify_files_without_qc_summary_bed(connection, **kwargs):
 def patch_quality_metric_summary_pairs(connection, **kwargs):
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
-    action = init_action_res(connection, 'patch_quality_metric_summary_pairs')
+    action = ActionResult(connection, 'patch_quality_metric_summary_pairs')
     action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary
     filesize_check_result = action.get_associated_check_result(kwargs)
@@ -196,12 +195,21 @@ def patch_quality_metric_summary_pairs(connection, **kwargs):
             action.output = action_logs
             return action
         if qc_utils.parse_formatstr(hit['file_format']) == 'pairs':
-            try:
-                qc_utils.calculate_qc_metric_pairsqc(hit['uuid'], key=connection.ff_keys)
-                action_logs['patch_success'].append(hit['accession'])
-            except Exception as e:
-                acc_and_error = ': '.join([hit['accession'], str(e)])
-                action_logs['patch_failure'].append(acc_and_error)
+            if hit['quality_metric'].startswith('/quality-metrics-pairsqc/'):
+                try:
+                    qc_utils.calculate_qc_metric_pairsqc(hit['uuid'], key=connection.ff_keys)
+                    action_logs['patch_success'].append(hit['accession'])
+                except Exception as e:
+                    acc_and_error = ': '.join([hit['accession'], str(e)])
+                    action_logs['patch_failure'].append(acc_and_error)
+
+            elif hit['quality_metric'].startswith('/quality-metrics-margi/'):
+                try:
+                    qc_utils.calculate_qc_metric_margi_pairsqc(hit['uuid'], key=connection.ff_keys)
+                    action_logs['patch_success'].append(hit['accession'])
+                except Exception as e:
+                    acc_and_error = ': '.join([hit['accession'], str(e)])
+                    action_logs['patch_failure'].append(acc_and_error)
         else:
             acc_and_format = ': '.join([hit['accession'], hit['file_format']])
             action_logs['skipping_format'].append(acc_and_format)
@@ -214,7 +222,7 @@ def patch_quality_metric_summary_pairs(connection, **kwargs):
 def patch_quality_metric_summary_bb(connection, **kwargs):
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
-    action = init_action_res(connection, 'patch_quality_metric_summary_bb')
+    action = ActionResult(connection, 'patch_quality_metric_summary_bb')
     action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary_bb
     filesize_check_result = action.get_associated_check_result(kwargs)
@@ -243,7 +251,7 @@ def patch_quality_metric_summary_bb(connection, **kwargs):
 def patch_quality_metric_summary_bed(connection, **kwargs):
     t0 = time.time()  # keep track of how start time
     time_limit = 270  # 4.5 minutes
-    action = init_action_res(connection, 'patch_quality_metric_summary_bed')
+    action = ActionResult(connection, 'patch_quality_metric_summary_bed')
     action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary_bed
     filesize_check_result = action.get_associated_check_result(kwargs)

@@ -123,7 +123,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -135,7 +135,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -147,7 +147,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -159,7 +159,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": ["expset_opfsets_unique_titles"]
                 }
@@ -171,7 +171,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -223,7 +223,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -235,7 +235,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -247,7 +247,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -259,7 +259,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -295,7 +295,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -307,7 +307,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -331,7 +331,7 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -408,11 +408,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -435,7 +435,11 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "staging": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -447,7 +451,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -514,6 +518,10 @@
                 "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -529,7 +537,7 @@
         "group": "Static headers checks",
         "schedule": {
             "morning_checks": {
-                "all": {
+                "all_4dn": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -746,11 +754,11 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -766,7 +774,7 @@
         "schedule": {
             "hourly_checks_2": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
@@ -792,11 +800,11 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -812,11 +820,11 @@
         "schedule": {
             "hourly_checks_2": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -838,11 +846,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true, "queue_action": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "hotseat": {
@@ -864,7 +872,7 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1018,7 +1026,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1030,7 +1038,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1042,7 +1050,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1054,7 +1062,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1066,7 +1074,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1078,7 +1086,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1090,7 +1098,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1102,7 +1110,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1114,7 +1122,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1126,7 +1134,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1138,7 +1146,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1150,7 +1158,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1162,7 +1170,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1174,7 +1182,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1186,7 +1194,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1212,6 +1220,76 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                }
+            }
+        }
+    },
+    "margi_status" : {
+        "title": "v) MARGI",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "md5runCGAP_status" : {
+        "title": "a) md5 runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastqcCGAP_status" : {
+        "title": "b) fastqc runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgap_status" : {
+        "title": "c) CGAP pipeline",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "elastic_search_space" : {
+        "title": "ES Disk Space Check",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "morning_checks": {
+                "all": {
+                    "kwargs" : {"primary": true}
+                }
+            }
+        }
+    },
+    "elasticsearch_s3_count_diff" : {
+        "title": "S3/ES Check Count Differential",
+        "group": "Elasticsearch checks",
+        "schedule" : {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true}
                 }
             }
         }

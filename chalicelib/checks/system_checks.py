@@ -1,11 +1,10 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res,
     basestring
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import (
     ff_utils,
     es_utils,
@@ -21,11 +20,37 @@ import time
 
 
 @check_function()
+def elastic_search_space(connection, **kwargs):
+    """ Checks that our ES nodes all have a certain amount of space remaining """
+    check = CheckResult(connection, 'elastic_search_space')
+    full_output = {}
+    client = es_utils.create_es_client(connection.ff_es, True)
+    # use cat.nodes to get id,diskAvail for all nodes, filter out empties
+    node_space_entries = filter(None, [data.split() for data in client.cat.nodes(h='id,diskAvail').split('\n')])
+    check.summary = check.description = None
+    full_output['nodes'] = {}
+    for _id, remaining_space in node_space_entries:
+        if 'gb' not in remaining_space:
+            if 'mb' not in remaining_space:
+                check.status = 'FAIL'
+                check.summary = check.description = 'At least one of the nodes in this env has no space remaining'
+            else:
+                check.status = 'WARN'
+                check.summary = check.description = 'At least one of the nodes in this env is low on space'
+        full_output['nodes'][_id.strip()] = { 'remaining_space': remaining_space }
+    if check.summary is None:
+        check.status = 'PASS'
+        check.summary = check.description = 'All nodes have >1gb remaining disk space'
+    check.full_output = full_output
+    return check
+
+
+@check_function()
 def elastic_beanstalk_health(connection, **kwargs):
     """
     Check both environment health and health of individual instances
     """
-    check = init_check_res(connection, 'elastic_beanstalk_health')
+    check = CheckResult(connection, 'elastic_beanstalk_health')
     full_output = {}
     eb_client = boto3.client('elasticbeanstalk')
     resp = eb_client.describe_environment_health(
@@ -91,7 +116,7 @@ def elastic_beanstalk_health(connection, **kwargs):
 
 @check_function()
 def status_of_elasticsearch_indices(connection, **kwargs):
-    check = init_check_res(connection, 'status_of_elasticsearch_indices')
+    check = CheckResult(connection, 'status_of_elasticsearch_indices')
     ### the check
     client = es_utils.create_es_client(connection.ff_es, True)
     indices = client.cat.indices(v=True).split('\n')
@@ -124,9 +149,9 @@ def status_of_elasticsearch_indices(connection, **kwargs):
 
 @check_function()
 def indexing_progress(connection, **kwargs):
-    check = init_check_res(connection, 'indexing_progress')
+    check = CheckResult(connection, 'indexing_progress')
     # get latest and db/es counts closest to 10 mins ago
-    counts_check = init_check_res(connection, 'item_counts_by_type')
+    counts_check = CheckResult(connection, 'item_counts_by_type')
     latest = counts_check.get_primary_result()
     prior = counts_check.get_closest_result(diff_mins=30)
     if not latest.get('full_output') or not prior.get('full_output'):
@@ -158,8 +183,15 @@ def indexing_progress(connection, **kwargs):
 
 @check_function()
 def indexing_records(connection, **kwargs):
-    check = init_check_res(connection, 'indexing_records')
+    check = CheckResult(connection, 'indexing_records')
     client = es_utils.create_es_client(connection.ff_es, True)
+    # make sure we have the index and items within it
+    if (not client.indices.exists('indexing') or
+        client.count('indexing', 'indexing').get('count', 0) < 1):
+        check.summary = check.description = 'No indexing records found'
+        check.status = 'PASS'
+        return check
+
     res = client.search(index='indexing', doc_type='indexing', sort='uuid:desc', size=1000,
                         body={'query': {'query_string': {'query': '_exists_:indexing_status'}}})
     delta_days = datetime.timedelta(days=3)
@@ -197,17 +229,17 @@ def indexing_records(connection, **kwargs):
 # do_not_store parameter ensures running this check normally won't add to s3
 @check_function(do_not_store=True)
 def staging_deployment(connection, **kwargs):
-    check = init_check_res(connection, 'staging_deployment')
+    check = CheckResult(connection, 'staging_deployment')
     return check
 
 
 @check_function()
 def fourfront_performance_metrics(connection, **kwargs):
-    check = init_check_res(connection, 'fourfront_performance_metrics')
+    check = CheckResult(connection, 'fourfront_performance_metrics')
     full_output = {}  # contains ff_env, env_health, deploy_version, num instances, and performance
     performance = {}  # keyed by check_url
     # get information from elastic_beanstalk_health
-    eb_check = init_check_res(connection, 'elastic_beanstalk_health')
+    eb_check = CheckResult(connection, 'elastic_beanstalk_health')
     eb_info = eb_check.get_primary_result()['full_output']
     full_output['ff_env'] = connection.ff_env
     full_output['env_health'] = eb_info.get('health_status', 'Unknown')
@@ -232,7 +264,8 @@ def fourfront_performance_metrics(connection, **kwargs):
         performance[check_url] = {}
         try:
             # set timeout really high
-            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url, ff_env=connection.ff_env, timeout=1000)
+            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url,
+                                                  auth=connection.ff_keys, timeout=1000)
         except Exception as e:
             performance[check_url]['error'] = str(e)
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
@@ -261,7 +294,7 @@ def fourfront_performance_metrics(connection, **kwargs):
 @check_function()
 def secondary_queue_deduplication(connection, **kwargs):
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'secondary_queue_deduplication')
+    check = CheckResult(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
     if get_stage_info()['stage'] != 'prod':
         check.full_output = 'Will not run on dev foursight.'
@@ -293,8 +326,19 @@ def secondary_queue_deduplication(connection, **kwargs):
     elapsed = round(time.time() - t0, 2)
     failed = []
     seen_uuids = set()
+    # this is a bit of a hack -- send maximum sid with every message we replace
+    # get the maximum sid at the start of deduplication and update it if we
+    # encounter a higher sid
+    max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
+                                               auth=connection.ff_keys).json()
+    if max_sid_resp['status'] != 'success':
+        check.status = 'FAIL'
+        check.summary = 'Could not retrieve max_sid from the server'
+        return check
+    max_sid = max_sid_resp['max_sid']
+
     exit_reason = 'out of time'
-    dedup_msg = 'Deduplicated: %s' % kwargs['uuid']
+    dedup_msg = 'FS dedup uuid: %s' % kwargs['uuid']
     while elapsed < time_limit:
         # end if we are spinning our wheels replacing the same uuids
         if (replaced + repeat_replaced) >= starting_count:
@@ -306,23 +350,27 @@ def secondary_queue_deduplication(connection, **kwargs):
         recieved = client.receive_message(
             QueueUrl=queue_url,
             MaxNumberOfMessages=10,  # batch size for all sqs ops
-            WaitTimeSeconds=4  # 4 seconds of long polling
+            WaitTimeSeconds=1  # 1 second of long polling
         )
         batch = recieved.get("Messages", [])
-        if not batch:  # if no messages received from long polling, exit
+        if not batch:
             exit_reason = 'no messages left'
             break
-        for i in range(len(batch)):
+        for msg in batch:
             try:
-                msg_body = json.loads(batch[i]['Body'])
+                msg_body = json.loads(msg['Body'])
             except json.JSONDecodeError:
-                problem_msgs.append(batch[i]['Body'])
+                problem_msgs.append(msg['Body'])
                 continue
             total_msgs += 1
             msg_uuid = msg_body['uuid']
+            # update max_sid with message sid if applicable
+            if msg_body.get('sid') is not None and msg_body['sid'] > max_sid:
+                max_sid = msg_body['sid']
+            msg_body['sid'] = max_sid
             to_process = {
-                'Id': batch[i]['MessageId'],
-                'ReceiptHandle': batch[i]['ReceiptHandle']
+                'Id': msg['MessageId'],
+                'ReceiptHandle': msg['ReceiptHandle']
             }
             # every item gets deleted; original uuids get re-sent
             to_delete.append(to_process)
@@ -337,9 +385,12 @@ def secondary_queue_deduplication(connection, **kwargs):
                 time.sleep(0.0001)  # slight sleep for time-based Id
                 # add foursight uuid stamp
                 msg_body['fs_detail'] = dedup_msg
+                # add a slight delay to recycled messages, so that they are
+                # not available for consumption for 2 seconds
                 send_info = {
                     'Id': str(int(time.time() * 1000000)),
-                    'MessageBody': json.dumps(msg_body)
+                    'MessageBody': json.dumps(msg_body),
+                    'DelaySeconds': 2
                 }
                 to_send.append(send_info)
                 seen_uuids.add(msg_uuid)
@@ -403,7 +454,7 @@ def clean_up_travis_queues(connection, **kwargs):
     and the creation date. Only run on data for now
     """
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'clean_up_travis_queues')
+    check = CheckResult(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
     if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
@@ -434,7 +485,7 @@ def clean_up_travis_queues(connection, **kwargs):
 @check_function()
 def manage_old_filebeat_logs(connection, **kwargs):
     # import curator
-    check = init_check_res(connection, 'manage_old_filebeat_logs')
+    check = CheckResult(connection, 'manage_old_filebeat_logs')
 
     # temporary -- disable this check
     check.status = 'PASS'
@@ -491,7 +542,7 @@ def manage_old_filebeat_logs(connection, **kwargs):
 @check_function()
 def snapshot_rds(connection, **kwargs):
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'snapshot_rds')
+    check = CheckResult(connection, 'snapshot_rds')
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
@@ -524,12 +575,14 @@ def process_download_tracking_items(connection, **kwargs):
     """
     from ..utils import get_stage_info, parse_datetime_to_utc
     import geocoder
-    check = init_check_res(connection, 'process_download_tracking_items')
+    check = CheckResult(connection, 'process_download_tracking_items')
     # maybe handle this in check_setup.json
     if get_stage_info()['stage'] != 'prod':
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
+    # hold warning messages
+    check.brief_output = {'cannot_parse_date_created': []}
     range_cache = {}
     # duration we want to consolidate range queries over
     # search older entries since range_consolidation_hrs * 2 to avoid duplication
@@ -539,12 +592,16 @@ def process_download_tracking_items(connection, **kwargs):
     range_search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
                                   '&download_tracking.range_query=true&sort=-date_created',
                                   '&status=released&q=last_modified.date_modified:>=', cons_date])
-    cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    cons_query = ff_utils.search_metadata(range_search_query, key=connection.ff_keys)
     for tracking in cons_query:
         dl_info = tracking['download_tracking']
+        user_agent = dl_info.get('user_agent', 'unknown_user_agent').lower()
         range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
-                               dl_info['user_agent'], dl_info['user_uuid']])
+                               user_agent, dl_info['user_uuid']])
         parsed_date = parse_datetime_to_utc(tracking['date_created'])
+        # check for date parsing error
+        if parsed_date is None:
+            continue
         if range_key in range_cache:
             range_cache[range_key].append(parsed_date)
         else:
@@ -565,8 +622,7 @@ def process_download_tracking_items(connection, **kwargs):
     search_query = ''.join(['search/?type=TrackingItem&tracking_type=download_tracking',
                             '&download_tracking.geo_country=No+value',
                             '&status=in+review+by+lab&sort=-date_created&limit=', str(search_limit)])
-    search_page = ff_utils.search_metadata(search_query, key=connection.ff_keys,
-                                           ff_env=connection.ff_env, page_limit=200)
+    search_page = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     counts = {'proc': 0, 'deleted': 0, 'released': 0}
 
     page_ips = set([tracking['download_tracking']['remote_ip'] for tracking in search_page])
@@ -576,18 +632,20 @@ def process_download_tracking_items(connection, **kwargs):
             if track_ip in ip_cache:
                 continue
             geo = geocoder.ip(track_ip, session=session)
-            geo_country = getattr(geo, 'country', 'Unknown')
-            geo_city = getattr(geo, 'city', 'Unknown')
+            geo_country = getattr(geo, 'country') or 'Unknown'
+            geo_city = getattr(geo, 'city') or 'Unknown'
             geo_state = getattr(geo, 'state', None)
             if geo_state:
                 geo_city = ', '.join([geo_city, geo_state])
             # cache the geo info in an arbitrary form
             ip_cache[track_ip] = '//'.join([geo_city, geo_country])
+
     # iterate over the individual tracking items
     for tracking in search_page:
         if round(time.time() - t0, 2) > time_limit:
             break
         dl_info = tracking['download_tracking']
+        user_agent = dl_info.get('user_agent', 'unknown_user_agent').lower()
         # remove request_headers, which may contain sensitive information
         if 'request_headers' in dl_info:
             del dl_info['request_headers']
@@ -595,39 +653,44 @@ def process_download_tracking_items(connection, **kwargs):
         dl_info['geo_city'], dl_info['geo_country'] = geo_info.split('//')
         patch_body = {'status': 'released', 'download_tracking': dl_info}
         # delete items from bot user agents
-        if (any(bot_str in dl_info['user_agent'].lower() for bot_str in bot_agents)
+        if (any(bot_str in user_agent for bot_str in bot_agents)
             and dl_info['user_uuid'] == 'anonymous'):
             patch_body['status'] = 'deleted'
         # set range_query=True for select user agents
-        if (any(ua_str in dl_info['user_agent'].lower() for ua_str in range_query_agents)):
+        if (any(ua_str in user_agent for ua_str in range_query_agents)):
             dl_info['range_query'] = True
         # deduplicate range query requests by ip/filename/user_agent/user_uuid
         if patch_body['status'] != 'deleted' and dl_info['range_query'] is True:
             range_key = '//'.join([dl_info['remote_ip'], dl_info['filename'],
-                                   dl_info['user_agent'], dl_info['user_uuid']])
+                                   user_agent, dl_info['user_uuid']])
             parsed_date = parse_datetime_to_utc(tracking['date_created'])
-            if range_key in range_cache:
-                # for all reference range queries with this info, see if this one
-                # was created within one hour of it. if so, it is redundant and delete
-                for range_reference in range_cache[range_key]:
-                    compare_date_low = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
-                    compare_date_high = range_reference + datetime.timedelta(hours=range_consolidation_hrs)
-                    if parsed_date > compare_date_low and parsed_date < compare_date_high:
-                        patch_body['status'] = 'deleted'
-                        break
-                if patch_body['status'] != 'deleted':
-                    range_cache[range_key].append(parsed_date)
+            if parsed_date is not None:
+                if range_key in range_cache:
+                    # for all reference range queries with this info, see if this one
+                    # was created within one hour of it. if so, it is redundant and delete
+                    for range_reference in range_cache[range_key]:
+                        compare_date_low = range_reference - datetime.timedelta(hours=range_consolidation_hrs)
+                        compare_date_high = range_reference + datetime.timedelta(hours=range_consolidation_hrs)
+                        if parsed_date > compare_date_low and parsed_date < compare_date_high:
+                            patch_body['status'] = 'deleted'
+                            break
+                    if patch_body['status'] != 'deleted':
+                        range_cache[range_key].append(parsed_date)
+                else:
+                    # set the upper limit for for range queries to consolidate
+                    range_cache[range_key] = [parsed_date]
             else:
-                # set the upper limit for for range queries to consolidate
-                range_cache[range_key] = [parsed_date]
-        ff_utils.patch_metadata(patch_body, tracking['uuid'],
-                                key=connection.ff_keys, ff_env=connection.ff_env)
+                check.brief_output['cannot_parse_date_created'].append(tracking['uuid'])
+
+        ff_utils.patch_metadata(patch_body, tracking['uuid'], key=connection.ff_keys)
         counts['proc'] += 1
         if patch_body['status'] == 'released':
             counts['released'] += 1
         else:
             counts['deleted'] += 1
-    if check.status != 'WARN':
+    if any(check.brief_output.values()):
+        check.status = 'WARN'
+    else:
         check.status = 'PASS'
     check.summary = 'Successfully processed %s download tracking items' % counts['proc']
     check.description = '%s. Released %s items and deleted %s items' % (check.summary, counts['released'], counts['deleted'])
@@ -643,7 +706,7 @@ def purge_download_tracking_items(connection, **kwargs):
     Ensure search includes limit, field=uuid, and status=deleted
     """
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'purge_download_tracking_items')
+    check = CheckResult(connection, 'purge_download_tracking_items')
 
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
@@ -653,21 +716,19 @@ def purge_download_tracking_items(connection, **kwargs):
     t0 = time.time()
     check.full_output = {}  # purged items by item type
     search = '/search/?type=TrackingItem&tracking_type=download_tracking&status=deleted&field=uuid&limit=300'
-    search_res = ff_utils.search_metadata(search, key=connection.ff_keys,
-                                          ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
     search_uuids = [res['uuid'] for res in search_res]
     client = es_utils.create_es_client(connection.ff_es, True)
     # a bit convoluted, but we want the frame=raw, which does not include uuid
     # use get_es_metadata to handle this. Use it as a generator
     for to_purge in ff_utils.get_es_metadata(search_uuids, es_client=client, is_generator=True,
-                                    key=connection.ff_keys, ff_env=connection.ff_env):
+                                             key=connection.ff_keys):
         if round(time.time() - t0, 2) > time_limit:
             break
         purge_properties = to_purge['properties']
         purge_properties['uuid'] = to_purge['uuid']  # add uuid to frame=raw
         try:
-            purge_res = ff_utils.purge_metadata(to_purge['uuid'], key=connection.ff_keys,
-                                                ff_env=connection.ff_env)
+            purge_res = ff_utils.purge_metadata(to_purge['uuid'], key=connection.ff_keys)
         except Exception as exc:
             purge_status = 'error'
             purge_detail = str(exc)
@@ -700,7 +761,7 @@ def check_long_running_ec2s(connection, **kwargs):
     names, or if they have no name.
     """
     from ..utils import get_stage_info
-    check = init_check_res(connection, 'check_long_running_ec2s')
+    check = CheckResult(connection, 'check_long_running_ec2s')
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
@@ -742,7 +803,7 @@ def check_long_running_ec2s(connection, **kwargs):
                 flag_instance = True
                 # include all other tags if Name tag is empty
                 ec2_log['tags'] = other_tags
-            elif any([wn for wn in flag_names if wn in inst_name]):
+            elif any([wn for wn in flag_names if wn in ','.join(inst_name)]):
                 flag_instance = True
             else:
                 flag_instance = False
@@ -781,7 +842,7 @@ def check_long_running_ec2s(connection, **kwargs):
 @check_function(FS_dev='free', FF_hotseat='free', FF_mastertest='free', FF_webdev='free')
 def say_my_name(connection, **kwargs):
     """List the person working on each environment."""
-    check = init_check_res(connection, 'say_my_name')
+    check = CheckResult(connection, 'say_my_name')
     check.description = "Enter the new name or if you are done, use 'free' to clear your name"
     check.summary = ""
     check.brief_output = ""

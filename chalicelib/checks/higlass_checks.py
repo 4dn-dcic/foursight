@@ -2,10 +2,9 @@ from __future__ import print_function, unicode_literals
 from datetime import datetime, timedelta
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import requests
 import json
@@ -28,7 +27,7 @@ def get_reference_files(connection):
     # first, find and cache the reference files
     reference_files_by_ga = {}
     ref_search_q = '/search/?type=File&tags=higlass_reference&higlass_uid!=No+value&genome_assembly!=No+value&file_format.file_format=beddb&file_format.file_format=chromsizes&field=genome_assembly&field=file_format&field=accession'
-    ref_res = ff_utils.search_metadata(ref_search_q, key=connection.ff_keys, ff_env=connection.ff_env)
+    ref_res = ff_utils.search_metadata(ref_search_q, key=connection.ff_keys)
     for ref in ref_res:
         # file_format should be 'chromsizes' or 'beddb'
         ref_format = ref.get('file_format', {}).get('file_format')
@@ -96,7 +95,7 @@ def post_viewconf_to_visualization_endpoint(connection, reference_files, files, 
 
         try:
             viewconf_res = ff_utils.post_metadata(viewconf_description, 'higlass-view-configs',
-                                                  key=connection.ff_keys, ff_env=connection.ff_env)
+                                                  key=connection.ff_keys)
             view_conf_uuid = viewconf_res['@graph'][0]['uuid']
             return {
                 "view_config_uuid": view_conf_uuid,
@@ -141,7 +140,7 @@ def get_viewconf_status(files):
         "deleted",
         "replaced",
         "revoked",
-        "archived",
+        # "archived",
         "pre-release",
         "to be uploaded by workflow"
     ]
@@ -198,8 +197,7 @@ def add_viewconf_static_content_to_file(connection, item_uuid, higlass_item_uuid
         ff_utils.patch_metadata(
             {'static_content': patched_static_content},
             obj_id=item_uuid,
-            key=connection.ff_keys,
-            ff_env=connection.ff_env
+            key=connection.ff_keys
         )
     except Exception as e:
         return False, str(e)
@@ -345,7 +343,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
     """
 
     # Create the initial check
-    check = init_check_res(connection, check_name)
+    check = CheckResult(connection, check_name)
     check.full_output = {
         "search_queries":[]
     }
@@ -383,7 +381,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
         file_search_query = "/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value" + query + fields_to_include
 
         # Query the files
-        search_res = ff_utils.search_metadata(file_search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        search_res = ff_utils.search_metadata(file_search_query, key=connection.ff_keys)
 
         # Collate the results into a dict of ExpSets, ordered by accession
         for found_file in search_res:
@@ -455,7 +453,7 @@ def create_higlass_items_for_files(connection, check_name, action_name, called_b
     Returns:
         An action object.
     """
-    action = init_action_res(connection, action_name)
+    action = ActionResult(connection, action_name)
     action_logs = {
         "success": {},
         "failed_to_create_higlass" : {},
@@ -463,7 +461,7 @@ def create_higlass_items_for_files(connection, check_name, action_name, called_b
     }
 
     # get latest results
-    gen_check = init_check_res(connection, check_name)
+    gen_check = CheckResult(connection, check_name)
     if called_by:
         gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
@@ -793,7 +791,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
             check result object.
     """
     # Create the check
-    check = init_check_res(connection, check_name)
+    check = CheckResult(connection, check_name)
     check.action = action_name
     check.full_output = {}
 
@@ -832,7 +830,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
         processed_expsets_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
 
         # Query the Experiment Sets
-        search_res = ff_utils.search_metadata(processed_expsets_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        search_res = ff_utils.search_metadata(processed_expsets_query, key=connection.ff_keys)
 
         # Collate the results into a dict of ExpSets, ordered by accession
         for expset in search_res:
@@ -920,7 +918,7 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
         Returns:
             An action object.
     """
-    action = init_action_res(connection, action_name)
+    action = ActionResult(connection, action_name)
 
     # Time to act. Store the results here.
     action_logs = {
@@ -931,7 +929,7 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
     }
 
     # get latest results
-    gen_check = init_check_res(connection, check_name)
+    gen_check = CheckResult(connection, check_name)
     if called_by:
         gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
@@ -1158,7 +1156,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
     """
 
     # Create the initial check
-    check = init_check_res(connection, check_name)
+    check = CheckResult(connection, check_name)
     check.full_output = {
         "search_queries":[]
     }
@@ -1204,13 +1202,13 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
         expset_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
 
         # Store results by accession
-        search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys)
         for expset in search_res:
             expsets_by_accession[ expset["accession"] ] = expset
 
     # I'll need more specific file information, so get the files, statuses.
     file_query = '/search/?type=File&higlass_uid%21=No+value&field=status&field=accession&limit=all'
-    search_res = ff_utils.search_metadata(file_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_res = ff_utils.search_metadata(file_query, key=connection.ff_keys)
     file_statuses = { res["accession"] : res["status"] for res in search_res if "accession" in res }
 
     # Get reference files
@@ -1381,7 +1379,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
         Returns:
             An action object.
     """
-    action = init_action_res(connection, action_name)
+    action = ActionResult(connection, action_name)
 
     action_logs = {
         'successes': {},
@@ -1390,7 +1388,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
     }
 
     # get latest results
-    gen_check = init_check_res(connection, check_name)
+    gen_check = CheckResult(connection, check_name)
     if called_by:
         gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
@@ -1511,8 +1509,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
             ff_utils.patch_metadata(
                 {'other_processed_files': expsets_to_update[accession]["other_processed_files"]},
                 obj_id=accession,
-                key=connection.ff_keys,
-                ff_env=connection.ff_env
+                key=connection.ff_keys
             )
             number_of_viewconfs_updated += number_of_posted_viewconfs
         except Exception as e:
@@ -1545,23 +1542,25 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
     action.output = action_logs
     return action
 
-@check_function(confirm_on_higlass=False, filetype='all', higlass_server=None)
+@check_function(confirm_on_higlass=False, filetype='all', higlass_server=None, time_limit=270)
 def files_not_registered_with_higlass(connection, **kwargs):
     """
     Used to check registration of files on higlass and also register them
     through the patch_file_higlass_uid action.
 
-    If confirm_on_higlass is True, check each file by making a request to the
+    If `confirm_on_higlass` is True, check each file by making a request to the
     higlass server. Otherwise, just look to see if a higlass_uid is present in
     the metadata.
 
-    The filetype arg allows you to specify which filetypes to operate on.
+    The `filetype` arg allows you to specify which filetypes to operate on.
     Must be one of: 'all', 'bigbed', 'mcool', 'bg', 'bw', 'beddb', 'chromsizes'.
     'chromsizes' and 'beddb' are from the raw files bucket; all other filetypes
     are from the processed files bucket.
 
-    higlass_server may be passed in if you want to use a server other than
+    `higlass_server` may be passed in if you want to use a server other than
     higlass.4dnucleome.org.
+
+    Set `time_limit` kwarg to 0 or None to disable time limit.
 
     Since 'chromsizes' file defines the coordSystem (assembly) used to register
     other files in higlass, these go first.
@@ -1573,7 +1572,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     Returns:
         A check/action object.
     """
-    check = init_check_res(connection, 'files_not_registered_with_higlass')
+    check = CheckResult(connection, 'files_not_registered_with_higlass')
     check.status = "FAIL"
     check.description = "not able to get data from fourfront"
     # keep track of mcool, bg, and bw files separately
@@ -1602,7 +1601,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     higlass_key = connection.ff_s3.get_higlass_key()
     higlass_server = kwargs['higlass_server'] if kwargs['higlass_server'] else higlass_key['server']
 
-    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    # Keep track of how long this task has lasted.
     start_time = time.time()
     time_expired = False
 
@@ -1664,11 +1663,10 @@ def files_not_registered_with_higlass(connection, **kwargs):
             continue
 
         # Query all possible files
-        possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+        possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys)
 
         for procfile in possibly_reg:
-            # If we've taken more than 270 seconds to complete, break immediately
-            if time.time() - start_time > 270:
+            if kwargs['time_limit'] and time.time() - start_time > kwargs['time_limit']:
                 time_expired = True
                 break
 
@@ -1780,10 +1778,13 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
     return check
 
-@action_function(file_accession=None, force_new_higlass_uid=False)
+@action_function(file_accession=None, force_new_higlass_uid=False, time_limit=270)
 def patch_file_higlass_uid(connection, **kwargs):
-    """ After running "files_not_registered_with_higlass",
+    """
+    After running "files_not_registered_with_higlass",
     Try to register files with higlass.
+
+    Set `time_limit` kwarg to 0 or None to disable time limit.
 
     Args:
         connection: The connection to Fourfront.
@@ -1794,7 +1795,7 @@ def patch_file_higlass_uid(connection, **kwargs):
     Returns:
         A check/action object.
     """
-    action = init_action_res(connection, 'patch_file_higlass_uid')
+    action = ActionResult(connection, 'patch_file_higlass_uid')
     action_logs = {
         'patch_failure': {},
         'patch_success': {},
@@ -1802,7 +1803,7 @@ def patch_file_higlass_uid(connection, **kwargs):
         'registration_success': 0
     }
     # get latest results
-    higlass_check = init_check_res(connection, 'files_not_registered_with_higlass')
+    higlass_check = CheckResult(connection, 'files_not_registered_with_higlass')
     if kwargs.get('called_by', None):
         higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
     else:
@@ -1822,7 +1823,7 @@ def patch_file_higlass_uid(connection, **kwargs):
         'Accept': 'application/json'
     }
 
-    # Checks expire after 280 seconds, so keep track of how long this task has lasted.
+    # Keep track of how long this task has lasted.
     start_time = time.time()
     time_expired = False
 
@@ -1832,8 +1833,7 @@ def patch_file_higlass_uid(connection, **kwargs):
         if time_expired:
             break
         for hit in hits:
-            # If we've taken more than 270 seconds to complete, break immediately
-            if time.time() - start_time > 270:
+            if kwargs['time_limit'] and time.time() - start_time > kwargs['time_limit']:
                 time_expired = True
                 break
 
@@ -1892,7 +1892,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 if 'higlass_uid' not in hit or hit['higlass_uid'] != response_higlass_uid:
                     patch_data = {'higlass_uid': response_higlass_uid}
                     try:
-                        ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys, ff_env=connection.ff_env)
+                        ff_utils.patch_metadata(patch_data, obj_id=hit['uuid'], key=connection.ff_keys)
                     except Exception as e:
                         action_logs['patch_failure'][hit['accession']] = "{type}: {message}".format(
                             type = type(e),
@@ -1923,7 +1923,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
         A check/action object
     """
 
-    check = init_check_res(connection, 'find_cypress_test_items_to_purge')
+    check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
         'items_to_purge':[]
     }
@@ -1933,7 +1933,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     # Search for all Higlass View Config that are deleted and have the deleted_by_cypress_test tag.
     search_query = '/search/?type=Item&status=deleted&tags=deleted_by_cypress_test'
-    search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys, ff_env=connection.ff_env)
+    search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys)
 
     check.full_output['items_to_purge'] = [ s["uuid"] for s in search_response ]
 
@@ -1961,14 +1961,14 @@ def purge_cypress_items(connection, **kwargs):
         A check object
     """
 
-    action = init_action_res(connection, 'purge_cypress_items')
+    action = ActionResult(connection, 'purge_cypress_items')
     action_logs = {
         'items_purged':[],
         'failed_to_purge':{}
     }
 
     # get latest results
-    gen_check = init_check_res(connection, 'find_cypress_test_items_to_purge')
+    gen_check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     if kwargs.get('called_by', None):
         gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
     else:
@@ -1985,7 +1985,7 @@ def purge_cypress_items(connection, **kwargs):
             time_expired = True
             break
 
-        purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys, ff_env=connection.ff_env)
+        purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys)
         if purge_response['status'] == 'success':
             action_logs['items_purged'].append(view_conf_uuid)
         else:
@@ -2057,8 +2057,7 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
                 viewconf_res = ff_utils.patch_metadata(
                     viewconf_description,
                     obj_id=higlass_item["uuid"],
-                    key=connection.ff_keys,
-                    ff_env=connection.ff_env
+                    key=connection.ff_keys
                 )
                 return {
                     "item_uuid": higlass_item["uuid"],
@@ -2069,8 +2068,7 @@ def create_or_update_higlass_item(connection, files, attributions, higlass_item,
                 viewconf_res = ff_utils.post_metadata(
                     viewconf_description,
                     'higlass-view-configs',
-                    key=connection.ff_keys,
-                    ff_env=connection.ff_env
+                    key=connection.ff_keys
                 )
                 view_conf_uuid = viewconf_res['@graph'][0]['uuid']
                 return {
@@ -2114,7 +2112,7 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
 
     if "<get_latest_action_completed_date>" in search_query:
         # Get the related action for this check
-        action = init_action_res(connection, action_name)
+        action = ActionResult(connection, action_name)
         action_result = action.get_latest_result()
 
         # If there is no action, or it lacks a completed timestamp, return one day before now.
