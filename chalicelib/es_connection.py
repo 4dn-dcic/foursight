@@ -221,7 +221,7 @@ class ESConnection(AbstractConnection):
                 if not has_record:
                     placeholder = {
                         'name': check_name,
-                        'uuid': datetime.date(5, 5, 5).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility
+                        'uuid': datetime.date(1000, 1, 1).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility
                         'status': 'WARN',
                         'summary': 'Check has not yet run',
                         'description': 'Check has not yet run'

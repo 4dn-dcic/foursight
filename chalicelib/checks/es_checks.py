@@ -77,7 +77,7 @@ def clean_s3_es_checks(connection, **kwargs):
     time_limit = 270 if kwargs.get('timeout') is None else kwargs.get('timeout')
     check = CheckResult(connection, check_to_clean)
     full_output = {}
-    if not check_to_clean:
+    if check_to_clean is None:
         check.status = 'FAIL'
         check.summary = check.description = 'A check must be given to be cleaned'
         check.full_output = full_output
