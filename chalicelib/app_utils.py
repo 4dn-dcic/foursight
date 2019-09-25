@@ -468,13 +468,11 @@ def process_view_result(connection, res, is_admin):
                 # If assc_action_key is written but assc_action is None, then
                 # it most likely means the action is still running
                 if assc_action is not None:
-                    # json.loads followed by json.dumps handles binary storage in s3
-                    assc_action_contents = json.loads(assc_action)
-                    res['assc_action_status'] = assc_action_contents['status']
-                    res['assc_action'] = json.dumps(assc_action_contents, indent=4)
+                    res['assc_action_status'] = assc_action['status']
+                    res['assc_action'] = json.dumps(assc_action, indent=4)
                     # update check summary
                     if res.get('summary'):
-                        res['summary'] = 'ACTION %s: %s' % (assc_action_contents['status'], res['summary'])
+                        res['summary'] = 'ACTION %s: %s' % (assc_action['status'], res['summary'])
                 else:
                     res['assc_action_status'] = 'PEND'
                     res['assc_action'] = 'Associated action has not finished.'
