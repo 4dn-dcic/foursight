@@ -232,16 +232,25 @@ def get_check_results(connection, checks=[], use_latest=False):
                 found = tempCheck.get_latest_result()
             else:
                 found = tempCheck.get_primary_result()
-                # checks with no records will return None. Skip IGNORE checks
-                if found and found.get('status') != 'IGNORE':
-                    check_results.append(found)
+            # checks with no records will return None. Skip IGNORE checks
+            if found and found.get('status') != 'IGNORE':
+                check_results.append(found)
+            if not found: # add placeholder check so not yet run checks are still rendered on the UI
+                placeholder = {
+                    'name': check_name,
+                    'uuid': datetime.date(5, 5, 5).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility
+                    'status': 'WARN',
+                    'summary': 'Check has not yet run',
+                    'description': 'Check has not yet run'
+                }
+                check_results.append(placeholder)
+
     else:
         if use_latest:
-            check_results = connection.connections['es'].get_main_page_checks(primary=False)
-            check_results = list(filter(lambda obj: obj['name'] in checks, check_results))
-        else: # also filter by IGNORE on primaries
-            check_results = connection.connections['es'].get_main_page_checks()
-            check_results = list(filter(lambda obj: obj['status'] != 'IGNORE' and obj['name'] in checks, check_results))
+            check_results = connection.connections['es'].get_main_page_checks(checks, primary=False)
+        else:
+            check_results = connection.connections['es'].get_main_page_checks(checks)
+        check_results = list(filter(lambda obj: obj['status'] != 'IGNORE' and obj['name'] in checks, check_results))
 
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
