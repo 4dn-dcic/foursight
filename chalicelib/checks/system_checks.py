@@ -762,6 +762,7 @@ def check_long_running_ec2s(connection, **kwargs):
     """
     from ..utils import get_stage_info
     check = CheckResult(connection, 'check_long_running_ec2s')
+    check.action = "kill_long_running_ec2s"
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
@@ -824,6 +825,7 @@ def check_long_running_ec2s(connection, **kwargs):
         check.summary = ''
         if check.brief_output['two_weeks']:
             check.status = 'FAIL'
+            check.allow_action = True
             check.summary = '%s suspect EC2s running longer than 2 weeks' % num_2wk
         if check.brief_output['one_week']:
             if check.status != 'FAIL':
@@ -837,6 +839,19 @@ def check_long_running_ec2s(connection, **kwargs):
         check.status = 'PASS'
         check.summary = '%s EC2s running longer than 1 week' % (len(check.full_output))
     return check
+
+
+@action_function()
+def kill_long_running_ec2s(connection, **kwargs):
+    action = ActionResult(connection, 'kill_long_running_ec2s')
+    running_ec2_results = action.get_associated_check_result(kwargs)
+    targets = [i['id'] for i in running_ec2_results['brief_output']['two_weeks']]
+    client = boto3.client('ec2')
+    response = client.terminate_instances(InstanceIds=targets, DryRun=False)
+    action_logs = {'assasination_attempted': response}
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
 
 
 @check_function(FS_dev='free', FF_hotseat='free', FF_mastertest='free', FF_webdev='free')
