@@ -13,6 +13,7 @@ from dateutil import tz
 from base64 import b64decode
 from dcicutils import ff_utils
 from .fs_connection import FSConnection
+from .run_result import CheckResult, ActionResult
 from .check_utils import (
     get_grouped_check_results,
     get_check_strings,
@@ -21,8 +22,6 @@ from .check_utils import (
     get_schedule_names,
     get_check_schedule,
     run_check_or_action,
-    init_check_res,
-    init_action_res,
     init_check_or_action_res
 )
 from .utils import (
@@ -61,7 +60,7 @@ def init_environments(env='all'):
         else:
             return {} # provided env is not in s3
     for env_key in env_keys:
-        env_res = json.loads(s3_connection.get_object(env_key))
+        env_res = s3_connection.get_object(env_key)
         # check that the keys we need are in the object
         if isinstance(env_res, dict) and {'fourfront', 'es'} <= set(env_res):
             env_entry = {
@@ -133,7 +132,7 @@ def check_authorization(request_dict, env=None):
             # leeway accounts for clock drift between us and auth0
             payload = jwt.decode(token, b64decode(auth0_secret, '-_'), audience=auth0_client, leeway=30)
             env_info = init_environments(env)
-            user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(), 
+            user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(),
                                             ff_env=env_info[env]['ff_env'], add_on='frame=object')
             if 'admin' in user_res['groups'] and payload.get('email_verified'):
                 # fully authorized
@@ -363,7 +362,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     except Exception:
         connection = None
     if connection:
-        res_check = init_check_res(connection, check)
+        res_check = CheckResult(connection, check)
         if res_check:
             data = res_check.get_result_by_uuid(uuid)
             if data is None:
@@ -459,23 +458,21 @@ def process_view_result(connection, res, is_admin):
     # For now also get the latest result for the checks action
     # TODO: replace latest_action with action history
     if res.get('action'):
-        action = init_action_res(connection, res.get('action'))
+        action = ActionResult(connection, res.get('action'))
         if action:
             action_record_key = '/'.join([res['name'], 'action_records', res['uuid']])
-            assc_action_key = connection.s3_connection.get_object(action_record_key)
+            assc_action_key = connection.connections['s3'].get_object(action_record_key)
             if assc_action_key:
                 assc_action_key = assc_action_key.decode()  # in bytes
-                assc_action = connection.s3_connection.get_object(assc_action_key)
+                assc_action = connection.get_object(assc_action_key)
                 # If assc_action_key is written but assc_action is None, then
                 # it most likely means the action is still running
                 if assc_action is not None:
-                    # json.loads followed by json.dumps handles binary storage in s3
-                    assc_action_contents = json.loads(assc_action)
-                    res['assc_action_status'] = assc_action_contents['status']
-                    res['assc_action'] = json.dumps(assc_action_contents, indent=4)
+                    res['assc_action_status'] = assc_action['status']
+                    res['assc_action'] = json.dumps(assc_action, indent=4)
                     # update check summary
                     if res.get('summary'):
-                        res['summary'] = 'ACTION %s: %s' % (assc_action_contents['status'], res['summary'])
+                        res['summary'] = 'ACTION %s: %s' % (assc_action['status'], res['summary'])
                 else:
                     res['assc_action_status'] = 'PEND'
                     res['assc_action'] = 'Associated action has not finished.'
@@ -613,7 +610,7 @@ def run_put_check(environ, check, put_data):
         response.status_code = 400
         return response
     put_uuid = put_data.get('uuid', datetime.datetime.utcnow().isoformat())
-    putCheck = init_check_res(connection, check, init_uuid=put_uuid)
+    putCheck = CheckResult(connection, check, init_uuid=put_uuid)
     # set valid fields from the PUT body. should this be dynamic?
     # if status is not included, it will be set to ERROR
     for field in ['title', 'status', 'summary', 'description', 'brief_output', 'full_output', 'admin_output']:
@@ -935,7 +932,7 @@ def run_check_runner(runner_input, propogate=True):
         # if this is an action, ensure we have not already written an action record
         if 'check_name' in run_kwargs and 'called_by' in run_kwargs:
             rec_key = '/'.join([run_kwargs['check_name'], 'action_records', run_kwargs['called_by']])
-            found_rec = connection.s3_connection.get_object(rec_key)
+            found_rec = connection.get_object(rec_key)
             if found_rec is not None:
                 # the action record has been written. Abort and propogate
                 print('-RUN-> Found existing action record: %s. Skipping' % rec_key)
@@ -946,7 +943,7 @@ def run_check_runner(runner_input, propogate=True):
                 # action name is the second part of run_name
                 act_name = run_name.split('/')[-1]
                 rec_body = ''.join([act_name, '/', run_uuid, '.json'])
-                connection.s3_connection.put_object(rec_key, rec_body)
+                connection.put_object(rec_key, rec_body)
                 print('-RUN-> Wrote action record: %s' % rec_key)
         run_result = run_check_or_action(connection, run_name, run_kwargs)
         print('-RUN-> RESULT:  %s (uuid)' % str(run_result.get('uuid')))

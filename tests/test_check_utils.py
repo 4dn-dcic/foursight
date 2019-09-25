@@ -134,10 +134,13 @@ class TestCheckUtils():
         checks_in_sched = check_utils.get_checks_within_schedule('not_a_real_schedule')
         assert (len(checks_in_sched) == 0)
 
-    def test_get_check_results(self):
+    @pytest.mark.parametrize('use_es', [True, False])
+    def test_get_check_results(self, use_es):
         # dict to compare uuids
         uuid_compares = {}
         # will get primary results by default
+        if not use_es:
+            self.connection.connections['es'] = None
         all_res_primary = check_utils.get_check_results(self.connection)
         for check_res in all_res_primary:
             assert (isinstance(check_res, dict))
@@ -172,7 +175,7 @@ class TestCheckUtils():
     @pytest.mark.flaky
     def test_run_check_or_action(self):
         test_uuid = datetime.datetime.utcnow().isoformat()
-        check = utils.init_check_res(self.connection, 'test_random_nums')
+        check = run_result.CheckResult(self.connection, 'test_random_nums')
         # with a check (primary is True)
         test_info = ['test_checks/test_random_nums', {'primary': True, 'uuid': test_uuid}, [], 'xxx']
         check_res = check_utils.run_check_or_action(self.connection, test_info[0], test_info[1])
@@ -202,7 +205,7 @@ class TestCheckUtils():
         assert (primary_uuid < latest_uuid)
 
         # with an action
-        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        action = run_result.ActionResult(self.connection, 'add_random_test_nums')
         act_kwargs = {'primary': True, 'uuid': test_uuid, 'check_name': 'test_random_nums',
                       'called_by': test_uuid}
         test_info_2 = ['test_checks/add_random_test_nums', act_kwargs, [] ,'xxx']

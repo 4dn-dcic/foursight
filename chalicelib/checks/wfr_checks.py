@@ -1,10 +1,9 @@
 from datetime import datetime
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 from dcicutils import s3Utils
 from .helpers import wfr_utils
@@ -18,7 +17,7 @@ def md5run_status_extra_file(connection, **kwargs):
     """Searches for extra files that are uploaded to s3, but not went though md5 run.
     no action is associated, we don't have any case so far.
     Will be implemented if this check gets WARN"""
-    check = init_check_res(connection, 'md5run_status_extra_file')
+    check = CheckResult(connection, 'md5run_status_extra_file')
     my_auth = connection.ff_keys
     check.status = 'PASS'
 
@@ -60,7 +59,7 @@ def md5run_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'md5run_status')
+    check = CheckResult(connection, 'md5run_status')
     my_auth = connection.ff_keys
     check.action = "md5run_start"
     check.brief_output = []
@@ -175,7 +174,7 @@ def md5run_status(connection, **kwargs):
 def md5run_start(connection, **kwargs):
     """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'md5run_start')
+    action = ActionResult(connection, 'md5run_start')
     action_logs = {'runs_started': [], "runs_failed": []}
     my_auth = connection.ff_keys
     md5run_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -216,7 +215,7 @@ def fastqc_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'fastqc_status')
+    check = CheckResult(connection, 'fastqc_status')
     my_auth = connection.ff_keys
     check.action = "fastqc_start"
     check.brief_output = []
@@ -262,7 +261,7 @@ def fastqc_status(connection, **kwargs):
 def fastqc_start(connection, **kwargs):
     """Start fastqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'fastqc_start')
+    action = ActionResult(connection, 'fastqc_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     fastqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -300,7 +299,7 @@ def pairsqc_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'pairsqc_status')
+    check = CheckResult(connection, 'pairsqc_status')
     my_auth = connection.ff_keys
     check.action = "pairsqc_start"
     check.brief_output = []
@@ -342,7 +341,7 @@ def pairsqc_status(connection, **kwargs):
 def pairsqc_start(connection, **kwargs):
     """Start pairsqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'pairsqc_start')
+    action = ActionResult(connection, 'pairsqc_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     pairsqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -393,7 +392,7 @@ def bg2bw_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'bg2bw_status')
+    check = CheckResult(connection, 'bg2bw_status')
     my_auth = connection.ff_keys
     check.action = "bg2bw_start"
     check.brief_output = []
@@ -435,7 +434,7 @@ def bg2bw_status(connection, **kwargs):
 def bg2bw_start(connection, **kwargs):
     """Start bg2bw runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'bg2bw_start')
+    action = ActionResult(connection, 'bg2bw_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     bg2bw_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -479,7 +478,7 @@ def bed2beddb_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'bed2beddb_status')
+    check = CheckResult(connection, 'bed2beddb_status')
     my_auth = connection.ff_keys
     check.action = "bed2beddb_start"
     check.brief_output = []
@@ -529,7 +528,7 @@ def bed2beddb_status(connection, **kwargs):
 def bed2beddb_start(connection, **kwargs):
     """Start bed2beddb runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'bed2beddb_start')
+    action = ActionResult(connection, 'bed2beddb_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     bed2beddb_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -570,7 +569,7 @@ def in_situ_hic_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'in_situ_hic_status')
+    check = CheckResult(connection, 'in_situ_hic_status')
     my_auth = connection.ff_keys
     check.action = "in_situ_hic_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -609,7 +608,7 @@ def in_situ_hic_status(connection, **kwargs):
 def in_situ_hic_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'in_situ_hic_start')
+    action = ActionResult(connection, 'in_situ_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -632,7 +631,7 @@ def dilution_hic_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'dilution_hic_status')
+    check = CheckResult(connection, 'dilution_hic_status')
     my_auth = connection.ff_keys
     check.action = "dilution_hic_start"
     check.brief_output = []
@@ -672,7 +671,7 @@ def dilution_hic_status(connection, **kwargs):
 def dilution_hic_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'dilution_hic_start')
+    action = ActionResult(connection, 'dilution_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -696,7 +695,7 @@ def tcc_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'tcc_status')
+    check = CheckResult(connection, 'tcc_status')
     my_auth = connection.ff_keys
     check.action = "tcc_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -735,7 +734,7 @@ def tcc_status(connection, **kwargs):
 def tcc_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'tcc_start')
+    action = ActionResult(connection, 'tcc_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -758,7 +757,7 @@ def dnase_hic_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'dnase_hic_status')
+    check = CheckResult(connection, 'dnase_hic_status')
     my_auth = connection.ff_keys
     check.action = "dnase_hic_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -797,7 +796,7 @@ def dnase_hic_status(connection, **kwargs):
 def dnase_hic_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'dnase_hic_start')
+    action = ActionResult(connection, 'dnase_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -820,7 +819,7 @@ def capture_hic_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'capture_hic_status')
+    check = CheckResult(connection, 'capture_hic_status')
     my_auth = connection.ff_keys
     check.action = "capture_hic_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -859,7 +858,7 @@ def capture_hic_status(connection, **kwargs):
 def capture_hic_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'capture_hic_start')
+    action = ActionResult(connection, 'capture_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -882,7 +881,7 @@ def micro_c_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'micro_c_status')
+    check = CheckResult(connection, 'micro_c_status')
     my_auth = connection.ff_keys
     check.action = "micro_c_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -921,7 +920,7 @@ def micro_c_status(connection, **kwargs):
 def micro_c_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'micro_c_start')
+    action = ActionResult(connection, 'micro_c_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -944,7 +943,7 @@ def chia_pet_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'chia_pet_status')
+    check = CheckResult(connection, 'chia_pet_status')
     my_auth = connection.ff_keys
     check.action = "chia_pet_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -983,7 +982,7 @@ def chia_pet_status(connection, **kwargs):
 def chia_pet_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'chia_pet_start')
+    action = ActionResult(connection, 'chia_pet_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1006,7 +1005,7 @@ def trac_loop_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'trac_loop_status')
+    check = CheckResult(connection, 'trac_loop_status')
     my_auth = connection.ff_keys
     check.action = "trac_loop_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1045,7 +1044,7 @@ def trac_loop_status(connection, **kwargs):
 def trac_loop_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'trac_loop_start')
+    action = ActionResult(connection, 'trac_loop_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1068,7 +1067,7 @@ def plac_seq_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'plac_seq_status')
+    check = CheckResult(connection, 'plac_seq_status')
     my_auth = connection.ff_keys
     check.action = "plac_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1107,7 +1106,7 @@ def plac_seq_status(connection, **kwargs):
 def plac_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'plac_seq_start')
+    action = ActionResult(connection, 'plac_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1130,7 +1129,7 @@ def repli_2_stage_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'repli_2_stage_status')
+    check = CheckResult(connection, 'repli_2_stage_status')
     my_auth = connection.ff_keys
     check.action = "repli_2_stage_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1166,7 +1165,7 @@ def repli_2_stage_status(connection, **kwargs):
 def repli_2_stage_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'repli_2_stage_start')
+    action = ActionResult(connection, 'repli_2_stage_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1190,7 +1189,7 @@ def repli_multi_stage_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'repli_multi_stage_status')
+    check = CheckResult(connection, 'repli_multi_stage_status')
     my_auth = connection.ff_keys
     check.action = "repli_multi_stage_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1226,7 +1225,7 @@ def repli_multi_stage_status(connection, **kwargs):
 def repli_multi_stage_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'repli_multi_stage_start')
+    action = ActionResult(connection, 'repli_multi_stage_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1250,7 +1249,7 @@ def tsa_seq_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'tsa_seq_status')
+    check = CheckResult(connection, 'tsa_seq_status')
     my_auth = connection.ff_keys
     check.action = "tsa_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1286,7 +1285,7 @@ def tsa_seq_status(connection, **kwargs):
 def tsa_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'tsa_seq_start')
+    action = ActionResult(connection, 'tsa_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1311,7 +1310,7 @@ def nad_seq_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'nad_seq_status')
+    check = CheckResult(connection, 'nad_seq_status')
     my_auth = connection.ff_keys
     check.action = "nad_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1347,7 +1346,7 @@ def nad_seq_status(connection, **kwargs):
 def nad_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'nad_seq_start')
+    action = ActionResult(connection, 'nad_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1371,7 +1370,7 @@ def atac_seq_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'atac_seq_status')
+    check = CheckResult(connection, 'atac_seq_status')
     my_auth = connection.ff_keys
     check.action = "atac_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1399,7 +1398,7 @@ def atac_seq_status(connection, **kwargs):
 def atac_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'atac_seq_start')
+    action = ActionResult(connection, 'atac_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1422,7 +1421,7 @@ def chip_seq_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'chip_seq_status')
+    check = CheckResult(connection, 'chip_seq_status')
     my_auth = connection.ff_keys
     check.action = "chip_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
@@ -1439,7 +1438,7 @@ def chip_seq_status(connection, **kwargs):
 def chip_seq_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'chip_seq_start')
+    action = ActionResult(connection, 'chip_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1462,7 +1461,7 @@ def margi_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'margi_status')
+    check = CheckResult(connection, 'margi_status')
     my_auth = connection.ff_keys
     check.action = "margi_start"
     check.brief_output = []
@@ -1502,7 +1501,7 @@ def margi_status(connection, **kwargs):
 def margi_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'margi_start')
+    action = ActionResult(connection, 'margi_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     margi_check_result = action.get_associated_check_result(kwargs).get('full_output', {})

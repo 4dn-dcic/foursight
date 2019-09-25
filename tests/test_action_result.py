@@ -6,7 +6,7 @@ class TestActionResult():
     connection = app_utils.init_connection(environ)
 
     def test_action_result_methods(self):
-        action = run_result.ActionResult(self.connection.s3_connection, self.act_name)
+        action = run_result.ActionResult(self.connection, self.act_name)
         res = action.store_result()
         assert (res.get('status') == 'PEND')
         assert (res.get('output') is None)

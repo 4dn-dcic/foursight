@@ -2,10 +2,9 @@ from __future__ import print_function, unicode_literals
 from datetime import datetime, timedelta
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import requests
 import json
@@ -141,7 +140,7 @@ def get_viewconf_status(files):
         "deleted",
         "replaced",
         "revoked",
-        "archived",
+        # "archived",
         "pre-release",
         "to be uploaded by workflow"
     ]
@@ -344,7 +343,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
     """
 
     # Create the initial check
-    check = init_check_res(connection, check_name)
+    check = CheckResult(connection, check_name)
     check.full_output = {
         "search_queries":[]
     }
@@ -454,7 +453,7 @@ def create_higlass_items_for_files(connection, check_name, action_name, called_b
     Returns:
         An action object.
     """
-    action = init_action_res(connection, action_name)
+    action = ActionResult(connection, action_name)
     action_logs = {
         "success": {},
         "failed_to_create_higlass" : {},
@@ -462,7 +461,7 @@ def create_higlass_items_for_files(connection, check_name, action_name, called_b
     }
 
     # get latest results
-    gen_check = init_check_res(connection, check_name)
+    gen_check = CheckResult(connection, check_name)
     if called_by:
         gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
@@ -792,7 +791,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
             check result object.
     """
     # Create the check
-    check = init_check_res(connection, check_name)
+    check = CheckResult(connection, check_name)
     check.action = action_name
     check.full_output = {}
 
@@ -919,7 +918,7 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
         Returns:
             An action object.
     """
-    action = init_action_res(connection, action_name)
+    action = ActionResult(connection, action_name)
 
     # Time to act. Store the results here.
     action_logs = {
@@ -930,7 +929,7 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
     }
 
     # get latest results
-    gen_check = init_check_res(connection, check_name)
+    gen_check = CheckResult(connection, check_name)
     if called_by:
         gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
@@ -1157,7 +1156,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
     """
 
     # Create the initial check
-    check = init_check_res(connection, check_name)
+    check = CheckResult(connection, check_name)
     check.full_output = {
         "search_queries":[]
     }
@@ -1380,7 +1379,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
         Returns:
             An action object.
     """
-    action = init_action_res(connection, action_name)
+    action = ActionResult(connection, action_name)
 
     action_logs = {
         'successes': {},
@@ -1389,7 +1388,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
     }
 
     # get latest results
-    gen_check = init_check_res(connection, check_name)
+    gen_check = CheckResult(connection, check_name)
     if called_by:
         gen_check_result = gen_check.get_result_by_uuid(called_by)
     else:
@@ -1573,7 +1572,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     Returns:
         A check/action object.
     """
-    check = init_check_res(connection, 'files_not_registered_with_higlass')
+    check = CheckResult(connection, 'files_not_registered_with_higlass')
     check.status = "FAIL"
     check.description = "not able to get data from fourfront"
     # keep track of mcool, bg, and bw files separately
@@ -1796,7 +1795,7 @@ def patch_file_higlass_uid(connection, **kwargs):
     Returns:
         A check/action object.
     """
-    action = init_action_res(connection, 'patch_file_higlass_uid')
+    action = ActionResult(connection, 'patch_file_higlass_uid')
     action_logs = {
         'patch_failure': {},
         'patch_success': {},
@@ -1804,7 +1803,7 @@ def patch_file_higlass_uid(connection, **kwargs):
         'registration_success': 0
     }
     # get latest results
-    higlass_check = init_check_res(connection, 'files_not_registered_with_higlass')
+    higlass_check = CheckResult(connection, 'files_not_registered_with_higlass')
     if kwargs.get('called_by', None):
         higlass_check_result = higlass_check.get_result_by_uuid(kwargs['called_by'])
     else:
@@ -1924,7 +1923,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
         A check/action object
     """
 
-    check = init_check_res(connection, 'find_cypress_test_items_to_purge')
+    check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
         'items_to_purge':[]
     }
@@ -1962,14 +1961,14 @@ def purge_cypress_items(connection, **kwargs):
         A check object
     """
 
-    action = init_action_res(connection, 'purge_cypress_items')
+    action = ActionResult(connection, 'purge_cypress_items')
     action_logs = {
         'items_purged':[],
         'failed_to_purge':{}
     }
 
     # get latest results
-    gen_check = init_check_res(connection, 'find_cypress_test_items_to_purge')
+    gen_check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     if kwargs.get('called_by', None):
         gen_check_result = gen_check.get_result_by_uuid(kwargs['called_by'])
     else:
@@ -2113,7 +2112,7 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
 
     if "<get_latest_action_completed_date>" in search_query:
         # Get the related action for this check
-        action = init_action_res(connection, action_name)
+        action = ActionResult(connection, action_name)
         action_result = action.get_latest_result()
 
         # If there is no action, or it lacks a completed timestamp, return one day before now.

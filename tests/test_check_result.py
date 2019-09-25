@@ -8,8 +8,12 @@ class TestCheckResult():
     environ = 'mastertest' # hopefully this is up
     connection = app_utils.init_connection(environ)
 
-    def test_check_result_methods(self):
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+    @pytest.mark.flaky(max_runs=4) # very flaky for some reason
+    @pytest.mark.parametrize('use_es', [True, False])
+    def test_check_result_methods(self, use_es):
+        check = run_result.CheckResult(self.connection, self.check_name)
+        if not use_es:
+            check.es = False # trigger s3 fallback
         # default status
         assert (check.status == 'IGNORE')
         check.description = 'This check is just for testing purposes.'
@@ -33,22 +37,28 @@ class TestCheckResult():
         assert (close_res == res)
         override_res = check.get_closest_result(override_date=datetime.datetime.utcnow())
         assert (override_res == res)
+        if check.es:
+            check.connections['es'].refresh_index()
         all_res = check.get_all_results()
         assert (len(all_res) > 0)
-        # this should be true since all results will be identical
-        assert (all_res[-1].get('description') == res.get('description'))
         # ensure that previous check results can be fetch using the uuid functionality
         res_uuid = res['uuid']
-        check_copy = run_result.CheckResult(self.connection.s3_connection, self.check_name, init_uuid=res_uuid)
+        check_copy = run_result.CheckResult(self.connection, self.check_name, init_uuid=res_uuid)
+        if not use_es:
+            check_copy.es = False # trigger s3 fallback
         # should not have 'uuid' or 'kwargs' attrs with init_uuid
         assert (getattr(check_copy, 'uuid', None) is None)
         assert (getattr(check_copy, 'kwargs', {}) == {})
         check_copy.kwargs = {'primary': True, 'uuid': prime_uuid}
         assert (res == check_copy.store_result())
 
-    def test_get_closest_result(self):
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+    @pytest.mark.flaky(max_runs=4) # very flaky for some reason
+    @pytest.mark.parametrize('use_es', [True, False])
+    def test_get_closest_result(self, use_es):
+        check = run_result.CheckResult(self.connection, self.check_name)
         check.status = 'ERROR'
+        if not use_es:
+            check.es = False # trigger s3 fallback
         res = check.store_result()
         err_uuid = res['uuid']
         closest_res_no_error = check.get_closest_result(diff_mins=0)
@@ -59,29 +69,37 @@ class TestCheckResult():
         closest_res_no_error = check.get_closest_result(diff_mins=0)
         assert (pass_uuid == closest_res_no_error['uuid'])
         # bad cases: no results and all results are ERROR
-        bad_check = run_result.CheckResult(self.connection.s3_connection, 'not_a_real_check')
+        bad_check = run_result.CheckResult(self.connection, 'not_a_real_check')
+        if not use_es:
+            bad_check.es = False # trigger s3 fallback
         with pytest.raises(Exception) as exc:
             bad_check.get_closest_result(diff_hours=0, diff_mins=0)
         assert ('Could not find any results' in str(exc.value))
-        error_check = run_result.CheckResult(self.connection.s3_connection, self.error_check_name)
+        error_check = run_result.CheckResult(self.connection, self.error_check_name)
         error_check.status = 'ERROR'
+        if not use_es:
+            error_check.es = False # trigger s3 fallback
         error_check.store_result()
         with pytest.raises(Exception) as exc:
             error_check.get_closest_result(diff_hours=0, diff_mins=0)
         assert ('Could not find closest non-ERROR result' in str(exc.value))
 
-    def test_get_result_history(self):
+    @pytest.mark.parametrize('use_es', [True, False])
+    def test_get_result_history(self, use_es):
         """
         This relies on the check having been run enough times. If not, return
         """
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection, self.check_name)
+        if not use_es:
+            check.es = False # trigger s3 fallback
         # ensure at least one entry present
         check.status = 'IGNORE'
         check.summary = 'TEST HISTORY'
         check.kwargs['test'] = 'yea'
         res = check.store_result()
-        time.sleep(2)
         ignore_uuid = res['uuid']
+        if check.connections['es'] is not None:
+            check.connections['es'].refresh_index()
         hist_10 = check.get_result_history(0, 10)
         assert isinstance(hist_10, list)
         for chk in hist_10:
@@ -109,7 +127,7 @@ class TestCheckResult():
             assert chk_date >= after_date
 
     def test_filename_to_datetime(self):
-        check = run_result.CheckResult(self.connection.s3_connection, self.check_name)
+        check = run_result.CheckResult(self.connection, self.check_name)
         check_result = check.store_result()
         time_key = ''.join([check.name, '/', check_result['uuid'], check.extension])
         filename_date = check.filename_to_datetime(time_key)

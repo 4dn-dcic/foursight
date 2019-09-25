@@ -1230,7 +1230,7 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1242,7 +1242,7 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1254,7 +1254,7 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1267,6 +1267,17 @@
             "morning_checks": {
                 "all": {
                     "kwargs" : {"primary": true}
+                }
+            }
+        }
+    },
+    "elasticsearch_s3_count_diff" : {
+        "title": "S3/ES Check Count Differential",
+        "group": "Elasticsearch checks",
+        "schedule" : {
+            "morning_checks": {
+                "mastertest": {
+                    "kwargs": {"primary": true}
                 }
             }
         }
