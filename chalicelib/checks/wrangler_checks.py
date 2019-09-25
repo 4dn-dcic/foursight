@@ -1218,7 +1218,7 @@ def semver2int(semver):
     return float(''.join([v[0] + '.'] + v[1:]))
 
 
-@check_function(efo_version='', uberon_version='', obi_version='')
+@check_function()
 def check_for_ontology_updates(connection, **kwargs):
     '''
     Checks for updates in one of the three main ontologies that the 4DN data portal uses:
@@ -1230,31 +1230,39 @@ def check_for_ontology_updates(connection, **kwargs):
     UBERON: github site doesn't have official 'releases' (and website isn't properly updated),
     so checks for commits that have a commit message containing 'new release'
 
-    If version numbers to compare against aren't specified in the UI, it will use the ones 
+    If version numbers to compare against aren't specified in the UI, it will use the ones
     from the previous primary check result.
     '''
-    check = init_check_res(connection, 'check_for_ontology_updates')
-    latest_check = check.get_primary_result()
-    for item in ['efo_version', 'uberon_version', 'obi_version']:
-        if not kwargs[item]:
-            kwargs[item] = latest_check['full_output'][item[:item.index('_')].upper()]['compare_to']
+    check = CheckResult(connection, 'check_for_ontology_updates')
+    # latest_check = check.get_primary_result()
+    # for item in ['efo_version', 'uberon_version', 'obi_version']:
+    #     if not kwargs[item]:
+    #         kwargs[item] = latest_check['full_output'][item[:item.index('_')].upper()]['compare_to']
+    ontologies = ff_utils.search_metadata(
+        'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
+        key=connection.ff_keys
+    )
+    curr_versions = {o['ontology_prefix']: o.get('current_ontology_version') for o in ontologies}
     efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
     efo_latest = efo.json()[0]['tag_name']
-    uberon = requests.get('https://api.github.com/repos/obophenotype/uberon/commits')
-    uberon_latest = [item['commit']['author']['date'] for item in uberon.json()
-                     if 'new release' in item['commit']['message'].lower()][0][:10]
+    # uberon = requests.get('https://api.github.com/repos/obophenotype/uberon/commits')
+    uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
+    ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
+    uberon_latest = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
+    # uberon_latest = [item['commit']['author']['date'] for item in uberon.json()
+    #                  if 'new release' in item['commit']['message'].lower()][0][:10]
     obi = requests.get('https://api.github.com/repos/obi-ontology/obi/releases')
     obi_latest = obi.json()[0]['tag_name']
     check.full_output = {
-        'EFO': {'latest_version': efo_latest, 'compare_to': kwargs['efo_version'], 'needs_update': False},
-        'UBERON': {'latest_version': uberon_latest, 'compare_to': kwargs['uberon_version'], 'needs_update': False},
-        'OBI': {'latest_version': obi_latest, 'compare_to': kwargs['obi_version'], 'needs_update': False}
+        'EFO': {'latest_version': efo_latest, 'compare_to': curr_versions['EFO'], 'needs_update': False},
+        'UBERON': {'latest_version': uberon_latest, 'compare_to': curr_versions['UBERON'], 'needs_update': False},
+        'OBI': {'latest_version': obi_latest, 'compare_to': curr_versions['OBI'], 'needs_update': False}
     }
-    if semver2int(efo_latest) > semver2int(kwargs['efo_version']):
+    if not curr_versions['EFO'] or semver2int(efo_latest) > semver2int(curr_versions['EFO']):
         check.full_output['EFO']['needs_update'] = True
-    if uberon_latest > kwargs['uberon_version']:
+    if not curr_versions['UBERON'] or uberon_latest > curr_versions['UBERON']:
         check.full_output['UBERON']['needs_update'] = True
-    if obi_latest[1:] > kwargs['obi_version'][1:]:
+    if not curr_versions['OBI'] or obi_latest[1:] > curr_versions['OBI']:
         check.full_output['OBI']['needs_update'] = True
     check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
     num = ''.join(check.brief_output).count('update')
