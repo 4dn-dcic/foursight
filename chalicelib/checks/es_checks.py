@@ -67,19 +67,19 @@ def migrate_checks_to_es(connection, **kwargs):
     action.output = action_logs
     return action
 
-@check_function(timeout=270, days=30)
+@check_function(timeout=270, days=30, to_clean=None)
 def clean_s3_es_checks(connection, **kwargs):
     """
     Cleans old checks from both s3 and es older than one month. Must be called
     from a specific check as it will take too long otherwise.
     """
     check_to_clean = kwargs.get('to_clean')
-    time_limit = 270 if kwargs.get('timeout') is None else kwargs.get('timeout')
-    days_back = 30 if kwargs.get('days') is None else kwargs.get('days')
+    time_limit = kwargs.get('timeout')
+    days_back = kwargs.get('days')
     check = CheckResult(connection, 'clean_s3_es_checks')
     full_output = {}
     if check_to_clean is None:
-        check.status = 'FAIL'
+        check.status = 'WARN'
         check.summary = check.description = 'A check must be given to be cleaned'
         check.full_output = full_output
         return check

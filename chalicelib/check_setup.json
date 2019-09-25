@@ -1285,18 +1285,7 @@
     "clean_s3_es_checks" : {
         "title": "Wipe Checks Older Than One Month",
         "group": "System checks",
-        "schedule": {
-            "morning_checks": {
-                "mastertest": {
-                    "kwargs": {"primary": true}
-                },
-                "webdev" : {
-                    "kwargs": {"primary": true}
-                },
-                "hotseat" : {
-                    "kwargs": {"primary": true}
-                }
-            }
-        }
+        "schedule": {},
+        "display": ["all"]
     }
 }
