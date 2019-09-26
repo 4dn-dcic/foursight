@@ -1234,36 +1234,45 @@ def check_for_ontology_updates(connection, **kwargs):
     from the previous primary check result.
     '''
     check = CheckResult(connection, 'check_for_ontology_updates')
-    # latest_check = check.get_primary_result()
-    # for item in ['efo_version', 'uberon_version', 'obi_version']:
-    #     if not kwargs[item]:
-    #         kwargs[item] = latest_check['full_output'][item[:item.index('_')].upper()]['compare_to']
     ontologies = ff_utils.search_metadata(
         'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
         key=connection.ff_keys
     )
-    curr_versions = {o['ontology_prefix']: o.get('current_ontology_version') for o in ontologies}
+    versions = {
+        o['ontology_prefix']: {
+            'current': o.get('current_ontology_version'),
+            'needs_update': False
+        } for o in ontologies
+    }
+    del versions['4DN']
     efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
-    efo_latest = efo.json()[0]['tag_name']
-    # uberon = requests.get('https://api.github.com/repos/obophenotype/uberon/commits')
+    versions['EFO']['latest'] = efo.json()[0]['tag_name']
     uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
     ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
-    uberon_latest = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
-    # uberon_latest = [item['commit']['author']['date'] for item in uberon.json()
-    #                  if 'new release' in item['commit']['message'].lower()][0][:10]
+    versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
     obi = requests.get('https://api.github.com/repos/obi-ontology/obi/releases')
-    obi_latest = obi.json()[0]['tag_name']
-    check.full_output = {
-        'EFO': {'latest_version': efo_latest, 'compare_to': curr_versions['EFO'], 'needs_update': False},
-        'UBERON': {'latest_version': uberon_latest, 'compare_to': curr_versions['UBERON'], 'needs_update': False},
-        'OBI': {'latest_version': obi_latest, 'compare_to': curr_versions['OBI'], 'needs_update': False}
-    }
-    if not curr_versions['EFO'] or semver2int(efo_latest) > semver2int(curr_versions['EFO']):
-        check.full_output['EFO']['needs_update'] = True
-    if not curr_versions['UBERON'] or uberon_latest > curr_versions['UBERON']:
-        check.full_output['UBERON']['needs_update'] = True
-    if not curr_versions['OBI'] or obi_latest[1:] > curr_versions['OBI']:
-        check.full_output['OBI']['needs_update'] = True
+    versions['OBI']['latest'] = obi.json()[0]['tag_name'].lstrip('v')
+    so = requests.get(
+        'https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so.owl',
+        headers={"Range": "bytes=0-1000"}
+    )
+    idx = so.text.index('versionIRI')
+    so_release = so.text[idx:idx+150].split('/')
+    if 'releases' in so_release:
+        versions['SO']['latest'] = so_release[so_release.index('releases') + 1]
+    else:
+        versions['SO']['latest'] = 'Error'
+    for k, v in versions.items():
+        if not v['current']:
+            update = True
+        elif k == 'EFO' and semver2int(v['latest']) > semver2int(v['current']):
+            update = True
+        elif k != 'EFO' and v['latest'] > v['current']:
+            update = True
+        else:
+            update = False
+        v['needs_update'] = update
+    check.full_output = versions
     check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
     num = ''.join(check.brief_output).count('update')
     if num:
