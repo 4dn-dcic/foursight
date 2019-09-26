@@ -1276,11 +1276,13 @@ def check_for_ontology_updates(connection, **kwargs):
     check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
     num = ''.join(check.brief_output).count('update')
     if num:
-        check.summary = 'Ontology updates needed'
+        check.summary = 'Ontology updates available'
         check.description = '{} ontologies need update'.format(num)
         check.status = 'WARN'
     else:
         check.summary = 'Ontologies up-to-date'
         check.description = 'No ontology updates needed'
+        check.status = 'PASS'
+    if num == 1 & versions['SO']['needs_update']:
         check.status = 'PASS'
     return check
