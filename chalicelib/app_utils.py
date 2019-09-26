@@ -137,7 +137,7 @@ def check_authorization(request_dict, env=None):
                 user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(),
                                             ff_env=env_info[e]['ff_env'], add_on='frame=object')
                 if not ('admin' in user_res['groups'] and payload.get('email_verified')):
-                    # fully authorized
+                    # if unauthorized for one, unauthorized for all
                     return False
             return True
         except:

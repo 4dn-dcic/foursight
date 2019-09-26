@@ -213,7 +213,7 @@ class ESConnection(AbstractConnection):
             # figure out which checks we didn't find, add a placeholder check so
             # that check is still rendered on the UI
             raw_result = list(filter(lambda res: res['name'] in checks, raw_result))
-            found = {}
+            found = {} # more lines but avoids n^2
             for check_name in checks:
                 found[check_name] = False
             for result in raw_result:
