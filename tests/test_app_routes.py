@@ -8,7 +8,7 @@ class TestAppRoutes():
         res = app_utils.view_foursight(self.environ) # not is_admin
         assert (res.headers == {u'Content-Type': u'text/html'})
         assert (res.status_code == 200)
-        assert (set(res.to_dict().keys()) == set(['body', 'headers', 'statusCode']))
+        assert (set(res.to_dict().keys()) == set(['body', 'headers', 'statusCode', 'multiValueHeaders']))
         assert ('<!DOCTYPE html>' in res.body)
         assert ('Foursight' in res.body)
         assert  ('Not logged in as admin' in res.body)

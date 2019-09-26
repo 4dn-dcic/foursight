@@ -161,9 +161,10 @@ class TestCheckUtils():
         one_res = check_utils.get_check_results(self.connection, checks=['indexing_progress'])
         assert (len(one_res) == 1)
         assert (one_res[0]['name'] == 'indexing_progress')
-        # bad check name
+        # bad check name, will now return a placeholder so len should be 1
         test_res = check_utils.get_check_results(self.connection, checks=['not_a_real_check'])
-        assert (len(test_res) == 0)
+        assert (len(test_res) == 1)
+        assert test_res[0]['description'] == 'Check has not yet run'
 
     def test_get_grouped_check_results(self):
         grouped_results = check_utils.get_grouped_check_results(self.connection)

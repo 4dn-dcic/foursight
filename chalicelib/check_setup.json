@@ -1288,10 +1288,16 @@
         "group": "Elasticsearch checks",
         "schedule" : {
             "morning_checks": {
-                "mastertest": {
+                "all": {
                     "kwargs": {"primary": true}
                 }
             }
         }
+    },
+    "clean_s3_es_checks" : {
+        "title": "Wipe Checks Older Than One Month",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["all"]
     }
 }
