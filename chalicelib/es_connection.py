@@ -213,13 +213,9 @@ class ESConnection(AbstractConnection):
             # figure out which checks we didn't find, add a placeholder check so
             # that check is still rendered on the UI
             raw_result = list(filter(lambda res: res['name'] in checks, raw_result))
-            found = {} # more lines but avoids n^2
+            found_checks = set(res['name'] for res in raw_result)
             for check_name in checks:
-                found[check_name] = False
-            for result in raw_result:
-                found[result['name']] = True
-            for check_name, has_record in found.items():
-                if not has_record:
+                if check_name not in found_checks:
                     placeholder = {
                         'name': check_name,
                         'uuid': datetime.date(1000, 1, 1).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility

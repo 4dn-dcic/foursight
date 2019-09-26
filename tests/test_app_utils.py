@@ -76,7 +76,7 @@ class TestAppUtils():
         """ Tests same functionality as above except with a valid jwt """
         from unittest import mock
         payload1 = {
-            "email": "William_Ronchetti@hms.harvard.edu",  # use something else?
+            "email": "carl_vitzthum@hms.harvard.edu",
             "email_verified": True,
             "sub": "1234567890",
             "name": "Dummy",
@@ -85,6 +85,14 @@ class TestAppUtils():
         with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
             with mock.patch('jwt.decode', return_value=payload1):
                 auth = app_utils.check_authorization({}, env='mastertest')
+            assert auth
+        with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
+            with mock.patch('jwt.decode', return_value=payload1):
+                auth = app_utils.check_authorization({}, env='all') # test all
+            assert auth
+        with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
+            with mock.patch('jwt.decode', return_value=payload1):
+                auth = app_utils.check_authorization({}, env='data,staging') # test more than one
             assert auth
             # Unverified email should fail
             payload2 = {
