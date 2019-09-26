@@ -212,6 +212,7 @@ class ESConnection(AbstractConnection):
         if checks is not None:
             # figure out which checks we didn't find, add a placeholder check so
             # that check is still rendered on the UI
+            raw_result = list(filter(lambda res: res['name'] in checks, raw_result))
             found = {}
             for check_name in checks:
                 found[check_name] = False
