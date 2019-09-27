@@ -235,15 +235,8 @@ def get_check_results(connection, checks=[], use_latest=False):
             # checks with no records will return None. Skip IGNORE checks
             if found and found.get('status') != 'IGNORE':
                 check_results.append(found)
-            if not found: # add placeholder check so not yet run checks are still rendered on the UI
-                placeholder = {
-                    'name': check_name,
-                    'uuid': datetime.date(1000, 1, 1).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility
-                    'status': 'WARN',
-                    'summary': 'Check has not yet run',
-                    'description': 'Check has not yet run'
-                }
-                check_results.append(placeholder)
+            if not found: # add placeholder check
+                check_results.append(create_placeholder_check(check_name))
 
     else:
         if use_latest:
@@ -342,3 +335,20 @@ def init_check_or_action_res(connection, check):
     if not check_str: # not a check or an action. abort
         return None
     return ActionResult(connection, check) if is_action else CheckResult(connection, check)
+
+
+def create_placeholder_check(check_name):
+    """
+    Creates a placeholder check for the given check_name to be rendered on the UI
+    in the case that this check has not been run yet.
+    """
+    _uuid = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')
+    placeholder = {
+        'name': check_name,
+        'uuid': _uuid,
+        'kwargs': {'uuid': _uuid, 'primary': True},
+        'status': 'WARN',
+        'summary': 'Check has not yet run',
+        'description': 'If queued, this check will run with default arguments'
+    }
+    return placeholder
