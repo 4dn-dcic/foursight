@@ -8,6 +8,7 @@ from elasticsearch import (
 from elasticsearch_dsl import Search
 from dcicutils import es_utils
 from .utils import load_json
+from .check_utils import create_placeholder_check
 import datetime
 import json
 import time
@@ -216,14 +217,7 @@ class ESConnection(AbstractConnection):
             found_checks = set(res['name'] for res in raw_result)
             for check_name in checks:
                 if check_name not in found_checks:
-                    placeholder = {
-                        'name': check_name,
-                        'uuid': datetime.date(1000, 1, 1).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility
-                        'status': 'WARN',
-                        'summary': 'Check has not yet run',
-                        'description': 'Check has not yet run'
-                    }
-                    raw_result.append(placeholder)
+                    raw_result.append(create_placeholder_check(check_name))
         return raw_result
 
     def list_all_keys(self):

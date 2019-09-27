@@ -147,6 +147,8 @@ class TestCheckUtils():
             assert ('name' in check_res)
             assert ('status' in check_res)
             assert ('uuid' in check_res)
+            if check_res.get('summary') == 'Check has not yet run': # ignore placeholders
+                continue
             uuid_compares[check_res['name']] = check_res['uuid']
         # compare to latest results (which should be the same or newer)
         all_res_latest = check_utils.get_check_results(self.connection, use_latest=True)
@@ -164,7 +166,7 @@ class TestCheckUtils():
         # bad check name, will now return a placeholder so len should be 1
         test_res = check_utils.get_check_results(self.connection, checks=['not_a_real_check'])
         assert (len(test_res) == 1)
-        assert test_res[0]['description'] == 'Check has not yet run'
+        assert test_res[0]['summary'] == 'Check has not yet run'
 
     def test_get_grouped_check_results(self):
         grouped_results = check_utils.get_grouped_check_results(self.connection)
@@ -264,3 +266,10 @@ class TestCheckUtils():
         # this output is a list
         assert ('by zero' in ''.join(action_res['output']))
         assert (action_res['description'] == 'Action failed to run. See output.')
+
+    def test_create_placeholder_check(self):
+        """ Tests that placeholder checks are properly generated """
+        placeholder = check_utils.create_placeholder_check('test_check')
+        assert placeholder['name'] == 'test_check'
+        assert placeholder['status'] == 'WARN'
+        assert placeholder['description'] == 'If queued, this check will run with default arguments'
