@@ -346,7 +346,7 @@ def create_placeholder_check(check_name):
     placeholder = {
         'name': check_name,
         'uuid': _uuid,
-        'kwargs': {'uuid': _uuid, 'primary': False},
+        'kwargs': {'uuid': _uuid, 'primary': True},
         'status': 'WARN',
         'summary': 'Check has not yet run',
         'description': 'If queued, this check will run with default arguments'
