@@ -216,12 +216,14 @@ class ESConnection(AbstractConnection):
             found_checks = set(res['name'] for res in raw_result)
             for check_name in checks:
                 if check_name not in found_checks:
+                    _uuid = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')
                     placeholder = {
                         'name': check_name,
-                        'uuid': datetime.date(1000, 1, 1).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility
+                        'uuid': _uuid,
+                        'kwargs': {'uuid': _uuid, 'primary': False},
                         'status': 'WARN',
                         'summary': 'Check has not yet run',
-                        'description': 'Check has not yet run'
+                        'description': 'If queued, this check will run with default arguments'
                     }
                     raw_result.append(placeholder)
         return raw_result

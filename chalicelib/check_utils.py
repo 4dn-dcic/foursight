@@ -236,12 +236,14 @@ def get_check_results(connection, checks=[], use_latest=False):
             if found and found.get('status') != 'IGNORE':
                 check_results.append(found)
             if not found: # add placeholder check so not yet run checks are still rendered on the UI
+                _uuid = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')
                 placeholder = {
                     'name': check_name,
-                    'uuid': datetime.date(1000, 1, 1).strftime('%Y-%m-%dT%H:%M:%S.%f'), # test compatibility
+                    'uuid': _uuid, # test compatibility
+                    'kwargs': {'uuid': _uuid, 'primary': False},
                     'status': 'WARN',
                     'summary': 'Check has not yet run',
-                    'description': 'Check has not yet run'
+                    'description': 'If queued, this check will run with default arguments'
                 }
                 check_results.append(placeholder)
 
