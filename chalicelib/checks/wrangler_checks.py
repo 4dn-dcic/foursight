@@ -1208,3 +1208,81 @@ def patch_assay_subclass_short(connection, **kwargs):
         action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+def semver2int(semver):
+    v = [num for num in semver.lstrip('v').split('.')]
+    for i in range(1,len(v)):
+        if len(v[i]) == 1:
+            v[i] = '0' + v[i]
+    return float(''.join([v[0] + '.'] + v[1:]))
+
+
+@check_function()
+def check_for_ontology_updates(connection, **kwargs):
+    '''
+    Checks for updates in one of the three main ontologies that the 4DN data portal uses:
+    EFO, UBERON, and OBI.
+    EFO: checks github repo for new releases and compares release tag. Release tag is a
+    semantic version number starting with 'v'.
+    OBI: checks github repo for new releases and compares release tag. Release tag is a 'v'
+    plus the release date.
+    UBERON: github site doesn't have official 'releases' (and website isn't properly updated),
+    so checks for commits that have a commit message containing 'new release'
+
+    If version numbers to compare against aren't specified in the UI, it will use the ones
+    from the previous primary check result.
+    '''
+    check = CheckResult(connection, 'check_for_ontology_updates')
+    ontologies = ff_utils.search_metadata(
+        'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
+        key=connection.ff_keys
+    )
+    versions = {
+        o['ontology_prefix']: {
+            'current': o.get('current_ontology_version'),
+            'needs_update': False
+        } for o in ontologies
+    }
+    del versions['4DN']
+    efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
+    versions['EFO']['latest'] = efo.json()[0]['tag_name']
+    uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
+    ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
+    versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
+    obi = requests.get('https://api.github.com/repos/obi-ontology/obi/releases')
+    versions['OBI']['latest'] = obi.json()[0]['tag_name'].lstrip('v')
+    so = requests.get(
+        'https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so.owl',
+        headers={"Range": "bytes=0-1000"}
+    )
+    idx = so.text.index('versionIRI')
+    so_release = so.text[idx:idx+150].split('/')
+    if 'releases' in so_release:
+        versions['SO']['latest'] = so_release[so_release.index('releases') + 1]
+    else:
+        versions['SO']['latest'] = 'Error'
+    for k, v in versions.items():
+        if not v['current']:
+            update = True
+        elif k == 'EFO' and semver2int(v['latest']) > semver2int(v['current']):
+            update = True
+        elif k != 'EFO' and v['latest'] > v['current']:
+            update = True
+        else:
+            update = False
+        v['needs_update'] = update
+    check.full_output = versions
+    check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
+    num = ''.join(check.brief_output).count('update')
+    if num:
+        check.summary = 'Ontology updates available'
+        check.description = '{} ontologies need update'.format(num)
+        check.status = 'WARN'
+    else:
+        check.summary = 'Ontologies up-to-date'
+        check.description = 'No ontology updates needed'
+        check.status = 'PASS'
+    if num == 1 & versions['SO']['needs_update']:
+        check.status = 'PASS'
+    return check

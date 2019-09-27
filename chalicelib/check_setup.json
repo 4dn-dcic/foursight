@@ -960,6 +960,18 @@
             }
         }
     },
+    "check_for_ontology_updates": {
+        "title": "Check for Ontology Updates",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5run_status" : {
         "title": "a) MD5run",
         "group": "Pipeline checks",
@@ -1276,10 +1288,16 @@
         "group": "Elasticsearch checks",
         "schedule" : {
             "morning_checks": {
-                "mastertest": {
+                "all": {
                     "kwargs": {"primary": true}
                 }
             }
         }
+    },
+    "clean_s3_es_checks" : {
+        "title": "Wipe Checks Older Than One Month",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["all"]
     }
 }

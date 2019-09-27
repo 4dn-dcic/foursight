@@ -67,25 +67,26 @@ def migrate_checks_to_es(connection, **kwargs):
     action.output = action_logs
     return action
 
-@check_function(timeout=270)
+@check_function(timeout=270, days=30, to_clean=None)
 def clean_s3_es_checks(connection, **kwargs):
     """
     Cleans old checks from both s3 and es older than one month. Must be called
     from a specific check as it will take too long otherwise.
     """
     check_to_clean = kwargs.get('to_clean')
-    time_limit = 270 if kwargs.get('timeout') is None else kwargs.get('timeout')
-    check = CheckResult(connection, check_to_clean)
+    time_limit = kwargs.get('timeout')
+    days_back = kwargs.get('days')
+    check = CheckResult(connection, 'clean_s3_es_checks')
     full_output = {}
-    if not check_to_clean:
-        check.status = 'FAIL'
+    if check_to_clean is None:
+        check.status = 'WARN'
         check.summary = check.description = 'A check must be given to be cleaned'
         check.full_output = full_output
         return check
-    s3 = connection.connections['s3']
-    es = connection.connections['es']
-    one_month_ago = datetime.datetime.utcnow() - datetime.timedelta(days=30)
-    n_deleted_s3, n_deleted_es = action.delete_results(prior_date=one_month_ago, timeout=time_limit)
+    clean_check = CheckResult(connection, check_to_clean)
+    past_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_back)
+    n_deleted_s3, n_deleted_es = clean_check.delete_results(prior_date=past_date, timeout=time_limit)
+    full_output['check_cleared'] = check_to_clean
     full_output['n_deleted_s3'] = n_deleted_s3
     full_output['n_deleted_es'] = n_deleted_es
     check.status = 'DONE'

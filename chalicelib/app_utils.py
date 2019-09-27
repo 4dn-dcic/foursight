@@ -131,12 +131,13 @@ def check_authorization(request_dict, env=None):
                 return False  # we have no env to check auth
             # leeway accounts for clock drift between us and auth0
             payload = jwt.decode(token, b64decode(auth0_secret, '-_'), audience=auth0_client, leeway=30)
-            env_info = init_environments(env)
-            user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(),
-                                            ff_env=env_info[env]['ff_env'], add_on='frame=object')
-            if 'admin' in user_res['groups'] and payload.get('email_verified'):
-                # fully authorized
-                return True
+            for env_info in init_environments(env).values():
+                user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(),
+                                            ff_env=env_info['ff_env'], add_on='frame=object')
+                if not ('admin' in user_res['groups'] and payload.get('email_verified')):
+                    # if unauthorized for one, unauthorized for all
+                    return False
+            return True
         except:
             pass
     return False
