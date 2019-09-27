@@ -266,3 +266,10 @@ class TestCheckUtils():
         # this output is a list
         assert ('by zero' in ''.join(action_res['output']))
         assert (action_res['description'] == 'Action failed to run. See output.')
+
+    def test_create_placeholder_check(self):
+        """ Tests that placeholder checks are properly generated """
+        placeholder = check_utils.create_placeholder_check('test_check')
+        assert placeholder['name'] == 'test_check'
+        assert placeholder['status'] == 'WARN'
+        assert placeholder['description'] == 'If queued, this check will run with default arguments'
