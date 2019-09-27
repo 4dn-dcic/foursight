@@ -90,9 +90,17 @@ class TestAppUtils():
             with mock.patch('jwt.decode', return_value=payload1):
                 auth = app_utils.check_authorization({}, env='all') # test all
             assert auth
-        with mock.patch('chalicelib.app_utils.get_domain_and_context', return_value=('localhost', '')):
-            auth = app_utils.check_authorization({}, env='all') # local should authenticate
-            assert auth
+        # build a 'request header' that just consists of the context we would expect
+        # to see if authenticating from localhost
+        ctx = {
+            'context': {
+                'identity' : {
+                    'sourceIp': '127.0.0.1'
+                }
+            }
+        }
+        auth = app_utils.check_authorization(ctx, env='all')
+        assert auth
         with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
             with mock.patch('jwt.decode', return_value=payload1):
                 auth = app_utils.check_authorization({}, env='data,staging') # test more than one

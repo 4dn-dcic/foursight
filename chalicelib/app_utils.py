@@ -125,10 +125,9 @@ def check_authorization(request_dict, env=None):
     # if we're on localhost, automatically grant authorization
     # this looks bad but isn't because request authentication will
     # still fail if local keys are not configured
-    domain, _ = get_domain_and_context(request_dict)
-    if domain is not None:
-        if 'localhost' in domain:
-            return True
+    src_ip = request_dict.get('context', {}).get('identity', {}).get('sourceIp', '')
+    if src_ip == '127.0.0.1':
+        return True
     token = get_jwt(request_dict)
     auth0_client = os.environ.get('CLIENT_ID', None)
     auth0_secret = os.environ.get('CLIENT_SECRET', None)
