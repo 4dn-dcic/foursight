@@ -38,6 +38,8 @@ from .utils import (
 )
 from .s3_connection import S3Connection
 
+FAVICON_4DN = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
+
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
     autoescape=select_autoescape(['html', 'xml'])
@@ -73,14 +75,15 @@ def init_environments(env='all'):
     return environments
 
 
-def init_connection(environ):
+def init_connection(environ, environments=None):
     """
     Initialize the fourfront/s3 connection using the FSConnection object
     and the given environment.
     Returns an FSConnection object or raises an error.
     """
     error_res = {}
-    environments = init_environments()
+    if environments is None:
+        environments = init_environments()
     # if still not there, return an error
     if environ not in environments:
         error_res = {
@@ -314,7 +317,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
-            connection = init_connection(this_environ)
+            connection = init_connection(this_environ, environments)
         except Exception:
             connection = None
         if connection:
@@ -351,7 +354,8 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=FAVICON_4DN
     )
     html_resp.status_code = 200
     return process_response(html_resp)
@@ -400,7 +404,8 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=FAVICON_4DN
     )
     html_resp.status_code = 200
     return process_response(html_resp)
@@ -546,7 +551,8 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=FAVICON_4DN
     )
     html_resp.status_code = 200
     return process_response(html_resp)

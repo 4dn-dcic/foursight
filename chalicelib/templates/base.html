@@ -130,7 +130,7 @@
     <!-- Optional Bootstrap theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
     <!-- Update with data soon -->
-    <link rel="shortcut icon" type="image/x-icon" href="https://data.4dnucleome.org/static/img/favicon-fs.ico">
+    <link rel="shortcut icon" type="image/x-icon" href={{favicon}}>
     <!-- Get variables needed within js from jinja -->
     <meta id="fs_domain" data-domain="{{domain}}">
     <meta id="fs_context" data-context="{{context}}">
@@ -268,7 +268,7 @@
     <div class="container">
         <h3 class="center-element">
             <a class="title-image-hover opacity-transition" href={{context + 'view/data,staging'}}>
-                <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src="https://data.4dnucleome.org/static/img/favicon-fs.ico"></img>
+                <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src={{favicon}}></img>
             </a>
             <span>{{'Foursight (' + stage + ')'}}</span>
         </h3>
@@ -324,7 +324,7 @@
             },
             socialButtonStyle: 'big',
             languageDictionary: { title: "Log in" },
-            theme: { logo: 'https://data.4dnucleome.org/static/img/favicon-fs.ico' },
+            theme: { logo: favicon },
             allowedConnections: ['github', 'google-oauth2']
         });
     </script>
