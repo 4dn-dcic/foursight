@@ -1611,7 +1611,7 @@ def bed2multivec_start(connection, **kwargs):
         states_tag = [i for i in a_file['tags'] if 'states' in i][0]
 
         chrsize = wfr_utils.chr_size[org]
-        rows_info = wfr_utils.states_color_mapper[states_tag]
+        rows_info = wfr_utils.states_file_type[states_tag]['color_mapper']
 
         inp_f = {'bedfile': a_file['@id'], 'chromsizes_file': chrsize, 'rows_info': rows_info}
         wfr_setup = wfrset_utils.step_settings('bedtomultivec',

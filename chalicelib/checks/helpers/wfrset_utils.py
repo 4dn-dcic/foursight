@@ -148,6 +148,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bedtomultivec",
         "workflow_uuid": "a52b9b9d-1654-4967-883f-4d2adee77bc7",
+        "parameters": {'resolution': 200, 'num_rows': 9},
         'config': {'mem': 4, 'cpu': 4, 'EBS_optimized': 'true'},
         "overwrite_input_extra": False
         },

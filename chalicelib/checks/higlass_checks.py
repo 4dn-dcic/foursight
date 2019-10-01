@@ -1638,7 +1638,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             "upload failed",
             "deleted",
         )
-        search_query += "&status!=" + "&status!=".join([u.replace(" ","+") for u in unpublished_statuses])
+        search_query += "&status!=" + "&status!=".join([u.replace(" ", "+") for u in unpublished_statuses])
 
         # exclude read positions because those files are too large for Higlass to render
         search_query += "&file_type!=read+positions"
@@ -1684,13 +1684,14 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'higlass_uid': procfile.get('higlass_uid'),
                 'genome_assembly': procfile['genome_assembly']
             }
+
             file_format = file_info["file_format"]
 
             if file_format not in files_to_be_reg:
                 files_to_be_reg[file_format] = []
 
             # bg files use an bw file from extra files to register
-            # bed files use a beddb file from extra files to regiser
+            # bed files use a beddb or bed.multires.mv5 files from extra files to regiser
             # don't FAIL if the bg is missing the bw, however
             type2extra = {'bg': ['bw'], 'bed': ['beddb', 'bed.multires.mv5']}
             if file_format in type2extra:
@@ -1852,10 +1853,6 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'gene-annotation'
-            elif ftype == 'multires.mv5':
-                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
-                payload['filetype'] = 'multivec'
-                payload['datatype'] = 'multivec'
             elif ftype == 'mcool':
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'cooler'
@@ -1865,6 +1862,10 @@ def patch_file_higlass_uid(connection, **kwargs):
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
+            elif ftype == 'bed' and hit['upload_key'].endswith(".bed.multires.mv5"):
+                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
+                payload['filetype'] = 'multivec'
+                payload['datatype'] = 'multivec'
             elif ftype == 'bed':
                 payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
