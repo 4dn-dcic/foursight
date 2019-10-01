@@ -291,8 +291,11 @@ def fourfront_performance_metrics(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(time_limit=240)
 def secondary_queue_deduplication(connection, **kwargs):
+    """
+    Set `time_limit` kwarg to 0 or None to disable time limit.
+    """
     from ..utils import get_stage_info
     check = CheckResult(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
@@ -313,7 +316,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    time_limit = 240  # 4 minutes
+    time_limit = kwargs.get('time_limit')  # 4 minutes default
     t0 = time.time()
     sent = 0
     deleted = 0
@@ -339,7 +342,8 @@ def secondary_queue_deduplication(connection, **kwargs):
 
     exit_reason = 'out of time'
     dedup_msg = 'FS dedup uuid: %s' % kwargs['uuid']
-    while elapsed < time_limit:
+    have_more_time = True
+    while have_more_time:
         # end if we are spinning our wheels replacing the same uuids
         if (replaced + repeat_replaced) >= starting_count:
             exit_reason = 'starting uuids fully covered'
@@ -419,6 +423,9 @@ def secondary_queue_deduplication(connection, **kwargs):
             failed.extend(res.get('Failed', []))
             deleted += len(to_delete)
         elapsed = round(time.time() - t0, 2)
+        if time_limit:
+            if elapsed < time_limit:
+                have_more_time = False
 
     check.full_output = {
         'total_messages_covered': total_msgs,
