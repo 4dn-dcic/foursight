@@ -132,8 +132,7 @@
     <!-- Update with data soon -->
     <link rel="shortcut icon" type="image/x-icon" href={{favicon}}>
     <!-- Get variables needed within js from jinja -->
-    <meta id="fs_domain" data-domain="{{domain}}">
-    <meta id="fs_context" data-context="{{context}}">
+
     <style type="text/css">
     .html-scroll {
         overflow-y: scroll;
@@ -313,8 +312,8 @@
       }
     </script>
     <script type="text/javascript">
-        var domain = $("#fs_domain").data("domain");
-        var context = $("#fs_context").data("context");
+        var domain = "{{domain}}";
+        var context = "{{context}}";
         var lock = new Auth0Lock('DPxEwsZRnKDpk0VfVAxrStRKukN14ILB', 'hms-dbmi.auth0.com', {
             auth: {
                 redirectUrl: 'https://' + domain + context + 'callback/',
