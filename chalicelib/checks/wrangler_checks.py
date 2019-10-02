@@ -1146,7 +1146,8 @@ def check_assay_classification_short_names(connection, **kwargs):
         "context-dependent reporter expression": "Reporter Expression",
         "scanning electron microscopy": "SEM",
         "transmission electron microscopy": "TEM",
-        "immunofluorescence": "Immunofluorescence"
+        "immunofluorescence": "Immunofluorescence",
+        "capture hi-c": "Enrichment Hi-C"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
                                         key=connection.ff_keys)
@@ -1156,6 +1157,8 @@ def check_assay_classification_short_names(connection, **kwargs):
         value = ''
         if exptype.get('assay_classification', '').lower() in subclass_dict:
             value = subclass_dict[exptype['assay_classification'].lower()]
+        elif exptype.get('title', '').lower() in subclass_dict:
+            value = subclass_dict[exptype['title'].lower()]
         elif exptype.get('assay_subclassification', '').lower() in subclass_dict:
             value = subclass_dict[exptype['assay_subclassification'].lower()]
         else:
