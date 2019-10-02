@@ -19,6 +19,12 @@ class TestAppUtils():
         assert (isinstance(self.conn.ff_keys, dict))
         assert ({'key', 'secret', 'server'} <= set(self.conn.ff_keys.keys()))
 
+    def test_get_favicon(self):
+        """ Tests that given 'mastertest' we get the right url for favicon """
+        expected = self.conn.ff_server + 'static/img/favicon-fs.ico'
+        actual = app_utils.get_favicon(self.conn.ff_server)
+        assert expected == actual
+
     def test_init_bad_connection(self):
         with pytest.raises(Exception) as exc:
             app_utils.init_connection('not_an_environment')
