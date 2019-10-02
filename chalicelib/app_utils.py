@@ -88,7 +88,7 @@ def init_connection(environ):
     if environ not in environments:
         error_res = {
             'status': 'error',
-            'description': 'invalid environment provided. Should be one of: %s' % (str(list(environments.keys()))),
+            'description': 'environment %s is not valid!' % environ,
             'environment': environ,
             'checks': {}
         }

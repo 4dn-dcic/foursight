@@ -28,7 +28,7 @@ class TestAppUtils():
     def test_init_bad_connection(self):
         with pytest.raises(Exception) as exc:
             app_utils.init_connection('not_an_environment')
-        assert ('invalid environment provided' in str(exc.value))
+        assert ('is not valid!' in str(exc.value))
 
     def test_bad_view_result(self):
         """ Tests giving a bad response to process_view_result """
