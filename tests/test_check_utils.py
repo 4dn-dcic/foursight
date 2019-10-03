@@ -271,5 +271,5 @@ class TestCheckUtils():
         """ Tests that placeholder checks are properly generated """
         placeholder = check_utils.create_placeholder_check('test_check')
         assert placeholder['name'] == 'test_check'
-        assert placeholder['status'] == 'WARN'
+        assert placeholder['status'] == 'PASS'
         assert placeholder['description'] == 'If queued, this check will run with default arguments'
