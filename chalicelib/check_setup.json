@@ -1288,7 +1288,19 @@
         "group": "Elasticsearch checks",
         "schedule" : {
             "morning_checks": {
-                "all": {
+                "staging": {
+                    "kwargs": {"primary": true}
+                },
+                "webdev": {
+                    "kwargs": {"primary": true}
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true}
+                },
+                "mastertest": {
+                    "kwargs": {"primary": true}
+                },
+                "cgapdev": {
                     "kwargs": {"primary": true}
                 }
             }
@@ -1298,6 +1310,6 @@
         "title": "Wipe Checks Older Than One Month",
         "group": "System checks",
         "schedule": {},
-        "display": ["all"]
+        "display": ["staging", "webdev", "mastertest", "hotseat", "cgapdev"]
     }
 }
