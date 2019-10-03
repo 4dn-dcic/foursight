@@ -8,6 +8,7 @@ import boto3
 import datetime
 import ast
 import copy
+import requests
 from itertools import chain
 from dateutil import tz
 from base64 import b64decode
@@ -37,6 +38,8 @@ from .utils import (
     get_sqs_attributes
 )
 from .s3_connection import S3Connection
+
+DEFAULT_FAVICON = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -80,12 +83,12 @@ def init_connection(environ):
     Returns an FSConnection object or raises an error.
     """
     error_res = {}
-    environments = init_environments()
+    environments = init_environments(environ)
     # if still not there, return an error
     if environ not in environments:
         error_res = {
             'status': 'error',
-            'description': 'invalid environment provided. Should be one of: %s' % (str(list(environments.keys()))),
+            'description': 'environment %s is not valid!' % environ,
             'environment': environ,
             'checks': {}
         }
@@ -163,6 +166,20 @@ def get_jwt(request_dict):
                 cookie_dict[cookie_split[0]] = cookie_split[1]
     token = cookie_dict.get('jwtToken', None)
     return token
+
+
+def get_favicon(server):
+    """
+    Tries to grab favicon from the given server. If it's not found it will use
+    the default favicon (data)
+    """
+    try:
+        favicon = server + 'static/img/favicon-fs.ico'
+        res = requests.head(favicon)
+        assert res.status_code == 200
+    except:
+        favicon = DEFAULT_FAVICON
+    return favicon
 
 
 def get_domain_and_context(request_dict):
@@ -311,6 +328,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     html_resp.headers = {'Content-Type': 'text/html'}
     environments = init_environments()
     total_envs = []
+    servers = []
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
@@ -318,6 +336,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
         except Exception:
             connection = None
         if connection:
+            servers.append(connection.ff_server)
             grouped_results = get_grouped_check_results(connection)
             for group in grouped_results:
                 for title, result in group.items():
@@ -343,6 +362,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    first_env_favicon = get_favicon(servers[0]) # use first env
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
@@ -351,7 +371,8 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=first_env_favicon
     )
     html_resp.status_code = 200
     return process_response(html_resp)
@@ -364,11 +385,13 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     html_resp = Response('Foursight viewing suite')
     html_resp.headers = {'Content-Type': 'text/html'}
     total_envs = []
+    servers = []
     try:
         connection = init_connection(environ)
     except Exception:
         connection = None
     if connection:
+        servers.append(connection.ff_server)
         res_check = CheckResult(connection, check)
         if res_check:
             data = res_check.get_result_by_uuid(uuid)
@@ -392,6 +415,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    first_env_favicon = get_favicon(servers[0])
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
@@ -400,7 +424,8 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=first_env_favicon
     )
     html_resp.status_code = 200
     return process_response(html_resp)
@@ -516,11 +541,13 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
     """
     html_resp = Response('Foursight history view')
     html_resp.headers = {'Content-Type': 'text/html'}
+    server = None
     try:
         connection = init_connection(environ)
     except Exception:
         connection = None
     if connection:
+        server = connection.ff_server
         history = get_foursight_history(connection, check, start, limit)
         history_kwargs = list(set(chain.from_iterable([l[2] for l in history])))
     else:
@@ -531,6 +558,10 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    if server is not None:
+        favicon = get_favicon(server)
+    else:
+        favicon = DEFAULT_FAVICON
     html_resp.body = template.render(
         env=environ,
         check=check,
@@ -546,7 +577,8 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=favicon
     )
     html_resp.status_code = 200
     return process_response(html_resp)
