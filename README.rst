@@ -2,6 +2,8 @@
 foursight
 =========
 
+Check out our full documentation `here <https://foursight.readthedocs.io/en/latest/>`_.
+
 A serverless chalice application to monitor and run tasks on `Fourfront <https://github.com/4dn-dcic/fourfront>`_. Essentially, the app provides an number of endpoints to run checks, fetch results, dynamically create environments to check, and more.
 
 
