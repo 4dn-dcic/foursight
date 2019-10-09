@@ -93,8 +93,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             'out_bam': {
                 'genome_assembly': genome,
-                'file_type': 'intermediate file',
-                'description': "This is an intermediate file from the MARGI processing pipeline"}
+                'file_type': 'alignment',
+                'description': "This is an alignment file for fastq pairs from the MARGI processing pipeline"}
         }},
         {
         'app_name': 'imargi-processing-bam',

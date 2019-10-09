@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 from .s3_connection import S3Connection
+from .es_connection import ESConnection
 from dcicutils.s3_utils import s3Utils
 
 
@@ -19,11 +20,14 @@ class FSConnection(object):
 
     If param test=True, then do not actually attempt to initate the FF connections
     """
-    def __init__(self, fs_environ, fs_environ_info, test=False):
+    def __init__(self, fs_environ, fs_environ_info, test=False, use_es=True):
         # FOURSIGHT information
         self.fs_env = fs_environ
-        self.s3_connection = S3Connection(fs_environ_info.get('bucket'))
-
+        es = ESConnection(index=fs_environ_info.get('bucket')) if use_es else None
+        self.connections = {
+            's3': S3Connection(fs_environ_info.get('bucket')),
+            'es': es
+        }
         # FOURFRONT information
         self.ff_server = fs_environ_info['fourfront']
         self.ff_env = fs_environ_info['ff_env']
@@ -42,3 +46,22 @@ class FSConnection(object):
         else:
             self.ff_s3 = None
             self.ff_keys = None
+
+    def get_object(self, key):
+        """
+        Queries ES for key - checks S3 if it doesn't find it
+        """
+        obj = None
+        if self.connections['es'] is not None:
+            obj = self.connections['es'].get_object(key)
+        if obj is None:
+            obj = self.connections['s3'].get_object(key)
+        return obj
+
+    def put_object(self, key, value):
+        """
+        Puts an object onto both ES and S3
+        """
+        for conn in self.connections.values():
+            if conn is not None:
+                conn.put_object(key, value)

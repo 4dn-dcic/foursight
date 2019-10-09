@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import requests
 import json
@@ -23,7 +22,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     problematic_provenance: stores uuid of deleted file, and the wfr that is not deleted
     problematic_wfr:        stores deleted file,  wfr to be deleted, and its downstream items (qcs and output files)
     """
-    check = init_check_res(connection, 'workflow_run_has_deleted_input_file')
+    check = CheckResult(connection, 'workflow_run_has_deleted_input_file')
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
     my_key = connection.ff_keys
@@ -86,7 +85,7 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
 
 @action_function()
 def patch_workflow_run_to_deleted(connection, **kwargs):
-    action = init_action_res(connection, 'patch_workflow_run_to_deleted')
+    action = ActionResult(connection, 'patch_workflow_run_to_deleted')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
     my_key = connection.ff_keys
@@ -122,7 +121,7 @@ def biorxiv_is_now_published(connection, **kwargs):
         'false_positive' kwarg with format "rxiv_uuid1: number_part_only_of_PMID, rxiv_uuid2: ID ..."
          eg. fd3827e5-bc4c-4c03-bf22-919ee8f4351f:31010829 and to reset to empty use 'RESET'
     '''
-    check = init_check_res(connection, 'biorxiv_is_now_published')
+    check = CheckResult(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
@@ -240,7 +239,7 @@ def biorxiv_is_now_published(connection, **kwargs):
 
 @action_function()
 def add_pub_and_replace_biorxiv(connection, **kwargs):
-    action = init_action_res(connection, 'add_pub_and_replace_biorxiv')
+    action = ActionResult(connection, 'add_pub_and_replace_biorxiv')
     action_log = {}
     biorxiv_check_result = action.get_associated_check_result(kwargs)
     check_output = biorxiv_check_result.get('full_output', {})
@@ -435,7 +434,7 @@ def item_counts_by_type(connection, **kwargs):
         ret[split_str[2].strip(':')] = int(split_str[3])
         return ret
 
-    check = init_check_res(connection, 'item_counts_by_type')
+    check = CheckResult(connection, 'item_counts_by_type')
     # run the check
     item_counts = {}
     warn_item_counts = {}
@@ -473,8 +472,8 @@ def item_counts_by_type(connection, **kwargs):
 def change_in_item_counts(connection, **kwargs):
     from ..utils import convert_camel_to_snake
     # use this check to get the comparison
-    check = init_check_res(connection, 'change_in_item_counts')
-    counts_check = init_check_res(connection, 'item_counts_by_type')
+    check = CheckResult(connection, 'change_in_item_counts')
+    counts_check = CheckResult(connection, 'item_counts_by_type')
     latest_check = counts_check.get_primary_result()
     # get_item_counts run closest to 10 mins
     prior_check = counts_check.get_closest_result(diff_hours=24)
@@ -555,7 +554,7 @@ def change_in_item_counts(connection, **kwargs):
 
 @check_function(file_type=None, status=None, file_format=None, search_add_on=None)
 def identify_files_without_filesize(connection, **kwargs):
-    check = init_check_res(connection, 'identify_files_without_filesize')
+    check = CheckResult(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
     check.action = "patch_file_size"
     default_filetype = 'File'
@@ -608,7 +607,7 @@ def identify_files_without_filesize(connection, **kwargs):
 
 @action_function()
 def patch_file_size(connection, **kwargs):
-    action = init_action_res(connection, 'patch_file_size')
+    action = ActionResult(connection, 'patch_file_size')
     action_logs = {'s3_file_not_found': [], 'patch_failure': [], 'patch_success': []}
     # get the associated identify_files_without_filesize run result
     filesize_check_result = action.get_associated_check_result(kwargs)
@@ -676,7 +675,7 @@ def new_or_updated_items(connection, **kwargs):
             return None
         return user_item.get('display_title')
 
-    check = init_check_res(connection, 'new_or_updated_items')
+    check = CheckResult(connection, 'new_or_updated_items')
     rundate = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
     last_result = check.get_latest_result()
     if last_result is None or last_result.get('status') == 'ERROR' or kwargs.get('reset') is True:
@@ -807,7 +806,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
             # successful patch
             full_output['success'].append(uuid)
 
-    check = init_check_res(connection, 'clean_up_webdev_wfrs')
+    check = CheckResult(connection, 'clean_up_webdev_wfrs')
     check.full_output = {'success': [], 'failure': []}
 
     # input for test pseudo hi-c-processing-bam
@@ -852,7 +851,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
-    check = init_check_res(connection, 'validate_entrez_geneids')
+    check = CheckResult(connection, 'validate_entrez_geneids')
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
@@ -903,7 +902,7 @@ def validate_entrez_geneids(connection, **kwargs):
 def users_with_pending_lab(connection, **kwargs):
     """Define comma seperated emails in scope
     if you want to work on a subset of all the results"""
-    check = init_check_res(connection, 'users_with_pending_lab')
+    check = CheckResult(connection, 'users_with_pending_lab')
     check.action = 'finalize_user_pending_labs'
     check.full_output = []
     check.status = 'PASS'
@@ -964,7 +963,7 @@ def users_with_pending_lab(connection, **kwargs):
 
 @action_function()
 def finalize_user_pending_labs(connection, **kwargs):
-    action = init_action_res(connection, 'finalize_user_pending_labs')
+    action = ActionResult(connection, 'finalize_user_pending_labs')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
@@ -996,7 +995,7 @@ def users_with_doppelganger(connection, **kwargs):
     Result:
      full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
     """
-    check = init_check_res(connection, 'users_with_doppelganger')
+    check = CheckResult(connection, 'users_with_doppelganger')
     check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
     # do we want to add current results to ignore list
     ignore_current = False
@@ -1125,7 +1124,7 @@ def users_with_doppelganger(connection, **kwargs):
 
 @check_function()
 def check_assay_classification_short_names(connection, **kwargs):
-    check = init_check_res(connection, 'check_assay_classification_short_names')
+    check = CheckResult(connection, 'check_assay_classification_short_names')
     check.action = 'patch_assay_subclass_short'
 
     subclass_dict = {
@@ -1148,7 +1147,8 @@ def check_assay_classification_short_names(connection, **kwargs):
         "context-dependent reporter expression": "Reporter Expression",
         "scanning electron microscopy": "SEM",
         "transmission electron microscopy": "TEM",
-        "immunofluorescence": "Immunofluorescence"
+        "immunofluorescence": "Immunofluorescence",
+        "capture hi-c": "Enrichment Hi-C"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
                                         key=connection.ff_keys)
@@ -1158,6 +1158,8 @@ def check_assay_classification_short_names(connection, **kwargs):
         value = ''
         if exptype.get('assay_classification', '').lower() in subclass_dict:
             value = subclass_dict[exptype['assay_classification'].lower()]
+        elif exptype.get('title', '').lower() in subclass_dict:
+            value = subclass_dict[exptype['title'].lower()]
         elif exptype.get('assay_subclassification', '').lower() in subclass_dict:
             value = subclass_dict[exptype['assay_subclassification'].lower()]
         else:
@@ -1194,7 +1196,7 @@ def check_assay_classification_short_names(connection, **kwargs):
 
 @action_function()
 def patch_assay_subclass_short(connection, **kwargs):
-    action = init_action_res(connection, 'patch_assay_subclass_short')
+    action = ActionResult(connection, 'patch_assay_subclass_short')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_success': [], 'patch_failure': []}
     for k, v in check_res['full_output']['Patch by action'].items():
@@ -1212,6 +1214,84 @@ def patch_assay_subclass_short(connection, **kwargs):
     return action
 
 
+def semver2int(semver):
+    v = [num for num in semver.lstrip('v').split('.')]
+    for i in range(1,len(v)):
+        if len(v[i]) == 1:
+            v[i] = '0' + v[i]
+    return float(''.join([v[0] + '.'] + v[1:]))
+
+
+@check_function()
+def check_for_ontology_updates(connection, **kwargs):
+    '''
+    Checks for updates in one of the three main ontologies that the 4DN data portal uses:
+    EFO, UBERON, and OBI.
+    EFO: checks github repo for new releases and compares release tag. Release tag is a
+    semantic version number starting with 'v'.
+    OBI: checks github repo for new releases and compares release tag. Release tag is a 'v'
+    plus the release date.
+    UBERON: github site doesn't have official 'releases' (and website isn't properly updated),
+    so checks for commits that have a commit message containing 'new release'
+
+    If version numbers to compare against aren't specified in the UI, it will use the ones
+    from the previous primary check result.
+    '''
+    check = CheckResult(connection, 'check_for_ontology_updates')
+    ontologies = ff_utils.search_metadata(
+        'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
+        key=connection.ff_keys
+    )
+    versions = {
+        o['ontology_prefix']: {
+            'current': o.get('current_ontology_version'),
+            'needs_update': False
+        } for o in ontologies
+    }
+    del versions['4DN']
+    efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
+    versions['EFO']['latest'] = efo.json()[0]['tag_name']
+    uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
+    ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
+    versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
+    obi = requests.get('https://api.github.com/repos/obi-ontology/obi/releases')
+    versions['OBI']['latest'] = obi.json()[0]['tag_name'].lstrip('v')
+    so = requests.get(
+        'https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so.owl',
+        headers={"Range": "bytes=0-1000"}
+    )
+    idx = so.text.index('versionIRI')
+    so_release = so.text[idx:idx+150].split('/')
+    if 'releases' in so_release:
+        versions['SO']['latest'] = so_release[so_release.index('releases') + 1]
+    else:
+        versions['SO']['latest'] = 'Error'
+    for k, v in versions.items():
+        if not v['current']:
+            update = True
+        elif k == 'EFO' and semver2int(v['latest']) > semver2int(v['current']):
+            update = True
+        elif k != 'EFO' and v['latest'] > v['current']:
+            update = True
+        else:
+            update = False
+        v['needs_update'] = update
+    check.full_output = versions
+    check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
+    num = ''.join(check.brief_output).count('update')
+    if num:
+        check.summary = 'Ontology updates available'
+        check.description = '{} ontologies need update'.format(num)
+        check.status = 'WARN'
+    else:
+        check.summary = 'Ontologies up-to-date'
+        check.description = 'No ontology updates needed'
+        check.status = 'PASS'
+    if num == 1 & versions['SO']['needs_update']:
+        check.status = 'PASS'
+    return check
+
+    
 @check_function()
 def states_files_without_higlass_defaults(connection, **kwargs):
     check = init_check_res(connection, 'states_files_without_higlass_defaults')

@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
@@ -41,7 +40,7 @@ def biosource_cell_line_value(connection, **kwargs):
     '''
     checks cell line biosources to make sure they have an associated ontology term
     '''
-    check = init_check_res(connection, 'biosource_cell_line_value')
+    check = CheckResult(connection, 'biosource_cell_line_value')
 
     cell_line_types = ["primary cell", "primary cell line", "immortalized cell line",
                        "in vitro differentiated cells", "induced pluripotent stem cell line",
@@ -75,7 +74,7 @@ def external_expsets_without_pub(connection, **kwargs):
     '''
     checks external experiment sets to see if they are attributed to a publication
     '''
-    check = init_check_res(connection, 'external_expsets_without_pub')
+    check = CheckResult(connection, 'external_expsets_without_pub')
 
     ext = ff_utils.search_metadata('search/?award.project=External&type=ExperimentSet&frame=object',
                                    key=connection.ff_keys, page_limit=50)
@@ -106,7 +105,7 @@ def expset_opfsets_unique_titles(connection, **kwargs):
     checks experiment sets with other_processed_files to see if each collection
     of other_processed_files has a unique title within that experiment set
     '''
-    check = init_check_res(connection, 'expset_opfsets_unique_titles')
+    check = CheckResult(connection, 'expset_opfsets_unique_titles')
 
     opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value&frame=object',
                                            key=connection.ff_keys, page_limit=50)
@@ -149,7 +148,7 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     in child experiments to make sure that (1) the collections have titles and (2) that if the titles
     are shared with the parent experiment set, that the filenames contained within are unique
     '''
-    check = init_check_res(connection, 'expset_opf_unique_files_in_experiments')
+    check = CheckResult(connection, 'expset_opf_unique_files_in_experiments')
 
     opf_expsets = ff_utils.search_metadata('search/?type=ExperimentSet&other_processed_files.files.uuid%21=No+value',
                                            key=connection.ff_keys, page_limit=25)
@@ -198,7 +197,7 @@ def paired_end_info_consistent(connection, **kwargs):
     '''
     Check that fastqs with a paired_end number have a paired_with related_file, and vice versa
     '''
-    check = init_check_res(connection, 'paired_end_info_consistent')
+    check = CheckResult(connection, 'paired_end_info_consistent')
 
     search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
     search2 = 'search/?type=FileFastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
@@ -229,7 +228,7 @@ def paired_end_info_consistent(connection, **kwargs):
 
 @check_function()
 def workflow_properties(connection, **kwargs):
-    check = init_check_res(connection, 'workflow_properties')
+    check = CheckResult(connection, 'workflow_properties')
 
     workflows = ff_utils.search_metadata('search/?type=Workflow&category!=provenance&frame=object',
                                          key=connection.ff_keys)
@@ -308,7 +307,7 @@ def workflow_properties(connection, **kwargs):
 
 @check_function()
 def page_children_routes(connection, **kwargs):
-    check = init_check_res(connection, 'page_children_routes')
+    check = CheckResult(connection, 'page_children_routes')
 
     page_search = 'search/?type=Page&format=json&children.name%21=No+value'
     results = ff_utils.search_metadata(page_search, key=connection.ff_keys)
@@ -334,7 +333,7 @@ def page_children_routes(connection, **kwargs):
 
 @check_function()
 def check_help_page_urls(connection, **kwargs):
-    check = init_check_res(connection, 'check_help_page_urls')
+    check = CheckResult(connection, 'check_help_page_urls')
 
     server = connection.ff_keys['server']
     results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body',
@@ -367,7 +366,7 @@ def check_help_page_urls(connection, **kwargs):
 
 @check_function(id_list=None)
 def check_status_mismatch(connection, **kwargs):
-    check = init_check_res(connection, 'check_status_mismatch')
+    check = CheckResult(connection, 'check_status_mismatch')
     id_list = kwargs['id_list']
 
     MIN_CHUNK_SIZE = 200
@@ -473,7 +472,7 @@ def check_opf_status_mismatch(connection, **kwargs):
     files in the other_processed_files collection (e.g., if the other_processed_files
     were released when the experiment set is in review by lab.)
     '''
-    check = init_check_res(connection, 'check_opf_status_mismatch')
+    check = CheckResult(connection, 'check_opf_status_mismatch')
 
     opf_set = ('search/?type=ExperimentSet&other_processed_files.title%21=No+value&field=status'
                '&field=other_processed_files&field=experiments_in_set.other_processed_files')
@@ -489,15 +488,26 @@ def check_opf_status_mismatch(connection, **kwargs):
         if result.get('other_processed_files'):
             for case in result['other_processed_files']:
                 files.extend([i['uuid'] for i in case['files']])
+                if case.get('higlass_view_config'):
+                    files.append(case['higlass_view_config'].get('uuid'))
         if result.get('experiments_in_set'):
             for exp in result['experiments_in_set']:
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.get_es_metadata(files, chunk_size=1000, key=connection.ff_keys)
-    status_dict = {f['uuid']: f['properties']['status'] for f in resp}
+    resp =  ff_utils.expand_es_metadata(list(set(files)), key=connection.ff_keys)
+    opf_status_dict = {
+        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] in files
+    }
+    opf_linked_dict = {
+        item['uuid']: item.get('quality_metric') for val in resp[0].values() for item in val if item['uuid'] in files
+    }
+    opf_other_dict = {
+        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] not in files
+    }
     check.full_output = {}
     for result in results:
+        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid') for item in result.get('other_processed_files', [])}
         titles = [item['title'] for item in result.get('other_processed_files', [])]
         titles.extend([item['title'] for exp in result.get('experiments_in_set', [])
                        for item in exp.get('other_processed_files', [])])
@@ -509,13 +519,27 @@ def check_opf_status_mismatch(connection, **kwargs):
             file_list.extend([item for exp in result.get('experiments_in_set', [])
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
-            statuses = set([status_dict[f['uuid']] for f in file_list])
+            statuses = set([opf_status_dict[f['uuid']] for f in file_list])
             if len(statuses) > 1:  # status mismatch in opf collection
-                problem_dict[title] = {f['@id']: status_dict[f['uuid']] for f in file_list}
+                problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
+                if hg_dict.get(title):
+                    problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
+            elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
+                if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
+                    problem_dict[title] = {'files': list(statuses)[0], 'higlass_view_config': opf_status_dict[hg_dict[title]]}
             elif 'release' not in result['status'] and (
                 STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
             ):  # if ExpSet not released, and opf collection has higher status
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
+            for f in file_list:
+                if opf_linked_dict.get(f['uuid']):
+                    if (STATUS_LEVEL[opf_other_dict[opf_linked_dict[f['uuid']]]] !=
+                        STATUS_LEVEL[opf_status_dict[f['uuid']]]):
+                        if f['@id'] not in problem_dict[title]:
+                            problem_dict[title][f['@id']] = {}
+                        problem_dict[title][f['@id']]['quality_metric'] = {
+                            'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[opf_linked_dict[f['uuid']]]
+                        }
         if problem_dict:
             check.full_output[result['@id']] = problem_dict
     if check.full_output:
@@ -537,7 +561,7 @@ def check_validation_errors(connection, **kwargs):
     Counts number of items in fourfront with schema validation errors,
     returns link to search if found.
     '''
-    check = init_check_res(connection, 'check_validation_errors')
+    check = CheckResult(connection, 'check_validation_errors')
 
     search_url = 'search/?validation_errors.name!=No+value&type=Item'
     results = ff_utils.search_metadata(search_url + '&field=@id', key=connection.ff_keys)
@@ -562,10 +586,14 @@ def _get_all_other_processed_files(item):
     # get directly linked other processed files
     for pfinfo in item.get('properties').get('other_processed_files', []):
         toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
+        # toignore.extend([pf['quality_metric'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
+        # qcs = [pf for pf in pfinfo.get('files', []) if pf is not None]
         hgv = pfinfo.get('higlass_view_config')
         if hgv:
             toignore.append(hgv)
     # experiment sets can also have linked opfs from experiment
+    for pfinfo in item['embedded'].get('other_processed_files', []):
+        toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files') if pf and pf.get('quality_metric')])
     expts = item.get('embedded').get('experiments_in_set')
     if expts is not None:
         for exp in expts:
@@ -573,6 +601,7 @@ def _get_all_other_processed_files(item):
             if opfs is not None:
                 for pfinfo in opfs:
                     toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
+                    toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
                     hgv = pfinfo.get('higlass_view_config')
                     if hgv:
                         toignore.append(hgv)
@@ -585,7 +614,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
     Attempts to identify an organism to add to the organism_name field in BioFeature items
     checks the linked genes or the genomic regions and then description
     '''
-    check = init_check_res(connection, 'check_bio_feature_organism_name')
+    check = CheckResult(connection, 'check_bio_feature_organism_name')
     check.action = "patch_bio_feature_organism_name"
 
     # create some mappings
@@ -713,7 +742,7 @@ def _get_orgname_from_atid_list(atids, orgn2name):
 
 @action_function()
 def patch_bio_feature_organism_name(connection, **kwargs):
-    action = init_action_res(connection, 'patch_bio_feature_organism_name')
+    action = ActionResult(connection, 'patch_bio_feature_organism_name')
     action_logs = {'patch_failure': [], 'patch_success': []}
     check_res = action.get_associated_check_result(kwargs)
     output = check_res.get('full_output')

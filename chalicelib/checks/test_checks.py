@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    init_check_res,
     action_function,
-    init_action_res
 )
+from ..run_result import CheckResult, ActionResult
 import random
 import time
 
@@ -29,7 +28,7 @@ def test_action_error(connection, **kwargs):
 # silly check that stores random numbers in a list
 @check_function()
 def test_random_nums(connection, **kwargs):
-    check = init_check_res(connection, 'test_random_nums')
+    check = CheckResult(connection, 'test_random_nums')
     check.status = 'IGNORE'
     check.action = 'add_random_test_nums'
     check.allow_action = True
@@ -46,7 +45,7 @@ def test_random_nums(connection, **kwargs):
 # same as above
 @check_function()
 def test_random_nums_2(connection, **kwargs):
-    check = init_check_res(connection, 'test_random_nums_2')
+    check = CheckResult(connection, 'test_random_nums_2')
     check.status = 'IGNORE'
     output = []
     for i in range(random.randint(1, 20)):
@@ -58,8 +57,8 @@ def test_random_nums_2(connection, **kwargs):
 
 @action_function(offset=0)
 def add_random_test_nums(connection, **kwargs):
-    action = init_action_res(connection, 'add_random_test_nums')
-    check = init_check_res(connection, 'test_random_nums')
+    action = ActionResult(connection, 'add_random_test_nums')
+    check = CheckResult(connection, 'test_random_nums')
     # output includes primary and latest results, to compare
     check_latest = check.get_latest_result()
     nums_latest = check_latest.get('full_output', [])
