@@ -709,11 +709,13 @@ def purge_download_tracking_items(connection, **kwargs):
     check = CheckResult(connection, 'purge_download_tracking_items')
 
     # Don't run if staging deployment is running
-    staging_conn = app_utils.init_connection('staging')
-    staging_deploy = CheckResult(staging_conn, 'staging_deployment').get_primary_result()
-    if staging_deploy['status'] == 'WARN':
-        check.summary = 'Staging deployment is running - skipping'
-        return check
+    # Only need to check if our env is data
+    if connection.fs_env == 'data':
+        staging_conn = app_utils.init_connection('staging')
+        staging_deploy = CheckResult(staging_conn, 'staging_deployment').get_primary_result()
+        if staging_deploy['status'] != 'PASS':
+            check.summary = 'Staging deployment is running - skipping'
+            return check
 
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
