@@ -21,3 +21,17 @@ Beta version
 Please visit the `getting started <./docs/getting_started.md>`_ page to get up and running with Foursight. More in-depth documentation is also available in the `docs folder <./docs/>`_.
 
 Foursight is under active development and features will likely change.
+
+*Contents*
+    
+ .. toctree::
+   :maxdepth: 4
+
+   getting_started
+   checks
+   actions
+   deployment
+   environments
+   elasticsearch
+   development_notes
+   development_tips
