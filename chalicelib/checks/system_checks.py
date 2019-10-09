@@ -716,7 +716,6 @@ def purge_download_tracking_items(connection, **kwargs):
         check.summary = 'Staging deployment is running - skipping'
         return check
 
-
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
