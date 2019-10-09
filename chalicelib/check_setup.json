@@ -1270,5 +1270,17 @@
                 }
             }
         }
+    },
+    "states_files_without_higlass_defaults": {
+        "title": "states files without higlass_defaults",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }

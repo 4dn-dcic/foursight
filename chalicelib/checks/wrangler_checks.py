@@ -12,6 +12,7 @@ import datetime
 import time
 import itertools
 from fuzzywuzzy import fuzz
+import boto3
 
 
 @check_function(cmp_to_last=False)
@@ -1204,6 +1205,73 @@ def patch_assay_subclass_short(connection, **kwargs):
         else:
             action_logs['patch_success'].append(k)
     if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function()
+def states_files_without_higlass_defaults(connection, **kwargs):
+    check = init_check_res(connection, 'states_files_without_higlass_defaults')
+    check.action = 'patch_states_files_higlass_defaults'
+    check.full_output = {'to_add': {}}
+
+    query = '/search/?file_type=states&type=File'
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    for re in res:
+        if not re.get('higlass_defaults'):
+            print(re['tags'])
+            check.full_output['to_add'][re['accession']] = re['tags']
+
+    if check.full_output['to_add']:
+        check.status = 'WARN'
+        check.summary = 'Ready to patch higlass_defaults'
+        check.description = 'Ready to patch higlass_defaults'
+        # check.allow_action = True
+        check.action_message = 'Will patch higlass_defaults to %s items' % (len(check.full_output['to_add']))
+    else:
+        check.status = 'PASS'
+        check.summary = 'higlass_defaults are all set'
+    return check
+
+
+@action_function()
+def patch_states_files_higlass_defaults(connection, kwargs):
+    action = init_action_res(connection, 'patch_states_files_higlass_defaults')
+    check_res = action.get_associated_check_result(kwargs)
+    action_logs = {'patch_success': [], 'patch_failure': [], 'missing_ref_file': []}
+    total_patches = check_res['full_output']['to_add']
+
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket('elasticbeanstalk-fourfront-webprod-files')
+
+    query = '/search/?file_type=states&type=FileReference'
+    all_ref_files = ff_utils.search_metadata(query, key=connection.ff_keys)
+    ref_files_tags = {}
+    for ref_file in all_ref_files:
+        if ref_file.get('tags'):
+            ref_files_tags[ref_file["tags"]] = {'uuid': ref_file['uuid'], 'accession': ref_file['accession']}
+
+    for item, tag in total_patches.items():
+        if ref_files_tags.get(tag):
+            buck_obj = ref_files_tags[tag]['uuid'] + ref_files_tags[tag]['accession'] + '.txt'
+            obj = bucket.Object(buck_obj)
+            body = obj.get()['Body'].read().decode('utf8')
+            lines = body.split()
+            states_colors = [item for num, item in enumerate(lines) if num % 2 != 0]
+            patch = {'higlass_defaults': {'colorScale': states_colors}}
+            try:
+                ff_utils.patch_metadata(patch, item, key=connection.ff_keys)
+            except Exception as e:
+                action_logs['patch_failure'].append({item: str(e)})
+            else:
+                action_logs['patch_success'].append(item)
+        else:
+            action_logs['missing_ref_file'].append({item: 'missing rows_info reference file'})
+
+    if action_logs['patch_failure'] or action_logs['missing_ref_file']:
         action.status = 'FAIL'
     else:
         action.status = 'DONE'
