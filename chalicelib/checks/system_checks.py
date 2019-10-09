@@ -711,7 +711,7 @@ def purge_download_tracking_items(connection, **kwargs):
     # Don't run if staging deployment is running
     staging_conn = app_utils.init_connection('staging')
     staging_deploy = CheckResult(staging_conn, 'staging_deployment').get_primary_result()
-    if staging_deploy.status == 'WARN':
+    if staging_deploy['status'] == 'WARN':
         check.summary = 'Staging deployment is running - skipping'
         return check
 
