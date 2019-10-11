@@ -22,7 +22,7 @@ after_success:
   else
     echo 'Tests succeeded, but this is not the time for deployment.';
   fi
-  if  [[ $TRAVIS_BRANCH == 'docs_build' ]]; then
+  if  [[ $TRAVIS_BRANCH == 'master' ]]; then
     echo 'Triggering docs build';
-    curl -X POST -d "branches=docs_build" -d "token=$DOCS_TOKEN" https://readthedocs.org/api/v2/webhook/foursight/99531/;
+    curl -X POST -d "branches=master" -d "token=$DOCS_TOKEN" https://readthedocs.org/api/v2/webhook/foursight/99531/;
   fi
