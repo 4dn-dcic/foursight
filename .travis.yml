@@ -24,5 +24,5 @@ after_success:
   fi
   if  [[ $TRAVIS_BRANCH == 'docs_build' ]]; then
     echo 'Triggering docs build';
-    curl -X POST -d "branches=master" -d "token=$DOCS_TOKEN" readthedocs.org/api/v2/webhook/foursight/99531/;
+    curl -X POST -d "branches=docs_build" -d "token=$DOCS_TOKEN" readthedocs.org/api/v2/webhook/foursight/99531/;
   fi
