@@ -9,11 +9,13 @@ A serverless chalice application to monitor and run tasks on `Fourfront <https:/
    :target: https://travis-ci.org/4dn-dcic/foursight
    :alt: Build Status
 
-
 .. image:: https://coveralls.io/repos/github/4dn-dcic/foursight/badge.svg?branch=production
    :target: https://coveralls.io/github/4dn-dcic/foursight?branch=production
    :alt: Coverage
 
+.. image:: https://readthedocs.org/projects/foursight/badge/?version=latest
+   :target: https://foursight.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
 
 Beta version
 ------------
@@ -23,7 +25,7 @@ Please visit the `getting started <./docs/getting_started.md>`_ page to get up a
 Foursight is under active development and features will likely change.
 
 *Contents*
-    
+
  .. toctree::
    :maxdepth: 4
 

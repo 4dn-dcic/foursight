@@ -1,5 +1,4 @@
-
-foursight
+Foursight
 =========
 
 Check out our full documentation `here <https://foursight.readthedocs.io/en/latest/>`_.
@@ -11,10 +10,13 @@ A serverless chalice application to monitor and run tasks on `Fourfront <https:/
    :target: https://travis-ci.org/4dn-dcic/foursight
    :alt: Build Status
 
-
 .. image:: https://coveralls.io/repos/github/4dn-dcic/foursight/badge.svg?branch=production
    :target: https://coveralls.io/github/4dn-dcic/foursight?branch=production
    :alt: Coverage
+
+.. image:: https://readthedocs.org/projects/foursight/badge/?version=latest
+   :target: https://foursight.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
 
 
 Beta version
