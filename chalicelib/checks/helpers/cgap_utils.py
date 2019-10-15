@@ -50,7 +50,16 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9", "v10"]
     },
+    'workflow_gatk-HaplotypeCaller': {
+        "run_time": 12,
+        "accepted_versions": ["v10"]
+    },
+    'workflow_gatk-GenotypeGVCFs-check': {
+        "run_time": 12,
+        "accepted_versions": ["v10"]
+    },
 }
+
 
 # accepted versions for completed pipelines
 accepted_versions = {
