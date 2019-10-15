@@ -61,9 +61,6 @@
                     {% if check.get('assc_action') %}
                         {{toggle_output(check['assc_action'], environment + '-' + check['name'] + '-assc-action', 'Toggle associated action')}}
                     {% endif %}
-                    {% if check.get('latest_action') %}
-                        {{toggle_output(check['latest_action'], environment + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
-                    {% endif %}
                     {% if check.get('action') and is_admin %}
                         <form class="commonstyle own-line" action={{context + "view_run/" + environment + '/' + check['action'] + '/action'}} method="GET">
                             <input type="hidden" name="check_name" value={{check['name']}} />
@@ -83,8 +80,13 @@
                 </div>
                 <div class="col-sm-3 pull-right" style="text-align: right;">
                     <a class="commonstyle own-line" target="_blank" href={{context + 'history/' + environment + '/' + check['name']}}>
-                        Result history
+                        Result History
                     </a>
+                    {% if check.get('latest_action') %}
+                      <a class="commonstyle own-line" target="_blank" href={{context + 'history/' + environment + '/' + check['latest_action']}}>
+                        Action History
+                      </a>
+                    {% endif %}
                     {% if check.get('kwargs') %}
                         <form action={{context + 'view_run/' + environment + '/' + check['name'] + '/check'}} method="GET" target="_blank">
                             {% for kwarg in check['kwargs'] %}
