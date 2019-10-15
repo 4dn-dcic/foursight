@@ -499,6 +499,7 @@ def cgapS2_status(connection, **kwargs):
     for a_sample in all_samps:
         input_bam = a_sample['processed_files'][0]
         input_bam_id = input_bam['@id']
+        input_bam_acc = input_bam['display_title'].split('.')[0]
         if not input_bam['display_title'].endswith('.bam'):
             check.full_output['problematic_runs'].append({a_sample['accession']: 'processed file is not bam'})
             continue
@@ -525,7 +526,7 @@ def cgapS2_status(connection, **kwargs):
         s1_input_files = {'input_bam': input_bam_id,
                           'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
                           'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-        s1_tag = a_sample['accession'] + '_S2run1_' + input_bam['accession']
+        s1_tag = a_sample['accession'] + '_S2run1_' + input_bam_acc
         running, problematic_run, missing_run, step1_status, step1_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
                                                                                                'step1', s1_tag, input_bam_id,
                                                                                                s1_input_files,  step1_name, 'gvcf', {}, 'human')
