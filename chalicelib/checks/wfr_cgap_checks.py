@@ -547,7 +547,7 @@ def cgapS2_status(connection, **kwargs):
         completed = []
         if step2_status == 'complete':
             final_status += ' completed'
-            existing_pf = a_sample['processed_files']
+            existing_pf = [i['@id'] for i in a_sample['processed_files']]
             completed = [a_sample['accession'], {'processed_files': existing_pf + [step2_output]}]
             print('COMPLETED', step2_output)
         else:
