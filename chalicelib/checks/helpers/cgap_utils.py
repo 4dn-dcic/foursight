@@ -266,7 +266,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'input_gvcf']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
