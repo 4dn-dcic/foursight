@@ -206,20 +206,19 @@ mapper = {'human': 'GRCh38',
           'chicken': 'galGal5'}
 
 # color map states bed file
-states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI5GSVVMO/', 'num_states': 9}}
+states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
 
 
-# check for a specific tag in a file
+# check for a specific tag in a states file
 def isthere_states_tag(a_file):
     if a_file.get('tags'):
         for tag in a_file['tags']:
             if tag not in states_file_type:
-                return (False, 'invalid_tag')
+                return (False, 'unregistered_tag')
             else:
                 return (True, '')
     else:
         return (False, 'missing_tag')
-
 
 def extract_nz_chr(acc, auth):
     """Get RE nz recognition site length and chrsize file accession

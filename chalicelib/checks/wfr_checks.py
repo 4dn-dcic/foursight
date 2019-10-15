@@ -1523,7 +1523,7 @@ def bed2multivec_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'bed2multivec_status')
+    check = CheckResult(connection, 'bed2multivec_status')
     my_auth = connection.ff_keys
     check.action = "bed2multivec_start"
     check.brief_output = []
@@ -1563,7 +1563,11 @@ def bed2multivec_status(connection, **kwargs):
     for a_res in res:
         response, reason = wfr_utils.isthere_states_tag(a_res)
         if response:
-            healthy_res.append(a_res)
+            if a_res.get('higlass_defaults'):
+                healthy_res.append(a_res)  # only run in files with tags and higlass_defaults
+            else:
+                prb_res.append((a_res, 'missing higlass_defaults'))
+
         else:
             prb_res.append((a_res, reason))
 
@@ -1573,7 +1577,8 @@ def bed2multivec_status(connection, **kwargs):
 
     if not healthy_res and prb_res:
         check.full_output['prob_files'] = [{'missing tag': [i[0]['accession'] for i in prb_res if i[1] == 'missing_tag'],
-                                            'invalid tag': [i[0]['accession'] for i in prb_res if i[1] == 'invalid_tag']}]
+                                            'unregistered tag': [[i[0]['accession'], i[0]['tags']] for i in prb_res if i[1] == 'unregistered_tag'],
+                                            'missing higlass_defaults': [i[0]['accession'] for i in prb_res if i[1] == 'missing higlass_defaults']}]
 
         check.status = 'WARN'
         return check
@@ -1590,7 +1595,7 @@ def bed2multivec_status(connection, **kwargs):
 def bed2multivec_start(connection, **kwargs):
     """Start bed2multivec runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'bed2multivec_start')
+    action = ActionResult(connection, 'bed2multivec_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     bed2multivec_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1611,11 +1616,14 @@ def bed2multivec_start(connection, **kwargs):
 
         chrsize = wfr_utils.chr_size[org]
         rows_info = wfr_utils.states_file_type[states_tag]['color_mapper']
+        num_rows = wfr_utils.states_file_type[states_tag]['num_states']
+        # Add function to calculate resolution automatically
+        parameters = {'parameters': {'num_rows': num_rows, 'resolution': 6250}}
 
         inp_f = {'bedfile': a_file['@id'], 'chromsizes_file': chrsize, 'rows_info': rows_info}
         wfr_setup = wfrset_utils.step_settings('bedtomultivec',
                                                'no_organism',
-                                               attributions)
+                                               attributions, parameters)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
