@@ -128,8 +128,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     """
     # you should provide key or all_wfrs
     # assert key or all_wfrs
-    if wfr_name not in workflow_details:
-        assert wfr_name in workflow_details
+    assert wfr_name in workflow_details
     # get default accepted versions if not provided
     if not versions:
         versions = workflow_details[wfr_name]['accepted_versions']

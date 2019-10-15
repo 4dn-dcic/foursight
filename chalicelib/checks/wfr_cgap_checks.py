@@ -496,6 +496,7 @@ def cgapS2_status(connection, **kwargs):
     step1_name = 'workflow_gatk-HaplotypeCaller'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
     # iterate over samples
+    print(len(all_samps))
     for a_sample in all_samps:
         input_bam = a_sample['processed_files'][0]
         input_bam_id = input_bam['@id']
