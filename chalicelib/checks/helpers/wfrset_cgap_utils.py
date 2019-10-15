@@ -170,7 +170,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'parameters': {},
                 "config": {
                     "instance_type": "c5n.18xlarge",
-                    "ebs_size": "2x",
+                    "ebs_size": "3x",
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
                 },
