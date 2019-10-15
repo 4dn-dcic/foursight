@@ -519,11 +519,11 @@ def process_view_result(connection, res, is_admin):
                 # not yet run, display an icon status to signify this
                 res['assc_action_status'] = 'ready'
 
+            # If we got an action, set its name to 'latest action'
+            # so we can grab it's history via same method as this check
             latest_action = action.get_latest_result()
             if latest_action:
-                res['latest_action'] = json.dumps(latest_action, indent=4)
-            else:
-                res['latest_action'] = 'Not yet run.'
+                res['latest_action'] = latest_action.get('name')
         else:
             del res['action']
     return res
