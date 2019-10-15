@@ -73,6 +73,7 @@ def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
     step_output = ''
     # Lets get the repoinse from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
+    # new_step_input_file must be the @id
     if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
         input_resp = [i for i in all_files if i['@id'] == new_step_input_file[0]][0]
         name_tag = '_'.join([i.split('/')[2] for i in new_step_input_file])

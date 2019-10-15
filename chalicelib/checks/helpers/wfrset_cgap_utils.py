@@ -163,6 +163,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 }
             },
             # ROUND 2 runs
+            # S2 run1
             {
                 'app_name': 'workflow_gatk-HaplotypeCaller',
                 'workflow_uuid': 'd6465b5f-1768-4c94-b025-edc96e101ac5',
@@ -180,6 +181,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap upstream pipeline'}
                         }
             },
+            # S2 run2
             {
                 'app_name': 'workflow_gatk-GenotypeGVCFs-check',
                 'workflow_uuid': 'be5b7395-ddf1-4d60-85ea-650d5d9210ea',
