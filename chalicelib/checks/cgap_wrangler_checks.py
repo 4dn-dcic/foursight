@@ -125,7 +125,7 @@ def patch_suggested_replacements(connection, **kwargs):
 
 
 @check_function(id_list=None)
-def check_status_mismatch(connection, **kwargs):
+def check_status_mismatch_cgap(connection, **kwargs):
     STATUS_LEVEL = {
         'released': 10,
         'current': 10,
@@ -141,7 +141,7 @@ def check_status_mismatch(connection, **kwargs):
         'deleted': 0,
         'inactive': 0,
     }
-    check = CheckResult(connection, 'check_status_mismatch')
+    check = CheckResult(connection, 'check_status_mismatch_cgap')
     id_list = kwargs['id_list']
 
     MIN_CHUNK_SIZE = 200
