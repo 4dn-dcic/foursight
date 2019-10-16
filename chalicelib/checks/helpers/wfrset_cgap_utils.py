@@ -148,7 +148,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'recalibrated_bam': {
                         'genome_assembly': genome,
                         'file_type': 'alignments',
-                        'description': 'processed output from cgap pipeline'}
+                        'description': 'processed output from cgap upstream pipeline'}
                         }
             },
             {  # step 8
@@ -161,6 +161,43 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
                 }
+            },
+            # ROUND 2 runs
+            # S2 run1
+            {
+                'app_name': 'workflow_gatk-HaplotypeCaller',
+                'workflow_uuid': 'd6465b5f-1768-4c94-b025-edc96e101ac5',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5n.18xlarge",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'gvcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'gVCF',
+                        'description': 'processed output from cgap upstream pipeline'}
+                        }
+            },
+            # S2 run2
+            {
+                'app_name': 'workflow_gatk-GenotypeGVCFs-check',
+                'workflow_uuid': 'be5b7395-ddf1-4d60-85ea-650d5d9210ea',
+                'parameters': {},
+                "config": {
+                    "instance_type": "t3.medium",
+                    "ebs_size": "2x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'raw VCF',
+                        'description': 'processed output from cgap upstream pipeline'}
+                        }
             },
             {  # temp
                 'app_name': '',
