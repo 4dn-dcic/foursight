@@ -168,11 +168,11 @@ def check_status_mismatch_cgap_clinical(connection, **kwargs):
     for es_item in es_items:
         label = es_item.get('object').get('display_title')
         desc = es_item.get('object').get('description')
-        inst = es_item.get('embedded').get('institute').get('display_title')
+        inst = es_item.get('embedded').get('institution').get('display_title')
         status = es_item.get('properties').get('status', 'in review')
         id2links[es_item.get('uuid')] = [li.get('uuid') for li in es_item.get('linked_uuids_embedded')]
         id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
-        id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'lab': lab,
+        id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'institution': inst,
                                         'description': desc}
 
     mismatches = {}
@@ -194,7 +194,7 @@ def check_status_mismatch_cgap_clinical(connection, **kwargs):
                                                   chunk_size=200, is_generator=True)
             for litem in linked2chk:
                 luuid = litem.get('uuid')
-                listatus = litem.get('properties').get('status', 'in review by lab')
+                listatus = litem.get('properties').get('status', 'in review')
                 llabel = litem.get('item_type')
                 lstatus = STATUS_LEVEL.get(listatus)
                 # add info to tracking dict
@@ -211,11 +211,11 @@ def check_status_mismatch_cgap_clinical(connection, **kwargs):
             eset = id2item.get(eid)
             key = '{} | {} | {} | {}'.format(
                 eid, eset.get('label'), eset.get('status'), eset.get('description'))
-            brief_output.setdefault(eset.get('lab'), {}).update({key: len(mids)})
+            brief_output.setdefault(eset.get('institution'), {}).update({key: len(mids)})
             for mid in mids:
                 mitem = id2item.get(mid)
                 val = '{} | {} | {}'.format(mid, mitem.get('label'), mitem.get('status'))
-                full_output.setdefault(eset.get('lab'), {}).setdefault(key, []).append(val)
+                full_output.setdefault(eset.get('institution'), {}).setdefault(key, []).append(val)
         check.status = 'WARN'
         check.summary = "MISMATCHED STATUSES FOUND"
         check.description = 'Viewable Items have linked items with unviewable status'
