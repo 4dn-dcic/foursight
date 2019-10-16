@@ -125,7 +125,7 @@ def patch_suggested_replacements(connection, **kwargs):
 
 
 @check_function(id_list=None)
-def check_status_mismatch_cgap(connection, **kwargs):
+def check_status_mismatch_cgap_clinical(connection, **kwargs):
     STATUS_LEVEL = {
         'released': 10,
         'current': 10,
@@ -166,15 +166,14 @@ def check_status_mismatch_cgap(connection, **kwargs):
         itemids = [item.get('uuid') for item in itemres]
     es_items = ff_utils.get_es_metadata(itemids, key=connection.ff_keys, chunk_size=200, is_generator=True)
     for es_item in es_items:
-        label = es_item.get('embedded').get('display_title')
+        label = es_item.get('object').get('display_title')
         desc = es_item.get('object').get('description')
-        lab = es_item.get('embedded').get('lab').get('display_title')
-        status = es_item.get('properties').get('status', 'in review by lab')
-        opfs = _get_all_other_processed_files(es_item)
+        inst = es_item.get('embedded').get('institute').get('display_title')
+        status = es_item.get('properties').get('status', 'in review')
         id2links[es_item.get('uuid')] = [li.get('uuid') for li in es_item.get('linked_uuids_embedded')]
         id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
         id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'lab': lab,
-                                        'description': desc, 'to_ignore': list(set(opfs))}
+                                        'description': desc}
 
     mismatches = {}
     linked2get = {}
@@ -188,11 +187,7 @@ def check_status_mismatch_cgap(connection, **kwargs):
             if not lstatus:  # add to list to get
                 linked2get.setdefault(lid, []).append(iid)
             elif lstatus < istatus:  # status mismatch for an item we've seen before
-                ignore = id2item.get(iid).get('to_ignore')
-                if ignore is not None and lid in ignore:
-                    continue
-                else:
-                    mismatches.setdefault(iid, []).append(lid)
+                mismatches.setdefault(iid, []).append(lid)
 
         if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
             linked2chk = ff_utils.get_es_metadata(list(linked2get.keys()), key=connection.ff_keys,
@@ -206,11 +201,7 @@ def check_status_mismatch_cgap(connection, **kwargs):
                 id2status[luuid] = lstatus
                 id2item[luuid] = {'label': llabel, 'status': listatus}
                 for lfid in set(linked2get[luuid]):
-                    # check to see if the linked item is something to ignore for that item
-                    ignore = id2item[lfid].get('to_ignore')
-                    if ignore is not None and luuid in ignore:
-                        continue
-                    elif lstatus < id2status[lfid]:  # status mismatch so add to report
+                    if lstatus < id2status[lfid]:  # status mismatch so add to report
                         mismatches.setdefault(lfid, []).append(luuid)
             linked2get = {}  # reset the linked id dict
     if mismatches:
@@ -227,7 +218,7 @@ def check_status_mismatch_cgap(connection, **kwargs):
                 full_output.setdefault(eset.get('lab'), {}).setdefault(key, []).append(val)
         check.status = 'WARN'
         check.summary = "MISMATCHED STATUSES FOUND"
-        check.description = 'Released or pre-release items have linked items with unreleased status'
+        check.description = 'Viewable Items have linked items with unviewable status'
         check.brief_output = brief_output
         check.full_output = full_output
     else:
