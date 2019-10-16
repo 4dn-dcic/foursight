@@ -13,7 +13,7 @@ import itertools
 
 
 @check_function(item_type=None)
-def suggestions_for_obs_items(connection, **kwargs):
+def suggestions_for_obsolete_items(connection, **kwargs):
     ''' Gets obsolete items currently Disorder and Phenotype and searches
         for the ontology term id as an alternative_id
         associated with live item(s).
@@ -21,7 +21,7 @@ def suggestions_for_obs_items(connection, **kwargs):
         To restrict the check to one item type include as parameter.
     '''
     id_field_map = {'Disorder': 'disorder_id', 'Phenotype': 'hpo_id'}
-    check = CheckResult(connection, 'suggestions_for_obs_items')
+    check = CheckResult(connection, 'suggestions_for_obsolete_items')
     check.action = "patch_suggested_replacements"
     check.fulloutput = {}
     chkstatus = None

@@ -1311,5 +1311,37 @@
         "group": "System checks",
         "schedule": {},
         "display": ["staging", "webdev", "mastertest", "hotseat", "cgapdev"]
+    },
+    "suggestions_for_obsolete_items" : {
+        "title": "Check for obsolete item suggestions",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_status_mismatch_cgap_clinical" : {
+        "title": "Check for status mismatches",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
