@@ -343,12 +343,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     exit_reason = 'out of time'
     dedup_msg = 'FS dedup uuid: %s' % kwargs['uuid']
     have_more_time = True
-    while True:
-    ...
-    if time_limit:
-        elapsed = round(time.time() - t0, 2)
-        if elapsed < time_limit:
-            break
+    while have_more_time:
         # end if we are spinning our wheels replacing the same uuids
         if (replaced + repeat_replaced) >= starting_count:
             exit_reason = 'starting uuids fully covered'
