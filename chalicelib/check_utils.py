@@ -232,16 +232,18 @@ def get_check_results(connection, checks=[], use_latest=False):
                 found = tempCheck.get_latest_result()
             else:
                 found = tempCheck.get_primary_result()
-                # checks with no records will return None. Skip IGNORE checks
-                if found and found.get('status') != 'IGNORE':
-                    check_results.append(found)
+            # checks with no records will return None. Skip IGNORE checks
+            if found and found.get('status') != 'IGNORE':
+                check_results.append(found)
+            if not found: # add placeholder check
+                check_results.append(create_placeholder_check(check_name))
+
     else:
         if use_latest:
-            check_results = connection.connections['es'].get_main_page_checks(primary=False)
-            check_results = list(filter(lambda obj: obj['name'] in checks, check_results))
-        else: # also filter by IGNORE on primaries
-            check_results = connection.connections['es'].get_main_page_checks()
-            check_results = list(filter(lambda obj: obj['status'] != 'IGNORE' and obj['name'] in checks, check_results))
+            check_results = connection.connections['es'].get_main_page_checks(checks, primary=False)
+        else:
+            check_results = connection.connections['es'].get_main_page_checks(checks)
+        check_results = list(filter(lambda obj: obj['status'] != 'IGNORE' and obj['name'] in checks, check_results))
 
     # sort them by status and then alphabetically by check_setup title
     stat_order = ['ERROR', 'FAIL', 'WARN', 'PASS']
@@ -333,3 +335,20 @@ def init_check_or_action_res(connection, check):
     if not check_str: # not a check or an action. abort
         return None
     return ActionResult(connection, check) if is_action else CheckResult(connection, check)
+
+
+def create_placeholder_check(check_name):
+    """
+    Creates a placeholder check for the given check_name to be rendered on the UI
+    in the case that this check has not been run yet.
+    """
+    _uuid = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')
+    placeholder = {
+        'name': check_name,
+        'uuid': _uuid,
+        'kwargs': {'uuid': _uuid, 'primary': True},
+        'status': 'WARN',
+        'summary': 'Check has not yet run',
+        'description': 'If queued, this check will run with default arguments'
+    }
+    return placeholder

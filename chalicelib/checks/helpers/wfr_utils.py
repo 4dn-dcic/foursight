@@ -882,6 +882,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 continue
             # Check Part 1 and See if all are okay
             exp_pairs = []
+            exp_margi_files = []
             for pair in exp_files[exp]:
                 part2 = 'ready'
                 input_bam = ""
@@ -890,6 +891,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 # if successful
                 if step1_result['status'] == 'complete':
                     input_bam = step1_result['out_bam']
+                    exp_margi_files.append(step1_result['out_bam'])
                 # if still running
                 elif step1_result['status'] == 'running':
                     part2 = 'not ready'
@@ -914,6 +916,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', all_wfrs=all_wfrs)
                 # if successful
                 if step2_result['status'] == 'complete':
+                    exp_margi_files.append(step2_result['out_pairs'])
                     exp_pairs.append(step2_result['out_pairs'])
                 # if still running
                 elif step2_result['status'] == 'running':
@@ -935,7 +938,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 part3 = 'not ready'
             else:
                 # if exps runs were fine, lets patch exp with all pairs produced
-                patch_data = exp_pairs
+                patch_data = exp_margi_files
                 complete['patch_opf'].append([exp, patch_data])
                 set_pairs.extend(exp_pairs)
 

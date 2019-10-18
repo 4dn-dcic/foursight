@@ -960,6 +960,18 @@
             }
         }
     },
+    "check_for_ontology_updates": {
+        "title": "Check for Ontology Updates",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5run_status" : {
         "title": "a) MD5run",
         "group": "Pipeline checks",
@@ -1249,7 +1261,19 @@
         }
     },
     "cgap_status" : {
-        "title": "c) CGAP pipeline",
+        "title": "c) CGAP pipeline Part I",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgapS2_status" : {
+        "title": "d) CGAP pipeline Part II",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1276,10 +1300,28 @@
         "group": "Elasticsearch checks",
         "schedule" : {
             "morning_checks": {
+                "staging": {
+                    "kwargs": {"primary": true}
+                },
+                "webdev": {
+                    "kwargs": {"primary": true}
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true}
+                },
                 "mastertest": {
+                    "kwargs": {"primary": true}
+                },
+                "cgapdev": {
                     "kwargs": {"primary": true}
                 }
             }
         }
+    },
+    "clean_s3_es_checks" : {
+        "title": "Wipe Checks Older Than One Month",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["staging", "webdev", "mastertest", "hotseat", "cgapdev"]
     }
 }
