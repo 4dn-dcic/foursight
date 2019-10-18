@@ -126,6 +126,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    error_at_failed_runs = 2
     # you should provide key or all_wfrs
     # assert key or all_wfrs
     assert wfr_name in workflow_details
@@ -190,7 +191,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # if status is error
     elif run_status == 'error':
         # are there too many failed runs
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
         return {'status': "no complete run, errrored"}
@@ -199,7 +200,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "running"}
     # this should be the timeout case
     else:
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many time-outs"}
         else:
             return {'status': "no completed run, time-out"}
