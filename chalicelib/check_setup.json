@@ -1323,5 +1323,17 @@
         "group": "System checks",
         "schedule": {},
         "display": ["staging", "webdev", "mastertest", "hotseat", "cgapdev"]
+    },
+    "states_files_without_higlass_defaults": {
+        "title": "states files without higlass_defaults",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
