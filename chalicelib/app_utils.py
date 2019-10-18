@@ -8,6 +8,7 @@ import boto3
 import datetime
 import ast
 import copy
+import requests
 from itertools import chain
 from dateutil import tz
 from base64 import b64decode
@@ -37,6 +38,8 @@ from .utils import (
     get_sqs_attributes
 )
 from .s3_connection import S3Connection
+
+DEFAULT_FAVICON = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -80,12 +83,12 @@ def init_connection(environ):
     Returns an FSConnection object or raises an error.
     """
     error_res = {}
-    environments = init_environments()
+    environments = init_environments(environ)
     # if still not there, return an error
     if environ not in environments:
         error_res = {
             'status': 'error',
-            'description': 'invalid environment provided. Should be one of: %s' % (str(list(environments.keys()))),
+            'description': 'environment %s is not valid!' % environ,
             'environment': environ,
             'checks': {}
         }
@@ -122,6 +125,12 @@ def check_authorization(request_dict, env=None):
     # grant admin if dev_auth equals secret value
     if dev_auth and dev_auth == os.environ.get('DEV_SECRET'):
         return True
+    # if we're on localhost, automatically grant authorization
+    # this looks bad but isn't because request authentication will
+    # still fail if local keys are not configured
+    src_ip = request_dict.get('context', {}).get('identity', {}).get('sourceIp', '')
+    if src_ip == '127.0.0.1':
+        return True
     token = get_jwt(request_dict)
     auth0_client = os.environ.get('CLIENT_ID', None)
     auth0_secret = os.environ.get('CLIENT_SECRET', None)
@@ -131,12 +140,13 @@ def check_authorization(request_dict, env=None):
                 return False  # we have no env to check auth
             # leeway accounts for clock drift between us and auth0
             payload = jwt.decode(token, b64decode(auth0_secret, '-_'), audience=auth0_client, leeway=30)
-            env_info = init_environments(env)
-            user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(),
-                                            ff_env=env_info[env]['ff_env'], add_on='frame=object')
-            if 'admin' in user_res['groups'] and payload.get('email_verified'):
-                # fully authorized
-                return True
+            for env_info in init_environments(env).values():
+                user_res = ff_utils.get_metadata('users/' + payload.get('email').lower(),
+                                            ff_env=env_info['ff_env'], add_on='frame=object')
+                if not ('admin' in user_res['groups'] and payload.get('email_verified')):
+                    # if unauthorized for one, unauthorized for all
+                    return False
+            return True
         except:
             pass
     return False
@@ -156,6 +166,20 @@ def get_jwt(request_dict):
                 cookie_dict[cookie_split[0]] = cookie_split[1]
     token = cookie_dict.get('jwtToken', None)
     return token
+
+
+def get_favicon(server):
+    """
+    Tries to grab favicon from the given server. If it's not found it will use
+    the default favicon (data)
+    """
+    try:
+        favicon = server + 'static/img/favicon-fs.ico'
+        res = requests.head(favicon)
+        assert res.status_code == 200
+    except:
+        favicon = DEFAULT_FAVICON
+    return favicon
 
 
 def get_domain_and_context(request_dict):
@@ -304,6 +328,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     html_resp.headers = {'Content-Type': 'text/html'}
     environments = init_environments()
     total_envs = []
+    servers = []
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
@@ -311,6 +336,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
         except Exception:
             connection = None
         if connection:
+            servers.append(connection.ff_server)
             grouped_results = get_grouped_check_results(connection)
             for group in grouped_results:
                 for title, result in group.items():
@@ -336,6 +362,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    first_env_favicon = get_favicon(servers[0]) # use first env
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
@@ -344,7 +371,8 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=first_env_favicon
     )
     html_resp.status_code = 200
     return process_response(html_resp)
@@ -357,11 +385,13 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     html_resp = Response('Foursight viewing suite')
     html_resp.headers = {'Content-Type': 'text/html'}
     total_envs = []
+    servers = []
     try:
         connection = init_connection(environ)
     except Exception:
         connection = None
     if connection:
+        servers.append(connection.ff_server)
         res_check = CheckResult(connection, check)
         if res_check:
             data = res_check.get_result_by_uuid(uuid)
@@ -385,6 +415,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    first_env_favicon = get_favicon(servers[0])
     html_resp.body = template.render(
         envs=total_envs,
         stage=get_stage_info()['stage'],
@@ -393,7 +424,8 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=first_env_favicon
     )
     html_resp.status_code = 200
     return process_response(html_resp)
@@ -487,11 +519,11 @@ def process_view_result(connection, res, is_admin):
                 # not yet run, display an icon status to signify this
                 res['assc_action_status'] = 'ready'
 
+            # If we got an action, set its name to 'latest action'
+            # so we can grab it's history via same method as this check
             latest_action = action.get_latest_result()
             if latest_action:
-                res['latest_action'] = json.dumps(latest_action, indent=4)
-            else:
-                res['latest_action'] = 'Not yet run.'
+                res['latest_action'] = latest_action.get('name')
         else:
             del res['action']
     return res
@@ -509,11 +541,13 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
     """
     html_resp = Response('Foursight history view')
     html_resp.headers = {'Content-Type': 'text/html'}
+    server = None
     try:
         connection = init_connection(environ)
     except Exception:
         connection = None
     if connection:
+        server = connection.ff_server
         history = get_foursight_history(connection, check, start, limit)
         history_kwargs = list(set(chain.from_iterable([l[2] for l in history])))
     else:
@@ -524,6 +558,10 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
+    if server is not None:
+        favicon = get_favicon(server)
+    else:
+        favicon = DEFAULT_FAVICON
     html_resp.body = template.render(
         env=environ,
         check=check,
@@ -539,7 +577,8 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
         domain=domain,
         context=context,
         running_checks=running_checks,
-        queued_checks=queued_checks
+        queued_checks=queued_checks,
+        favicon=favicon
     )
     html_resp.status_code = 200
     return process_response(html_resp)

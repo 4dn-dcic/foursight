@@ -1985,11 +1985,15 @@ def purge_cypress_items(connection, **kwargs):
             time_expired = True
             break
 
-        purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys)
-        if purge_response['status'] == 'success':
+        purge_response = {}
+        try:
+            purge_response = ff_utils.purge_metadata(view_conf_uuid, key=connection.ff_keys)
+        except Exception as exc:
+            purge_response['comment'] = str(exc)
+        if purge_response.get('status') == 'success':
             action_logs['items_purged'].append(view_conf_uuid)
         else:
-            action_logs['failed_to_purge'][view_conf_uuid] = purge_response["comment"]
+            action_logs['failed_to_purge'][view_conf_uuid] = purge_response['comment']
 
     action.status = 'DONE'
     action.output = action_logs

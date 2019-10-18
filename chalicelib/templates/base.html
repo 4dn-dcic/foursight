@@ -61,9 +61,6 @@
                     {% if check.get('assc_action') %}
                         {{toggle_output(check['assc_action'], environment + '-' + check['name'] + '-assc-action', 'Toggle associated action')}}
                     {% endif %}
-                    {% if check.get('latest_action') %}
-                        {{toggle_output(check['latest_action'], environment + '-' + check['name'] + '-latest-action', 'Toggle latest action')}}
-                    {% endif %}
                     {% if check.get('action') and is_admin %}
                         <form class="commonstyle own-line" action={{context + "view_run/" + environment + '/' + check['action'] + '/action'}} method="GET">
                             <input type="hidden" name="check_name" value={{check['name']}} />
@@ -83,8 +80,13 @@
                 </div>
                 <div class="col-sm-3 pull-right" style="text-align: right;">
                     <a class="commonstyle own-line" target="_blank" href={{context + 'history/' + environment + '/' + check['name']}}>
-                        Result history
+                        Result History
                     </a>
+                    {% if check.get('latest_action') %}
+                      <a class="commonstyle own-line" target="_blank" href={{context + 'history/' + environment + '/' + check['latest_action']}}>
+                        Action History
+                      </a>
+                    {% endif %}
                     {% if check.get('kwargs') %}
                         <form action={{context + 'view_run/' + environment + '/' + check['name'] + '/check'}} method="GET" target="_blank">
                             {% for kwarg in check['kwargs'] %}
@@ -130,10 +132,9 @@
     <!-- Optional Bootstrap theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
     <!-- Update with data soon -->
-    <link rel="shortcut icon" type="image/x-icon" href="https://data.4dnucleome.org/static/img/favicon-fs.ico">
+    <link rel="shortcut icon" type="image/x-icon" href={{favicon}}>
     <!-- Get variables needed within js from jinja -->
-    <meta id="fs_domain" data-domain="{{domain}}">
-    <meta id="fs_context" data-context="{{context}}">
+
     <style type="text/css">
     .html-scroll {
         overflow-y: scroll;
@@ -268,7 +269,7 @@
     <div class="container">
         <h3 class="center-element">
             <a class="title-image-hover opacity-transition" href={{context + 'view/data,staging'}}>
-                <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src="https://data.4dnucleome.org/static/img/favicon-fs.ico"></img>
+                <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src={{favicon}}></img>
             </a>
             <span>{{'Foursight (' + stage + ')'}}</span>
         </h3>
@@ -313,8 +314,8 @@
       }
     </script>
     <script type="text/javascript">
-        var domain = $("#fs_domain").data("domain");
-        var context = $("#fs_context").data("context");
+        var domain = "{{domain}}";
+        var context = "{{context}}";
         var lock = new Auth0Lock('DPxEwsZRnKDpk0VfVAxrStRKukN14ILB', 'hms-dbmi.auth0.com', {
             auth: {
                 redirectUrl: 'https://' + domain + context + 'callback/',
@@ -324,7 +325,7 @@
             },
             socialButtonStyle: 'big',
             languageDictionary: { title: "Log in" },
-            theme: { logo: 'https://data.4dnucleome.org/static/img/favicon-fs.ico' },
+            theme: { logo: "{{favicon}}" },
             allowedConnections: ['github', 'google-oauth2']
         });
     </script>

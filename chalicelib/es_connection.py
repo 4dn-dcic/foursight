@@ -8,6 +8,8 @@ from elasticsearch import (
 from elasticsearch_dsl import Search
 from dcicutils import es_utils
 from .utils import load_json
+from .check_utils import create_placeholder_check
+import datetime
 import json
 import time
 
@@ -181,7 +183,7 @@ class ESConnection(AbstractConnection):
         search.update_from_dict(doc)
         return self.search(search)
 
-    def get_main_page_checks(self, primary=True):
+    def get_main_page_checks(self, checks=None, primary=True):
         """
         Gets all checks for the main page. If primary is true then all checks will
         be primary, otherwise we use latest.
@@ -207,7 +209,16 @@ class ESConnection(AbstractConnection):
         }
         search = Search(using=self.es, index=self.index)
         search.update_from_dict(doc)
-        return self.search(search)
+        raw_result = self.search(search)
+        if checks is not None:
+            # figure out which checks we didn't find, add a placeholder check so
+            # that check is still rendered on the UI
+            raw_result = list(filter(lambda res: res['name'] in checks, raw_result))
+            found_checks = set(res['name'] for res in raw_result)
+            for check_name in checks:
+                if check_name not in found_checks:
+                    raw_result.append(create_placeholder_check(check_name))
+        return raw_result
 
     def list_all_keys(self):
         """

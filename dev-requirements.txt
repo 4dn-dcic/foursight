@@ -1,4 +1,4 @@
--e git+git://github.com/4dn-dcic/chalice.git#egg=chalice
+chalice==1.11.1
 pytest
 pytest-cov
 pytest-runner

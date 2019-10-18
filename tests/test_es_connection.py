@@ -124,6 +124,12 @@ class TestESConnection():
         else:
             res = self.es.get_main_page_checks(primary=False)
         assert len(res) == 2
+        checks_to_get = ['page_children_routes']
+        if type == 'primary':
+            res = self.es.get_main_page_checks(checks=checks_to_get)
+        else:
+            res = self.es.get_main_page_checks(checks=checks_to_get, primary=False)
+        assert len(res) == 1
         self.es.delete_keys(['page_children_routes/'+ type + '.json',
                              'check_status_mismatch/' + type + '.json'])
         self.es.refresh_index()
