@@ -134,16 +134,21 @@ class TestCheckUtils():
         checks_in_sched = check_utils.get_checks_within_schedule('not_a_real_schedule')
         assert (len(checks_in_sched) == 0)
 
-    def test_get_check_results(self):
+    @pytest.mark.parametrize('use_es', [True, False])
+    def test_get_check_results(self, use_es):
         # dict to compare uuids
         uuid_compares = {}
         # will get primary results by default
+        if not use_es:
+            self.connection.connections['es'] = None
         all_res_primary = check_utils.get_check_results(self.connection)
         for check_res in all_res_primary:
             assert (isinstance(check_res, dict))
             assert ('name' in check_res)
             assert ('status' in check_res)
             assert ('uuid' in check_res)
+            if check_res.get('summary') == 'Check has not yet run': # ignore placeholders
+                continue
             uuid_compares[check_res['name']] = check_res['uuid']
         # compare to latest results (which should be the same or newer)
         all_res_latest = check_utils.get_check_results(self.connection, use_latest=True)
@@ -158,9 +163,10 @@ class TestCheckUtils():
         one_res = check_utils.get_check_results(self.connection, checks=['indexing_progress'])
         assert (len(one_res) == 1)
         assert (one_res[0]['name'] == 'indexing_progress')
-        # bad check name
+        # bad check name, will now return a placeholder so len should be 1
         test_res = check_utils.get_check_results(self.connection, checks=['not_a_real_check'])
-        assert (len(test_res) == 0)
+        assert (len(test_res) == 1)
+        assert test_res[0]['summary'] == 'Check has not yet run'
 
     def test_get_grouped_check_results(self):
         grouped_results = check_utils.get_grouped_check_results(self.connection)
@@ -172,7 +178,7 @@ class TestCheckUtils():
     @pytest.mark.flaky
     def test_run_check_or_action(self):
         test_uuid = datetime.datetime.utcnow().isoformat()
-        check = utils.init_check_res(self.connection, 'test_random_nums')
+        check = run_result.CheckResult(self.connection, 'test_random_nums')
         # with a check (primary is True)
         test_info = ['test_checks/test_random_nums', {'primary': True, 'uuid': test_uuid}, [], 'xxx']
         check_res = check_utils.run_check_or_action(self.connection, test_info[0], test_info[1])
@@ -202,7 +208,7 @@ class TestCheckUtils():
         assert (primary_uuid < latest_uuid)
 
         # with an action
-        action = utils.init_action_res(self.connection, 'add_random_test_nums')
+        action = run_result.ActionResult(self.connection, 'add_random_test_nums')
         act_kwargs = {'primary': True, 'uuid': test_uuid, 'check_name': 'test_random_nums',
                       'called_by': test_uuid}
         test_info_2 = ['test_checks/add_random_test_nums', act_kwargs, [] ,'xxx']
@@ -260,3 +266,10 @@ class TestCheckUtils():
         # this output is a list
         assert ('by zero' in ''.join(action_res['output']))
         assert (action_res['description'] == 'Action failed to run. See output.')
+
+    def test_create_placeholder_check(self):
+        """ Tests that placeholder checks are properly generated """
+        placeholder = check_utils.create_placeholder_check('test_check')
+        assert placeholder['name'] == 'test_check'
+        assert placeholder['status'] == 'WARN'
+        assert placeholder['description'] == 'If queued, this check will run with default arguments'

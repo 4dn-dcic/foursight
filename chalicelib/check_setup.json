@@ -960,13 +960,25 @@
             }
         }
     },
+    "check_for_ontology_updates": {
+        "title": "Check for Ontology Updates",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5run_status" : {
         "title": "a) MD5run",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -990,7 +1002,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1002,7 +1014,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1230,7 +1242,7 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1242,19 +1254,31 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
         }
     },
     "cgap_status" : {
-        "title": "c) CGAP pipeline",
+        "title": "c) CGAP pipeline Part I",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgapS2_status" : {
+        "title": "d) CGAP pipeline Part II",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1267,6 +1291,47 @@
             "morning_checks": {
                 "all": {
                     "kwargs" : {"primary": true}
+                }
+            }
+        }
+    },
+    "elasticsearch_s3_count_diff" : {
+        "title": "S3/ES Check Count Differential",
+        "group": "Elasticsearch checks",
+        "schedule" : {
+            "morning_checks": {
+                "staging": {
+                    "kwargs": {"primary": true}
+                },
+                "webdev": {
+                    "kwargs": {"primary": true}
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true}
+                },
+                "mastertest": {
+                    "kwargs": {"primary": true}
+                },
+                "cgapdev": {
+                    "kwargs": {"primary": true}
+                }
+            }
+        }
+    },
+    "clean_s3_es_checks" : {
+        "title": "Wipe Checks Older Than One Month",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["staging", "webdev", "mastertest", "hotseat", "cgapdev"]
+    },
+    "states_files_without_higlass_defaults": {
+        "title": "states files without higlass_defaults",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }

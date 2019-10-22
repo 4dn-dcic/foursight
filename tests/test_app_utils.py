@@ -10,7 +10,7 @@ class TestAppUtils():
     def test_init_connection(self):
         # test the fs connection
         assert (self.conn.fs_env == 'mastertest')
-        assert (self.conn.s3_connection)
+        assert (self.conn.connections)
         # test the ff connection
         assert (self.conn.ff_server)
         assert (self.conn.ff_es)
@@ -19,10 +19,22 @@ class TestAppUtils():
         assert (isinstance(self.conn.ff_keys, dict))
         assert ({'key', 'secret', 'server'} <= set(self.conn.ff_keys.keys()))
 
+    def test_get_favicon(self):
+        """ Tests that given 'mastertest' we get the right url for favicon """
+        expected = self.conn.ff_server + 'static/img/favicon-fs.ico'
+        actual = app_utils.get_favicon(self.conn.ff_server)
+        assert expected == actual
+
     def test_init_bad_connection(self):
         with pytest.raises(Exception) as exc:
             app_utils.init_connection('not_an_environment')
-        assert ('invalid environment provided' in str(exc.value))
+        assert ('is not valid!' in str(exc.value))
+
+    def test_bad_view_result(self):
+        """ Tests giving a bad response to process_view_result """
+        res = 'a string, not a dict response'
+        error = app_utils.process_view_result(self.conn, res, False)
+        assert error['status'] == 'ERROR'
 
     def test_init_environments(self):
         environments = app_utils.init_environments() # default to 'all' environments
@@ -70,7 +82,7 @@ class TestAppUtils():
         """ Tests same functionality as above except with a valid jwt """
         from unittest import mock
         payload1 = {
-            "email": "William_Ronchetti@hms.harvard.edu",  # use something else?
+            "email": "carl_vitzthum@hms.harvard.edu",
             "email_verified": True,
             "sub": "1234567890",
             "name": "Dummy",
@@ -79,6 +91,26 @@ class TestAppUtils():
         with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
             with mock.patch('jwt.decode', return_value=payload1):
                 auth = app_utils.check_authorization({}, env='mastertest')
+            assert auth
+        with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
+            with mock.patch('jwt.decode', return_value=payload1):
+                # test authenticating on more than one env
+                auth = app_utils.check_authorization({}, env='mastertest,cgap-dev')
+            assert auth
+        # build a 'request header' that just consists of the context we would expect
+        # to see if authenticating from localhost
+        ctx = {
+            'context': {
+                'identity' : {
+                    'sourceIp': '127.0.0.1'
+                }
+            }
+        }
+        auth = app_utils.check_authorization(ctx, env='all')
+        assert auth
+        with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
+            with mock.patch('jwt.decode', return_value=payload1):
+                auth = app_utils.check_authorization({}, env='data,staging') # test more than one
             assert auth
             # Unverified email should fail
             payload2 = {

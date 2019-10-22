@@ -55,6 +55,10 @@ workflow_details = {
         "run_time": 24,
         "accepted_versions": ["v4"]
     },
+    "bedtomultivec": {
+        "run_time": 24,
+        "accepted_versions": ["v4"]
+    },
     "bedtobeddb": {
         "run_time": 24,
         "accepted_versions": ["v2"]
@@ -85,15 +89,15 @@ workflow_details = {
     },
     'imargi-processing-fastq': {
         "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_3"]
+        "accepted_versions": ["1.1.1_dcic_4"]
     },
     'imargi-processing-bam': {
         "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_3"]
+        "accepted_versions": ["1.1.1_dcic_4"]
     },
     'imargi-processing-pairs': {
         "run_time": 200,
-        "accepted_versions": ["1.1.1_dcic_3"]
+        "accepted_versions": ["1.1.1_dcic_4"]
     }
 }
 
@@ -118,7 +122,7 @@ accepted_versions = {
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
-    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_3'],
+    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
     # Preliminary - Released to network
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
@@ -201,6 +205,20 @@ mapper = {'human': 'GRCh38',
           'fruit-fly': 'dm6',
           'chicken': 'galGal5'}
 
+# color map states bed file
+states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+
+
+# check for a specific tag in a states file
+def isthere_states_tag(a_file):
+    if a_file.get('tags'):
+        for tag in a_file['tags']:
+            if tag not in states_file_type:
+                return (False, 'unregistered_tag')
+            else:
+                return (True, '')
+    else:
+        return (False, 'missing_tag')
 
 def extract_nz_chr(acc, auth):
     """Get RE nz recognition site length and chrsize file accession
@@ -254,6 +272,9 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # tag as problematic if problematic runs are this many
+    # if there are n failed runs, don't proceed
+    error_at_failed_runs = 2
     # you should provide key or all_wfrs
     assert key or all_wfrs
     if wfr_name not in workflow_details:
@@ -323,7 +344,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # if status is error
     elif run_status == 'error':
         # are there too many failed runs
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
         return {'status': "no complete run, errrored"}
@@ -332,7 +353,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "running"}
     # this should be the timeout case
     else:
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many time-outs"}
         else:
             return {'status': "no completed run, time-out"}
@@ -882,6 +903,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 continue
             # Check Part 1 and See if all are okay
             exp_pairs = []
+            exp_margi_files = []
             for pair in exp_files[exp]:
                 part2 = 'ready'
                 input_bam = ""
@@ -890,6 +912,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 # if successful
                 if step1_result['status'] == 'complete':
                     input_bam = step1_result['out_bam']
+                    exp_margi_files.append(step1_result['out_bam'])
                 # if still running
                 elif step1_result['status'] == 'running':
                     part2 = 'not ready'
@@ -914,6 +937,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', all_wfrs=all_wfrs)
                 # if successful
                 if step2_result['status'] == 'complete':
+                    exp_margi_files.append(step2_result['out_pairs'])
                     exp_pairs.append(step2_result['out_pairs'])
                 # if still running
                 elif step2_result['status'] == 'running':
@@ -935,7 +959,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 part3 = 'not ready'
             else:
                 # if exps runs were fine, lets patch exp with all pairs produced
-                patch_data = exp_pairs
+                patch_data = exp_margi_files
                 complete['patch_opf'].append([exp, patch_data])
                 set_pairs.extend(exp_pairs)
 

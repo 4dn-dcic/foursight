@@ -51,11 +51,11 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {
                 'app_name': 'workflow_add-readgroups-check',
-                'workflow_uuid': '548e63a4-1936-4f68-8e8d-8e4658767911',
+                'workflow_uuid': '1ebf697c-949d-46b2-b9a4-8b1a7699ef1f',
                 'parameters': {},
                 "config": {
-                    "instance_type": "t3.large",
-                    "ebs_size": "3x",
+                    "instance_type": "c5.2xlarge",
+                    "ebs_size": "2.2x",
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
                     },
@@ -68,10 +68,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {
                 'app_name': 'workflow_merge-bam-check',
-                'workflow_uuid': '30802d8c-20c3-4eea-82dd-dd34621569c6',
+                'workflow_uuid': '4853a03a-8c0c-4624-a45d-c5206a72907b',
                 'parameters': {},
                 "config": {
-                    "instance_type": "t3.medium",
+                    "instance_type": "c5.2xlarge",
                     "ebs_size": "2.2x",
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
@@ -148,7 +148,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'recalibrated_bam': {
                         'genome_assembly': genome,
                         'file_type': 'alignments',
-                        'description': 'processed output from cgap pipeline'}
+                        'description': 'processed output from cgap upstream pipeline'}
                         }
             },
             {  # step 8
@@ -172,6 +172,44 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                  "EBS_optimized": True,
                  "behavior_on_capacity_limit": "wait_and_retry"
                }
+            },
+
+            # ROUND 2 runs
+            # S2 run1
+            {
+                'app_name': 'workflow_gatk-HaplotypeCaller',
+                'workflow_uuid': 'd6465b5f-1768-4c94-b025-edc96e101ac5',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5n.18xlarge",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'gvcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'gVCF',
+                        'description': 'processed output from cgap upstream pipeline'}
+                        }
+            },
+            # S2 run2
+            {
+                'app_name': 'workflow_gatk-GenotypeGVCFs-check',
+                'workflow_uuid': 'be5b7395-ddf1-4d60-85ea-650d5d9210ea',
+                'parameters': {},
+                "config": {
+                    "instance_type": "t3.medium",
+                    "ebs_size": "2x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                },
+                'custom_pf_fields': {
+                    'vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'raw VCF',
+                        'description': 'processed output from cgap upstream pipeline'}
+                        }
             },
             {  # temp
                 'app_name': '',

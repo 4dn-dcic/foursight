@@ -93,8 +93,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             'out_bam': {
                 'genome_assembly': genome,
-                'file_type': 'intermediate file',
-                'description': "This is an intermediate file from the MARGI processing pipeline"}
+                'file_type': 'alignment',
+                'description': "This is an alignment file for fastq pairs from the MARGI processing pipeline"}
         }},
         {
         'app_name': 'imargi-processing-bam',
@@ -143,6 +143,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "bedtobeddb",
         'parameters': {"assembly": pairs_assembly},
         "workflow_uuid": "9d575e99-5ffe-4ea4-b74f-ad40f621cd39",
+        "overwrite_input_extra": False
+        },
+        {
+        "app_name": "bedtomultivec",
+        "workflow_uuid": "a52b9b9d-1654-4967-883f-4d2adee77bc7",
+        'config': {'mem': 4, 'cpu': 2, 'EBS_optimized': 'false'},
         "overwrite_input_extra": False
         },
         {
@@ -208,6 +214,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     ]
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
+
     update_config = {
         "ebs_type": "gp2",
         "spot_instance": True,

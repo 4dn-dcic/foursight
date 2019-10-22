@@ -14,7 +14,8 @@ from chalicelib import (
     utils,
     run_result,
     fs_connection,
-    s3_connection
+    s3_connection,
+    es_connection
 )
 from dcicutils import s3_utils, ff_utils
 from dateutil import tz
