@@ -628,7 +628,7 @@ def bamqcCGAP_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
-    check = init_check_res(connection, 'bamqcCGAP_status')
+    check = CheckResult(connection, 'bamqcCGAP_status')
     my_auth = connection.ff_keys
     check.action = "bamqcCGAP_start"
     check.brief_output = []
@@ -675,7 +675,7 @@ def bamqcCGAP_status(connection, **kwargs):
 def bamqcCGAP_start(connection, **kwargs):
     """Start bamqcCGAP runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = init_action_res(connection, 'bamqcCGAP_start')
+    action = ActionResult(connection, 'bamqcCGAP_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     bamqcCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
