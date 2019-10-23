@@ -50,7 +50,16 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9", "v10"]
     },
+    'workflow_gatk-HaplotypeCaller': {
+        "run_time": 12,
+        "accepted_versions": ["v10"]
+    },
+    'workflow_gatk-GenotypeGVCFs-check': {
+        "run_time": 12,
+        "accepted_versions": ["v10"]
+    },
 }
+
 
 # accepted versions for completed pipelines
 accepted_versions = {
@@ -73,6 +82,7 @@ def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
     step_output = ''
     # Lets get the repoinse from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
+    # new_step_input_file must be the @id
     if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
         input_resp = [i for i in all_files if i['@id'] == new_step_input_file[0]][0]
         name_tag = '_'.join([i.split('/')[2] for i in new_step_input_file])
@@ -116,10 +126,10 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    error_at_failed_runs = 2
     # you should provide key or all_wfrs
     # assert key or all_wfrs
-    if wfr_name not in workflow_details:
-        assert wfr_name in workflow_details
+    assert wfr_name in workflow_details
     # get default accepted versions if not provided
     if not versions:
         versions = workflow_details[wfr_name]['accepted_versions']
@@ -181,7 +191,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # if status is error
     elif run_status == 'error':
         # are there too many failed runs
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
         return {'status': "no complete run, errrored"}
@@ -190,7 +200,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "running"}
     # this should be the timeout case
     else:
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many time-outs"}
         else:
             return {'status': "no completed run, time-out"}
@@ -257,7 +267,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'input_gvcf']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
