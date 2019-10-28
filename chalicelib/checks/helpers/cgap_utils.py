@@ -58,6 +58,10 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v10"]
     },
+    "workflow_qcboard-bam": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
 }
 
 
@@ -483,3 +487,22 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
     action.output = action_log
     action.status = 'DONE'
     return action
+
+
+def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
+    if not file_meta.get('quality_metric'):
+        return False
+
+    qc_results = ff_utils.get_metadata(file_meta['quality_metric']['uuid'], key=my_auth)
+
+    if qc_results['display_title'].startswith('QualityMetricQclist'):
+        if not qc_results.get('qc_list'):
+            return False
+
+        for qc in qc_results['qc_list']:
+            if qc_metric_name not in qc['value']['display_title']:
+                return False
+    else:
+        if qc_metric_name not in qc_results['display_title']:
+            return False
+    return True
