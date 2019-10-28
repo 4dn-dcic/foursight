@@ -1,0 +1,56 @@
+{
+    "prod": {
+      "api_handler_name": "foursight-prod",
+      "api_handler_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod",
+      "lambda_functions": {
+        "foursight-prod-ten_min_checks": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-ten_min_checks",
+          "type": "scheduled_event"
+        },
+        "foursight-prod-thirty_min_checks": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-thirty_min_checks",
+          "type": "scheduled_event"
+        },
+        "foursight-prod-morning_checks": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-morning_checks",
+          "type": "scheduled_event"
+        },
+        "foursight-prod-check_runner": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-prod-check_runner",
+          "type": "pure_lambda"
+        }
+      },
+      "backend": "api",
+      "chalice_version": "1.1.0",
+      "rest_api_id": "we0v248yi4",
+      "api_gateway_stage": "api",
+      "region": "us-east-1"
+    },
+    "dev": {
+      "api_handler_name": "foursight-dev",
+      "api_handler_arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev",
+      "lambda_functions": {
+        "foursight-dev-ten_min_checks": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-ten_min_checks",
+          "type": "scheduled_event"
+        },
+        "foursight-dev-thirty_min_checks": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-thirty_min_checks",
+          "type": "scheduled_event"
+        },
+        "foursight-dev-morning_checks": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-morning_checks",
+          "type": "scheduled_event"
+        },
+        "foursight-dev-check_runner": {
+          "arn": "arn:aws:lambda:us-east-1:643366669028:function:foursight-dev-check_runner",
+          "type": "pure_lambda"
+        }
+      },
+      "backend": "api",
+      "chalice_version": "1.1.0",
+      "rest_api_id": "kpqxwgx646",
+      "api_gateway_stage": "api",
+      "region": "us-east-1"
+    }
+}
