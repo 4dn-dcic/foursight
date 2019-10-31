@@ -28,7 +28,7 @@ def wipe_build_indices(connection, **kwargs):
     BUILD_ES = 'search-fourfront-builds-uhevxdzfcv7mkm5pj5svcri3aq.us-east-1.es.amazonaws.com:80'
     client = es_utils.create_es_client(BUILD_ES, True)
     full_output = client.indices.delete(index='*')
-    if full_output['acknowledged'] != 'true':
+    if full_output['acknowledged'] != True:
         check.status = 'FAIL'
         check.summary = check.description = 'Failed to wipe all test indices, see full output'
     return check

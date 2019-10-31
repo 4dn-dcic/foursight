@@ -22,7 +22,7 @@ Manual testing of your check
 
 Let's assume that you've already finished steps 1 through 3 in the list above (these are pretty much covered in the getting started and checks documentation). For step 4, it is recommended that you go into a local Python interpreter and run your check directly to ensure that it provides the output you want. Below is some code run from the root directory of this project that will outline manual testing of the ``items_created_in_the_past_day`` check contained within the ``wrangler_checks`` check module. The code below is run from the Python interpreter.
 
-.. code-block::
+.. code-block:: python
 
    >>> import app
    # create a Foursight connection to the 'mastertest' environment
@@ -44,7 +44,7 @@ It's important to note that if you return the ``check`` at the end of your funct
 
 To overwrite the primary check result, you must set the ``primary=True`` key word argument for your check. If you want to, you can pass this dictionary into the ``run_check_or_action`` function:
 
-.. code-block::
+.. code-block:: python
 
    # will overwrite the latest result for items_created_in_the_past_day, which won't display on the UI
    app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {})
@@ -61,6 +61,11 @@ The Foursight UI is also a useful place to test your checks, since it is very ea
 
 Just make sure to do your testing on the development stage of Foursight, which you can deploy to locally using ``python -m deploy dev``. Please keep in mind that you will need to have some environment variables locally to make this work.
 
+Automated Check Testing
+^^^^^^^^^^^^^^^^^^^^^^^
+
+In the below section we document some code on how to test out a Foursight check in the Python interpreter. We've also provided a script in the top level ``scripts`` directory that will automate this process. If you `cd` into the script directory and run ``python test_check.py`` some help on how to use it will appear.
+
 Manual testing of your action
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -70,7 +75,7 @@ Actions function very similarly to checks when run individually. In fact, testin
 
 **WARNING:** when manually running an action, be aware that it actually be executed on the given Foursight connection. For that reason, when in testing stages it is best to remove any impactful code within an action or insert a break point to have manual control.
 
-.. code-block::
+.. code-block:: python
 
    >>> import app
    # create a Foursight connection to the 'mastertest' environment
@@ -90,7 +95,7 @@ Let's say you want to run a whole schedule and not an individual check. To test 
 
 **NOTE:** if a check setup has kwargs including ``primary=True``\ , then the result will be written live to the Foursight UI. Omitting this argument when testing your check may be desirable.
 
-.. code-block::
+.. code-block:: python
 
    >>> import app
    # queue_scheduled_checks takes the environment name directly (not connection)
@@ -111,7 +116,7 @@ Scheduling your checks
 
 Okay, so you've written a check function and want to make a new schedule for it. To schedule it using a CRON or rate expression, go to the top of app.py and create a new scheduled function (leading with the ``@app.schedule()`` decorator). Two examples are below:
 
-.. code-block::
+.. code-block:: python
 
    @app.schedule(Rate(1, unit=Rate.HOURS))
    def one_hour_checks(event):
@@ -120,7 +125,7 @@ Okay, so you've written a check function and want to make a new schedule for it.
 
 Or scheduling with a CRON expression... for more info, `see here <http://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html>`_.
 
-.. code-block::
+.. code-block:: python
 
    # run at 10 am UTC every day
    @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
