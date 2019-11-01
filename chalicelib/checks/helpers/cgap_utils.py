@@ -20,43 +20,43 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_picard-MarkDuplicates-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_sort-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_gatk-ApplyBQSR-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_index-sorted-bam": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9"]
     },
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
-        "accepted_versions": ["v10"]
+        "accepted_versions": ["v10", "v11"]
     },
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
-        "accepted_versions": ["v10"]
+        "accepted_versions": ["v10", "v11"]
     },
     "workflow_qcboard-bam": {
         "run_time": 12,
