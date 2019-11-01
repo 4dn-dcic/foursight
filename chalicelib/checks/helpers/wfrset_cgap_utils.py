@@ -162,6 +162,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "behavior_on_capacity_limit": "wait_and_retry"
                 }
             },
+            {
+               "app_name": "workflow_qcboard-bam",
+               "parameters": {},
+               "workflow_uuid": "ad8716a3-b6e8-4021-bbc6-b0cefc9c4dd8",
+               "config": {
+                 "instance_type": "t3.medium",
+                 "ebs_size": "1.3x",
+                 "EBS_optimized": True,
+                 "behavior_on_capacity_limit": "wait_and_retry"
+               }
+            },
+
             # ROUND 2 runs
             # S2 run1
             {

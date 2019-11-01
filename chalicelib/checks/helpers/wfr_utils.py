@@ -55,6 +55,10 @@ workflow_details = {
         "run_time": 24,
         "accepted_versions": ["v4"]
     },
+    "bedtomultivec": {
+        "run_time": 24,
+        "accepted_versions": ["v4"]
+    },
     "bedtobeddb": {
         "run_time": 24,
         "accepted_versions": ["v2"]
@@ -201,6 +205,20 @@ mapper = {'human': 'GRCh38',
           'fruit-fly': 'dm6',
           'chicken': 'galGal5'}
 
+# color map states bed file
+states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+
+
+# check for a specific tag in a states file
+def isthere_states_tag(a_file):
+    if a_file.get('tags'):
+        for tag in a_file['tags']:
+            if tag not in states_file_type:
+                return (False, 'unregistered_tag')
+            else:
+                return (True, '')
+    else:
+        return (False, 'missing_tag')
 
 def extract_nz_chr(acc, auth):
     """Get RE nz recognition site length and chrsize file accession
@@ -254,6 +272,9 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # tag as problematic if problematic runs are this many
+    # if there are n failed runs, don't proceed
+    error_at_failed_runs = 2
     # you should provide key or all_wfrs
     assert key or all_wfrs
     if wfr_name not in workflow_details:
@@ -323,7 +344,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # if status is error
     elif run_status == 'error':
         # are there too many failed runs
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
         return {'status': "no complete run, errrored"}
@@ -332,7 +353,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "running"}
     # this should be the timeout case
     else:
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many time-outs"}
         else:
             return {'status': "no completed run, time-out"}

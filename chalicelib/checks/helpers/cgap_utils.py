@@ -58,6 +58,10 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v10"]
     },
+    "workflow_qcboard-bam": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
+    },
 }
 
 
@@ -126,6 +130,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    error_at_failed_runs = 2
     # you should provide key or all_wfrs
     # assert key or all_wfrs
     assert wfr_name in workflow_details
@@ -190,7 +195,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # if status is error
     elif run_status == 'error':
         # are there too many failed runs
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
         return {'status': "no complete run, errrored"}
@@ -199,7 +204,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "running"}
     # this should be the timeout case
     else:
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many time-outs"}
         else:
             return {'status': "no completed run, time-out"}
@@ -482,3 +487,22 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
     action.output = action_log
     action.status = 'DONE'
     return action
+
+
+def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
+    if not file_meta.get('quality_metric'):
+        return False
+
+    qc_results = ff_utils.get_metadata(file_meta['quality_metric']['uuid'], key=my_auth)
+
+    if qc_results['display_title'].startswith('QualityMetricQclist'):
+        if not qc_results.get('qc_list'):
+            return False
+
+        for qc in qc_results['qc_list']:
+            if qc_metric_name not in qc['value']['display_title']:
+                return False
+    else:
+        if qc_metric_name not in qc_results['display_title']:
+            return False
+    return True
