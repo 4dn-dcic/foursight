@@ -54,7 +54,15 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
+    'workflow_gatk-CombineGVCFs': {
+        "run_time": 12,
+        "accepted_versions": ["v10", "v11"]
+    },
     'workflow_gatk-GenotypeGVCFs-check': {
+        "run_time": 12,
+        "accepted_versions": ["v10", "v11"]
+    },
+    'workflow_gatk-VQSR-check': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
