@@ -1335,5 +1335,16 @@
                 }
             }
         }
+    },
+    "wipe_build_indices" : {
+        "title": "Wipe Build Indicies",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true}
+                }
+            }
+        }
     }
 }
