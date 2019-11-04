@@ -31,6 +31,7 @@ def wipe_build_indices(connection, **kwargs):
     if full_output['acknowledged'] != True:
         check.status = 'FAIL'
         check.summary = check.description = 'Failed to wipe all test indices, see full output'
+    check.full_output = full_output
     return check
 
 
