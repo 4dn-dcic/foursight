@@ -46,6 +46,7 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9", "v10", "v11"]
     },
+    # defunct step 8
     "workflow_index-sorted-bam": {
         "run_time": 12,
         "accepted_versions": ["v9"]
