@@ -1272,18 +1272,6 @@
             }
         }
     },
-    "cgapS2_status" : {
-        "title": "d) CGAP pipeline Part II",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "elastic_search_space" : {
         "title": "ES Disk Space Check",
         "group": "Elasticsearch checks",
@@ -1332,6 +1320,17 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                }
+            }
+        }
+    },
+    "wipe_build_indices" : {
+        "title": "Wipe Build Indicies",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true}
                 }
             }
         }
