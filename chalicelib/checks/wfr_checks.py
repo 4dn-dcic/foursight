@@ -1633,3 +1633,99 @@ def bed2multivec_start(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     return action
+
+@check_function(lab_title=None, start_date=None)
+def bamqc_status(connection, **kwargs):
+    """Searches for annotated bam files that do not have a qc object
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'bamqc_status')
+    my_auth = connection.ff_keys
+    check.action = "bamqc_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'WARN'
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    # Build the query (find bam files produced bt the Hi-C Post Alignment Processing wfr)
+    default_stati = 'released&status=uploaded&status=released+to+project'
+    wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
+    stati = 'status=' + (kwargs.get('status') or default_stati)
+    query = 'search/?file_type=alignment&{}'.format(stati)
+    query += '&type=FileProcessed'
+    query += wfr_outputs
+    query += '&quality_metric.display_title=No+value'
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    target_files = []
+    if not res:
+        check.action_message = 'No action required at this moment'
+        check.summary = 'All Good!'
+        return check
+
+    for a_res in res:
+        target_files.append(a_res)
+    check.summary = '{} files need a bamqc'. format(len(res))
+    check.full_output['prob_files'] = [i['accession'] for i in target_files]
+    check.status = 'WARN'
+    check = wfr_utils.check_runs_without_output(target_files, check, 'bamqc', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bamqc_start(connection, **kwargs):
+    """Start bamqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'bamqc_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bamqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bamqc_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bamqc_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        org = [k for k, v in wfr_utils.mapper.items() if v == a_file['genome_assembly']][0]
+        chrsize = wfr_utils.chr_size[org]
+
+        inp_f = {'bamfile': a_file['@id'], 'chromsizes_file': chrsize}
+        wfr_setup = wfrset_utils.step_settings('bamqc',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action

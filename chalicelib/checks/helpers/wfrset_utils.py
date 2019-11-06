@@ -210,7 +210,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'insulation score - diamond',
                 'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
             }
-        }
+        },
+        {
+        "app_name": "bamqc",
+        "workflow_uuid": "dcfff5c8-2ec0-498b-bc89-074f7b681303",
+        "overwrite_input_extra": False
+        },
     ]
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
