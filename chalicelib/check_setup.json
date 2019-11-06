@@ -1244,6 +1244,10 @@
                 "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -1256,6 +1260,10 @@
                 "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -1267,6 +1275,10 @@
             "hourly_checks": {
                 "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
