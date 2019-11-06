@@ -149,7 +149,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # get default run out time
     if not run:
         run = workflow_details[wfr_name]['run_time']
-    workflows = emb_file.get('workflow_run_inputs')
+    workflows = emb_file.get('workflow_run_inputs', [])
     wfr = {}
     run_status = 'did not run'
 
