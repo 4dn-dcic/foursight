@@ -162,11 +162,23 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "behavior_on_capacity_limit": "wait_and_retry"
                 }
             },
+            {
+               "app_name": "workflow_qcboard-bam",
+               "parameters": {},
+               "workflow_uuid": "ad8716a3-b6e8-4021-bbc6-b0cefc9c4dd8",
+               "config": {
+                 "instance_type": "t3.medium",
+                 "ebs_size": "1.3x",
+                 "EBS_optimized": True,
+                 "behavior_on_capacity_limit": "wait_and_retry"
+               }
+            },
+
             # ROUND 2 runs
             # S2 run1
             {
                 'app_name': 'workflow_gatk-HaplotypeCaller',
-                'workflow_uuid': 'd6465b5f-1768-4c94-b025-edc96e101ac5',
+                'workflow_uuid': '7fd67e19-3425-45f8-8149-c7cac4278fdb',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5n.18xlarge",
@@ -184,7 +196,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             # S2 run2
             {
                 'app_name': 'workflow_gatk-GenotypeGVCFs-check',
-                'workflow_uuid': 'be5b7395-ddf1-4d60-85ea-650d5d9210ea',
+                'workflow_uuid': '4fbad226-859d-40d4-8192-10c305e819da',
                 'parameters': {},
                 "config": {
                     "instance_type": "t3.medium",

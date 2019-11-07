@@ -978,7 +978,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1002,7 +1002,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1014,7 +1014,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1272,18 +1272,6 @@
             }
         }
     },
-    "cgapS2_status" : {
-        "title": "d) CGAP pipeline Part II",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "elastic_search_space" : {
         "title": "ES Disk Space Check",
         "group": "Elasticsearch checks",
@@ -1323,5 +1311,28 @@
         "group": "System checks",
         "schedule": {},
         "display": ["staging", "webdev", "mastertest", "hotseat", "cgapdev"]
+    },
+    "states_files_without_higlass_defaults": {
+        "title": "states files without higlass_defaults",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "wipe_build_indices" : {
+        "title": "Wipe Build Indicies",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true}
+                }
+            }
+        }
     }
 }
