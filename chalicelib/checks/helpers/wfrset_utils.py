@@ -217,7 +217,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     update_config = {
         "ebs_type": "gp2",
-        "spot_instance": True,
+        "spot_instance": False,
         "ebs_iops": "",
         "log_bucket": "tibanna-output",
         "key_name": "4dn-encode",
