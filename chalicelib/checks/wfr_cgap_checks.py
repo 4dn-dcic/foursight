@@ -208,10 +208,9 @@ def fastqcCGAP_status(connection, **kwargs):
     res = []
     # check if the qc_metric is in the file
     for a_file in results:
-        results = ff_utils.get_metadata(a_file, key=my_auth)
-        qc_metric = cgap_utils.is_there_my_qc_metric(results, 'QualityMetricFastqc', my_auth)
+        qc_metric = cgap_utils.is_there_my_qc_metric(a_file, 'QualityMetricFastqc', my_auth)
         if not qc_metric:
-            res.append(results)
+            res.append(a_file)
 
     if not res:
         check.summary = 'All Good!'
