@@ -104,23 +104,23 @@ workflow_details = {
 # accepted versions for completed pipelines
 accepted_versions = {
     # OFFICIAL
-    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
-    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
-    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-RE
-    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-NORM
-    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE
-    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
-    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
-    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
-    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
     # Preliminary - Released to network
@@ -219,6 +219,7 @@ def isthere_states_tag(a_file):
                 return (True, '')
     else:
         return (False, 'missing_tag')
+
 
 def extract_nz_chr(acc, auth):
     """Get RE nz recognition site length and chrsize file accession
@@ -485,8 +486,8 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
-def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
-    """Find fastq files from experiment set, exclude miseq by default
+def find_fastq_info(my_rep_set, fastq_files, type=None):
+    """Find fastq files from experiment set
     expects my_rep_set to be set response in frame object (search result)
     will check if files are paired or not, and if paired will give list of lists for each exp
     if not paired, with just give list of files per experiment.
@@ -522,10 +523,6 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
             # skip pair no 2
             if file_resp.get('paired_end') == '2':
                 continue
-            # exclude miseq
-            if exclude_miseq:
-                if file_resp.get('instrument') == 'Illumina MiSeq':
-                    continue
             # check that file has a pair
             f1 = file_resp['@id']
             f2 = ""
