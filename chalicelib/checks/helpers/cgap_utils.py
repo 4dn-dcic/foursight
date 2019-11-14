@@ -392,7 +392,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
 
 
 def find_fastq_info(exp, fastq_files):
-    """Find fastq files from experiment set, exclude miseq by default
+    """Find fastq files from experiment set
     expects my_rep_set to be set response in frame object (search result)
     will check if files are paired or not, and if paired will give list of lists for each exp
     if not paired, with just give list of files per experiment.
