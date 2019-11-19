@@ -172,6 +172,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'DpnII': '/files-reference/4DNFIBNAPW3O/',
                    'HindIII': '/files-reference/4DNFI823MBKE/',
                    'NcoI': '/files-reference/4DNFI3HVU2OD/',
+                   'MspI': '/files-reference/4DNFI2JHR3OI/',
+                   'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',

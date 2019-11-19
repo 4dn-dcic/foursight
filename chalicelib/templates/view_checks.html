@@ -2,7 +2,7 @@
 
 {% block content %}
     <ul class="top-level-list">
-        {% for env in envs %}
+        {% for env in view_envs %}
         <li>
             <h4 style="color:#666">
                 <span>{{'Environment: ' + env['environment']}}</span>
