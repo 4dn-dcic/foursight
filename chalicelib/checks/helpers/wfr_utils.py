@@ -113,7 +113,7 @@ accepted_versions = {
     'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-NORM
     'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
-    # Preliminary - Released to network  # NO-RE
+    # OFFICIAL  # NO-RE
     'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
