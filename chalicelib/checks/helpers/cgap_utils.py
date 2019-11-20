@@ -20,7 +20,7 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v8", "v9", "v10", "v11"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,

@@ -301,8 +301,6 @@ def cgap_status(connection, **kwargs):
     step8_name = 'workflow_gatk-HaplotypeCaller'
 
     for a_sample in all_samples:
-        print('===================')
-        print(a_sample['accession'])
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
