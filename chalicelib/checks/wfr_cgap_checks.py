@@ -521,12 +521,13 @@ def cgapS2_status(connection, **kwargs):
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-    q = '/search/?type=Sample&processed_files.display_title!=No+value'
+
+    query_base = '/search/?type=SampleProcessing'
+    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
+    q = query_base + version_filter
     res = ff_utils.search_metadata(q, my_auth)
-    # get the ones with only one file in processed file,
-    all_samps = [i for i in res if len(i.get('processed_files', [])) == 1]
-    # check if anything left after filtering
-    if not all_samps:
+    # check if anything in scope
+    if not res:
         return check
     # list step names
     step1_name = 'workflow_gatk-HaplotypeCaller'
