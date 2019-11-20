@@ -530,11 +530,13 @@ def cgapS2_status(connection, **kwargs):
     if not res:
         return check
     # list step names
-    step1_name = 'workflow_gatk-HaplotypeCaller'
+    step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
-    # iterate over samples
-    print(len(all_samps))
-    for a_sample in all_samps:
+    step3_name = 'workflow_gatk-VQSR-check'
+    
+    # iterate over msa
+    print(len(res))
+    for a_sample in res:
         input_bam = a_sample['processed_files'][0]
         input_bam_id = input_bam['@id']
         input_bam_acc = input_bam['display_title'].split('.')[0]
