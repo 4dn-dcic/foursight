@@ -46,7 +46,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'raw_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {
@@ -63,7 +63,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'bam_w_readgroups': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {
@@ -80,7 +80,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'merged_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 4
@@ -97,7 +97,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'dupmarked_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 5
@@ -114,7 +114,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'sorted_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 6
@@ -131,7 +131,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'recalibration_report': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 7
@@ -224,7 +224,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'temp': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             }
             ]
