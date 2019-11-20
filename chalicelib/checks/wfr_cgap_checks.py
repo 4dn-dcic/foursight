@@ -319,7 +319,9 @@ def cgap_status(connection, **kwargs):
                 all_uploaded = False
 
         if not all_uploaded:
-            check.brief_output.append(a_sample['accession'] + ' skipped, waiting for file upload')
+            final_status = a_sample['accession'] + ' skipped, waiting for file upload'
+            print(final_status)
+            check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
             continue
 
@@ -419,9 +421,15 @@ def cgap_status(connection, **kwargs):
 
         final_status = a_sample['accession']
         completed = []
+        pipeline_tag = cgap_partI_version[-1]
+
         if step8_status == 'complete':
             final_status += ' completed'
-            completed = [a_sample['accession'], {'processed_files': [step7_output, step8_output]}]
+            completed = [
+                a_sample['accession'],
+                {'processed_files': [step7_output, step8_output],
+                 'completed_processes': [pipeline_tag]}
+                         ]
             print('COMPLETED', step8_output)
         else:
             if missing_run:
@@ -432,6 +440,7 @@ def cgap_status(connection, **kwargs):
         # add dictionaries to main ones
         set_acc = a_sample['accession']
         check.brief_output.append(final_status)
+        print(final_status)
         if running:
             check.full_output['running_runs'].append({set_acc: running})
         if missing_run:
