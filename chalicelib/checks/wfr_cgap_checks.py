@@ -321,7 +321,7 @@ def cgap_status(connection, **kwargs):
                 all_uploaded = False
 
         if not all_uploaded:
-            check.brief_output.append(a_sample['accession'], 'skipped, waiting for file upload')
+            check.brief_output.append(a_sample['accession'] + ' skipped, waiting for file upload')
             check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
             continue
 
@@ -408,28 +408,23 @@ def cgap_status(connection, **kwargs):
                                                                                                    'step7', a_sample['accession'], step6_output,
                                                                                                    s7_input_files,  step7_name, 'recalibrated_bam', {}, 'human')
 
-        s1_input_files = {'input_bam': step7_output,
-                          'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                          'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-        s1_tag = a_sample['accession'] + '_S2run1_' + input_bam_acc
-        running, problematic_run, missing_run, step1_status, step1_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
-                                                                                               'step1', s1_tag, input_bam_id,
-                                                                                               s1_input_files,  step1_name, 'gvcf', {}, 'human')
         # RUN STEP 8
         if step7_status != 'complete':
             step8_status = ""
         else:
-            s8_input_files = {'bam': step7_output}
+            s8_input_files = {'input_bam': step7_output,
+                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
             running, problematic_run, missing_run, step8_status, step8_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
                                                                                                    'step8', a_sample['accession'], step7_output,
-                                                                                                   s8_input_files,  step8_name, '', {}, 'human', no_output=True)
+                                                                                                   s8_input_files,  step8_name, 'gvcf', {}, 'human')
 
         final_status = a_sample['accession']
         completed = []
-        if step7_status == 'complete':
+        if step8_status == 'complete':
             final_status += ' completed'
-            completed = [a_sample['accession'], {'processed_files': [step7_output]}]
-            print('COMPLETED', step7_output)
+            completed = [a_sample['accession'], {'processed_files': [step7_output, step8_output]}]
+            print('COMPLETED', step8_output)
         else:
             if missing_run:
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
