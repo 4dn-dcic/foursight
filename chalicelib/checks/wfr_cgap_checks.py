@@ -436,6 +436,8 @@ def cgap_status(connection, **kwargs):
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
             if running:
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
 
         # add dictionaries to main ones
         set_acc = a_sample['accession']
