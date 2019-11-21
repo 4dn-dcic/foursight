@@ -51,18 +51,22 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
+    # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
+    # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
+    # part II step 2
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
+    # part III step 3
     'workflow_gatk-VQSR-check': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
@@ -75,9 +79,9 @@ workflow_details = {
 
 
 # accepted versions for completed pipelines
-accepted_versions = {
-    'WGS':  ["WGS_Pipeline_V8"]
-    }
+# accepted_versions = {
+#     'WGS':  ["WGS_Pipeline_V8"]
+#     }
 
 # Reference Files
 bwa_index = {'human': 'GAPFI4U1HXIY'}

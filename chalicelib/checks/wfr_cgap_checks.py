@@ -522,8 +522,8 @@ def cgapS2_status(connection, **kwargs):
         check.full_output = {}
         return check
 
-    query_base = '/search/?type=SampleProcessing'
-    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
+    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
+    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
     q = query_base + version_filter
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
@@ -533,10 +533,11 @@ def cgapS2_status(connection, **kwargs):
     step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
     step3_name = 'workflow_gatk-VQSR-check'
-    
+
     # iterate over msa
     print(len(res))
-    for a_sample in res:
+    for a_msa in res:
+
         input_bam = a_sample['processed_files'][0]
         input_bam_id = input_bam['@id']
         input_bam_acc = input_bam['display_title'].split('.')[0]
