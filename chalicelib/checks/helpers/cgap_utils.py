@@ -51,18 +51,22 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
+    # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
+    # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
+    # part II step 2
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
     },
+    # part III step 3
     'workflow_gatk-VQSR-check': {
         "run_time": 12,
         "accepted_versions": ["v10", "v11"]
@@ -75,9 +79,9 @@ workflow_details = {
 
 
 # accepted versions for completed pipelines
-accepted_versions = {
-    'WGS':  ["WGS_Pipeline_V8"]
-    }
+# accepted_versions = {
+#     'WGS':  ["WGS_Pipeline_V8"]
+#     }
 
 # Reference Files
 bwa_index = {'human': 'GAPFI4U1HXIY'}
@@ -326,7 +330,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "run_id": run_name}
     # input_json['env_name'] = 'fourfront-cgap'
     input_json['step_function_name'] = 'tibanna_zebra'
-    input_json['public_postrun_json'] = True
+    # input_json['public_postrun_json'] = True
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
