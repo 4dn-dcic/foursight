@@ -168,6 +168,22 @@ chr_size = {"human": "4DNFI823LSII",
             "fruit-fly": '4DNFIBEEN92C',
             "chicken": "4DNFIQFZW4DX"}
 
+# star index for rna Seq
+rna_star_index = {"human": "4DNFI3FCGSW2",
+                  "mouse": "4DNFINJIU765"}
+
+# star index for rna Seq
+rna_rsem_index = {"human": "4DNFIB4HV398",
+                  "mouse": "4DNFI2GFI8KN"}
+
+# chromosome sizes for rna Seq
+rna_chr_size = {"human": "4DNFIZJB62D1",
+                "mouse": "4DNFIBP173GC"}
+
+# id to gene type for rna Seq
+rna_t2g = {"human": "4DNFIHBJI984",
+           "mouse": "4DNFINBJ25DT"}
+
 re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'DpnII': '/files-reference/4DNFIBNAPW3O/',
                    'HindIII': '/files-reference/4DNFI823MBKE/',
@@ -1355,7 +1371,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
-        
+
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
         for i in exp_files:
             print(i, exp_files[i])
@@ -1370,6 +1386,15 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
+
+        if refs['organism'] not in ['mouse', 'human']:
+            msg = 'Chip not ready for ' + refs['organism']
+            print(msg)
+            set_summary += "| " + msg
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: msg})
+            continue
+
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
             set_summary += "| skipped - no chrsize/bwa"
