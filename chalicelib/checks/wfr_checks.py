@@ -1658,15 +1658,15 @@ def rna_seq_status(connection, **kwargs):
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
 
-    # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
-        return check
+    # # check indexing queue
+    # env = connection.ff_env
+    # indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    # if indexing_queue:
+    #     check.status = 'PASS'  # maybe use warn?
+    #     check.brief_output = ['Waiting for indexing queue to clear']
+    #     check.summary = 'Waiting for indexing queue to clear'
+    #     check.full_output = {}
+    #     return check
 
     # Build the query, add date and lab if available
     user_query = kwargs.get('query')
