@@ -1387,7 +1387,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             continue
 
         if refs['organism'] not in ['mouse', 'human']:
-            msg = 'Chip not ready for ' + refs['organism']
+            msg = 'RNA seq not ready for ' + refs['organism']
             print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
@@ -1399,9 +1399,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             if not exp_files.get(exp):
                 continue
 
-            # exp resp
-
-            # stand_info
             strand_info = ''
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
             tags = exp_resp.get('tags')
@@ -1409,47 +1406,79 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 stand_info = exp_resp.get('standedness')
 
             if not strand_info:
+                final_status = '{} Skipped - {} missing strandedness verification'.format(
+                    a_set['accession'],
+                    exp_resp['accession'])
+                check.brief_output.append(final_status)
+                check.full_output['skipped'].append({set_acc: final_status})
+                break
 
+            # run unstranded pipeline
+            app_name = ''
+            # set parameters
+            pars = {
+                'rna.strandedness': '',
+                'rna.strandedness_direction': '',
+                'rna.endedness': ''
+            }
+            if strand_info == 'unstranded':
+                pars['rna.strandedness'] = 'unstranded'
+                pars['strandedness_direction'] = 'unstranded'
+                app_name = 'encode-rnaseq-unstranded'
+            elif strand_info in ['reverse', 'forward']:
+                pars['rna.strandedness'] = 'stranded'
+                pars['strandedness_direction'] = strand_info
+                app_name = 'encode-rnaseq-stranded'
 
+            # add more parameters and get status report
+            input_files = exp_files[exp]
+            if paired == 'Yes':
+                pars['endedness'] = 'paired'
+                input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0][0]][0]
+            elif paired == 'No':
+                pars['endedness'] = ''
+                input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0]][0]
+            step1_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
 
-
-
-            for pair in exp_files[exp]:
+            # if successful
+            if step1_result['status'] == 'complete':
+                # create processed files list for experiment
+                exp_files = []
+                for a_type in ['rna.outbam',
+                               'rna.plusbw',
+                               'rna.minusbw',
+                               'rna.outbw',
+                               'rna.gene_expression',
+                               'rna.isoform_expression']
+                if a_type in step1_result:
+                    exp_files.append(step1_result[a_type])
+                complete['patch_opf'].append([exp, exp_files])
+            # if still running
+            elif step1_result['status'] == 'running':
+                part2 = 'not ready'
+                running.append(['step1', exp, pair])
+            # if run is not successful
+            elif step1_result['status'].startswith("no complete run, too many"):
+                part2 = 'not ready'
+                problematic_run.append(['step1', exp, pair])
+            else:
+                part2 = 'not ready'
+                # add part 1
                 if paired == 'Yes':
-                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
+                    inp_f = {'fastq': pair[0], 'fastq2': pair[1],
+                             'bwaIndex': refs['bwa_ref'],
+                             'chromsizes': refs['chrsize_ref']}
+                    name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
                 elif paired == 'No':
-                    pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
-                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
-                # if successful
-                if step1_result['status'] == 'complete':
-                    all_files.extend([step1_result['filtered_sorted_deduped_bam'],
-                                      step1_result['count_bg']])
-                # if still running
-                elif step1_result['status'] == 'running':
-                    part2 = 'not ready'
-                    running.append(['step1', exp, pair])
-                # if run is not successful
-                elif step1_result['status'].startswith("no complete run, too many"):
-                    part2 = 'not ready'
-                    problematic_run.append(['step1', exp, pair])
-                else:
-                    part2 = 'not ready'
-                    # add part 1
-                    if paired == 'Yes':
-                        inp_f = {'fastq': pair[0], 'fastq2': pair[1],
-                                 'bwaIndex': refs['bwa_ref'],
-                                 'chromsizes': refs['chrsize_ref']}
-                        name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
-                    elif paired == 'No':
-                        inp_f = {'fastq': pair,
-                                 'bwaIndex': refs['bwa_ref'],
-                                 'chromsizes': refs['chrsize_ref']}
-                        name_tag = pair.split('/')[2]
-                    overwrite = {}
-                    if winsize:
-                        overwrite = {'parameters': {'winsize': winsize}}
-                    missing_run.append(['step1', ['repliseq-parta', refs['organism'], overwrite], inp_f, name_tag])
-            # are all step1s complete
+                    inp_f = {'fastq': pair,
+                             'bwaIndex': refs['bwa_ref'],
+                             'chromsizes': refs['chrsize_ref']}
+                    name_tag = pair.split('/')[2]
+                overwrite = {}
+                if winsize:
+                    overwrite = {'parameters': {'winsize': winsize}}
+                missing_run.append(['step1', ['repliseq-parta', refs['organism'], overwrite], inp_f, name_tag])
+        # are all step1s complete
             if part2 == 'ready':
                 # add files for experiment opf
                 complete['patch_opf'].append([exp, all_files])
