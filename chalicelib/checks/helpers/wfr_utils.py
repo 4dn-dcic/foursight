@@ -1367,7 +1367,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                     'add_tag': []}
         set_summary = ""
         set_acc = a_set['accession']
-        part3 = 'ready'
+        final_status = 'ready'
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
@@ -1375,11 +1375,10 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
         for i in exp_files:
             print(i, exp_files[i])
-        print()
-        continue
 
         paired = refs['pairing']
         set_summary = " - ".join([set_acc, refs['organism'], refs['f_size']])
+
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
@@ -1395,20 +1394,26 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             check.full_output['skipped'].append({set_acc: msg})
             continue
 
-        # skip if missing reference
-        if not refs['bwa_ref'] or not refs['chrsize_ref']:
-            set_summary += "| skipped - no chrsize/bwa"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
-            continue
         # cycle through the experiments, skip the ones without usable files
-        part3 = 'ready'  # switch for watching the set
         for exp in exp_files.keys():
             if not exp_files.get(exp):
                 continue
-            # Check Part 1 and See if all are okay
-            all_files = []
-            part2 = 'ready'  # switch for watching the exp
+
+            # exp resp
+
+            # stand_info
+            strand_info = ''
+            exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
+            tags = exp_resp.get('tags')
+            if 'verified_standedness' in tags:
+                stand_info = exp_resp.get('standedness')
+
+            if not strand_info:
+
+
+
+
+
             for pair in exp_files[exp]:
                 if paired == 'Yes':
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
