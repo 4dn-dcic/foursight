@@ -210,6 +210,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'insulation score - diamond',
                 'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
             }
+        },
+        # temp
+        {
+        "app_name": "",
+        "wf_uuid": "",
+        "parameters": {},
+        'custom_pf_fields': {
+            '': {
+                'genome_assembly': genome,
+                'file_type': '',
+                'description': ''}
+            }
         }
     ]
 
