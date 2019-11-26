@@ -211,6 +211,74 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
             }
         },
+        # RNA SEQ
+        {
+        "app_name": "encode-rnaseq-stranded",
+        "wf_uuid": "4dn-dcic-lab:wf-encode-rnaseq-stranded",
+        "parameters": {
+            'rna.strandedness': 'stranded',
+            'rna.strandedness_direction': '',
+            'rna.endedness': ''
+        },
+        'custom_pf_fields': {
+            'rna.outbam': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.plusbw': {
+                'genome_assembly': genome,
+                'file_type': 'read counts',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.minusbw': {
+                'genome_assembly': genome,
+                'file_type': 'read counts',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.gene_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.isoform_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            }
+            }
+        },
+        {
+        "app_name": "encode-rnaseq-unstranded",
+        "wf_uuid": "4dn-dcic-lab:wf-encode-rnaseq-unstranded",
+        "parameters": {
+            'rna.strandedness': 'unstranded',
+            'rna.strandedness_direction': 'unstranded',
+            'rna.endedness': 'paired'
+        },
+        'custom_pf_fields': {
+            'rna.outbam': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.outbw': {
+                'genome_assembly': genome,
+                'file_type': 'read counts',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.gene_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.isoform_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            }
+            }
+        },
         # temp
         {
         "app_name": "",
