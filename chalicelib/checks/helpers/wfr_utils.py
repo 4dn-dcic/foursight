@@ -97,7 +97,15 @@ workflow_details = {
     },
     'imargi-processing-pairs': {
         "run_time": 200,
-        "accepted_versions": ["1.1.1_dcic_4"]
+        "accepted_versions": ["1.1"]
+    },
+    'encode-rnaseq-stranded': {
+        "run_time": 200,
+        "accepted_versions": ["1.1"]
+    },
+    'encode-rnaseq-unstranded': {
+        "run_time": 200,
+        "accepted_versions": ["1.1"]
     }
 }
 
@@ -141,6 +149,8 @@ accepted_versions = {
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
     'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1'],
+    # Testing for now from ENCONDE
+    'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
     'single cell Repli-seq': [''],
     'cryomilling TCC': [''],
     'single cell Hi-C': [''],
@@ -149,7 +159,6 @@ accepted_versions = {
     'MC-Hi-C': [''],
     'Hi-ChIP': [''],
     'DamID-seq': [''],
-    'RNA-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
     'GAM': [''],
@@ -1135,7 +1144,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'rna.fastqs_R1']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1377,7 +1386,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             print(i, exp_files[i])
 
         paired = refs['pairing']
-        set_summary = " - ".join([set_acc, refs['organism'], refs['f_size']])
+        organism = refs['organism']
+        set_summary = " - ".join([set_acc, organism, refs['f_size']])
 
         # if no files were found
         if all(not value for value in exp_files.values()):
@@ -1386,8 +1396,23 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
 
-        if refs['organism'] not in ['mouse', 'human']:
-            msg = 'RNA seq not ready for ' + refs['organism']
+        if organism not in ['mouse', 'human']:
+            msg = 'No reference file for ' + organism
+            print(msg)
+            set_summary += "| " + msg
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: msg})
+            continue
+
+        # check  strandedness_verified
+        not_verified = []
+        for an_exp in exp_files:
+            an_exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == an_exp][0]
+            tags = an_exp_resp.get('tags')
+            if 'strandedness_verified' not in tags:
+                not_verified.append(an_exp)
+        if not_verified:
+            msg = ', '.join(not_verified) + ' Not verified for strandedness'
             print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
@@ -1402,16 +1427,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             strand_info = ''
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
             tags = exp_resp.get('tags')
-            if 'strandedness_verified' in tags:
-                stand_info = exp_resp.get('standedness')
-
-            if not strand_info:
-                final_status = '{} Skipped - {} missing strandedness verification'.format(
-                    a_set['accession'],
-                    exp_resp['accession'])
-                check.brief_output.append(final_status)
-                check.full_output['skipped'].append({set_acc: final_status})
-                break
+            strand_info = exp_resp.get('strandedness')
+            print(strand_info)
 
             # run unstranded pipeline
             app_name = ''
@@ -1423,20 +1440,20 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             }
             if strand_info == 'unstranded':
                 pars['rna.strandedness'] = 'unstranded'
-                pars['strandedness_direction'] = 'unstranded'
+                pars['rna.strandedness_direction'] = 'unstranded'
                 app_name = 'encode-rnaseq-unstranded'
             elif strand_info in ['reverse', 'forward']:
                 pars['rna.strandedness'] = 'stranded'
-                pars['strandedness_direction'] = strand_info
+                pars['rna.strandedness_direction'] = strand_info
                 app_name = 'encode-rnaseq-stranded'
 
             # add more parameters and get status report
             input_files = exp_files[exp]
             if paired == 'Yes':
-                pars['endedness'] = 'paired'
+                pars['rna.endedness'] = 'paired'
                 input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0][0]][0]
             elif paired == 'No':
-                pars['endedness'] = ''
+                pars['rna.endedness'] = 'single'
                 input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0]][0]
             step1_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
 
@@ -1449,9 +1466,9 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                                'rna.minusbw',
                                'rna.outbw',
                                'rna.gene_expression',
-                               'rna.isoform_expression']
-                if a_type in step1_result:
-                    exp_files.append(step1_result[a_type])
+                               'rna.isoform_expression']:
+                    if a_type in step1_result:
+                        exp_files.append(step1_result[a_type])
                 complete['patch_opf'].append([exp, exp_files])
             # if still running
             elif step1_result['status'] == 'running':
@@ -1461,27 +1478,22 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             elif step1_result['status'].startswith("no complete run, too many"):
                 final_status = 'not ready'
                 problematic_run.append(['step1', exp])
+            # if it is missing
             else:
                 final_status = 'not ready'
-
-
-
-                # UPDATE
-                # add part 1
+                # add part
+                name_tag = exp
+                inp_f = {'rna.align_index': rna_star_index[organism],
+                         'rna.rsem_index': rna_rsem_index[organism],
+                         'rna.chrom_sizes': rna_chr_size[organism],
+                         'rna.rna_qc_tr_id_to_gene_type_tsv': rna_t2g[organism]}
                 if paired == 'Yes':
-                    inp_f = {'fastq': pair[0], 'fastq2': pair[1],
-                             'bwaIndex': refs['bwa_ref'],
-                             'chromsizes': refs['chrsize_ref']}
-                    name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
+                    inp_f = {'rna.fastqs_R1': [[i[0] for i in input_files]],
+                             'rna.fastqs_R2': [[i[1] for i in input_files]]}
                 elif paired == 'No':
-                    inp_f = {'fastq': pair,
-                             'bwaIndex': refs['bwa_ref'],
-                             'chromsizes': refs['chrsize_ref']}
-                    name_tag = pair.split('/')[2]
-                overwrite = {}
-                if winsize:
-                    overwrite = {'parameters': {'winsize': winsize}}
-                missing_run.append(['step1', ['repliseq-parta', refs['organism'], overwrite], inp_f, name_tag])
+                    inp_f = {'rna.fastqs_R1': [input_files]}
+                overwrite = {'parameters': pars}
+                missing_run.append(['step1', [app_name, organism, overwrite], inp_f, name_tag])
 
         if final_status == 'ready':
             # add the tag
