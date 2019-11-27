@@ -1658,7 +1658,7 @@ def rna_seq_status(connection, **kwargs):
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
 
-    # # check indexing queue
+    # check indexing queue
     # env = connection.ff_env
     # indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
     # if indexing_queue:

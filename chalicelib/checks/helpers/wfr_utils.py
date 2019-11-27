@@ -429,28 +429,56 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     if rename:
         change_from = rename[0]
         change_to = rename[1]
+
     # if it is list of items, change the structure
     if isinstance(obj_id, list):
-        object_key = []
-        uuid = []
-        buckets = []
-        for obj in obj_id:
-            metadata = ff_utils.get_metadata(obj, key=auth)
-            object_key.append(metadata['display_title'])
-            uuid.append(metadata['uuid'])
-            # get the bucket
-            if 'FileProcessed' in metadata['@type']:
-                my_bucket = out_bucket
-            else:  # covers cases of FileFastq, FileReference, FileMicroscopy
-                my_bucket = raw_bucket
-            buckets.append(my_bucket)
-        # check bucket consistency
-        assert len(list(set(buckets))) == 1
-        template['object_key'] = object_key
-        template['uuid'] = uuid
-        template['bucket_name'] = buckets[0]
-        if rename:
-            template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        # if it is list of list, change the structure, for RNAseq
+        if isinstance(obj_id[0], list):
+            # will only work with single item in first list (was implemented for RNA seq)
+            assert len(obj_id) == 1
+            print('HIT IT')
+            object_key = []
+            uuid = []
+            buckets = []
+            for obj in obj_id[0]:
+                metadata = ff_utils.get_metadata(obj, key=auth)
+                object_key.append(metadata['display_title'])
+                uuid.append(metadata['uuid'])
+                # get the bucket
+                if 'FileProcessed' in metadata['@type']:
+                    my_bucket = out_bucket
+                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                    my_bucket = raw_bucket
+                buckets.append(my_bucket)
+            # check bucket consistency
+            assert len(list(set(buckets))) == 1
+            template['object_key'] = [object_key]
+            template['uuid'] = [uuid]
+            template['bucket_name'] = buckets[0]
+            if rename:
+                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key'][0]]
+        # if it is just a list
+        else:
+            object_key = []
+            uuid = []
+            buckets = []
+            for obj in obj_id:
+                metadata = ff_utils.get_metadata(obj, key=auth)
+                object_key.append(metadata['display_title'])
+                uuid.append(metadata['uuid'])
+                # get the bucket
+                if 'FileProcessed' in metadata['@type']:
+                    my_bucket = out_bucket
+                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                    my_bucket = raw_bucket
+                buckets.append(my_bucket)
+            # check bucket consistency
+            assert len(list(set(buckets))) == 1
+            template['object_key'] = object_key
+            template['uuid'] = uuid
+            template['bucket_name'] = buckets[0]
+            if rename:
+                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
 
     # if obj_id is a string
     else:
@@ -1154,7 +1182,11 @@ def start_missing_run(run_info, auth, env):
             attr_file = inputs[attr_key]
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
-            break
+                if isinstance(attr_file, list):
+                    attr_file = attr_file[0]
+                    break
+                else:
+                    break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
@@ -1411,6 +1443,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             tags = an_exp_resp.get('tags')
             if 'strandedness_verified' not in tags:
                 not_verified.append(an_exp)
+            elif not an_exp_resp.get('strandedness'):
+                not_verified.append(an_exp)
         if not_verified:
             msg = ', '.join(not_verified) + ' Not verified for strandedness'
             print(msg)
@@ -1428,7 +1462,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
             tags = exp_resp.get('tags')
             strand_info = exp_resp.get('strandedness')
-            print(strand_info)
 
             # run unstranded pipeline
             app_name = ''
@@ -1488,10 +1521,10 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                          'rna.chrom_sizes': rna_chr_size[organism],
                          'rna.rna_qc_tr_id_to_gene_type_tsv': rna_t2g[organism]}
                 if paired == 'Yes':
-                    inp_f = {'rna.fastqs_R1': [[i[0] for i in input_files]],
-                             'rna.fastqs_R2': [[i[1] for i in input_files]]}
+                    inp_f['rna.fastqs_R1'] = [[i[0] for i in input_files]]
+                    inp_f['rna.fastqs_R2'] = [[i[1] for i in input_files]]
                 elif paired == 'No':
-                    inp_f = {'rna.fastqs_R1': [input_files]}
+                    inp_f['rna.fastqs_R1'] = [input_files]
                 overwrite = {'parameters': pars}
                 missing_run.append(['step1', [app_name, organism, overwrite], inp_f, name_tag])
 
