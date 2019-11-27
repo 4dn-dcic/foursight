@@ -496,7 +496,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     return template
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env):
+def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
     all_inputs = []
     for arg, files in input_files.items():
         inp = extract_file_info(files, arg, auth, env)
@@ -515,6 +515,9 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "run_id": run_name}
     input_json['step_function_name'] = 'tibanna_pony'
     input_json['public_postrun_json'] = True
+    if mount:
+        for a_file in input_json['input_files']:
+            a_file['mount'] = True
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
@@ -1189,7 +1192,7 @@ def start_missing_run(run_info, auth, env):
                     break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
-    url = run_missing_wfr(settings, inputs, name_tag, auth, env)
+    url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
     return url
 
 
