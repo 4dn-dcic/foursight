@@ -191,7 +191,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
          }},
         {
         "app_name": "mergebed",
-        "wf_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
+        "workflow_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
         "parameters": {"sortv": "0"},
         'custom_pf_fields': {
             'merged_bed': {
@@ -202,13 +202,93 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         },
         {
         "app_name": "insulator-score-caller",
-        "wf_uuid": "54a46fe7-cec2-4bfb-ab5f-470320f69fb0",
+        "workflow_uuid": "54a46fe7-cec2-4bfb-ab5f-470320f69fb0",
         "parameters": {"binsize": -1, "windowsize": 100000, "cutoff": 2},
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,
                 'file_type': 'insulation score - diamond',
                 'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
+            }
+        },
+        # RNA SEQ
+        {
+        "app_name": "encode-rnaseq-stranded",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-rnaseq-stranded",
+        "parameters": {
+            'rna.strandedness': 'stranded',
+            'rna.strandedness_direction': '',
+            'rna.endedness': ''
+        },
+        'custom_pf_fields': {
+            'rna.outbam': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.plusbw': {
+                'genome_assembly': genome,
+                'file_type': 'read counts',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.minusbw': {
+                'genome_assembly': genome,
+                'file_type': 'read counts',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.gene_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.isoform_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            }
+            }
+        },
+        {
+        "app_name": "encode-rnaseq-unstranded",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-rnaseq-unstranded",
+        "parameters": {
+            'rna.strandedness': 'unstranded',
+            'rna.strandedness_direction': 'unstranded',
+            'rna.endedness': 'paired'
+        },
+        'custom_pf_fields': {
+            'rna.outbam': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.outbw': {
+                'genome_assembly': genome,
+                'file_type': 'read counts',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.gene_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            },
+            'rna.isoform_expression': {
+                'genome_assembly': genome,
+                'file_type': 'expression',
+                'description': 'Output file from RNA seq pipeline'
+            }
+            }
+        },
+        # temp
+        {
+        "app_name": "",
+        "workflow_uuid": "",
+        "parameters": {},
+        'custom_pf_fields': {
+            '': {
+                'genome_assembly': genome,
+                'file_type': '',
+                'description': ''}
             }
         }
     ]
