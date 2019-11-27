@@ -1674,6 +1674,7 @@ def rna_seq_status(connection, **kwargs):
         query = user_query
     else:
         query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    print(query)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)

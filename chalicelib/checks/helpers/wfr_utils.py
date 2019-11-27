@@ -1402,7 +1402,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             strand_info = ''
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
             tags = exp_resp.get('tags')
-            if 'verified_standedness' in tags:
+            if 'strandedness_verified' in tags:
                 stand_info = exp_resp.get('standedness')
 
             if not strand_info:
@@ -1455,14 +1455,18 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 complete['patch_opf'].append([exp, exp_files])
             # if still running
             elif step1_result['status'] == 'running':
-                part2 = 'not ready'
-                running.append(['step1', exp, pair])
+                final_status = 'not ready'
+                running.append(['step1', exp])
             # if run is not successful
             elif step1_result['status'].startswith("no complete run, too many"):
-                part2 = 'not ready'
-                problematic_run.append(['step1', exp, pair])
+                final_status = 'not ready'
+                problematic_run.append(['step1', exp])
             else:
-                part2 = 'not ready'
+                final_status = 'not ready'
+
+
+
+                # UPDATE
                 # add part 1
                 if paired == 'Yes':
                     inp_f = {'fastq': pair[0], 'fastq2': pair[1],
@@ -1478,13 +1482,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 if winsize:
                     overwrite = {'parameters': {'winsize': winsize}}
                 missing_run.append(['step1', ['repliseq-parta', refs['organism'], overwrite], inp_f, name_tag])
-        # are all step1s complete
-            if part2 == 'ready':
-                # add files for experiment opf
-                complete['patch_opf'].append([exp, all_files])
-            else:
-                part3 = 'not ready'
-        if part3 == 'ready':
+
+        if final_status == 'ready':
             # add the tag
             set_summary += "| completed runs"
             complete['add_tag'] = [set_acc, tag]
