@@ -436,7 +436,6 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         if isinstance(obj_id[0], list):
             # will only work with single item in first list (was implemented for RNA seq)
             assert len(obj_id) == 1
-            print('HIT IT')
             object_key = []
             uuid = []
             buckets = []

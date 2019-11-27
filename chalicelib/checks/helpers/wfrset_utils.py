@@ -191,7 +191,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
          }},
         {
         "app_name": "mergebed",
-        "wf_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
+        "workflow_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
         "parameters": {"sortv": "0"},
         'custom_pf_fields': {
             'merged_bed': {
@@ -202,7 +202,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         },
         {
         "app_name": "insulator-score-caller",
-        "wf_uuid": "54a46fe7-cec2-4bfb-ab5f-470320f69fb0",
+        "workflow_uuid": "54a46fe7-cec2-4bfb-ab5f-470320f69fb0",
         "parameters": {"binsize": -1, "windowsize": 100000, "cutoff": 2},
         'custom_pf_fields': {
             'bwfile': {
@@ -214,7 +214,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         # RNA SEQ
         {
         "app_name": "encode-rnaseq-stranded",
-        "wf_uuid": "4dn-dcic-lab:wf-encode-rnaseq-stranded",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-rnaseq-stranded",
         "parameters": {
             'rna.strandedness': 'stranded',
             'rna.strandedness_direction': '',
@@ -250,7 +250,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         },
         {
         "app_name": "encode-rnaseq-unstranded",
-        "wf_uuid": "4dn-dcic-lab:wf-encode-rnaseq-unstranded",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-rnaseq-unstranded",
         "parameters": {
             'rna.strandedness': 'unstranded',
             'rna.strandedness_direction': 'unstranded',
@@ -282,7 +282,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         # temp
         {
         "app_name": "",
-        "wf_uuid": "",
+        "workflow_uuid": "",
         "parameters": {},
         'custom_pf_fields': {
             '': {
