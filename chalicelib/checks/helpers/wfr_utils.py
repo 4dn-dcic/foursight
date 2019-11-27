@@ -1104,7 +1104,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
-              'margi': "iMARGI Processing Pipeline - Preliminary Files"}
+              'margi': "iMARGI Processing Pipeline - Preliminary Files",
+              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
