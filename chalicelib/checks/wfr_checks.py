@@ -1648,7 +1648,7 @@ def rna_seq_status(connection, **kwargs):
     my_auth = connection.ff_keys
     check.action = "rna_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.brief_output = ['All Good!']
+    check.brief_output = []
     check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
