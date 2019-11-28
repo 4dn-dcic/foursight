@@ -1496,7 +1496,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             # if successful
             if step1_result['status'] == 'complete':
                 # create processed files list for experiment
-                exp_files = []
+                exp_results = []
                 for a_type in ['rna.outbam',
                                'rna.plusbw',
                                'rna.minusbw',
@@ -1504,8 +1504,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                                'rna.gene_expression',
                                'rna.isoform_expression']:
                     if a_type in step1_result:
-                        exp_files.append(step1_result[a_type])
-                complete['patch_opf'].append([exp, exp_files])
+                        exp_results.append(step1_result[a_type])
+                complete['patch_opf'].append([exp, exp_results])
             # if still running
             elif step1_result['status'] == 'running':
                 final_status = 'not ready'
