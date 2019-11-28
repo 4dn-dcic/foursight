@@ -1104,7 +1104,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
-              'margi': "iMARGI Processing Pipeline - Preliminary Files"}
+              'margi': "iMARGI Processing Pipeline - Preliminary Files",
+              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1495,7 +1496,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             # if successful
             if step1_result['status'] == 'complete':
                 # create processed files list for experiment
-                exp_files = []
+                exp_results = []
                 for a_type in ['rna.outbam',
                                'rna.plusbw',
                                'rna.minusbw',
@@ -1503,8 +1504,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                                'rna.gene_expression',
                                'rna.isoform_expression']:
                     if a_type in step1_result:
-                        exp_files.append(step1_result[a_type])
-                complete['patch_opf'].append([exp, exp_files])
+                        exp_results.append(step1_result[a_type])
+                complete['patch_opf'].append([exp, exp_results])
             # if still running
             elif step1_result['status'] == 'running':
                 final_status = 'not ready'

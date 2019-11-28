@@ -1514,6 +1514,7 @@ def margi_start(connection, **kwargs):
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='margi')
     return action
 
+
 @check_function(lab_title=None, start_date=None)
 def bed2multivec_status(connection, **kwargs):
     """Searches for bed files states types that don't have bed2multivec
@@ -1648,7 +1649,7 @@ def rna_seq_status(connection, **kwargs):
     my_auth = connection.ff_keys
     check.action = "rna_seq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
-    check.brief_output = ['All Good!']
+    check.brief_output = []
     check.summary = "All Good!"
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
@@ -1698,5 +1699,5 @@ def rna_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='rnaseq')
     return action
