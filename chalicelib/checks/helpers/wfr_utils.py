@@ -98,6 +98,10 @@ workflow_details = {
     'imargi-processing-pairs': {
         "run_time": 200,
         "accepted_versions": ["1.1.1_dcic_4"]
+    },
+    'rna-strandedness': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
     }
 }
 
@@ -155,6 +159,7 @@ accepted_versions = {
     'GAM': [''],
     'CUT&RUN': [''],
     'TRIP': [''],
+    'rna-strandedness': ['v2']
     }
 
 # Reference Files
@@ -189,6 +194,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
 # re bed files for MARGI pipeline
 re_fragment = {"human": {'AluI': '/files-reference/4DNFIL1I5TSP/'}}
 
+# reference beta-actin 21kmer for rna_strandness pipeline
+re_kmer = {"human": '/files-reference/4DNFIDMVPFSO/',
+           "mouse": '/files-reference/4DNFIAQ4BI8Y'}
 
 # max_distance for species (used for pairsqc)
 max_size = {"human": None,

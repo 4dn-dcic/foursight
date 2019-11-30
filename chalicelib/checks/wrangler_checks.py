@@ -12,6 +12,7 @@ import time
 import itertools
 from fuzzywuzzy import fuzz
 import boto3
+from .helpers import wrangler_utils
 
 
 @check_function(cmp_to_last=False)
@@ -1359,6 +1360,131 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
             action_logs['missing_ref_file'].append({item: 'missing rows_info reference file'})
 
     if action_logs['patch_failure'] or action_logs['missing_ref_file']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function()
+def check_for_strandedness_consistency(connection, **kwargs):
+    check = CheckResult(connection, 'check_for_strandedness_consistency')
+    check.action = 'patch_strandedness_consistency_info'
+    check.full_output = {'to_patch': {}, 'problematic': {}}
+    check.brief_output = []
+
+    # Build the query (RNA-seq experiments for now)
+    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
+
+    # The search
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    # experiments that need to be patched]
+    missing_consistent_tag = []
+    problematic = {'fastqs_zero_count_both_strands': [], 'fastqs_unmatch_strandedness': [], 'inconsistent_strandedness': []}
+    target_experiments = []  # the experiments that we are interested in
+
+    # Filtering the experiments that have the strandedness info and contain files with beta-actin count info
+    for re in res:
+        if re.get("strandedness"):
+            exp_info = {'meta': re, 'files': [], 'tag': re['strandedness']}
+            ready = True
+            # verify that the files in the experiment have the beta-actin count info
+            for a_re_file in re['files']:
+                if a_re_file['file_format']['display_title'] == 'fastq':
+                    file_meta = ff_utils.get_metadata(a_re_file['accession'], connection.ff_keys)
+                    file_meta_keys = file_meta.keys()
+                    if 'beta_actin_sense_count' in file_meta_keys and 'beta_actin_antisense_count' in file_meta_keys:
+                        if file_meta.get('related_files'):
+                            paired = True
+                        else:
+                            paired = False
+
+                        file_info = {'accession': file_meta['accession'],
+                                     'sense_count': file_meta['beta_actin_sense_count'],
+                                     'antisense_count': file_meta['beta_actin_antisense_count'],
+                                     'paired': paired}
+                        exp_info['files'].append(file_info)
+
+                    else:
+                        ready = False
+            if ready:
+                target_experiments.append(exp_info)
+
+    if not target_experiments:
+        check.status = 'PASS'
+        check.summary = 'All good!'
+        return check
+
+    else:
+        for target_exp in target_experiments:
+            if target_exp['meta'].get('tags'):
+                tags = target_exp['meta']['tags']
+            else:
+                tags = []
+            if 'strandedness_verified' not in tags:
+                #  Calculate forward, reversed or unstranded
+                calculated_tag = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
+                if calculated_tag == "unknown":
+                    problematic['fastqs_unmatch_strandedness'].append(target_exp['meta']['accession'])
+                elif calculated_tag == "zero":
+                    problematic['fastqs_zero_count_both_strands'].append(target_exp['meta']['accession'])
+                elif target_exp['tag'] != calculated_tag:
+                    problematic['inconsistent_strandedness'].append({'exp': target_exp['meta']['accession'],
+                                                                    'current_tag': target_exp['tag'],
+                                                                    'calculated_tag': calculated_tag})
+                else:
+                    missing_consistent_tag.append(target_exp['meta']['accession'])
+
+    if problematic['fastqs_zero_count_both_strands']:
+        check.full_output['problematic']['fastqs_unmatch_strandedness'] = problematic['fastqs_zero_count_both_strands']
+        check.description = 'Problematic experiments need to be addressed'
+    if problematic['fastqs_unmatch_strandedness']:
+        check.full_output['problematic']['fastqs_unmatch_strandedness'] = problematic['fastqs_unmatch_strandedness']
+        check.description = 'Problematic experiments need to be addressed'
+    if problematic['inconsistent_strandedness']:
+        check.full_output['problematic']['inconsistent_strandedness'] = problematic['inconsistent_strandedness']
+        check.description = 'Problematic experiments need to be addressed'
+    if missing_consistent_tag:
+        check.full_output['to_patch']['strandedness_verified'] = missing_consistent_tag
+        check.summary = 'Some experiments are missing verified strandedness tag'
+        check.allow_action = True
+        check.description = 'Ready to patch verified strandedness tag'
+
+
+    check.status = 'WARN'
+    msg = str(len(missing_consistent_tag) + len(problematic['fastqs_unmatch_strandedness']) + len(problematic['fastqs_zero_count_both_strands']) +
+            len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
+    check.brief_output.append(msg)
+
+    return check
+
+
+@action_function()
+def patch_strandedness_consistency_info(connection, **kwargs):
+    """Start rna_strandness runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'patch_strandedness_consistency_info')
+    check_res = action.get_associated_check_result(kwargs)
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    total_patches = check_res['full_output']['to_patch']
+    for key, item in total_patches.items():
+        for i in item:
+            tags = {'tags': []}
+            meta = ff_utils.get_metadata(i, key=connection.ff_keys)
+            if meta.get('tags'):
+                tags['tags'] = [tg for tg in meta['tags']]
+                tags['tags'].append(key)
+
+            else:
+                tags = {'tags': [key]}
+            try:
+                ff_utils.patch_metadata(tags, i, key=connection.ff_keys)
+            except Exception as e:
+                action_logs['patch_failure'].append({item: str(e)})
+            else:
+                action_logs['patch_success'].append(item)
+
+    if action_logs['patch_failure']:
         action.status = 'FAIL'
     else:
         action.status = 'DONE'
