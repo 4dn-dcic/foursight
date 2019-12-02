@@ -358,7 +358,6 @@ def pairsqc_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         exp_accs = a_file.get('source_experiments')
-        print('a', exp_accs)
         # if not from tibanna, look for calc prop
         if not exp_accs:
             exp_sets = a_file.get('experiment_sets')
@@ -367,7 +366,6 @@ def pairsqc_start(connection, **kwargs):
                 continue
             my_set = ff_utils.get_metadata(exp_sets[0]['uuid'], my_auth)
             exp_accs = [i['accession'] for i in my_set['experiments_in_set']]
-            print('b', exp_accs)
         nz_num, chrsize, max_distance = wfr_utils.extract_nz_chr(exp_accs[0], my_auth)
         # if there are missing info, max distance should have been replaced by the report
         if not nz_num:
@@ -382,12 +380,12 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        # url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
-        # # aws run url
-        # if url.startswith('http'):
-        #     action_logs['runs_started'].append(url)
-        # else:
-        #     action_logs['runs_failed'].append([a_target, url])
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
     action.output = action_logs
     action.status = 'DONE'
     return action
