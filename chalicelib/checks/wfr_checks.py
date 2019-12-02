@@ -319,7 +319,7 @@ def pairsqc_status(connection, **kwargs):
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?file_format.file_format=pairs&type=FileProcessed"
              "&status=pre-release&status=released&status=released+to+project&status=uploaded"
-             "&quality_metric.uuid=No+value&limit=all")
+             "&quality_metric.uuid=No+value&limit=all&source_experiments!=No value")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -382,12 +382,12 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
-        # aws run url
-        if url.startswith('http'):
-            action_logs['runs_started'].append(url)
-        else:
-            action_logs['runs_failed'].append([a_target, url])
+        # url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # # aws run url
+        # if url.startswith('http'):
+        #     action_logs['runs_started'].append(url)
+        # else:
+        #     action_logs['runs_failed'].append([a_target, url])
     action.output = action_logs
     action.status = 'DONE'
     return action
