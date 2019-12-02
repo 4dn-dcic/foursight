@@ -257,7 +257,6 @@ def extract_nz_chr(acc, auth):
     used for pairsqc."""
     exp_resp = ff_utils.get_metadata(acc, key=auth)
     exp_type = exp_resp['experiment_type']['display_title']
-
     # get enzyme
     nz_num = ""
     nz = exp_resp.get('digestion_enzyme')
@@ -266,7 +265,7 @@ def extract_nz_chr(acc, auth):
     if nz_num:
         pass
     # Use 6 for Chiapet and all without nz (Soo & Burak)
-    elif exp_type in ['ChIA-PET', 'Micro-C', 'DNase Hi-C', 'TrAC-loop']:
+    elif exp_type in ['in situ ChIA-PET', 'ChIA-PET', 'Micro-C', 'DNase Hi-C', 'TrAC-loop']:
         nz_num = '6'
     else:
         return (None, None, 'No enzyme or accepted exp type')

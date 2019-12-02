@@ -228,22 +228,22 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             'rna.plusbw': {
                 'genome_assembly': genome,
-                'file_type': 'read counts',
+                'file_type': 'read counts (plus)',
                 'description': 'Output file from RNA seq pipeline'
             },
             'rna.minusbw': {
                 'genome_assembly': genome,
-                'file_type': 'read counts',
+                'file_type': 'read counts (minus)',
                 'description': 'Output file from RNA seq pipeline'
             },
             'rna.gene_expression': {
                 'genome_assembly': genome,
-                'file_type': 'expression',
+                'file_type': 'gene expression',
                 'description': 'Output file from RNA seq pipeline'
             },
             'rna.isoform_expression': {
                 'genome_assembly': genome,
-                'file_type': 'expression',
+                'file_type': 'isoform expression',
                 'description': 'Output file from RNA seq pipeline'
             }
             }
@@ -269,12 +269,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             'rna.gene_expression': {
                 'genome_assembly': genome,
-                'file_type': 'expression',
+                'file_type': 'gene expression',
                 'description': 'Output file from RNA seq pipeline'
             },
             'rna.isoform_expression': {
                 'genome_assembly': genome,
-                'file_type': 'expression',
+                'file_type': 'isoform expression',
                 'description': 'Output file from RNA seq pipeline'
             }
             }
