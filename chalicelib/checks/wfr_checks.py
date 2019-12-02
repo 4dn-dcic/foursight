@@ -319,7 +319,7 @@ def pairsqc_status(connection, **kwargs):
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?file_format.file_format=pairs&type=FileProcessed"
              "&status=pre-release&status=released&status=released+to+project&status=uploaded"
-             "&quality_metric.uuid=No+value&limit=all&source_experiments!=No value")
+             "&quality_metric.uuid=No+value&limit=all")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -358,6 +358,16 @@ def pairsqc_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         exp_accs = a_file.get('source_experiments')
+        print('a', exp_accs)
+        # if not from tibanna, look for calc prop
+        if not exp_accs:
+            exp_sets = a_file.get('experiment_sets')
+            if not exp_sets:
+                action_logs['runs_failed'].append([a_target, 'can not find assc. experiment'])
+                continue
+            my_set = ff_utils.get_metadata(exp_sets[0]['uuid'], my_auth)
+            exp_accs = [i['accession'] for i in my_set['experiments_in_set']]
+            print('b', exp_accs)
         nz_num, chrsize, max_distance = wfr_utils.extract_nz_chr(exp_accs[0], my_auth)
         # if there are missing info, max distance should have been replaced by the report
         if not nz_num:
