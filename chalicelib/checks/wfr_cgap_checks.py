@@ -8,6 +8,10 @@ from dcicutils import ff_utils, s3Utils
 from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
+# list of acceptible version
+cgap_partI_version = ['WGS_partI_V11']
+cgap_partII_version = ['WGS_PartII_V11']
+
 
 @check_function(file_type='File', start_date=None)
 def md5runCGAP_status(connection, **kwargs):
@@ -279,7 +283,11 @@ def cgap_status(connection, **kwargs):
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-    q = '/search/?type=Sample&processed_files.display_title=No+value&files.display_title%21=No+value'
+
+    query_base = '/search/?type=Sample&files.display_title%21=No+value'
+    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
+    q = query_base + version_filter
+
     all_samples = ff_utils.search_metadata(q, my_auth)
     print(len(all_samples))
 
@@ -290,11 +298,9 @@ def cgap_status(connection, **kwargs):
     step5_name = 'workflow_sort-bam-check'
     step6_name = 'workflow_gatk-BaseRecalibrator'
     step7_name = 'workflow_gatk-ApplyBQSR-check'
-    # step8_name = 'workflow_index-sorted-bam'
+    step8_name = 'workflow_gatk-HaplotypeCaller'
 
     for a_sample in all_samples:
-        print('===================')
-        print(a_sample['accession'])
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -306,6 +312,19 @@ def cgap_status(connection, **kwargs):
         print(a_sample['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
+        # are all files uploaded ?
+        all_uploaded = True
+        for a_file in all_items['file_fastq']:
+            if a_file['status'] in ['uploading', 'upload failed']:
+                all_uploaded = False
+
+        if not all_uploaded:
+            final_status = a_sample['accession'] + ' skipped, waiting for file upload'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
+            continue
+
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
         sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, all_items['file_fastq'])
@@ -389,30 +408,41 @@ def cgap_status(connection, **kwargs):
                                                                                                    'step7', a_sample['accession'], step6_output,
                                                                                                    s7_input_files,  step7_name, 'recalibrated_bam', {}, 'human')
 
-        # # RUN STEP 8
-        # if step7_status != 'complete':
-        #     step8_status = ""
-        # else:
-        #     s8_input_files = {'bam': step7_output}
-        #     running, problematic_run, missing_run, step8_status, step8_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
-        #                                                                                            'step8', a_sample['accession'], step7_output,
-        #                                                                                            s8_input_files,  step8_name, '', {}, 'human', no_output=True)
+        # RUN STEP 8
+        if step7_status != 'complete':
+            step8_status = ""
+        else:
+            s8_input_files = {'input_bam': step7_output,
+                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            running, problematic_run, missing_run, step8_status, step8_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
+                                                                                                   'step8', a_sample['accession'], step7_output,
+                                                                                                   s8_input_files,  step8_name, 'gvcf', {}, 'human')
 
         final_status = a_sample['accession']
         completed = []
-        if step7_status == 'complete':
+        pipeline_tag = cgap_partI_version[-1]
+
+        if step8_status == 'complete':
             final_status += ' completed'
-            completed = [a_sample['accession'], {'processed_files': [step7_output]}]
-            print('COMPLETED', step7_output)
+            completed = [
+                a_sample['accession'],
+                {'processed_files': [step7_output, step8_output],
+                 'completed_processes': [pipeline_tag]}
+                         ]
+            print('COMPLETED', step8_output)
         else:
             if missing_run:
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
             if running:
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
 
         # add dictionaries to main ones
         set_acc = a_sample['accession']
         check.brief_output.append(final_status)
+        print(final_status)
         if running:
             check.full_output['running_runs'].append({set_acc: running})
         if missing_run:
@@ -493,19 +523,23 @@ def cgapS2_status(connection, **kwargs):
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-    q = '/search/?type=Sample&processed_files.display_title!=No+value'
+
+    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
+    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
+    q = query_base + version_filter
     res = ff_utils.search_metadata(q, my_auth)
-    # get the ones with only one file in processed file,
-    all_samps = [i for i in res if len(i.get('processed_files', [])) == 1]
-    # check if anything left after filtering
-    if not all_samps:
+    # check if anything in scope
+    if not res:
         return check
     # list step names
-    step1_name = 'workflow_gatk-HaplotypeCaller'
+    step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
-    # iterate over samples
-    print(len(all_samps))
-    for a_sample in all_samps:
+    step3_name = 'workflow_gatk-VQSR-check'
+
+    # iterate over msa
+    print(len(res))
+    for a_msa in res:
+
         input_bam = a_sample['processed_files'][0]
         input_bam_id = input_bam['@id']
         input_bam_acc = input_bam['display_title'].split('.')[0]

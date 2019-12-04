@@ -25,9 +25,9 @@ Before developing with Foursight, you must install the required Python packages 
 Stages and environments
 -----------------------
 
-These are two important concepts to introduce. There are currently two Foursight stages, ``dev`` and ``prod``\ , which each define a separately deployed Chalice application. That means there is a different set of Lambdas, API Gateways, etc. for each stage. The reason to have multiple stages is so the one stage, ``dev``\ , can be used for testing new stuff while ``prod`` is for battle-tested checks. For information on how to deploy to specific stages, see the `deployment documentation <./deployment.md>`_.
+These are two important concepts to introduce. There are currently two Foursight stages, ``dev`` and ``prod``\ , which each define a separately deployed Chalice application. That means there is a different set of Lambdas, API Gateways, etc. for each stage. The reason to have multiple stages is so the one stage, ``dev``\ , can be used for testing new stuff while ``prod`` is for battle-tested checks. For information on how to deploy to specific stages, see the `deployment documentation <https://foursight.readthedocs.io/en/latest/deployment.html>`_.
 
-Foursight environments correspond to different Fourfront configurations and store their results separately of each other. For example, Fourfront has production and staging environments, which should have tests run individually on them. Environments are dynamically initialized for each Foursight API requests\ and are based off of items in ES/S3. Both stages of Foursight have access to each individual environment and the results for checks get stored separately. For example, there checks are stored separately for the production environment on dev stage and the production environment on prod stage. There would also be a unique bucket for checks on the staging environment on dev stage and the staging environment on prod stage, etc. Thus, there is a unique storage location for each combination of stage and environment. To read more about environments, see the `environments documentation <./environments.md>`_.
+Foursight environments correspond to different Fourfront configurations and store their results separately of each other. For example, Fourfront has production and staging environments, which should have tests run individually on them. Environments are dynamically initialized for each Foursight API requests\ and are based off of items in ES/S3. Both stages of Foursight have access to each individual environment and the results for checks get stored separately. For example, there checks are stored separately for the production environment on dev stage and the production environment on prod stage. There would also be a unique bucket for checks on the staging environment on dev stage and the staging environment on prod stage, etc. Thus, there is a unique storage location for each combination of stage and environment. To read more about environments, see the `environments documentation <https://foursight.readthedocs.io/en/latest/environments.html>`_.
 
 Creating a check
 ----------------
@@ -50,7 +50,7 @@ Here's a simple check and then we'll go through the details:
 
 The first thing to note is each check *must* start with the ``@check_function()`` decorator. This allows Foursight to determine which functions are checks. In addition, any default key word arguments (kwargs) that you want to define for a check can be passed into the decorator as parameters (more on this later). Next, the check itself must take a ``connection`` parameter and ``**kwargs``... the latter is not strictly necessary but should always be included as good form. Once adding the ``@check_function()`` decorator to a function, the function will be considered a check no matter what, and will be displayed on the Foursight front end.
 
-The ``kwargs`` system allows a lot of flexibility when desiging checks. By making the functionality of your check vary based on its kwargs, you can join multiple small checks together or more finely control the parameters the check runs with. There are two very import key word arguments that are always present in the kwargs (they are added automatically if not provided): ``uuid`` and ``primary``. ``uuid`` is a string timestamp that identifies the check and ``primary`` is a boolean that control whether a certain run of the check will be stored as the "de-facto" result that is presented on the Foursight UI. Read more about `checks documentation <./checks.md>`_.
+The ``kwargs`` system allows a lot of flexibility when desiging checks. By making the functionality of your check vary based on its kwargs, you can join multiple small checks together or more finely control the parameters the check runs with. There are two very import key word arguments that are always present in the kwargs (they are added automatically if not provided): ``uuid`` and ``primary``. ``uuid`` is a string timestamp that identifies the check and ``primary`` is a boolean that control whether a certain run of the check will be stored as the "de-facto" result that is presented on the Foursight UI. Read more about `checks documentation <https://foursight.readthedocs.io/en/latest/checks.html>`_.
 
 In the body of the check, the first thing to do is initialize a CheckResult object (named ``check``\ , above) using the constructor. The CheckResult is an object that internally takes care of things like check querying and storing of results in ES/S3. It is key that the constructor is **given the connection as its first argument and the exact name of the check function as its second argument.** That is worth repeating: for my check above, named "my_first_check", I must pass that exact string as the second argument to the constructor; otherwise, the check will be stored under a different name and impossible to retrieve using the automated front end. In Python this, is equivalent to ``function.__name__`` for the function you are writing.
 
@@ -73,7 +73,7 @@ The CheckResult has a number of fields that can be set, namely: ``status``\ , ``
 
 Returning ``check`` at the end of the check causes the result of the check to be written to ES/S3 with a unique key created by the check name and time the check was initiated. In addition, if a key word argument of ``primary=True`` is provided to your check, running it will overwrite the last "primary" check result, which is the one displayed from the Foursight front end. This is an important behavior of Foursight--the latest ``primary=True`` result is the one displayed.
 
-There are many possibilities to what a check can do. Please visit the `writing checks documentation <./checks.md>`_ for more information.
+There are many possibilities to what a check can do. Please visit the `writing checks documentation <https://foursight.readthedocs.io/en/latest/checks.html>`_ for more information.
 
 Creating a schedule
 -------------------
@@ -86,7 +86,7 @@ To get your checks running on a CRON or rate schedule, the current method is add
    def morning_checks(event):
        queue_scheduled_checks('all', 'morning_checks')
 
-This code will run all checks in check_setup.json using the ``morning_checks`` schedule on all Foursight environments every morning. For more information on scheduling, `see this documentation <./development_tips.md#scheduling-your-checks>`_.
+This code will run all checks in check_setup.json using the ``morning_checks`` schedule on all Foursight environments every morning. For more information on scheduling, `see this documentation <https://foursight.readthedocs.io/en/latest/development_tips.html#scheduling-your-checks>`_.
 
 Adding checks to check_setup
 ----------------------------
@@ -180,7 +180,7 @@ Lastly, you can also add specific key word arguments (\ ``kwargs``\ ) for runnin
 
 That's it! Now your check will automatically run with all other morning checks. The environments that you schedule your check for also determine where its results are displayed on the Foursight UI; for example, the setup we specified above will cause ``my_first_check`` to be displayed only on the ``data`` and ``staging`` environments. By default, the same setup is used for production and development Foursight.
 
-Now that your check is built and scheduled, it can be run or retrieved using the Foursight API. This is the last topic covered in this file. For more information on configuring the check setup, `go here <./checks.md#check-setup>`_.
+Now that your check is built and scheduled, it can be run or retrieved using the Foursight API. This is the last topic covered in this file. For more information on configuring the check setup, `go here <https://foursight.readthedocs.io/en/latest/checks.html#check-setup>`_.
 
 Using the UI
 ------------
