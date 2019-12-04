@@ -298,6 +298,9 @@ def identify_files_without_qc_summary_bam(connection, **kwargs):
     problem_files = []
     file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     for hit in file_hits:
+        if hit['accession'] != '4DNFIJRCGGO2':
+            continue
+
         if round(time.time() - t0, 2) > time_limit:
             break
         if hit.get('quality_metric') and not hit.get('quality_metric_summary', ''):

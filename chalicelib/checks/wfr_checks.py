@@ -1685,7 +1685,8 @@ def bamqc_status(connection, **kwargs):
         return check
 
     for a_res in res:
-        target_files.append(a_res)
+        if a_res['accession'] == '4DNFIJRCGGO2' or a_res['accession'] == '4DNFIMCJY3N4':
+            target_files.append(a_res)
     check.summary = '{} files need a bamqc'. format(len(res))
     check.full_output['prob_files'] = [i['accession'] for i in target_files]
     check.status = 'WARN'
@@ -1716,7 +1717,7 @@ def bamqc_start(connection, **kwargs):
         org = [k for k, v in wfr_utils.mapper.items() if v == a_file['genome_assembly']][0]
         chrsize = wfr_utils.chr_size[org]
 
-        inp_f = {'bamfile': a_file['@id'], 'chromsizes_file': chrsize}
+        inp_f = {'bamfile': a_file['@id'], 'chromsizes': chrsize}
         wfr_setup = wfrset_utils.step_settings('bamqc',
                                                'no_organism',
                                                attributions)
