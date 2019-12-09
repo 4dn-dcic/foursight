@@ -167,8 +167,7 @@ accepted_versions = {
     'RNA-DNA SPRITE': [''],
     'GAM': [''],
     'CUT&RUN': [''],
-    'TRIP': [''],
-    'rna-strandedness': ['v2']
+    'TRIP': ['']
     }
 
 # Reference Files
