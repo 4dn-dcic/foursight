@@ -20,8 +20,6 @@ A serverless chalice application to monitor and run tasks on `Fourfront <https:/
 Beta version
 ------------
 
-Please visit the `getting started <./docs/getting_started.md>`_ page to get up and running with Foursight. More in-depth documentation is also available in the `docs folder <./docs/>`_.
-
 Foursight is under active development and features will likely change.
 
 *Contents*

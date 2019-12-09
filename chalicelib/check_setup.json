@@ -1236,6 +1236,18 @@
             }
         }
     },
+    "rna_seq_status" : {
+        "title": "w) RNA-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5runCGAP_status" : {
         "title": "a) md5 runs",
         "group": "Pipeline checks",

@@ -143,7 +143,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
-    error_at_failed_runs = 2
+    error_at_failed_runs = 1
     # you should provide key or all_wfrs
     # assert key or all_wfrs
     assert wfr_name in workflow_details

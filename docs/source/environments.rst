@@ -2,7 +2,7 @@
 Foursight Environments
 ======================
 
-Environments are the Foursight method of organizing different environments/Fourfront server, as initially described in the `getting started <./getting_started.md>`_ documentation. This document details the content of en environment and how to create and interrogate them.
+Environments are the Foursight method of organizing different environments/Fourfront server, as initially described in the `getting started <https://foursight.readthedocs.io/en/latest/getting_started.html>`_ documentation. This document details the content of en environment and how to create and interrogate them.
 
 Anatomy of an environment
 -------------------------
