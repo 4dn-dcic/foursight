@@ -1,6 +1,37 @@
 from dcicutils import ff_utils
 
 
+def calculate_qc_metric_rnaseq(file_uuid, key):
+    '''Patching an RNA-seq gene expression tsv or genome-mapped bam file
+    with quality_metric summary'''
+    res = ff_utils.get_metadata(file_uuid, key=key)
+    qc_uuid = res['quality_metric']['uuid']
+    quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
+    qc_summary = []
+
+    if 'star_log_qc' in quality_metric:
+        uniquely_mapped = quality_metric['star_log_qc']['Uniquely mapped reads number']
+        multi_mapped = quality_metric['star_log_qc']['Number of reads mapped to multiple loci']
+        total_mapped = uniquely_mapped + multi_mapped
+        qc_summary.append({"title": "Total mapped reads (genome)",
+                           "value": str(total_mapped),
+                           "numberType": "integer"})
+        qc_summary.append({"title": "Total uniquely mapped reads (genome)",
+                           "value": str(uniquely_mapped),
+                           "numberType": "integer"})
+    else:
+        if 'gene_type_count' not in quality_metric:
+            raise Exception("Quality Metric Object does not have the correct fields")
+        qc_summary.append({"title": "Reads mapped to protein-coding genes",
+                           "value": str(quality_metric['gene_type_count']['protein_coding'],
+                           "numberType": "integer"})
+        qc_summary.append({"title": "Reads mapped to rRNA",
+                           "value": str(quality_metric['gene_type_count']['rRNA'],
+                           "numberType": "integer"})
+    res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
+    return res
+    
+
 def calculate_qc_metric_pairsqc(file_uuid, key):
     '''Patching a pairs file object with quality_metric summary'''
     res = ff_utils.get_metadata(file_uuid, key=key)

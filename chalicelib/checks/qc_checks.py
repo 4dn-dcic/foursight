@@ -274,3 +274,31 @@ def patch_quality_metric_summary_bed(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@action_function()
+def patch_quality_metric_summary_rnaseq(connection, **kwargs):
+    t0 = time.time()  # keep track of how start time
+    time_limit = 270  # 4.5 minutes
+    action = ActionResult(connection, 'patch_quality_metric_summary_rnaseq')
+    action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
+    # get latest results from identify_files_without_qc_summary_rnaseq
+    filesize_check_result = action.get_associated_check_result(kwargs)
+    for hit in filesize_check_result.get('full_output', []):
+        if round(time.time() - t0, 2) > time_limit:
+            action.status = 'FAIL'
+            action_logs['time out'] = True
+            action.output = action_logs
+            return action
+        try:
+            qc_utils.calculate_qc_metric_rnaseq(hit['uuid'], key=connection.ff_keys)
+            action_logs['patch_success'].append(hit['accession'])
+        except Exception as e:
+            acc_and_error = ': '.join([hit['accession'], str(e)])
+            action_logs['patch_failure'].append(acc_and_error)
+        else:
+            acc_and_format = ': '.join([hit['accession'], hit['file_format']])
+            action_logs['skipping_format'].append(acc_and_format)
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
