@@ -23,10 +23,10 @@ def calculate_qc_metric_rnaseq(file_uuid, key):
         if 'gene_type_count' not in quality_metric:
             raise Exception("Quality Metric Object does not have the correct fields")
         qc_summary.append({"title": "Reads mapped to protein-coding genes",
-                           "value": str(quality_metric['gene_type_count']['protein_coding'],
+                           "value": str(quality_metric['gene_type_count']['protein_coding']),
                            "numberType": "integer"})
         qc_summary.append({"title": "Reads mapped to rRNA",
-                           "value": str(quality_metric['gene_type_count']['rRNA'],
+                           "value": str(quality_metric['gene_type_count']['rRNA']),
                            "numberType": "integer"})
     res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
     return res
