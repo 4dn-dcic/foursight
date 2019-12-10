@@ -558,6 +558,7 @@ def identify_files_without_filesize(connection, **kwargs):
     check = CheckResult(connection, 'identify_files_without_filesize')
     # must set this to be the function name of the action
     check.action = "patch_file_size"
+    check.allow_action = True
     default_filetype = 'File'
     default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
     filetype = kwargs.get('file_type') or default_filetype
