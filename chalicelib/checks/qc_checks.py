@@ -180,6 +180,64 @@ def identify_files_without_qc_summary_bed(connection, **kwargs):
     return check
 
 
+@check_function(file_type=None, status=None, search_add_on=None)
+def identify_files_without_qc_summary_rnaseq(connection, **kwargs):
+    t0 = time.time()  # keep track of how start time
+    time_limit = 270  # 4.5 minutes
+    check = CheckResult(connection, 'identify_files_without_qc_summary_rnaseq')
+    # must set this to be the function name of the action
+    check.action = 'patch_quality_metric_summary_rnaseq'
+    default_filetype = 'FileProcessed'  # skip fastq
+    default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
+    filetype = kwargs.get('file_type') or default_filetype
+    stati = 'status=' + (kwargs.get('status') or default_stati)
+    search_query = 'search/?type={}&{}&frame=object'.format(filetype, stati)
+    search_query += 'track_and_facet_info.experiment_type=RNA-seq'
+    search_query += '&file_type=gene+expression&file_type=read+positions'
+
+    addon = kwargs.get('search_add_on')
+    if addon is not None:
+        if not addon.startswith('&'):
+            addon = '&' + addon
+        search_query += addon
+    problem_files = []
+    file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
+    for hit in file_hits:
+        if round(time.time() - t0, 2) > time_limit:
+            break
+        if hit.get('quality_metric') and not hit.get('quality_metric_summary', ''):
+            hit_dict = {
+                'accession': hit.get('accession'),
+                'uuid': hit.get('uuid'),
+                '@type': hit.get('@type'),
+                'upload_key': hit.get('upload_key'),
+                'file_format': hit.get('file_format'),
+                'quality_metric': hit.get('quality_metric')
+            }
+            problem_files.append(hit_dict)
+    check.summary = '{} files with no quality metric summary'.format(len(problem_files))
+    check.full_output = problem_files
+    if problem_files:
+        check.status = 'WARN'
+        check.summary = 'File metadata found without quality_metric_summary'
+        status_str = 'pre-release/released/released to project/uploaded'
+        if kwargs.get('status'):
+            status_str = kwargs.get('status')
+        type_str = ''
+        if kwargs.get('file_type'):
+            type_str = kwargs.get('file_type') + ' '
+        ff_str = ''
+        if kwargs.get('file_format'):
+            ff_str = kwargs.get('file_format') + ' '
+        check.description = "{cnt} {type}{ff}files that are {st} don't have quality_metric_summary.".format(
+            cnt=len(problem_files), type=type_str, st=status_str, ff=ff_str)
+        check.action_message = "Will attempt to patch quality_metric_summary for %s files." % str(len(problem_files))
+        check.allow_action = True  # allows the action to be run
+    else:
+        check.status = 'PASS'
+    return check
+
+
 @action_function()
 def patch_quality_metric_summary_pairs(connection, **kwargs):
     t0 = time.time()  # keep track of how start time
