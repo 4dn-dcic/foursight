@@ -192,7 +192,7 @@ def identify_files_without_qc_summary_rnaseq(connection, **kwargs):
     filetype = kwargs.get('file_type') or default_filetype
     stati = 'status=' + (kwargs.get('status') or default_stati)
     search_query = 'search/?type={}&{}&frame=object'.format(filetype, stati)
-    search_query += 'track_and_facet_info.experiment_type=RNA-seq'
+    search_query += '&track_and_facet_info.experiment_type=RNA-seq'
     search_query += '&file_type=gene+expression&file_type=read+positions'
 
     addon = kwargs.get('search_add_on')
