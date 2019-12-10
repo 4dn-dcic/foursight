@@ -12,7 +12,7 @@ def calculate_qc_metric_rnaseq(file_uuid, key):
     if 'star_log_qc' in quality_metric:
         uniquely_mapped = quality_metric['star_log_qc']['Uniquely mapped reads number']
         multi_mapped = quality_metric['star_log_qc']['Number of reads mapped to multiple loci']
-        total_mapped = uniquely_mapped + multi_mapped
+        total_mapped = int(uniquely_mapped) + int(multi_mapped)
         qc_summary.append({"title": "Total mapped reads (genome)",
                            "value": str(total_mapped),
                            "numberType": "integer"})
