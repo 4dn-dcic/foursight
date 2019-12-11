@@ -344,11 +344,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod" },
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -360,7 +360,7 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
@@ -1371,6 +1371,30 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true}
+                }
+            }
+        }
+    },
+    "rna_strandedness_status" : {
+        "title": "y) RNA Strandedness",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_for_strandedness_consistency": {
+        "title": "RNA-seq experiments without strandedness verification",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }

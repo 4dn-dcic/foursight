@@ -1656,6 +1656,7 @@ def rna_strandedness_status(connection, **kwargs):
     check = CheckResult(connection, 'rna_strandedness_status')
     my_auth = connection.ff_keys
     check.action = "rna_strandness_start"
+    check.allow_action = True
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -1664,7 +1665,7 @@ def rna_strandedness_status(connection, **kwargs):
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
     if indexing_queue:
-        check.status = 'WARN'  # maybe use warn?
+        check.status = 'WARN'
         check.brief_output = ['Waiting for indexing queue to clear']
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
