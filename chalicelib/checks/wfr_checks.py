@@ -1678,19 +1678,13 @@ def bamqc_status(connection, **kwargs):
         query += '&lab.display_title=' + lab
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
-    target_files = []
     if not res:
         check.action_message = 'No action required at this moment'
         check.summary = 'All Good!'
         return check
-
-    for a_res in res:
-        if a_res['accession'] == '4DNFIJRCGGO2' or a_res['accession'] == '4DNFIMCJY3N4':
-            target_files.append(a_res)
     check.summary = '{} files need a bamqc'. format(len(res))
-    check.full_output['prob_files'] = [i['accession'] for i in target_files]
     check.status = 'WARN'
-    check = wfr_utils.check_runs_without_output(target_files, check, 'bamqc', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'bamqc', my_auth, start)
     return check
 
 

@@ -208,7 +208,7 @@ def calculate_qc_metric_bamqc(file_uuid, key):
                        "value": str(percent_of_reads(multi_reads)),
                        "tooltip": tooltip(multi_reads),
                        "numberType": "percent"})
-    qc_summary.append({"title": "Duplicates Reads",
+    qc_summary.append({"title": "Duplicate Reads",
                        "value": str(percent_of_reads(quality_metric["DD"])),
                        "tooltip": tooltip(quality_metric["DD"]),
                        "numberType": "percent"})
