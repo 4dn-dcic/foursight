@@ -344,11 +344,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod" },
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -360,7 +360,7 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
@@ -388,6 +388,22 @@
     },
     "identify_files_without_qc_summary_bed": {
         "title": "Bed files without quality metric summary",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "identify_files_without_qc_summary_rnaseq": {
+        "title": "RNA-seq tsv/bam files without quality metric summary",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
@@ -1236,6 +1252,18 @@
             }
         }
     },
+    "rna_seq_status" : {
+        "title": "w) RNA-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5runCGAP_status" : {
         "title": "a) md5 runs",
         "group": "Pipeline checks",
@@ -1243,6 +1271,10 @@
             "hourly_checks": {
                 "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
@@ -1256,6 +1288,10 @@
                 "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -1268,16 +1304,8 @@
                 "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
-                }
-            }
-        }
-    },
-    "cgapS2_status" : {
-        "title": "d) CGAP pipeline Part II",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
+                },
+                "cgapwolf": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
@@ -1326,6 +1354,41 @@
     },
     "states_files_without_higlass_defaults": {
         "title": "states files without higlass_defaults",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "wipe_build_indices" : {
+        "title": "Wipe Build Indicies",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true}
+                }
+            }
+        }
+    },
+    "rna_strandedness_status" : {
+        "title": "y) RNA Strandedness",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_for_strandedness_consistency": {
+        "title": "RNA-seq experiments without strandedness verification",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {

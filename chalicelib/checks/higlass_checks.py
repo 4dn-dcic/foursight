@@ -703,6 +703,16 @@ def check_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs
         Returns:
             check result object.
     """
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check = CheckResult(connection, 'check_expsets_processedfiles_for_modified_higlass_items')
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
     return find_expsets_processedfiles_requiring_higlass_items(
         connection,
         check_name="check_expsets_processedfiles_for_modified_higlass_items",

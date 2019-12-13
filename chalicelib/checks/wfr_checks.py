@@ -358,6 +358,14 @@ def pairsqc_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         exp_accs = a_file.get('source_experiments')
+        # if not from tibanna, look for calc prop
+        if not exp_accs:
+            exp_sets = a_file.get('experiment_sets')
+            if not exp_sets:
+                action_logs['runs_failed'].append([a_target, 'can not find assc. experiment'])
+                continue
+            my_set = ff_utils.get_metadata(exp_sets[0]['uuid'], my_auth)
+            exp_accs = [i['accession'] for i in my_set['experiments_in_set']]
         nz_num, chrsize, max_distance = wfr_utils.extract_nz_chr(exp_accs[0], my_auth)
         # if there are missing info, max distance should have been replaced by the report
         if not nz_num:
@@ -929,7 +937,7 @@ def micro_c_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -1514,6 +1522,7 @@ def margi_start(connection, **kwargs):
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='margi')
     return action
 
+
 @check_function(lab_title=None, start_date=None)
 def bed2multivec_status(connection, **kwargs):
     """Searches for bed files states types that don't have bed2multivec
@@ -1633,6 +1642,74 @@ def bed2multivec_start(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     return action
+
+
+@check_function(lab_title=None, start_date=None, query='')
+def rna_seq_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'rna_seq_status')
+    my_auth = connection.ff_keys
+    check.action = "rna_seq_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.summary = "All Good!"
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+
+    exp_type = 'RNA-seq'
+    # completion tag
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    # Build the query, add date and lab if available
+    user_query = kwargs.get('query')
+    if user_query:
+        query = user_query
+    else:
+        query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    print(query)
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_rna(res, my_auth, tag, check, start, lambda_limit)
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def rna_seq_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'rna_seq_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='rnaseq')
+    return action
+
 
 @check_function(lab_title=None, start_date=None)
 def bamqc_status(connection, **kwargs):

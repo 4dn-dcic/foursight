@@ -364,7 +364,8 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
     first_env_favicon = get_favicon(servers[0]) # use first env
     html_resp.body = template.render(
-        envs=total_envs,
+        env=environ,
+        view_envs=total_envs,
         stage=get_stage_info()['stage'],
         load_time=get_load_time(),
         is_admin=is_admin,
@@ -417,7 +418,8 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
     first_env_favicon = get_favicon(servers[0])
     html_resp.body = template.render(
-        envs=total_envs,
+        env=environ,
+        view_envs=total_envs,
         stage=get_stage_info()['stage'],
         load_time=get_load_time(),
         is_admin=is_admin,

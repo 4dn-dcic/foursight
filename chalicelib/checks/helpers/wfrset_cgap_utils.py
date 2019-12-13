@@ -46,7 +46,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'raw_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {
@@ -63,7 +63,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'bam_w_readgroups': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {
@@ -80,7 +80,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'merged_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 4
@@ -97,7 +97,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'dupmarked_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 5
@@ -106,7 +106,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'parameters': {},
                 "config": {
                     "instance_type": "m5a.2xlarge",
-                    "ebs_size": "3x",
+                    "ebs_size": "3.2x",
                     "EBS_optimized": True,
                     "behavior_on_capacity_limit": "wait_and_retry"
                 },
@@ -114,7 +114,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'sorted_bam': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 6
@@ -131,7 +131,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'recalibration_report': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             },
             {  # step 7
@@ -151,22 +151,22 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap upstream pipeline'}
                         }
             },
-            {  # step 8
-                'app_name': 'workflow_index-sorted-bam',
-                'workflow_uuid': '502e4846-a4ab-4da1-a5a3-d835442004a3',
-                'parameters': {},
-                "config": {
-                    "instance_type": "t3.small",
-                    "ebs_size": "1.2x",
-                    "EBS_optimized": True,
-                    "behavior_on_capacity_limit": "wait_and_retry"
-                }
-            },
-            # ROUND 2 runs
-            # S2 run1
+            # obsolete old step 8
+            # {
+            #     'app_name': 'workflow_index-sorted-bam',
+            #     'workflow_uuid': '502e4846-a4ab-4da1-a5a3-d835442004a3',
+            #     'parameters': {},
+            #     "config": {
+            #         "instance_type": "t3.small",
+            #         "ebs_size": "1.2x",
+            #         "EBS_optimized": True,
+            #         "behavior_on_capacity_limit": "wait_and_retry"
+            #     }
+            # },
+            # step 8
             {
                 'app_name': 'workflow_gatk-HaplotypeCaller',
-                'workflow_uuid': 'd6465b5f-1768-4c94-b025-edc96e101ac5',
+                'workflow_uuid': '7fd67e19-3425-45f8-8149-c7cac4278fdb',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5n.18xlarge",
@@ -181,10 +181,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap upstream pipeline'}
                         }
             },
-            # S2 run2
+            # Multi sample analysis
             {
                 'app_name': 'workflow_gatk-GenotypeGVCFs-check',
-                'workflow_uuid': 'be5b7395-ddf1-4d60-85ea-650d5d9210ea',
+                'workflow_uuid': '4fbad226-859d-40d4-8192-10c305e819da',
                 'parameters': {},
                 "config": {
                     "instance_type": "t3.medium",
@@ -198,6 +198,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'file_type': 'raw VCF',
                         'description': 'processed output from cgap upstream pipeline'}
                         }
+            },
+            {
+               "app_name": "workflow_qcboard-bam",
+               "parameters": {},
+               "workflow_uuid": "ad8716a3-b6e8-4021-bbc6-b0cefc9c4dd8",
+               "config": {
+                 "instance_type": "t3.medium",
+                 "ebs_size": "1.3x",
+                 "EBS_optimized": True,
+                 "behavior_on_capacity_limit": "wait_and_retry"
+               }
             },
             {  # temp
                 'app_name': '',
@@ -213,7 +224,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'temp': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alingnment file'}
+                        'description': 'Intermediate alignment file'}
                         }
             }
             ]
@@ -223,6 +234,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "spot_instance": True,
         "log_bucket": "tibanna-output",
         "key_name": "4dn-encode",
+        "public_postrun_json": True,
         "behavior_on_capacity_limit": "wait_and_retry"
         }
     if template.get('config'):
