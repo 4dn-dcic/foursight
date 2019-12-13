@@ -1644,6 +1644,114 @@ def bed2multivec_start(connection, **kwargs):
     return action
 
 
+@check_function(lab_title=None, start_date=None)
+def rna_strandedness_status(connection, **kwargs):
+    """Searches for fastq files of experiment seq type that don't have beta_actin_count fields
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'rna_strandedness_status')
+    my_auth = connection.ff_keys
+    check.action = "rna_strandness_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'WARN'
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    # Build the query (RNA-seq experiments)
+    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    targets = []
+    for re in res:
+        for a_re_file in re['files']:
+            if a_re_file['file_format']['display_title'] == 'fastq':
+                file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
+                file_meta_keys = file_meta.keys()
+                if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
+                    targets.append(file_meta)
+    if not targets:
+        check.summary = "All good!"
+        return check
+
+    running = []
+    missing_run = []
+
+    for a_file in targets:
+        strandedness_report = wfr_utils.get_wfr_out(a_file, "rna-strandedness", key=my_auth, versions='v2', md_qc=True)
+        if strandedness_report['status'] == 'running':
+            running.append(a_file['accession'])
+        elif strandedness_report['status'] != 'complete':
+            missing_run.append(a_file['accession'])
+
+    if running:
+        check.summary = 'Some files are running rna_strandedness run'
+        msg = str(len(running)) + ' files are still running rna_strandedness run.'
+        check.brief_output.append(msg)
+        check.full_output['files_running_rna_strandedness_run'] = running
+
+    if missing_run:
+        check.summary = 'Some files are missing rna_strandedness run'
+        msg = str(len(missing_run)) + ' file(s) lack a successful rna_strandedness run'
+        check.brief_output.append(msg)
+        check.full_output['files_without_rna_strandedness_run'] = missing_run
+        check.allow_action = True
+        check.status = 'WARN'
+
+    return check
+
+
+@action_function(start_missing=True)
+def rna_strandedness_start(connection, **kwargs):
+    """Start rna_strandness runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'rna_strandedness_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    rna_strandedness_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    action_logs['kwargs'] = kwargs
+    if kwargs.get('start_missing'):
+        targets.extend(rna_strandedness_check_result.get('files_without_rna_strandedness_run', []))
+
+    action_logs['targets'] = targets
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        org = a_file['experiments'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+        kmer_file = wfr_utils.re_kmer[org]
+        # Add function to calculate resolution automatically
+        inp_f = {'fastq': a_file['@id'], 'ACTB_reference': kmer_file}
+        wfr_setup = wfrset_utils.step_settings('rna-strandedness',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
 @check_function(lab_title=None, start_date=None, query='')
 def rna_seq_status(connection, **kwargs):
     """
