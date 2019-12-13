@@ -535,6 +535,8 @@ def check_opf_status_mismatch(connection, **kwargs):
                 if opf_linked_dict.get(f['uuid']):
                     if (STATUS_LEVEL[opf_other_dict[opf_linked_dict[f['uuid']]]] !=
                         STATUS_LEVEL[opf_status_dict[f['uuid']]]):
+                        if title not in problem_dict:
+                            problem_dict[title] = {}
                         if f['@id'] not in problem_dict[title]:
                             problem_dict[title][f['@id']] = {}
                         problem_dict[title][f['@id']]['quality_metric'] = {
