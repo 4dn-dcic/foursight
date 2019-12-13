@@ -1839,7 +1839,7 @@ def bamqc_status(connection, **kwargs):
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
     if indexing_queue:
-        check.status = 'WARN'
+        check.status = 'PASS'
         check.brief_output = ['Waiting for indexing queue to clear']
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
