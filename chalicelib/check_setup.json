@@ -1398,5 +1398,33 @@
                 }
             }
         }
+    },
+    "bamqc_status" : {
+        "title": "z) BamQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "identify_files_without_qc_summary_bam": {
+        "title": "Bam files from Hi-C pipeline without quality metric summary",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }

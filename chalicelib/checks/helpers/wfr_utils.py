@@ -110,6 +110,10 @@ workflow_details = {
     'rna-strandedness': {
         "run_time": 200,
         "accepted_versions": ["v2"]
+    },
+    'bamqc': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
     }
 }
 

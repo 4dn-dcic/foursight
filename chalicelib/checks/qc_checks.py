@@ -17,7 +17,6 @@ def identify_files_without_qc_summary_pairs(connection, **kwargs):
     check = CheckResult(connection, 'identify_files_without_qc_summary_pairs')
     # must set this to be the function name of the action
     check.action = 'patch_quality_metric_summary_pairs'
-    check.allow_action = True
     default_filetype = 'FileProcessed'  # skip fastq
     default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
     filetype = kwargs.get('file_type') or default_filetype
@@ -355,6 +354,93 @@ def patch_quality_metric_summary_rnaseq(connection, **kwargs):
         except Exception as e:
             acc_and_error = ': '.join([hit['accession'], str(e)])
             action_logs['patch_failure'].append(acc_and_error)
+        else:
+            acc_and_format = ': '.join([hit['accession'], hit['file_format']])
+            action_logs['skipping_format'].append(acc_and_format)
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function(file_type=None, status=None, search_add_on=None)
+def identify_files_without_qc_summary_bam(connection, **kwargs):
+    t0 = time.time()  # keep track of how start time
+    time_limit = 270  # 4.5 minutes
+    check = CheckResult(connection, 'identify_files_without_qc_summary_bam')
+    # must set this to be the function name of the action
+    check.action = 'patch_quality_metric_summary_bam'
+    default_stati = 'released&status=uploaded&status=released+to+project'
+    wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
+    stati = 'status=' + (kwargs.get('status') or default_stati)
+    addon = kwargs.get('search_add_on')
+    search_query = 'search/?file_type=alignment&{}'.format(stati)
+    search_query += '&type=FileProcessed'
+    search_query += wfr_outputs
+
+    if addon is not None:
+        if not addon.startswith('&'):
+            addon = '&' + addon
+        search_query += addon
+    problem_files = []
+    file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
+    for hit in file_hits:
+        if round(time.time() - t0, 2) > time_limit:
+            break
+        if hit.get('quality_metric') and not hit.get('quality_metric_summary', ''):
+            hit_dict = {
+                'accession': hit.get('accession'),
+                'uuid': hit.get('uuid'),
+                '@type': hit.get('@type'),
+                'upload_key': hit.get('upload_key'),
+                'file_format': hit.get('file_format'),
+                'quality_metric': hit.get('quality_metric')
+            }
+            problem_files.append(hit_dict)
+    check.summary = '{} files with no quality metric summary'.format(len(problem_files))
+    check.full_output = problem_files
+    if problem_files:
+        check.status = 'WARN'
+        check.summary = 'File metadata found without quality_metric_summary'
+        status_str = 'pre-release/released/released to project/uploaded'
+        if kwargs.get('status'):
+            status_str = kwargs.get('status')
+        type_str = ''
+        if kwargs.get('file_type'):
+            type_str = kwargs.get('file_type') + ' '
+        ff_str = ''
+        if kwargs.get('file_format'):
+            ff_str = kwargs.get('file_format') + ' '
+        check.description = "{cnt} {type}{ff}files that are {st} don't have quality_metric_summary.".format(
+            cnt=len(problem_files), type=type_str, st=status_str, ff=ff_str)
+        check.action_message = "Will attempt to patch quality_metric_summary for %s files." % str(len(problem_files))
+        check.allow_action = True  # allows the action to be run
+    else:
+        check.action_message = 'No action required at this moment'
+        check.status = 'PASS'
+    return check
+
+
+@action_function()
+def patch_quality_metric_summary_bam(connection, **kwargs):
+    t0 = time.time()  # keep track of how start time
+    time_limit = 270  # 4.5 minutes
+    action = ActionResult(connection, 'patch_quality_metric_summary_bam')
+    action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
+    # get latest results from identify_files_without_qc_summary
+    filesize_check_result = action.get_associated_check_result(kwargs)
+    for hit in filesize_check_result.get('full_output', []):
+        if round(time.time() - t0, 2) > time_limit:
+            action.status = 'FAIL'
+            action_logs['time out'] = True
+            action.output = action_logs
+            return action
+        if hit['file_format']['file_format'] == 'bam':
+            try:
+                qc_utils.calculate_qc_metric_bamqc(hit['uuid'], key=connection.ff_keys)
+                action_logs['patch_success'].append(hit['accession'])
+            except Exception as e:
+                acc_and_error = ': '.join([hit['accession'], str(e)])
+                action_logs['patch_failure'].append(acc_and_error)
         else:
             acc_and_format = ': '.join([hit['accession'], hit['file_format']])
             action_logs['skipping_format'].append(acc_and_format)
