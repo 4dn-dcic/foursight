@@ -35,6 +35,7 @@ Foursight is under active development and features will likely change.
    elasticsearch
    development_notes
    development_tips
+   modules
 
 .. automodule:: chalicelib
   :members:
