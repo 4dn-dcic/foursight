@@ -36,6 +36,3 @@ Foursight is under active development and features will likely change.
    development_notes
    development_tips
    modules
-
-.. automodule:: chalicelib.abstract_connection
-  :members:
