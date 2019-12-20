@@ -1,6 +1,6 @@
-=================
-API Documentation
-=================
+============================
+Chalicelib API Documentation
+============================
 
 .. automodule:: chalicelib.abstract_connection
   :members:
