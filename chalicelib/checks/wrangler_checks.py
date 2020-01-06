@@ -1418,6 +1418,7 @@ def check_for_strandedness_consistency(connection, **kwargs):
         return check
 
     else:
+        problm = False
         for target_exp in target_experiments:
             if target_exp['meta'].get('tags'):
                 tags = target_exp['meta']['tags']
@@ -1428,14 +1429,23 @@ def check_for_strandedness_consistency(connection, **kwargs):
                 calculated_tag = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
                 if calculated_tag == "unknown":
                     problematic['fastqs_unmatch_strandedness'].append(target_exp['meta']['accession'])
+                    problm = True
                 elif calculated_tag == "zero":
                     problematic['fastqs_zero_count_both_strands'].append(target_exp['meta']['accession'])
+                    problm = True
                 elif target_exp['tag'] != calculated_tag:
                     problematic['inconsistent_strandedness'].append({'exp': target_exp['meta']['accession'],
                                                                     'current_tag': target_exp['tag'],
                                                                     'calculated_tag': calculated_tag})
+                    problm = True
                 else:
                     missing_consistent_tag.append(target_exp['meta']['accession'])
+                    problm = True
+
+    if not problm:
+        check.status = 'PASS'
+        check.summary = 'All good!'
+        return check
 
     if problematic['fastqs_zero_count_both_strands']:
         check.full_output['problematic']['fastqs_unmatch_strandedness'] = problematic['fastqs_zero_count_both_strands']

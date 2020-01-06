@@ -30,7 +30,7 @@ def calculate_qc_metric_rnaseq(file_uuid, key):
                            "numberType": "integer"})
     res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
     return res
-    
+
 
 def calculate_qc_metric_pairsqc(file_uuid, key):
     '''Patching a pairs file object with quality_metric summary'''
@@ -209,14 +209,23 @@ def calculate_qc_metric_bamqc(file_uuid, key):
     def total_number_of_reads_per_type(qc):
         unmapped = 0
         multimapped = 0
+        duplicates = 0
+        walks = 0
+
         for key, val in qc.items():
             if "N" in key or "X" in key:
                 unmapped = unmapped + val
             elif "M" in key and key != "NM":
                 multimapped = multimapped + val
-        return unmapped, multimapped
+            elif "DD" in key:
+                duplicates = val
+            elif "WW" in key:
+                walks = val
 
-    unmapped_reads, multi_reads = total_number_of_reads_per_type(quality_metric)
+        return unmapped, multimapped, duplicates, walks
+
+    unmapped_reads, multi_reads, duplicates, walks = total_number_of_reads_per_type(quality_metric)
+
 
     def percent_of_reads(numVal):
         '''convert to percentage of Total reads in bam file'''
@@ -240,12 +249,12 @@ def calculate_qc_metric_bamqc(file_uuid, key):
                        "tooltip": tooltip(multi_reads),
                        "numberType": "percent"})
     qc_summary.append({"title": "Duplicate Reads",
-                       "value": str(percent_of_reads(quality_metric["DD"])),
-                       "tooltip": tooltip(quality_metric["DD"]),
+                       "value": str(percent_of_reads(duplicates)),
+                       "tooltip": tooltip(duplicates),
                        "numberType": "percent"})
     qc_summary.append({"title": "Walks",
-                       "value": str(percent_of_reads(quality_metric["WW"])),
-                       "tooltip": tooltip(quality_metric["WW"]),
+                       "value": str(percent_of_reads(walks)),
+                       "tooltip": tooltip(walks),
                        "numberType": "percent"})
     qc_summary.append({"title": "Minor Contigs",
                        "value": str(percent_of_reads(quality_metric["Minor Contigs"])),
