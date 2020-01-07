@@ -288,7 +288,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bamqc",
         "workflow_uuid": "dcfff5c8-2ec0-498b-bc89-074f7b681303",
-        "overwrite_input_extra": False
+        "overwrite_input_extra": False,
+        "config": {'mem': 4, 'cpu': 1, 'mount': True}
         },
         # temp
         {
