@@ -1900,7 +1900,7 @@ def bamqc_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bamqc',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
