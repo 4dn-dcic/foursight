@@ -1,6 +1,37 @@
 from dcicutils import ff_utils
 
 
+def calculate_qc_metric_rnaseq(file_uuid, key):
+    '''Patching an RNA-seq gene expression tsv or genome-mapped bam file
+    with quality_metric summary'''
+    res = ff_utils.get_metadata(file_uuid, key=key)
+    qc_uuid = res['quality_metric']['uuid']
+    quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
+    qc_summary = []
+
+    if 'star_log_qc' in quality_metric:
+        uniquely_mapped = quality_metric['star_log_qc']['Uniquely mapped reads number']
+        multi_mapped = quality_metric['star_log_qc']['Number of reads mapped to multiple loci']
+        total_mapped = int(uniquely_mapped) + int(multi_mapped)
+        qc_summary.append({"title": "Total mapped reads (genome)",
+                           "value": str(total_mapped),
+                           "numberType": "integer"})
+        qc_summary.append({"title": "Total uniquely mapped reads (genome)",
+                           "value": str(uniquely_mapped),
+                           "numberType": "integer"})
+    else:
+        if 'gene_type_count' not in quality_metric:
+            raise Exception("Quality Metric Object does not have the correct fields")
+        qc_summary.append({"title": "Reads mapped to protein-coding genes",
+                           "value": str(quality_metric['gene_type_count']['protein_coding']),
+                           "numberType": "integer"})
+        qc_summary.append({"title": "Reads mapped to rRNA",
+                           "value": str(quality_metric['gene_type_count']['rRNA']),
+                           "numberType": "integer"})
+    res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
+    return res
+    
+
 def calculate_qc_metric_pairsqc(file_uuid, key):
     '''Patching a pairs file object with quality_metric summary'''
     res = ff_utils.get_metadata(file_uuid, key=key)
@@ -165,3 +196,60 @@ def calculate_qc_metric_tagalign(file_uuid, key):
                                           "numberType": "integer"})
     ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
     return qc_summary
+
+
+def calculate_qc_metric_bamqc(file_uuid, key):
+    '''Patching a annotated bam file object with quality_metric summary'''
+
+    res = ff_utils.get_metadata(file_uuid, key=key)
+    qc_uuid = res['quality_metric']['uuid']
+    quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
+    qc_summary = []
+
+    def total_number_of_reads_per_type(qc):
+        unmapped = 0
+        multimapped = 0
+        for key, val in qc.items():
+            if "N" in key or "X" in key:
+                unmapped = unmapped + val
+            elif "M" in key and key != "NM":
+                multimapped = multimapped + val
+        return unmapped, multimapped
+
+    unmapped_reads, multi_reads = total_number_of_reads_per_type(quality_metric)
+
+    def percent_of_reads(numVal):
+        '''convert to percentage of Total reads in bam file'''
+        return round((int(numVal) / int(quality_metric['Total Reads'])) * 100 * 1000) / 1000
+
+    def million(numVal):
+        return str(round(int(numVal) / 10000) / 100) + "m"
+
+    def tooltip(numVal):
+        return "Percent of total reads (=%s)" % million(int(numVal))
+
+    qc_summary.append({"title": "Total Reads",
+                       "value": str(quality_metric["Total Reads"]),
+                       "numberType": "integer"})
+    qc_summary.append({"title": "Unmapped Reads",
+                       "value": str(percent_of_reads(unmapped_reads)),
+                       "tooltip": tooltip(unmapped_reads),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Multimapped Reads",
+                       "value": str(percent_of_reads(multi_reads)),
+                       "tooltip": tooltip(multi_reads),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Duplicate Reads",
+                       "value": str(percent_of_reads(quality_metric["DD"])),
+                       "tooltip": tooltip(quality_metric["DD"]),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Walks",
+                       "value": str(percent_of_reads(quality_metric["WW"])),
+                       "tooltip": tooltip(quality_metric["WW"]),
+                       "numberType": "percent"})
+    qc_summary.append({"title": "Minor Contigs",
+                       "value": str(percent_of_reads(quality_metric["Minor Contigs"])),
+                       "tooltip": tooltip(quality_metric["Minor Contigs"]),
+                       "numberType": "percent"})
+
+    res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)

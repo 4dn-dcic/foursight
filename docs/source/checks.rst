@@ -2,9 +2,9 @@
 Foursight Checks
 ================
 
-Checks are the fundamental unit of work done in Foursight. They contain the entirety of code needed to make some observation or do some work and then take care of setting the result fields and storing the result. As mentioned in the `getting started <./getting_started.md>`_ documentation, checks are written in files called check modules and organized in the check setup. This document contains information on writing checks, as well as best practices for running them.
+Checks are the fundamental unit of work done in Foursight. They contain the entirety of code needed to make some observation or do some work and then take care of setting the result fields and storing the result. As mentioned in the `getting started <https://foursight.readthedocs.io/en/latest/getting_started.html>`_ documentation, checks are written in files called check modules and organized in the check setup. This document contains information on writing checks, as well as best practices for running them.
 
-It is assumed that you've already read the getting started documentation. If not, head over and check that out before continuing. If you are interested in tips on the check development process, `go here <./development_tips.md>`_.
+It is assumed that you've already read the getting started documentation. If not, head over and check that out before continuing. If you are interested in tips on the check development process, `go here <https://foursight.readthedocs.io/en/latest/development_tips.html>`_.
 
 Quick reference for important check requirements
 ------------------------------------------------
@@ -42,8 +42,8 @@ Here is a list of attributes that you will routinely use, with brief description
 * **full_output**\ : same as brief_output, but is intended to hold the entirety of the check data.
 * **admin_output**\ : same as brief_output, but is only visible to admins to view on the UI. Use for sensitive data.
 * **ff_link**\ : a link to (presumably) Fourfront that will be displayed in the UI if provided. Should be relevant to the check.
-* **action**\ : name of a Foursight action function that is linked to this check. See the `action docs <./actions.md>`_ for more information.
-* **allow_action**\ : boolean value of whether or not the linked action can be run. Defaults to False. See the `action docs <./actions.md>`_ for more information.
+* **action**\ : name of a Foursight action function that is linked to this check. See the `action docs <https://foursight.readthedocs.io/en/latest/actions.html>`_ for more information.
+* **allow_action**\ : boolean value of whether or not the linked action can be run. Defaults to False. See the `action docs <https://foursight.readthedocs.io/en/latest/actions.html>`_ for more information.
 
 Lastly, there are a number of attributes that are used internally. These do not usually need to be manually set, but can be.
 
@@ -117,7 +117,7 @@ This check is fully functional as written above, but it has a couple limitations
 Check setup
 -----------
 
-Let's start by configuring our check setup (in ``check_setup.json``\ ) so that our check runs on all environment every morning. It will be part of the ``morning_checks`` schedule. It is assumed that you've already read the basics of the check setup in the `getting started <./getting_started.md#adding-checks-to-check_setup>`_ documentation, so we will start with the following.
+Let's start by configuring our check setup (in ``check_setup.json``\ ) so that our check runs on all environment every morning. It will be part of the ``morning_checks`` schedule. It is assumed that you've already read the basics of the check setup in the `getting started <https://foursight.readthedocs.io/en/latest/getting_started.html#adding-checks-to-check_setup>`_ documentation, so we will start with the following.
 
 .. code-block::
 

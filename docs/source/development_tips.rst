@@ -2,7 +2,7 @@
 Development Tips
 ================
 
-This documentation is meant to help you get up and running writing checks for Foursight. It includes some useful tips and functions outside of the scope of the strictly necessary stuff contained in the `getting started <./getting_started.md>`_ and `checks <./checks.md>`_ documentation. First, we will go over the timeline of writing a new check module containing new checks and scheduling it.
+This documentation is meant to help you get up and running writing checks for Foursight. It includes some useful tips and functions outside of the scope of the strictly necessary stuff contained in the `getting started <https://foursight.readthedocs.io/en/latest/getting_started.html>`_ and `checks <https://foursight.readthedocs.io/en/latest/checks.html>`_ documentation. First, we will go over the timeline of writing a new check module containing new checks and scheduling it.
 
 Overall process for adding, testing, and scheduling a brand new check
 ---------------------------------------------------------------------
@@ -12,7 +12,7 @@ Overall process for adding, testing, and scheduling a brand new check
 #. Write your checks within that file.
 #. Add your check to ``check_setup.json``.
 #. Do some testing of your new check.
-#. Deploy to Foursight ``dev`` and test it live. `See here <./deployment.md>`_.
+#. Deploy to Foursight ``dev`` and test it live. `See here <https://foursight.readthedocs.io/en/latest/deployment.html>`_.
 
 Testing tips
 ------------
