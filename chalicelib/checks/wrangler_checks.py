@@ -576,6 +576,9 @@ def identify_files_without_filesize(connection, **kwargs):
     problem_files = []
     file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     if not file_hits:
+        check.allow_action = False
+        check.summary = 'All files have file size'
+        check.description = 'All files have file size'
         check.status = 'PASS'
         return check
 
