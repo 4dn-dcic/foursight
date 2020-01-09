@@ -1144,6 +1144,18 @@
             }
         }
     },
+    "in_situ_chia_pet_status" : {
+        "title": "m) in situ ChIA-PET",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "trac_loop_status" : {
         "title": "n) TrAC-loop",
         "group": "Pipeline checks",
