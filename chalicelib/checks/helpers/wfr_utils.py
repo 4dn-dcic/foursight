@@ -134,6 +134,8 @@ accepted_versions = {
     # Preliminary - Released to network  # NO-RE NO-NORM
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
+    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network  # NO-RE NO-NORM
     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
