@@ -759,7 +759,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
             continue
         if not refs['enz_ref'] and not nore:
-            set_summary += "| skipped - no enz"
+            set_summary += "| skipped - no reference NZ file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no enz'})
             continue
