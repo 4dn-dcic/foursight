@@ -113,7 +113,7 @@ workflow_details = {
     },
     'bamqc': {
         "run_time": 200,
-        "accepted_versions": ["v2"]
+        "accepted_versions": ["v2", "v3"]
     }
 }
 

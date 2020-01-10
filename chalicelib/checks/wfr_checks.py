@@ -1846,7 +1846,7 @@ def bamqc_status(connection, **kwargs):
         return check
 
     # Build the query (find bam files produced bt the Hi-C Post Alignment Processing wfr)
-    default_stati = 'released&status=uploaded&status=released+to+project'
+    default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
     query = 'search/?file_type=alignment&{}'.format(stati)
