@@ -1722,7 +1722,7 @@ def rna_strandedness_status(connection, **kwargs):
     check.full_output = {}
     check.status = 'PASS'
 
-    check indexing queue
+    #check indexing queue
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
     if indexing_queue:
