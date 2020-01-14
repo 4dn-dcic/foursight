@@ -1661,17 +1661,18 @@ def rna_strandedness_status(connection, **kwargs):
     check.status = 'PASS'
 
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'WARN'
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
-        return check
+    # env = connection.ff_env
+    # indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    # if indexing_queue:
+    #     check.status = 'WARN'
+    #     check.brief_output = ['Waiting for indexing queue to clear']
+    #     check.summary = 'Waiting for indexing queue to clear'
+    #     check.full_output = {}
+    #     return check
 
     # Build the query (RNA-seq experiments)
-    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
+    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&status=pre-release&status=released&status=released to project'
+
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     targets = []
