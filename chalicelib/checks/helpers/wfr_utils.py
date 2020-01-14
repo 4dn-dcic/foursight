@@ -134,6 +134,8 @@ accepted_versions = {
     # Preliminary - Released to network  # NO-RE NO-NORM
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
+    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network  # NO-RE NO-NORM
     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
@@ -756,11 +758,18 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
             continue
-        if not refs['enz_ref'] and not nore:
-            set_summary += "| skipped - no enz"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no enz'})
-            continue
+        # if enzyme is used in the pipeline, check required parameters
+        if not nore:
+            if not refs['enzyme']:
+                set_summary += "| skipped - missing enzyme metadata"
+                check.brief_output.append(set_summary)
+                check.full_output['skipped'].append({set_acc: 'skipped - missing enzyme metadata'})
+                continue
+            if not refs['enz_ref']:
+                set_summary += "| skipped - no reference NZ file"
+                check.brief_output.append(set_summary)
+                check.full_output['skipped'].append({set_acc: 'skipped - no reference NZ file'})
+                continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
         for exp in exp_files.keys():
