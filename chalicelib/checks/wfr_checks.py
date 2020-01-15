@@ -1722,7 +1722,7 @@ def rna_strandedness_status(connection, **kwargs):
     check.full_output = {}
     check.status = 'PASS'
 
-    # check indexing queue
+    #check indexing queue
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
     if indexing_queue:
@@ -1733,7 +1733,8 @@ def rna_strandedness_status(connection, **kwargs):
         return check
 
     # Build the query (RNA-seq experiments)
-    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
+    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&status=pre-release&status=released&status=released to project'
+
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     targets = []
@@ -1908,7 +1909,7 @@ def bamqc_status(connection, **kwargs):
         return check
 
     # Build the query (find bam files produced bt the Hi-C Post Alignment Processing wfr)
-    default_stati = 'released&status=uploaded&status=released+to+project'
+    default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
     query = 'search/?file_type=alignment&{}'.format(stati)
@@ -1962,7 +1963,7 @@ def bamqc_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bamqc',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
