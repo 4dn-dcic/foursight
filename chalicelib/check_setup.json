@@ -910,7 +910,7 @@
         "title": "Purge Download Tracking Items",
         "group": "Cleanup checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
