@@ -756,7 +756,7 @@
         "title": "Process Download Tracking Items",
         "group": "System checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": ["purge_download_tracking_items"]
