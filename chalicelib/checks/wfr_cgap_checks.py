@@ -8,6 +8,10 @@ from dcicutils import ff_utils, s3Utils
 from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
+# list of acceptible version
+cgap_partI_version = ['WGS_partI_V11']
+cgap_partII_version = ['WGS_PartII_V11']
+
 
 @check_function(file_type='File', start_date=None)
 def md5runCGAP_status(connection, **kwargs):
@@ -204,7 +208,14 @@ def fastqcCGAP_status(connection, **kwargs):
     if s_date:
         query += '&date_created.from=' + s_date
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    results = ff_utils.search_metadata(query, key=my_auth)
+    res = []
+    # check if the qc_metric is in the file
+    for a_file in results:
+        qc_metric = cgap_utils.is_there_my_qc_metric(a_file, 'QualityMetricFastqc', my_auth)
+        if not qc_metric:
+            res.append(a_file)
+
     if not res:
         check.summary = 'All Good!'
         return check
@@ -272,7 +283,11 @@ def cgap_status(connection, **kwargs):
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-    q = '/search/?type=Sample&processed_files.display_title=No+value&files.display_title%21=No+value'
+
+    query_base = '/search/?type=Sample&files.display_title%21=No+value'
+    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
+    q = query_base + version_filter
+
     all_samples = ff_utils.search_metadata(q, my_auth)
     print(len(all_samples))
 
@@ -283,11 +298,9 @@ def cgap_status(connection, **kwargs):
     step5_name = 'workflow_sort-bam-check'
     step6_name = 'workflow_gatk-BaseRecalibrator'
     step7_name = 'workflow_gatk-ApplyBQSR-check'
-    # step8_name = 'workflow_index-sorted-bam'
+    step8_name = 'workflow_gatk-HaplotypeCaller'
 
     for a_sample in all_samples:
-        print('===================')
-        print(a_sample['accession'])
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -299,6 +312,19 @@ def cgap_status(connection, **kwargs):
         print(a_sample['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
+        # are all files uploaded ?
+        all_uploaded = True
+        for a_file in all_items['file_fastq']:
+            if a_file['status'] in ['uploading', 'upload failed']:
+                all_uploaded = False
+
+        if not all_uploaded:
+            final_status = a_sample['accession'] + ' skipped, waiting for file upload'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
+            continue
+
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
         sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, all_items['file_fastq'])
@@ -382,30 +408,41 @@ def cgap_status(connection, **kwargs):
                                                                                                    'step7', a_sample['accession'], step6_output,
                                                                                                    s7_input_files,  step7_name, 'recalibrated_bam', {}, 'human')
 
-        # # RUN STEP 8
-        # if step7_status != 'complete':
-        #     step8_status = ""
-        # else:
-        #     s8_input_files = {'bam': step7_output}
-        #     running, problematic_run, missing_run, step8_status, step8_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
-        #                                                                                            'step8', a_sample['accession'], step7_output,
-        #                                                                                            s8_input_files,  step8_name, '', {}, 'human', no_output=True)
+        # RUN STEP 8
+        if step7_status != 'complete':
+            step8_status = ""
+        else:
+            s8_input_files = {'input_bam': step7_output,
+                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            running, problematic_run, missing_run, step8_status, step8_output = cgap_utils.stepper(all_files, all_wfrs, running, problematic_run, missing_run,
+                                                                                                   'step8', a_sample['accession'], step7_output,
+                                                                                                   s8_input_files,  step8_name, 'gvcf', {}, 'human')
 
         final_status = a_sample['accession']
         completed = []
-        if step7_status == 'complete':
+        pipeline_tag = cgap_partI_version[-1]
+
+        if step8_status == 'complete':
             final_status += ' completed'
-            completed = [a_sample['accession'], {'processed_files': [step7_output]}]
-            print('COMPLETED', step7_output)
+            completed = [
+                a_sample['accession'],
+                {'processed_files': [step7_output, step8_output],
+                 'completed_processes': [pipeline_tag]}
+                         ]
+            print('COMPLETED', step8_output)
         else:
             if missing_run:
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
             if running:
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
 
         # add dictionaries to main ones
         set_acc = a_sample['accession']
         check.brief_output.append(final_status)
+        print(final_status)
         if running:
             check.full_output['running_runs'].append({set_acc: running})
         if missing_run:
@@ -479,25 +516,30 @@ def cgapS2_status(connection, **kwargs):
     # check indexing queue
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
         check.brief_output = ['Waiting for indexing queue to clear']
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
         return check
-    q = '/search/?type=Sample&processed_files.display_title!=No+value'
+
+    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
+    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
+    q = query_base + version_filter
     res = ff_utils.search_metadata(q, my_auth)
-    # get the ones with only one file in processed file,
-    all_samps = [i for i in res if len(i.get('processed_files', [])) == 1]
-    # check if anything left after filtering
-    if not all_samps:
+    # check if anything in scope
+    if not res:
         return check
     # list step names
-    step1_name = 'workflow_gatk-HaplotypeCaller'
+    step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
-    # iterate over samples
-    print(len(all_samps))
-    for a_sample in all_samps:
+    step3_name = 'workflow_gatk-VQSR-check'
+
+    # iterate over msa
+    print(len(res))
+    for a_msa in res:
+
         input_bam = a_sample['processed_files'][0]
         input_bam_id = input_bam['@id']
         input_bam_acc = input_bam['display_title'].split('.')[0]
@@ -608,4 +650,88 @@ def cgapS2_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = cgapS2_check_result.get('completed_runs')
     action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    return action
+
+
+@check_function()
+def bamqcCGAP_status(connection, **kwargs):
+    """Searches for bam files that don't have bamqcCGAP
+    Keyword arguments:
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'bamqcCGAP_status')
+    my_auth = connection.ff_keys
+    check.action = "bamqcCGAP_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    # Build the query (skip to be uploaded by workflow)
+    query = ("/search/?type=Sample&status%21=deleted&processed_files.uuid%21=No+value")
+    results = ff_utils.search_metadata(query, key=my_auth)
+    # List of bam files
+    bam_list = []
+    for a_sample in results:
+        for a_file in a_sample['processed_files']:
+            bam_uuid = a_file['uuid']
+            bam_list.append(bam_uuid)
+
+    res = []
+    # check if the qc_metric is in the file
+    for a_file in bam_list:
+        results = ff_utils.get_metadata(a_file, key=my_auth)
+        qc_metric = cgap_utils.is_there_my_qc_metric(results, 'QualityMetricWgsBamqc', my_auth)
+        if not qc_metric:
+            res.append(results)
+
+    if not res:
+        check.summary = 'All Good!'
+        return check
+
+    check = cgap_utils.check_runs_without_output(res, check, 'workflow_qcboard-bam', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bamqcCGAP_start(connection, **kwargs):
+    """Start bamqcCGAP runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'bamqcCGAP_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bamqcCGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bamqcCGAP_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bamqcCGAP_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = cgap_utils.get_attribution(a_file)
+        inp_f = {'input_files': a_file['@id']}
+        wfr_setup = wfrset_cgap_utils.step_settings('workflow_qcboard-bam', 'no_organism', attributions)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
     return action

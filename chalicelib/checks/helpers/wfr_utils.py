@@ -55,6 +55,10 @@ workflow_details = {
         "run_time": 24,
         "accepted_versions": ["v4"]
     },
+    "bedtomultivec": {
+        "run_time": 24,
+        "accepted_versions": ["v4"]
+    },
     "bedtobeddb": {
         "run_time": 24,
         "accepted_versions": ["v2"]
@@ -94,29 +98,47 @@ workflow_details = {
     'imargi-processing-pairs': {
         "run_time": 200,
         "accepted_versions": ["1.1.1_dcic_4"]
+    },
+    'encode-rnaseq-stranded': {
+        "run_time": 200,
+        "accepted_versions": ["1.1"]
+    },
+    'encode-rnaseq-unstranded': {
+        "run_time": 200,
+        "accepted_versions": ["1.1"]
+    },
+    'rna-strandedness': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
+    },
+    'bamqc': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
     }
 }
 
 # accepted versions for completed pipelines
 accepted_versions = {
     # OFFICIAL
-    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
-    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL
-    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-RE
-    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-NORM
-    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
-    # Preliminary - Released to network  # NO-RE
-    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    # OFFICIAL  # NO-RE
+    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
-    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
-    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network  # NO-RE NO-NORM
+    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
-    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.6_skipped-small-set", "HiC_Pipeline_0.2.7"],
+    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
     # Preliminary - Released to network
@@ -137,6 +159,8 @@ accepted_versions = {
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
     'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1'],
+    # Testing for now from ENCONDE
+    'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
     'single cell Repli-seq': [''],
     'cryomilling TCC': [''],
     'single cell Hi-C': [''],
@@ -145,12 +169,11 @@ accepted_versions = {
     'MC-Hi-C': [''],
     'Hi-ChIP': [''],
     'DamID-seq': [''],
-    'RNA-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
     'GAM': [''],
     'CUT&RUN': [''],
-    'TRIP': [''],
+    'TRIP': ['']
     }
 
 # Reference Files
@@ -164,10 +187,28 @@ chr_size = {"human": "4DNFI823LSII",
             "fruit-fly": '4DNFIBEEN92C',
             "chicken": "4DNFIQFZW4DX"}
 
+# star index for rna Seq
+rna_star_index = {"human": "4DNFI3FCGSW2",
+                  "mouse": "4DNFINJIU765"}
+
+# star index for rna Seq
+rna_rsem_index = {"human": "4DNFIB4HV398",
+                  "mouse": "4DNFI2GFI8KN"}
+
+# chromosome sizes for rna Seq
+rna_chr_size = {"human": "4DNFIZJB62D1",
+                "mouse": "4DNFIBP173GC"}
+
+# id to gene type for rna Seq
+rna_t2g = {"human": "4DNFIHBJI984",
+           "mouse": "4DNFINBJ25DT"}
+
 re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'DpnII': '/files-reference/4DNFIBNAPW3O/',
                    'HindIII': '/files-reference/4DNFI823MBKE/',
                    'NcoI': '/files-reference/4DNFI3HVU2OD/',
+                   'MspI': '/files-reference/4DNFI2JHR3OI/',
+                   'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
@@ -183,6 +224,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
 # re bed files for MARGI pipeline
 re_fragment = {"human": {'AluI': '/files-reference/4DNFIL1I5TSP/'}}
 
+# reference beta-actin 21kmer for rna_strandness pipeline
+re_kmer = {"human": '/files-reference/4DNFIDMVPFSO/',
+           "mouse": '/files-reference/4DNFIAQ4BI8Y'}
 
 # max_distance for species (used for pairsqc)
 max_size = {"human": None,
@@ -194,12 +238,31 @@ max_size = {"human": None,
 re_nz_sizes = {"HindIII": "6",
                "DpnII": "4",
                "MboI": "4",
-               "NcoI": "6"}
+               "NcoI": "6",
+               "MspI": "4",
+               "BspHI": "6",
+               "NcoI_MspI_BspHI": "4"  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
+               }
 
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
           'chicken': 'galGal5'}
+
+# color map states bed file
+states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+
+
+# check for a specific tag in a states file
+def isthere_states_tag(a_file):
+    if a_file.get('tags'):
+        for tag in a_file['tags']:
+            if tag not in states_file_type:
+                return (False, 'unregistered_tag')
+            else:
+                return (True, '')
+    else:
+        return (False, 'missing_tag')
 
 
 def extract_nz_chr(acc, auth):
@@ -207,7 +270,6 @@ def extract_nz_chr(acc, auth):
     used for pairsqc."""
     exp_resp = ff_utils.get_metadata(acc, key=auth)
     exp_type = exp_resp['experiment_type']['display_title']
-
     # get enzyme
     nz_num = ""
     nz = exp_resp.get('digestion_enzyme')
@@ -216,7 +278,7 @@ def extract_nz_chr(acc, auth):
     if nz_num:
         pass
     # Use 6 for Chiapet and all without nz (Soo & Burak)
-    elif exp_type in ['ChIA-PET', 'Micro-C', 'DNase Hi-C', 'TrAC-loop']:
+    elif exp_type in ['in situ ChIA-PET', 'ChIA-PET', 'Micro-C', 'DNase Hi-C', 'TrAC-loop']:
         nz_num = '6'
     else:
         return (None, None, 'No enzyme or accepted exp type')
@@ -254,6 +316,9 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # tag as problematic if problematic runs are this many
+    # if there are n failed runs, don't proceed
+    error_at_failed_runs = 2
     # you should provide key or all_wfrs
     assert key or all_wfrs
     if wfr_name not in workflow_details:
@@ -323,7 +388,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # if status is error
     elif run_status == 'error':
         # are there too many failed runs
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
         return {'status': "no complete run, errrored"}
@@ -332,7 +397,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "running"}
     # this should be the timeout case
     else:
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many time-outs"}
         else:
             return {'status': "no completed run, time-out"}
@@ -376,28 +441,55 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     if rename:
         change_from = rename[0]
         change_to = rename[1]
+
     # if it is list of items, change the structure
     if isinstance(obj_id, list):
-        object_key = []
-        uuid = []
-        buckets = []
-        for obj in obj_id:
-            metadata = ff_utils.get_metadata(obj, key=auth)
-            object_key.append(metadata['display_title'])
-            uuid.append(metadata['uuid'])
-            # get the bucket
-            if 'FileProcessed' in metadata['@type']:
-                my_bucket = out_bucket
-            else:  # covers cases of FileFastq, FileReference, FileMicroscopy
-                my_bucket = raw_bucket
-            buckets.append(my_bucket)
-        # check bucket consistency
-        assert len(list(set(buckets))) == 1
-        template['object_key'] = object_key
-        template['uuid'] = uuid
-        template['bucket_name'] = buckets[0]
-        if rename:
-            template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        # if it is list of list, change the structure, for RNAseq
+        if isinstance(obj_id[0], list):
+            # will only work with single item in first list (was implemented for RNA seq)
+            assert len(obj_id) == 1
+            object_key = []
+            uuid = []
+            buckets = []
+            for obj in obj_id[0]:
+                metadata = ff_utils.get_metadata(obj, key=auth)
+                object_key.append(metadata['display_title'])
+                uuid.append(metadata['uuid'])
+                # get the bucket
+                if 'FileProcessed' in metadata['@type']:
+                    my_bucket = out_bucket
+                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                    my_bucket = raw_bucket
+                buckets.append(my_bucket)
+            # check bucket consistency
+            assert len(list(set(buckets))) == 1
+            template['object_key'] = [object_key]
+            template['uuid'] = [uuid]
+            template['bucket_name'] = buckets[0]
+            if rename:
+                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key'][0]]
+        # if it is just a list
+        else:
+            object_key = []
+            uuid = []
+            buckets = []
+            for obj in obj_id:
+                metadata = ff_utils.get_metadata(obj, key=auth)
+                object_key.append(metadata['display_title'])
+                uuid.append(metadata['uuid'])
+                # get the bucket
+                if 'FileProcessed' in metadata['@type']:
+                    my_bucket = out_bucket
+                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                    my_bucket = raw_bucket
+                buckets.append(my_bucket)
+            # check bucket consistency
+            assert len(list(set(buckets))) == 1
+            template['object_key'] = object_key
+            template['uuid'] = uuid
+            template['bucket_name'] = buckets[0]
+            if rename:
+                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
 
     # if obj_id is a string
     else:
@@ -415,7 +507,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     return template
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env):
+def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
     all_inputs = []
     for arg, files in input_files.items():
         inp = extract_file_info(files, arg, auth, env)
@@ -434,6 +526,9 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "run_id": run_name}
     input_json['step_function_name'] = 'tibanna_pony'
     input_json['public_postrun_json'] = True
+    if mount:
+        for a_file in input_json['input_files']:
+            a_file['mount'] = True
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
@@ -464,8 +559,8 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
-def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
-    """Find fastq files from experiment set, exclude miseq by default
+def find_fastq_info(my_rep_set, fastq_files, type=None):
+    """Find fastq files from experiment set
     expects my_rep_set to be set response in frame object (search result)
     will check if files are paired or not, and if paired will give list of lists for each exp
     if not paired, with just give list of files per experiment.
@@ -501,10 +596,6 @@ def find_fastq_info(my_rep_set, fastq_files, exclude_miseq=True, type=None):
             # skip pair no 2
             if file_resp.get('paired_end') == '2':
                 continue
-            # exclude miseq
-            if exclude_miseq:
-                if file_resp.get('instrument') == 'Illumina MiSeq':
-                    continue
             # check that file has a pair
             f1 = file_resp['@id']
             f2 = ""
@@ -667,11 +758,18 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
             continue
-        if not refs['enz_ref'] and not nore:
-            set_summary += "| skipped - no enz"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no enz'})
-            continue
+        # if enzyme is used in the pipeline, check required parameters
+        if not nore:
+            if not refs['enzyme']:
+                set_summary += "| skipped - missing enzyme metadata"
+                check.brief_output.append(set_summary)
+                check.full_output['skipped'].append({set_acc: 'skipped - missing enzyme metadata'})
+                continue
+            if not refs['enz_ref']:
+                set_summary += "| skipped - no reference NZ file"
+                check.brief_output.append(set_summary)
+                check.full_output['skipped'].append({set_acc: 'skipped - no reference NZ file'})
+                continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
         for exp in exp_files.keys():
@@ -1025,7 +1123,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
-              'margi': "iMARGI Processing Pipeline - Preliminary Files"}
+              'margi': "iMARGI Processing Pipeline - Preliminary Files",
+              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1095,7 +1194,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'rna.fastqs_R1']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1105,10 +1204,14 @@ def start_missing_run(run_info, auth, env):
             attr_file = inputs[attr_key]
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
-            break
+                if isinstance(attr_file, list):
+                    attr_file = attr_file[0]
+                    break
+                else:
+                    break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
-    url = run_missing_wfr(settings, inputs, name_tag, auth, env)
+    url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
     return url
 
 
@@ -1255,6 +1358,199 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
             else:
                 part3 = 'not ready'
         if part3 == 'ready':
+            # add the tag
+            set_summary += "| completed runs"
+            complete['add_tag'] = [set_acc, tag]
+        else:
+            if running:
+                set_summary += "| running step 1"
+            elif missing_run:
+                set_summary += "| missing step 1"
+            elif problematic_run:
+                set_summary += "| problem in step 1"
+
+        check.brief_output.append(set_summary)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if complete.get('add_tag'):
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            check.full_output['completed_runs'].append(complete)
+    # complete check values
+    check.summary = ""
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['skipped']:
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+    return check
+
+
+def check_rna(res, my_auth, tag, check, start, lambda_limit):
+    """Check run status for each set in res, and report missing runs and completed process"""
+    for a_set in res:
+        # get all related items
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+                                                           store_frame='embedded',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['experiment_relation',
+                                                                         'biosample_relation',
+                                                                         'references',
+                                                                         'reference_pubs'])
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        now = datetime.utcnow()
+        # print(a_set['accession'], (now-start).seconds)
+        if (now-start).seconds > lambda_limit:
+            break
+        # missing run
+        missing_run = []
+        # still running
+        running = []
+        # problematic cases
+        problematic_run = []
+        # if all runs are complete, add the patch info for processed files and tag
+        complete = {'patch_opf': [],
+                    'add_tag': []}
+        set_summary = ""
+        set_acc = a_set['accession']
+        final_status = 'ready'
+        # references dict content
+        # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
+        exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
+
+        print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
+        for i in exp_files:
+            print(i, exp_files[i])
+
+        paired = refs['pairing']
+        organism = refs['organism']
+        set_summary = " - ".join([set_acc, organism, refs['f_size']])
+
+        # if no files were found
+        if all(not value for value in exp_files.values()):
+            set_summary += "| skipped - no usable file"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+
+        if organism not in ['mouse', 'human']:
+            msg = 'No reference file for ' + organism
+            print(msg)
+            set_summary += "| " + msg
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: msg})
+            continue
+
+        # check  strandedness_verified
+        not_verified = []
+        for an_exp in exp_files:
+            an_exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == an_exp][0]
+            tags = an_exp_resp.get('tags')
+            if 'strandedness_verified' not in tags:
+                not_verified.append(an_exp)
+            elif not an_exp_resp.get('strandedness'):
+                not_verified.append(an_exp)
+        if not_verified:
+            msg = ', '.join(not_verified) + ' Not verified for strandedness'
+            print(msg)
+            set_summary += "| " + msg
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: msg})
+            continue
+
+        # cycle through the experiments, skip the ones without usable files
+        for exp in exp_files.keys():
+            if not exp_files.get(exp):
+                continue
+
+            strand_info = ''
+            exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
+            tags = exp_resp.get('tags')
+            strand_info = exp_resp.get('strandedness')
+
+            # run unstranded pipeline
+            app_name = ''
+            # set parameters
+            pars = {
+                'rna.strandedness': '',
+                'rna.strandedness_direction': '',
+                'rna.endedness': ''
+            }
+            if strand_info == 'unstranded':
+                pars['rna.strandedness'] = 'unstranded'
+                pars['rna.strandedness_direction'] = 'unstranded'
+                app_name = 'encode-rnaseq-unstranded'
+            elif strand_info in ['reverse', 'forward']:
+                pars['rna.strandedness'] = 'stranded'
+                pars['rna.strandedness_direction'] = strand_info
+                app_name = 'encode-rnaseq-stranded'
+
+            # add more parameters and get status report
+            input_files = exp_files[exp]
+            if paired == 'Yes':
+                pars['rna.endedness'] = 'paired'
+                input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0][0]][0]
+            elif paired == 'No':
+                pars['rna.endedness'] = 'single'
+                input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0]][0]
+            step1_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
+
+            # if successful
+            if step1_result['status'] == 'complete':
+                # create processed files list for experiment
+                exp_results = []
+                for a_type in ['rna.outbam',
+                               'rna.plusbw',
+                               'rna.minusbw',
+                               'rna.outbw',
+                               'rna.gene_expression',
+                               'rna.isoform_expression']:
+                    if a_type in step1_result:
+                        exp_results.append(step1_result[a_type])
+                complete['patch_opf'].append([exp, exp_results])
+            # if still running
+            elif step1_result['status'] == 'running':
+                final_status = 'not ready'
+                running.append(['step1', exp])
+            # if run is not successful
+            elif step1_result['status'].startswith("no complete run, too many"):
+                final_status = 'not ready'
+                problematic_run.append(['step1', exp])
+            # if it is missing
+            else:
+                final_status = 'not ready'
+                # add part
+                name_tag = exp
+                inp_f = {'rna.align_index': rna_star_index[organism],
+                         'rna.rsem_index': rna_rsem_index[organism],
+                         'rna.chrom_sizes': rna_chr_size[organism],
+                         'rna.rna_qc_tr_id_to_gene_type_tsv': rna_t2g[organism]}
+                if paired == 'Yes':
+                    inp_f['rna.fastqs_R1'] = [[i[0] for i in input_files]]
+                    inp_f['rna.fastqs_R2'] = [[i[1] for i in input_files]]
+                elif paired == 'No':
+                    inp_f['rna.fastqs_R1'] = [input_files]
+                overwrite = {'parameters': pars}
+                missing_run.append(['step1', [app_name, organism, overwrite], inp_f, name_tag])
+
+        if final_status == 'ready':
             # add the tag
             set_summary += "| completed runs"
             complete['add_tag'] = [set_acc, tag]

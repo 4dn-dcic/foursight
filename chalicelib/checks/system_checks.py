@@ -20,6 +20,22 @@ import time
 
 
 @check_function()
+def wipe_build_indices(connection, **kwargs):
+    """ Wipes all indices on the FF-Build ES env """
+    check = CheckResult(connection, 'wipe_build_indices')
+    check.status = 'PASS'
+    check.summary = check.description = 'Wiped all test indices'
+    BUILD_ES = 'search-fourfront-builds-uhevxdzfcv7mkm5pj5svcri3aq.us-east-1.es.amazonaws.com:80'
+    client = es_utils.create_es_client(BUILD_ES, True)
+    full_output = client.indices.delete(index='*')
+    if full_output['acknowledged'] != True:
+        check.status = 'FAIL'
+        check.summary = check.description = 'Failed to wipe all test indices, see full output'
+    check.full_output = full_output
+    return check
+
+
+@check_function()
 def elastic_search_space(connection, **kwargs):
     """ Checks that our ES nodes all have a certain amount of space remaining """
     check = CheckResult(connection, 'elastic_search_space')

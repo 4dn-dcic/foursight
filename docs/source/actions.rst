@@ -2,7 +2,7 @@
 Foursight Actions
 =================
 
-This is an advanced topic. Make sure that you've read the `getting started <./getting_started.md>`_ and `checks <./checks.md>`_ documentation before going through this.
+This is an advanced topic. Make sure that you've read the `getting started <https://foursight.readthedocs.io/en/latest/getting_started.html>`_ and `checks <https://foursight.readthedocs.io/en/latest/checks.html>`_ documentation before going through this.
 
 Actions are executable functions that are linked to checks. These are useful because, in some cases, you want to take action on an issue identified by a check. Actions provide an easy way to do that, as they are written very similarly to checks and can be executed from the Foursight UI. Whereas checks are meant to be purely observational and not change any data within the target web application, actions are meant to execute meaningful changes to some part of the application.
 

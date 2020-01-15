@@ -2,7 +2,7 @@
 Deploying Foursight
 ===================
 
-As mentioned in the `getting started <./getting_started.md>`_ documentation, there are two stages supported by Foursight: ``dev`` and ``prod``. Dev is used for developmental work, such as building new checks and testing them on live Fourfront environments. Prod is used production Foursight code and should only be deployed to when you are certain your checks are functioning correctly. The current way to deploy Foursight locally is to use the deploy.py script like this (from the root directory of the project):
+As mentioned in the `getting started <https://foursight.readthedocs.io/en/latest/getting_started.html>`_ documentation, there are two stages supported by Foursight: ``dev`` and ``prod``. Dev is used for developmental work, such as building new checks and testing them on live Fourfront environments. Prod is used production Foursight code and should only be deployed to when you are certain your checks are functioning correctly. The current way to deploy Foursight locally is to use the deploy.py script like this (from the root directory of the project):
 
 .. code-block::
 

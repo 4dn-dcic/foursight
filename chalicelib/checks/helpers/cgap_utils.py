@@ -20,51 +20,68 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_picard-MarkDuplicates-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_sort-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
     "workflow_gatk-ApplyBQSR-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9", "v10", "v11"]
     },
+    # defunct step 8
     "workflow_index-sorted-bam": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10"]
+        "accepted_versions": ["v9"]
     },
+    # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
-        "accepted_versions": ["v10"]
+        "accepted_versions": ["v10", "v11"]
     },
+    # part II step 1
+    'workflow_gatk-CombineGVCFs': {
+        "run_time": 12,
+        "accepted_versions": ["v10", "v11"]
+    },
+    # part II step 2
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
-        "accepted_versions": ["v10"]
+        "accepted_versions": ["v10", "v11"]
+    },
+    # part III step 3
+    'workflow_gatk-VQSR-check': {
+        "run_time": 12,
+        "accepted_versions": ["v10", "v11"]
+    },
+    "workflow_qcboard-bam": {
+        "run_time": 12,
+        "accepted_versions": ["v9"]
     },
 }
 
 
 # accepted versions for completed pipelines
-accepted_versions = {
-    'WGS':  ["WGS_Pipeline_V8"]
-    }
+# accepted_versions = {
+#     'WGS':  ["WGS_Pipeline_V8"]
+#     }
 
 # Reference Files
 bwa_index = {'human': 'GAPFI4U1HXIY'}
@@ -126,6 +143,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    error_at_failed_runs = 1
     # you should provide key or all_wfrs
     # assert key or all_wfrs
     assert wfr_name in workflow_details
@@ -135,7 +153,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # get default run out time
     if not run:
         run = workflow_details[wfr_name]['run_time']
-    workflows = emb_file.get('workflow_run_inputs')
+    workflows = emb_file.get('workflow_run_inputs', [])
     wfr = {}
     run_status = 'did not run'
 
@@ -190,7 +208,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # if status is error
     elif run_status == 'error':
         # are there too many failed runs
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
         return {'status': "no complete run, errrored"}
@@ -199,7 +217,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "running"}
     # this should be the timeout case
     else:
-        if len(same_type_wfrs) > 2:
+        if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many time-outs"}
         else:
             return {'status': "no completed run, time-out"}
@@ -312,7 +330,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "run_id": run_name}
     # input_json['env_name'] = 'fourfront-cgap'
     input_json['step_function_name'] = 'tibanna_zebra'
-    input_json['public_postrun_json'] = True
+    # input_json['public_postrun_json'] = True
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
@@ -378,7 +396,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
 
 
 def find_fastq_info(exp, fastq_files):
-    """Find fastq files from experiment set, exclude miseq by default
+    """Find fastq files from experiment set
     expects my_rep_set to be set response in frame object (search result)
     will check if files are paired or not, and if paired will give list of lists for each exp
     if not paired, with just give list of files per experiment.
@@ -482,3 +500,22 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
     action.output = action_log
     action.status = 'DONE'
     return action
+
+
+def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
+    if not file_meta.get('quality_metric'):
+        return False
+
+    qc_results = ff_utils.get_metadata(file_meta['quality_metric']['uuid'], key=my_auth)
+
+    if qc_results['display_title'].startswith('QualityMetricQclist'):
+        if not qc_results.get('qc_list'):
+            return False
+
+        for qc in qc_results['qc_list']:
+            if qc_metric_name not in qc['value']['display_title']:
+                return False
+    else:
+        if qc_metric_name not in qc_results['display_title']:
+            return False
+    return True
