@@ -1504,3 +1504,31 @@ def patch_strandedness_consistency_info(connection, **kwargs):
         action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def check_suggested_enum_values(connection, **kwargs):
+    """On our schemas we have have a list of suggested fields for
+    suggested_enum fields. A value that is not listed in this list
+    can be accepted, and with this check we will find all values for
+    each suggested enum field that is not in the given list.
+    """
+    check = CheckResult(connection, 'check_suggested_enum_values')
+    # must set this to be the function name of the action
+    check.action = "add_suggested_enum_values"
+    check.allow_action = False
+    check.brief_output = ''
+    check.full_output = []
+    check.status = 'WARN'
+    check.summary = 'File metadata found without file_size'
+    return check
+
+
+@action_function()
+def add_suggested_enum_values(connection, **kwargs):
+    action = ActionResult(connection, 'add_suggested_enum_values')
+    action_logs = {}
+    check_result = action.get_associated_check_result(kwargs)
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
