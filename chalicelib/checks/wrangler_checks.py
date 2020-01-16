@@ -1609,6 +1609,7 @@ def check_suggested_enum_values(connection, **kwargs):
                 new_vals = [i['@id'] for i in new_vals]
         return new_vals
 
+    outputs = {}
     # Get Schemas
     schemas = ff_utils.get_metadata('/profiles/', key=connection.ff_keys)
     sug_en_cases = {}
@@ -1619,7 +1620,6 @@ def check_suggested_enum_values(connection, **kwargs):
             sug_en_cases[an_item_type] = sug_en_fields
 
     for item_type in sug_en_cases:
-
         for i in sug_en_cases[item_type]:
             extension = ""
             field_name = i[0]
@@ -1628,30 +1628,43 @@ def check_suggested_enum_values(connection, **kwargs):
             for case in field_option:
                 extension += '&' + field_name + '!=' + case
             f_ex = '&field=' + field_name
-            q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=extension, f_ex = f_ex)
-            responses = ff_utils.search_metadata(q, my_key)
+            q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=extension, f_ex=f_ex)
+            responses = ff_utils.search_metadata(q, connection.ff_keys)
             odds = []
             for response in responses:
                 odds.extend(extract_value(field_name, response))
-
             if len(odds) > 0:
-                print(field_name)
-                print(dict(Counter(odds)))
-    print()
-
-    check.allow_action = False
-    check.brief_output = ''
-    check.full_output = []
-    check.status = 'WARN'
-    check.summary = 'File metadata found without file_size'
+                outputs.append(
+                    {
+                        'item_type': item_type,
+                        'field': field_name,
+                        'new_values': dict(Counter(odds))
+                    })
+    if not outputs:
+        check.allow_action = False
+        check.brief_output = []
+        check.full_output = []
+        check.status = 'PASS'
+        check.summary = 'No new values for suggested enum fields'
+        check.description = 'No new values for suggested enum fields'
+    else:
+        check.allow_action = False
+        check.brief_output = outputs
+        check.full_output = outputs
+        check.status = 'WARN'
+        check.summary = 'Suggested enum fields have new values'
+        check.description = 'Suggested enum fields have new values'
     return check
 
 
 @action_function()
 def add_suggested_enum_values(connection, **kwargs):
+    """No action is added yet, this is a placeholder for
+    automated pr that adds the new values."""
+    # TODO: for linkTo items, the current values are @ids, and might need a change
     action = ActionResult(connection, 'add_suggested_enum_values')
     action_logs = {}
-    check_result = action.get_associated_check_result(kwargs)
+    # check_result = action.get_associated_check_result(kwargs)
     action.status = 'DONE'
     action.output = action_logs
     return action
