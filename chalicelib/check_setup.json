@@ -906,6 +906,18 @@
             }
         }
     },
+    "check_suggested_enum_values": {
+        "title": "Check fields with suggested enum",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "purge_download_tracking_items": {
         "title": "Purge Download Tracking Items",
         "group": "Cleanup checks",
