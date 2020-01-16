@@ -2135,7 +2135,7 @@ def interpolate_query_check_timestamps(connection, search_query, action_name, re
         action_result = action.get_latest_result()
 
         # If there is no action, or it lacks a completed timestamp, return one day before now.
-        if not action_result or "completed_timestamp" not in action_result["output"]:
+        if not action_result or not action_result.get('output') or "completed_timestamp" not in action_result["output"]:
             completed_timestamp_datetime = datetime.utcnow() - timedelta(days=1)
         else:
             # Timestamp example:
