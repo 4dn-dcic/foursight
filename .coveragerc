@@ -1,0 +1,13 @@
+[run]
+branch = True
+omit =
+    *virtualenv*
+    ./docs/*
+    deploy.py
+    ./tests/*
+    conftest.py
+    app.py
+    ./chalicelib/abstract_connection.py
+    ./chalicelib/checks/helpers/*
+    ./chalicelib/*_checks.py
+    ./chalicelib/templates/*
