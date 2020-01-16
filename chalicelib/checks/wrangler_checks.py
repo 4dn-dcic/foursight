@@ -1516,6 +1516,84 @@ def check_suggested_enum_values(connection, **kwargs):
     check = CheckResult(connection, 'check_suggested_enum_values')
     # must set this to be the function name of the action
     check.action = "add_suggested_enum_values"
+
+    def find_suggested_enum(properties, parent='', is_submember=False):
+        """Filter schema propteries for fields with suggested enums."""
+        def is_subobject(field):
+            if field.get('type') == 'object':
+                return True
+            try:
+                return field['items']['type'] == 'object'
+            except:
+                return False
+
+        def dotted_field_name(field_name, parent_name=None):
+            if parent_name:
+                return "%s.%s" % (parent_name, field_name)
+            else:
+                return field_name
+
+        def get_field_type(field):
+            field_type = field.get('type', '')
+            if field_type == 'string':
+                if field.get('linkTo', ''):
+                    return "Item:" + field.get('linkTo')
+                # if multiple objects are linked by "anyOf"
+                if field.get('anyOf', ''):
+                    links = list(filter(None, [d.get('linkTo', '') for d in field.get('anyOf')]))
+                    if links:
+                        return "Item:" + ' or '.join(links)
+                # if not object return string
+                return 'string'
+            elif field_type == 'array':
+                return 'array of ' + get_field_type(field.get('items'))
+            return field_type
+
+        fields = []
+        for name, props in properties.items():
+            options = []
+            # focus on suggested_enum ones
+            if 'suggested_enum' not in str(props):
+                continue
+            # skip calculated
+            if props.get('calculatedProperty'):
+                continue
+            is_array = False
+            if is_subobject(props) and name != 'attachment':
+                is_array = get_field_type(props).startswith('array')
+                obj_props = {}
+                if is_array:
+                    obj_props = props['items']['properties']
+                else:
+                    obj_props = props['properties']
+                fields.extend(find_suggested_enum(obj_props, name, is_array))
+            else:
+                field_name = dotted_field_name(name, parent)
+                field_type = get_field_type(props)
+                # check props here
+                if 'suggested_enum' in props:
+                    options = props['suggested_enum']
+                # if array of string with enum
+                if is_submember or field_type.startswith('array'):
+                    sub_props = props.get('items', '')
+                    if 'suggested_enum' in sub_props:
+                        options = sub_props['suggested_enum']
+                # copy paste exp set for ease of keeping track of different types in experiment objects
+                fields.append((field_name, options))
+        return(fields)
+
+    sug_en_cases = {}
+    for an_item_type in schemas:
+        properties = schemas[an_item_type]['properties']
+        sug_en_fields = find_suggested_enum(properties)
+        if sug_en_fields:
+            sug_en_cases[an_item_type] = sug_en_fields
+
+    for i in sug_en_cases:
+        print(i)
+        for ix in sug_en_cases[i]:
+            print(ix)
+
     check.allow_action = False
     check.brief_output = ''
     check.full_output = []
