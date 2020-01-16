@@ -727,12 +727,14 @@ def purge_download_tracking_items(connection, **kwargs):
 
     # Don't run if staging deployment is running
     # Only need to check if our env is data
-    if connection.fs_env == 'data':
-        staging_conn = init_connection('staging')
-        staging_deploy = CheckResult(staging_conn, 'staging_deployment').get_primary_result()
-        if staging_deploy['status'] != 'PASS':
-            check.summary = 'Staging deployment is running - skipping'
-            return check
+    # XXX: Removing for now as we find the check can never run without this
+    # if the staging deploy takes long enough or errors
+    # if connection.fs_env == 'data':
+    #     staging_conn = init_connection('staging')
+    #     staging_deploy = CheckResult(staging_conn, 'staging_deployment').get_primary_result()
+    #     if staging_deploy['status'] != 'PASS':
+    #         check.summary = 'Staging deployment is running - skipping'
+    #         return check
 
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'

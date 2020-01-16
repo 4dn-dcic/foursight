@@ -110,7 +110,7 @@
         "title": "Change in item counts",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks": {
+            "morning_checks_2": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -756,7 +756,7 @@
         "title": "Process Download Tracking Items",
         "group": "System checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": ["purge_download_tracking_items"]
@@ -910,7 +910,7 @@
         "title": "Purge Download Tracking Items",
         "group": "Cleanup checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
