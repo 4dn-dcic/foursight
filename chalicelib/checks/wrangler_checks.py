@@ -1609,7 +1609,7 @@ def check_suggested_enum_values(connection, **kwargs):
                 new_vals = [i['@id'] for i in new_vals]
         return new_vals
 
-    outputs = {}
+    outputs = []
     # Get Schemas
     schemas = ff_utils.get_metadata('/profiles/', key=connection.ff_keys)
     sug_en_cases = {}

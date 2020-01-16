@@ -910,7 +910,7 @@
         "title": "Check fields with suggested enum",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks": {
+            "monday_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
