@@ -13,6 +13,7 @@ import itertools
 from fuzzywuzzy import fuzz
 import boto3
 from .helpers import wrangler_utils
+from collections import Counter
 
 
 @check_function(cmp_to_last=False)
@@ -1582,6 +1583,34 @@ def check_suggested_enum_values(connection, **kwargs):
                 fields.append((field_name, options))
         return(fields)
 
+    def extract_value(field_name, item):
+        """Given a json, find the values for a given field."""
+        new_vals = []
+        if '.' in field_name:
+            part1, part2 = field_name.split('.')
+            val1 = item.get(part1)
+            if isinstance(val1, list):
+                for an_item in val1:
+                    if an_item.get(part2):
+                        new_vals.append(an_item[part2])
+            else:
+                if val1.get(part2):
+                    new_vals.append(val1[part2])
+        else:
+            val1 = item.get(field_name)
+            if val1:
+                if isinstance(val1, list):
+                    new_vals.extend(val1)
+                else:
+                    new_vals.append(val1)
+        # are these linkTo items
+        if new_vals:
+            if isinstance(new_vals[0], dict):
+                new_vals = [i['@id'] for i in new_vals]
+        return new_vals
+
+    # Get Schemas
+    schemas = ff_utils.get_metadata('/profiles/', key=connection.ff_keys)
     sug_en_cases = {}
     for an_item_type in schemas:
         properties = schemas[an_item_type]['properties']
@@ -1589,10 +1618,26 @@ def check_suggested_enum_values(connection, **kwargs):
         if sug_en_fields:
             sug_en_cases[an_item_type] = sug_en_fields
 
-    for i in sug_en_cases:
-        print(i)
-        for ix in sug_en_cases[i]:
-            print(ix)
+    for item_type in sug_en_cases:
+
+        for i in sug_en_cases[item_type]:
+            extension = ""
+            field_name = i[0]
+            field_option = i[1]
+            field_option.append('No value')
+            for case in field_option:
+                extension += '&' + field_name + '!=' + case
+            f_ex = '&field=' + field_name
+            q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=extension, f_ex = f_ex)
+            responses = ff_utils.search_metadata(q, my_key)
+            odds = []
+            for response in responses:
+                odds.extend(extract_value(field_name, response))
+
+            if len(odds) > 0:
+                print(field_name)
+                print(dict(Counter(odds)))
+    print()
 
     check.allow_action = False
     check.brief_output = ''
