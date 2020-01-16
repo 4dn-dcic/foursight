@@ -59,6 +59,8 @@ def build_config_and_deploy(stage):
     print(''.join(['Writing: ', filename]))
     with open(filename, 'w') as config_file:
         config_file.write(json.dumps(CONFIG_BASE))
+    # export poetry into requirements
+    subprocess.call(['poetry', 'export', '-f', 'requirements.txt', '>', 'requirements.txt'])
     # actually deploy
     subprocess.call(['chalice', 'deploy', '--stage', stage])
 
