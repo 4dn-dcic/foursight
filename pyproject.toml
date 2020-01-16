@@ -5,8 +5,7 @@ description = "Serverless Chalice Application for Monitoring"
 authors = ["William Ronchetti <wrr33@cornell.edu>"]
 license = "MIT"
 packages = [
-  { include = "chalicelib", from = "." },
-  { include = "chalicelib.checks", from = "."}
+  { include = "chalicelib" }
 ]
 
 [tool.poetry.dependencies]
