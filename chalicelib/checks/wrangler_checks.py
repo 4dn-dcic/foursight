@@ -1648,8 +1648,11 @@ def check_suggested_enum_values(connection, **kwargs):
         check.summary = 'No new values for suggested enum fields'
         check.description = 'No new values for suggested enum fields'
     else:
+        b_out = []
+        for res in outputs:
+            b_out.append(res['item_type'] + ': ' + res['field'])
         check.allow_action = False
-        check.brief_output = outputs
+        check.brief_output = b_out
         check.full_output = outputs
         check.status = 'WARN'
         check.summary = 'Suggested enum fields have new values'
