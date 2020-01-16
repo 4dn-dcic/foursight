@@ -4,6 +4,10 @@ version = "0.9.0"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["William Ronchetti <wrr33@cornell.edu>"]
 license = "MIT"
+packages = [
+  { include = "chalicelib", from = "." },
+  { include = "chalicelib.checks", from = "."}
+]
 
 [tool.poetry.dependencies]
 python = "^3.6"
