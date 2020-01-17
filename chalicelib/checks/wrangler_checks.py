@@ -109,7 +109,7 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     return action
 
 
-@check_function(uuid_list=None, false_positives=None)
+@check_function(uuid_list=None, false_positives=None, add_to_result=None)
 def biorxiv_is_now_published(connection, **kwargs):
     ''' To restrict the check to just certain biorxivs use a comma separated list
         of biorxiv uuids in uuid_list kwarg.  This is useful if you want to
@@ -121,11 +121,27 @@ def biorxiv_is_now_published(connection, **kwargs):
         the 'false_positive' field of full_output.  To add new entries to this field use the
         'false_positive' kwarg with format "rxiv_uuid1: number_part_only_of_PMID, rxiv_uuid2: ID ..."
          eg. fd3827e5-bc4c-4c03-bf22-919ee8f4351f:31010829 and to reset to empty use 'RESET'
+
+        There are some examples of the title and author list being different enough so
+        that the pubmid esearch query doesn't find the journal article.  In order to
+        allow the replacement, movement of all the relevant fields and adding static sections
+        in the action - a parameter is provided to manually input a mapping between biorxiv (uuid)
+        to journal article (PMID:ID) - to add that pairing to the result full_output. It will
+        be acted on by the associated action format of input is uuid PMID:nnnnnn, uuid PMID:nnnnnn
     '''
     check = CheckResult(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
+    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
+    # see if a 'manual' mapping was provided as a parameter
+    fndcnt = 0
+    if kwargs.get('add_to_result'):
+        import pdb; pdb.set_trace()
+        b2p = [pair.strip().split(' ') for pair in kwargs.get('add_to_result').split(',')]
+        fulloutput['biorxivs2check'].update({b.strip(): [p.strip()] for b, p in b2p})
+        fndcnt = len(b2p)
+
     search = 'search/?'
     if kwargs.get('uuid_list'):
         suffix = '&'.join(['uuid={}'.format(u) for u in [uid.strip() for uid in kwargs.get('uuid_list').split(',')]])
@@ -134,7 +150,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     # run the check
     search_query = search + suffix
     biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys)
-    if not biorxivs:
+    if not biorxivs and not fndcnt:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
         return check
@@ -156,7 +172,6 @@ def biorxiv_is_now_published(connection, **kwargs):
             check.status = 'ERROR'
             return check
     last_result = last_result.get('full_output')
-    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
     try:
         false_pos = last_result.get('false_positives', {})
     except AttributeError:  # if check errored last result is a list of error rather than a dict
@@ -173,7 +188,6 @@ def biorxiv_is_now_published(connection, **kwargs):
     fulloutput['false_positives'] = false_pos
     pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json'
     problems = {}
-    fndcnt = 0
     for bx in biorxivs:
         title = bx.get('title')
         authors = bx.get('authors')
