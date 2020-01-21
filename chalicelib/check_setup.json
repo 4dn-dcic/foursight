@@ -914,6 +914,10 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
