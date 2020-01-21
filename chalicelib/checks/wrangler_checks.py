@@ -1634,7 +1634,8 @@ def check_suggested_enum_values(connection, **kwargs):
         # are these linkTo items
         if new_vals:
             if isinstance(new_vals[0], dict):
-                new_vals = [i['@id'] for i in new_vals]
+                new_vals = [i['display_title'] for i in new_vals]
+        new_vals = [i for i in new_vals if i not in options]
         return new_vals
 
     outputs = []
@@ -1660,7 +1661,7 @@ def check_suggested_enum_values(connection, **kwargs):
             responses = ff_utils.search_metadata(q, connection.ff_keys)
             odds = []
             for response in responses:
-                odds.extend(extract_value(field_name, response))
+                odds.extend(extract_value(field_name, response, field_option))
             if len(odds) > 0:
                 outputs.append(
                     {
