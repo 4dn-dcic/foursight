@@ -340,7 +340,7 @@ def cgap_status(connection, **kwargs):
             s1_tag = a_sample['accession'] + '_' + pair[0].split('/')[2] + '_' + pair[1].split('/')[2]
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                                   'step1', s1_tag, pair,
-                                                                  s1_input_files,  step1_name, 'raw_bam', {}, 'human')
+                                                                  s1_input_files,  step1_name, 'raw_bam', {})
             # RUN STEP 2
             if step1_status != 'complete':
                 step2_status = ''
@@ -351,7 +351,7 @@ def cgap_status(connection, **kwargs):
                 add_par = {"parameters": {"sample_name": a_sample['aliases'][0].split(':')[1]}}
                 keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                       'step2', s2_tag, step1_output,
-                                                                      s2_input_files,  step2_name, 'bam_w_readgroups', add_par, 'human')
+                                                                      s2_input_files,  step2_name, 'bam_w_readgroups', add_par)
             if step2_status != 'complete':
                 stop_level_2 = True
             else:
@@ -369,7 +369,7 @@ def cgap_status(connection, **kwargs):
                 s3_input_files = {'input_bams': s3_input_bams}
                 keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
                                                                       'step3', a_sample['accession'], s3_input_bams,
-                                                                      s3_input_files,  step3_name, 'merged_bam', {}, 'human')
+                                                                      s3_input_files,  step3_name, 'merged_bam', {})
 
         # RUN STEP 4
         if step3_status != 'complete':
@@ -378,7 +378,7 @@ def cgap_status(connection, **kwargs):
             s4_input_files = {'input_bam': step3_output}
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
                                                                   'step4', a_sample['accession'], step3_output,
-                                                                  s4_input_files,  step4_name, 'dupmarked_bam', {}, 'human')
+                                                                  s4_input_files,  step4_name, 'dupmarked_bam', {})
 
         # RUN STEP 5
         if step4_status != 'complete':
@@ -387,7 +387,7 @@ def cgap_status(connection, **kwargs):
             s5_input_files = {'input_bam': step4_output}
             keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
                                                                   'step5', a_sample['accession'], step4_output,
-                                                                  s5_input_files,  step5_name, 'sorted_bam', {}, 'human')
+                                                                  s5_input_files,  step5_name, 'sorted_bam', {})
 
         # RUN STEP 6
         if step5_status != 'complete':
@@ -397,7 +397,7 @@ def cgap_status(connection, **kwargs):
                               'known-sites-indels': 'GAPFIAX2PPYB', 'reference': 'GAPFIXRDPDK5'}
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   'step6', a_sample['accession'], step5_output,
-                                                                  s6_input_files,  step6_name, 'recalibration_report', {}, 'human')
+                                                                  s6_input_files,  step6_name, 'recalibration_report', {})
 
         # RUN STEP 7
         if step6_status != 'complete':
@@ -406,7 +406,7 @@ def cgap_status(connection, **kwargs):
             s7_input_files = {'input_bam': step5_output, 'reference': 'GAPFIXRDPDK5', 'recalibration_report': step6_output}
             keep, step7_status, step7_output = cgap_utils.stepper(library, keep,
                                                                   'step7', a_sample['accession'], step6_output,
-                                                                  s7_input_files,  step7_name, 'recalibrated_bam', {}, 'human')
+                                                                  s7_input_files,  step7_name, 'recalibrated_bam', {})
 
         # RUN STEP 8
         if step7_status != 'complete':
@@ -417,7 +417,7 @@ def cgap_status(connection, **kwargs):
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
             keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
                                                                   'step8', a_sample['accession'], step7_output,
-                                                                  s8_input_files,  step8_name, 'gvcf', {}, 'human')
+                                                                  s8_input_files,  step8_name, 'gvcf', {})
 
         final_status = a_sample['accession']
         completed = []
@@ -576,7 +576,7 @@ def cgapS2_status(connection, **kwargs):
         s1_tag = a_sample['accession'] + '_S2run1_' + input_bam_acc
         keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                               'step1', s1_tag, input_bam_id,
-                                                              s1_input_files,  step1_name, 'gvcf', {}, 'human')
+                                                              s1_input_files,  step1_name, 'gvcf', {})
         if step1_status != 'complete':
             step2_status = ""
         else:
@@ -587,7 +587,7 @@ def cgapS2_status(connection, **kwargs):
             s2_tag = a_sample['accession'] + '_S2run2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1_output,
-                                                                  s2_input_files,  step2_name, 'vcf', {}, 'human')
+                                                                  s2_input_files,  step2_name, 'vcf', {})
 
         final_status = a_sample['accession']
         completed = []

@@ -119,7 +119,7 @@ def check_qcs_on_files(file_meta, all_qcs):
 def stepper(keep, library,
             step_tag, sample_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input, organism, no_output=False):
+            additional_input, organism='human', no_output=False):
     step_output = ''
     # unpack library
     all_files = library['all_files']
