@@ -112,16 +112,17 @@ def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
         step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
     step_status = step_result['status']
     # if successful
+    input_file_accession = input_resp['accession']
     if step_status == 'complete':
         if new_step_output_arg:
             step_output = step_result[new_step_output_arg]
         pass
     # if still running
     elif step_status == 'running':
-        running.append([step_tag, sample_tag])
+        running.append([step_tag, sample_tag, input_file_accession])
     # if run is not successful
     elif step_status.startswith("no complete run, too many"):
-        problematic_run.append([step_tag, sample_tag])
+        problematic_run.append([step_tag, sample_tag, input_file_accession])
     else:
         # add step 4
         missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
@@ -505,13 +506,10 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
 def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
     if not file_meta.get('quality_metric'):
         return False
-
     qc_results = ff_utils.get_metadata(file_meta['quality_metric']['uuid'], key=my_auth)
-
     if qc_results['display_title'].startswith('QualityMetricQclist'):
         if not qc_results.get('qc_list'):
             return False
-
         for qc in qc_results['qc_list']:
             if qc_metric_name not in qc['value']['display_title']:
                 return False
