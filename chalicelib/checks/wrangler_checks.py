@@ -1510,16 +1510,39 @@ def patch_strandedness_consistency_info(connection, **kwargs):
 @check_function()
 def check_suggested_enum_values(connection, **kwargs):
     """On our schemas we have have a list of suggested fields for
-    suggested_enum fields. A value that is not listed in this list
+    suggested_enum tagged fields. A value that is not listed in this list
     can be accepted, and with this check we will find all values for
-    each suggested enum field that is not in the given list.
+    each suggested enum field that is not in this list.
+    There are 2 functions below:
+
+    - find_suggested_enum
+    This functions takes properties for a item type (taken from /profiles/)
+    and goes field by field, looks for suggested enum lists, and is also recursive
+    for taking care of sub-embedded objects (tagged as type=object)
+
+    * after running this function, we construct a search url for each field,
+    where we exclude all values listed under suggested_enum from the search:
+    i.e. if it was FileProcessed field 'my_field' with options [val1, val2]
+    url would be:
+    /search/?type=FileProcessed&my_field!=val1&my_field!=val2&my_field!=No value
+
+    - extract value
+    Once we have the search result for a field, we disect it
+    (again for subembbeded items or lists) to extract the field value, and =
+    count occurences of each new value. (i.e. val3:10, val4:15)
+
+    *deleted items are not considered by this check
     """
     check = CheckResult(connection, 'check_suggested_enum_values')
     # must set this to be the function name of the action
     check.action = "add_suggested_enum_values"
 
     def find_suggested_enum(properties, parent='', is_submember=False):
-        """Filter schema propteries for fields with suggested enums."""
+        """Filter schema propteries for fields with suggested enums.
+        This functions takes properties for a item type (taken from /profiles/)
+        and goes field by field, looks for suggested enum lists, and is also recursive
+        for taking care of sub-embedded objects (tagged as type=object)
+        """
         def is_subobject(field):
             if field.get('type') == 'object':
                 return True
@@ -1583,8 +1606,13 @@ def check_suggested_enum_values(connection, **kwargs):
                 fields.append((field_name, options))
         return(fields)
 
-    def extract_value(field_name, item):
-        """Given a json, find the values for a given field."""
+    def extract_value(field_name, item, options=[]):
+        """Given a json, find the values for a given field.
+        Once we have the search result for a field, we disect it
+        (again for subembbeded items or lists) to extract the field value(s)
+        """
+        # let's exclude also empty new_values
+        options.append('')
         new_vals = []
         if '.' in field_name:
             part1, part2 = field_name.split('.')
