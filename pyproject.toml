@@ -2,7 +2,7 @@
 name = "foursight"
 version = "0.9.0"
 description = "Serverless Chalice Application for Monitoring"
-authors = ["William Ronchetti <wrr33@cornell.edu>"]
+authors = ["4DN Team <william_ronchetti@hms.harvard.edu>"]
 license = "MIT"
 packages = [
   { include = "chalicelib" }
