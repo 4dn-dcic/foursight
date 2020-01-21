@@ -369,7 +369,7 @@ def identify_files_without_qc_summary_bam(connection, **kwargs):
     check = CheckResult(connection, 'identify_files_without_qc_summary_bam')
     # must set this to be the function name of the action
     check.action = 'patch_quality_metric_summary_bam'
-    default_stati = 'released&status=uploaded&status=released+to+project'
+    default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
     addon = kwargs.get('search_add_on')

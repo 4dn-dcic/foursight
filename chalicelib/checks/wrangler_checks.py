@@ -13,6 +13,7 @@ import itertools
 from fuzzywuzzy import fuzz
 import boto3
 from .helpers import wrangler_utils
+from collections import Counter
 
 
 @check_function(cmp_to_last=False)
@@ -1502,5 +1503,200 @@ def patch_strandedness_consistency_info(connection, **kwargs):
         action.status = 'FAIL'
     else:
         action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function()
+def check_suggested_enum_values(connection, **kwargs):
+    """On our schemas we have have a list of suggested fields for
+    suggested_enum tagged fields. A value that is not listed in this list
+    can be accepted, and with this check we will find all values for
+    each suggested enum field that is not in this list.
+    There are 2 functions below:
+
+    - find_suggested_enum
+    This functions takes properties for a item type (taken from /profiles/)
+    and goes field by field, looks for suggested enum lists, and is also recursive
+    for taking care of sub-embedded objects (tagged as type=object)
+
+    * after running this function, we construct a search url for each field,
+    where we exclude all values listed under suggested_enum from the search:
+    i.e. if it was FileProcessed field 'my_field' with options [val1, val2]
+    url would be:
+    /search/?type=FileProcessed&my_field!=val1&my_field!=val2&my_field!=No value
+
+    - extract value
+    Once we have the search result for a field, we disect it
+    (again for subembbeded items or lists) to extract the field value, and =
+    count occurences of each new value. (i.e. val3:10, val4:15)
+
+    *deleted items are not considered by this check
+    """
+    check = CheckResult(connection, 'check_suggested_enum_values')
+    # must set this to be the function name of the action
+    check.action = "add_suggested_enum_values"
+
+    def find_suggested_enum(properties, parent='', is_submember=False):
+        """Filter schema propteries for fields with suggested enums.
+        This functions takes properties for a item type (taken from /profiles/)
+        and goes field by field, looks for suggested enum lists, and is also recursive
+        for taking care of sub-embedded objects (tagged as type=object)
+        """
+        def is_subobject(field):
+            if field.get('type') == 'object':
+                return True
+            try:
+                return field['items']['type'] == 'object'
+            except:
+                return False
+
+        def dotted_field_name(field_name, parent_name=None):
+            if parent_name:
+                return "%s.%s" % (parent_name, field_name)
+            else:
+                return field_name
+
+        def get_field_type(field):
+            field_type = field.get('type', '')
+            if field_type == 'string':
+                if field.get('linkTo', ''):
+                    return "Item:" + field.get('linkTo')
+                # if multiple objects are linked by "anyOf"
+                if field.get('anyOf', ''):
+                    links = list(filter(None, [d.get('linkTo', '') for d in field.get('anyOf')]))
+                    if links:
+                        return "Item:" + ' or '.join(links)
+                # if not object return string
+                return 'string'
+            elif field_type == 'array':
+                return 'array of ' + get_field_type(field.get('items'))
+            return field_type
+
+        fields = []
+        for name, props in properties.items():
+            options = []
+            # focus on suggested_enum ones
+            if 'suggested_enum' not in str(props):
+                continue
+            # skip calculated
+            if props.get('calculatedProperty'):
+                continue
+            is_array = False
+            if is_subobject(props) and name != 'attachment':
+                is_array = get_field_type(props).startswith('array')
+                obj_props = {}
+                if is_array:
+                    obj_props = props['items']['properties']
+                else:
+                    obj_props = props['properties']
+                fields.extend(find_suggested_enum(obj_props, name, is_array))
+            else:
+                field_name = dotted_field_name(name, parent)
+                field_type = get_field_type(props)
+                # check props here
+                if 'suggested_enum' in props:
+                    options = props['suggested_enum']
+                # if array of string with enum
+                if is_submember or field_type.startswith('array'):
+                    sub_props = props.get('items', '')
+                    if 'suggested_enum' in sub_props:
+                        options = sub_props['suggested_enum']
+                # copy paste exp set for ease of keeping track of different types in experiment objects
+                fields.append((field_name, options))
+        return(fields)
+
+    def extract_value(field_name, item, options=[]):
+        """Given a json, find the values for a given field.
+        Once we have the search result for a field, we disect it
+        (again for subembbeded items or lists) to extract the field value(s)
+        """
+        # let's exclude also empty new_values
+        options.append('')
+        new_vals = []
+        if '.' in field_name:
+            part1, part2 = field_name.split('.')
+            val1 = item.get(part1)
+            if isinstance(val1, list):
+                for an_item in val1:
+                    if an_item.get(part2):
+                        new_vals.append(an_item[part2])
+            else:
+                if val1.get(part2):
+                    new_vals.append(val1[part2])
+        else:
+            val1 = item.get(field_name)
+            if val1:
+                if isinstance(val1, list):
+                    new_vals.extend(val1)
+                else:
+                    new_vals.append(val1)
+        # are these linkTo items
+        if new_vals:
+            if isinstance(new_vals[0], dict):
+                new_vals = [i['display_title'] for i in new_vals]
+        new_vals = [i for i in new_vals if i not in options]
+        return new_vals
+
+    outputs = []
+    # Get Schemas
+    schemas = ff_utils.get_metadata('/profiles/', key=connection.ff_keys)
+    sug_en_cases = {}
+    for an_item_type in schemas:
+        properties = schemas[an_item_type]['properties']
+        sug_en_fields = find_suggested_enum(properties)
+        if sug_en_fields:
+            sug_en_cases[an_item_type] = sug_en_fields
+
+    for item_type in sug_en_cases:
+        for i in sug_en_cases[item_type]:
+            extension = ""
+            field_name = i[0]
+            field_option = i[1]
+            field_option.append('No value')
+            for case in field_option:
+                extension += '&' + field_name + '!=' + case
+            f_ex = '&field=' + field_name
+            q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=extension, f_ex=f_ex)
+            responses = ff_utils.search_metadata(q, connection.ff_keys)
+            odds = []
+            for response in responses:
+                odds.extend(extract_value(field_name, response, field_option))
+            if len(odds) > 0:
+                outputs.append(
+                    {
+                        'item_type': item_type,
+                        'field': field_name,
+                        'new_values': dict(Counter(odds))
+                    })
+    if not outputs:
+        check.allow_action = False
+        check.brief_output = []
+        check.full_output = []
+        check.status = 'PASS'
+        check.summary = 'No new values for suggested enum fields'
+        check.description = 'No new values for suggested enum fields'
+    else:
+        b_out = []
+        for res in outputs:
+            b_out.append(res['item_type'] + ': ' + res['field'])
+        check.allow_action = False
+        check.brief_output = b_out
+        check.full_output = outputs
+        check.status = 'WARN'
+        check.summary = 'Suggested enum fields have new values'
+        check.description = 'Suggested enum fields have new values'
+    return check
+
+
+@action_function()
+def add_suggested_enum_values(connection, **kwargs):
+    """No action is added yet, this is a placeholder for
+    automated pr that adds the new values."""
+    # TODO: for linkTo items, the current values are @ids, and might need a change
+    action = ActionResult(connection, 'add_suggested_enum_values')
+    action_logs = {}
+    # check_result = action.get_associated_check_result(kwargs)
+    action.status = 'DONE'
     action.output = action_logs
     return action
