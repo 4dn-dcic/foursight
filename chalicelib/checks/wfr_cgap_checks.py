@@ -351,7 +351,8 @@ def cgap_status(connection, **kwargs):
                 add_par = {"parameters": {"sample_name": a_sample['aliases'][0].split(':')[1]}}
                 keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                       'step2', s2_tag, step1_output,
-                                                                      s2_input_files,  step2_name, 'bam_w_readgroups', add_par)
+                                                                      s2_input_files,  step2_name, 'bam_w_readgroups',
+                                                                      add_par)
             if step2_status != 'complete':
                 stop_level_2 = True
             else:
@@ -403,7 +404,9 @@ def cgap_status(connection, **kwargs):
         if step6_status != 'complete':
             step7_status = ""
         else:
-            s7_input_files = {'input_bam': step5_output, 'reference': 'GAPFIXRDPDK5', 'recalibration_report': step6_output}
+            s7_input_files = {'input_bam': step5_output,
+                              'reference': 'GAPFIXRDPDK5',
+                              'recalibration_report': step6_output}
             keep, step7_status, step7_output = cgap_utils.stepper(library, keep,
                                                                   'step7', a_sample['accession'], step6_output,
                                                                   s7_input_files,  step7_name, 'recalibrated_bam')
@@ -741,7 +744,7 @@ def bamqcCGAP_start(connection, **kwargs):
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
         else:
-            action_logs['runs_failed'].append([a_target, url])``
+            action_logs['runs_failed'].append([a_target, url])
     action.output = action_logs
     action.status = 'DONE'
     return action
