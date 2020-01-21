@@ -458,6 +458,10 @@
                 "staging": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                },
+                "hotseat": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
