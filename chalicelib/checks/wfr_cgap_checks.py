@@ -332,7 +332,6 @@ def cgap_status(connection, **kwargs):
 
         sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, all_items['file_fastq'])
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
-
         s3_input_bams = []
         stop_level_2 = False
         for pair in sample_raw_files:
@@ -342,7 +341,6 @@ def cgap_status(connection, **kwargs):
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                                   'step1', s1_tag, pair,
                                                                   s1_input_files,  step1_name, 'raw_bam', {}, 'human')
-
             # RUN STEP 2
             if step1_status != 'complete':
                 step2_status = ''
