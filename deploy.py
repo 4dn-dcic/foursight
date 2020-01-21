@@ -16,7 +16,7 @@ CONFIG_BASE = {
       "api_gateway_stage": "api",
       "autogen_policy": False,
       "lambda_memory_size": 512,
-      "lambda_timeout": 900,
+      "lambda_timeout": 900,  # 15 mins in seconds
       "environment_variables": {
           "chalice_stage": "dev"
       }
@@ -25,7 +25,7 @@ CONFIG_BASE = {
       "api_gateway_stage": "api",
       "autogen_policy": False,
       "lambda_memory_size": 512,
-      "lambda_timeout": 900,
+      "lambda_timeout": 900,  # 15 mins in seconds
       "environment_variables": {
           "chalice_stage": "prod"
       }
