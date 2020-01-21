@@ -137,7 +137,6 @@ def biorxiv_is_now_published(connection, **kwargs):
     # see if a 'manual' mapping was provided as a parameter
     fndcnt = 0
     if kwargs.get('add_to_result'):
-        import pdb; pdb.set_trace()
         b2p = [pair.strip().split(' ') for pair in kwargs.get('add_to_result').split(',')]
         fulloutput['biorxivs2check'].update({b.strip(): [p.strip()] for b, p in b2p})
         fndcnt = len(b2p)
