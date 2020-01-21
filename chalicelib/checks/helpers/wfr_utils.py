@@ -355,7 +355,11 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "no workflow in file with accepted version"}
     my_workflows = sorted(my_workflows, key=lambda k: k['run_hours'])
     same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
+
+    if not same_type_wfrs:
+        return {'status': "no workflow on file"}
     last_wfr = same_type_wfrs[0]
+
     # get metadata for the last wfr
     if all_wfrs:
         wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
