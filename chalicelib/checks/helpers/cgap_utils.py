@@ -93,7 +93,7 @@ bwa_index = {'human': 'GAPFI4U1HXIY'}
 
 
 def check_qcs_on_files(file_meta, all_qcs):
-    """Go over qc related fields, and check for overall quality score.""""
+    """Go over qc related fields, and check for overall quality score."""
     def check_qc(file_accession, resp, failed_qcs_list):
         """format errors and return a errors list."""
         quality_score = resp.get('overall_quality_status', '')
