@@ -110,7 +110,7 @@
         "title": "Change in item counts",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks": {
+            "morning_checks_2": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -756,7 +756,7 @@
         "title": "Process Download Tracking Items",
         "group": "System checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": ["purge_download_tracking_items"]
@@ -910,7 +910,7 @@
         "title": "Purge Download Tracking Items",
         "group": "Cleanup checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -1134,6 +1134,18 @@
     },
     "chia_pet_status" : {
         "title": "m) ChIA-PET",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "in_situ_chia_pet_status" : {
+        "title": "m) in situ ChIA-PET",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1405,7 +1417,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
