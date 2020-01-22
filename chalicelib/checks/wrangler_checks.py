@@ -1708,7 +1708,7 @@ def check_suggested_enum_values(connection, **kwargs):
                     break
 
             odds = []
-            for response in responses:
+            for response in common_responses:
                 odds.extend(extract_value(field_name, response, field_option))
             if len(odds) > 0:
                 outputs.append(
