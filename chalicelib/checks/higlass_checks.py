@@ -1151,7 +1151,7 @@ def patch_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
         action_name="patch_expsets_otherprocessedfiles_for_queried_files",
     )
 
-def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries, find_opfs_missing_higlass=True, minutes_leeway=1):
+def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries, find_opfs_missing_higlass=True, minutes_leeway=10):
     """ Check to generate Higlass view configs on Fourfront for Experiment Sets Other Processed Files (aka Supplementary Files.)
 
         Args:
@@ -1164,7 +1164,6 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
         Returns:
             check results object.
     """
-
     # Create the initial check
     check = CheckResult(connection, check_name)
     check.full_output = {
@@ -1226,7 +1225,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
     check.full_output['reference_files'] = reference_files_by_ga
 
     # Create a helper function that finds files with higlass_uid and the genome assembly
-    def find_higlass_files(other_processed_files, filegroups_to_update, statuses_lookup, expset_last_modified_date):
+    def find_higlass_files(other_processed_files, filegroups_to_update, statuses_lookup, expset_last_modified_date, minutes_leeway=10):
         # If find_opfs_missing_higlass is set, find each Other Processed Filegroup without a higlass_view_config
         if find_opfs_missing_higlass:
             def consider_filegroup(fg):
@@ -1252,7 +1251,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
                         return True
 
                     # If the Higlass Item is older than the ExpSet, it should be considered. Give about 10 minutes of leeway.
-                    if higlass_modified_date + timedelta(minutes=10) < expset_last_modified_date:
+                    if higlass_modified_date + timedelta(minutes=minutes_leeway) < expset_last_modified_date:
                         return True
                 else:
                     # If the ExpSet is new, then consider this group.
@@ -1304,7 +1303,8 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
             expset_last_modified_date = convert_es_timestamp_to_datetime(expset["last_modified"]["date_modified"])
 
         if "other_processed_files" in expset:
-            find_higlass_files(expset["other_processed_files"], filegroups_to_update, file_statuses, expset_last_modified_date)
+            find_higlass_files(expset["other_processed_files"], filegroups_to_update,
+                               file_statuses, expset_last_modified_date, minutes_leeway=minutes_leeway)
 
             expset_titles = { fg["title"] for fg in expset["other_processed_files"] }
 
@@ -1314,7 +1314,8 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
         experiments_in_set_to_update = {}
         for experiment in expset.get("experiments_in_set", []):
             if "other_processed_files" in experiment:
-                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update, file_statuses, expset_last_modified_date)
+                find_higlass_files(experiment["other_processed_files"], experiments_in_set_to_update,
+                                   file_statuses, expset_last_modified_date)
 
         for title, info in experiments_in_set_to_update.items():
             # Skip the experiment's file if the higlass view has already been generated.
@@ -1370,7 +1371,9 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
         check.summary = check.description = "No new view configs to generate"
         check.status = 'PASS'
     else:
-        check.summary = "Ready to generate {file_count} Higlass view configs for {exp_sets} Experiment Set".format(file_count=higlass_view_count, exp_sets=len(expsets_to_update))
+        check.summary = "Ready to generate {file_count} Higlass view configs for {exp_sets} Experiment Set".format(
+            file_count=higlass_view_count, exp_sets=len(expsets_to_update)
+        )
         check.description = check.summary + ". See full_output for details."
         check.status = 'WARN'
         check.allow_action = True
