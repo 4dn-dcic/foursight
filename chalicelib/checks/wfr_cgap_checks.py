@@ -782,7 +782,7 @@ def cram_status(connection, **kwargs):
     all_samples = ff_utils.search_metadata(q, my_auth)
     print(len(all_samples))
 
-    for a_sample in all_samples:
+    for a_sample in all_samples[:1]:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -796,7 +796,9 @@ def cram_status(connection, **kwargs):
             break
         # are all files uploaded ?
         all_uploaded = True
-        for a_file in all_items['file_fastq']:
+        cram_files = [i for i in all_items['file_processed'] if i['file_format']['file_format'] == 'CRAM']
+        print(len(cram_files))
+        for a_file in cram_files:
             if a_file['status'] in ['uploading', 'upload failed']:
                 all_uploaded = False
 
@@ -812,52 +814,36 @@ def cram_status(connection, **kwargs):
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
 
-        sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, all_items['file_fastq'])
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
-        s3_input_bams = []
-        stop_level_2 = False
-        for pair in sample_raw_files:
+        result_fastq_files = []
+        all_done = True
+        for a_cram in cram_files:
             # RUN STEP 1
-            s1_input_files = {'fastq_R1': pair[0], 'fastq_R2': pair[1], 'reference': refs['bwa_ref']}
-            s1_tag = a_sample['accession'] + '_' + pair[0].split('/')[2] + '_' + pair[1].split('/')[2]
+            input_files = {'cram': a_cram['@id'],
+                           'reference_fasta': '/files-reference/GAPFIXRDPDK5/',
+                           'reference_md5_list': '/files-reference/GAPFIGWSGHNU/'}
+            tag = a_sample['accession'] + '_' + a_cram['@id']
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'step1', s1_tag, pair,
-                                                                  s1_input_files,  step1_name, 'raw_bam')
+                                                                  'cram2fastq', tag, a_cram['@id'],
+                                                                  input_files,  'workflow_cram2fastq',
+                                                                  ['fastq1', 'fastq2'])
             # RUN STEP 2
             if step1_status != 'complete':
-                step2_status = ''
-                stop_level_2 = True
+                all_done = False
             else:
-                s2_input_files = {'input_bam': step1_output}
-                s2_tag = a_sample['accession'] + '_' + step1_output.split('/')[2]
-                add_par = {"parameters": {"sample_name": a_sample['aliases'][0].split(':')[1]}}
-                keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
-                                                                      'step2', s2_tag, step1_output,
-                                                                      s2_input_files,  step2_name, 'bam_w_readgroups',
-                                                                      add_par)
-            if step2_status != 'complete':
-                stop_level_2 = True
-            else:
-                s3_input_bams.append(step2_output)
+                result_fastq_files.extend(step1_output)
 
-
-        final_status = a_sample['accession']
+        final_status = a_sample['accession']  # start the reporting with acc
         completed = []
-        pipeline_tag = cgap_partI_version[-1]
-
         # unpack results
         missing_run = keep['missing_run']
         running = keep['running']
         problematic_run = keep['problematic_run']
 
-        if step8_status == 'complete':
+        if all_done:
             final_status += ' completed'
-            completed = [
-                a_sample['accession'],
-                {'processed_files': [step7_output, step8_output],
-                 'completed_processes': [pipeline_tag]}
-                         ]
-            print('COMPLETED', step8_output)
+            completed = [a_sample['accession'], {'files': result_fastq_files}]
+            print('COMPLETED', result_fastq_files)
         else:
             if missing_run:
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
