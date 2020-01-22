@@ -217,10 +217,14 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'fastq1': {
                         'genome_assembly': genome,
-                        'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:1'},
+                    'fastq2': {
+                        'genome_assembly': genome,
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:2'}
                         }
             },
             {  # temp
