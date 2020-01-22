@@ -97,7 +97,7 @@ def check_qcs_on_files(file_meta, all_qcs):
     def check_qc(file_accession, resp, failed_qcs_list):
         """format errors and return a errors list."""
         quality_score = resp.get('overall_quality_status', '')
-        if quality_score.upper != 'PASS':
+        if quality_score.upper() != 'PASS':
             failed_qcs_list.append([file_accession, resp['display_title'], resp['uuid']])
         return failed_qcs_list
 
@@ -112,19 +112,22 @@ def check_qcs_on_files(file_meta, all_qcs):
             qc_resp = [i for i in all_qcs if i['@id'] == qc['@id']][0]
             failed_qcs = check_qc(file_meta['accession'], qc_resp, failed_qcs)
     else:
-        failed_qcs = check_qc(file_meta['accession'], qc_resp, failed_qcs)
+        failed_qcs = check_qc(file_meta['accession'], qc_result, failed_qcs)
     return failed_qcs
 
 
-def stepper(keep, library,
+def stepper(library, keep,
             step_tag, sample_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
             additional_input={}, organism='human', no_output=False):
+    """This functions packs the core of wfr check, for a given workflow and set of
+    input files, it will return the status of process on these files.
+    It will also check for failed qcs on input files."""
     step_output = ''
     # unpack library
-    all_files = library['all_files']
-    all_wfrs = library['all_wfrs']
-    all_qcs = library['all_qcs']
+    all_files = library['files']
+    all_wfrs = library['wfrs']
+    all_qcs = library['qcs']
     # unpack keep
     running = keep['running']
     problematic_run = keep['problematic_run']
