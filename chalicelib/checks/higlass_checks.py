@@ -243,7 +243,7 @@ def patch_higlass_items_for_new_files(connection, **kwargs):
         action_name="patch_higlass_items_for_new_files",
     )
 
-@check_function(minutes_leeway=10)
+@check_function(minutes_leeway=15)
 def check_higlass_items_for_modified_files(connection, **kwargs):
     """
     Find files modified since the last time the action completed.
@@ -690,7 +690,7 @@ def patch_expsets_processedfiles_for_new_higlass_items(connection, **kwargs):
         action_name="patch_expsets_processedfiles_for_new_higlass_items"
     )
 
-@check_function(minutes_leeway=10)
+@check_function(minutes_leeway=15)
 def check_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
         ExpSets are chosen based on the search queries.
@@ -1067,7 +1067,7 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
     action.status = "DONE"
     return action
 
-@check_function(minutes_leeway=10)
+@check_function(minutes_leeway=15)
 def check_expsets_otherprocessedfiles_for_new_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files) that need to be updated.
 
@@ -1151,14 +1151,15 @@ def patch_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
         action_name="patch_expsets_otherprocessedfiles_for_queried_files",
     )
 
-def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries, find_opfs_missing_higlass=True, minutes_leeway=10):
+def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_name, action_name, search_queries, find_opfs_missing_higlass=True, minutes_leeway=1):
     """ Check to generate Higlass view configs on Fourfront for Experiment Sets Other Processed Files (aka Supplementary Files.)
 
         Args:
             check_name(string): Name of Foursight check.
             action_name(string): Name of related Foursight action.
             search_queries(list, optional, default=[]): A list of search queries. All Expsets found in at least one of the queries will be modified.
-            find_opfs_missing_higlass(boolean, optional, default=True): If True, search_queries is ignored and the check will find Other Processed File groups with missing Higlass Items.
+            find_opfs_missing_higlass(boolean, optional, default=True): If True, search_queries is ignored and the check will find Other Processed File groups
+                with missing Higlass Items.
             minutes_leeway(integer, optional, default=1): Number of minutes after the action completed to compare against.
 
         Returns:
