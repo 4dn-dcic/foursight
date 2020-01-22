@@ -1687,8 +1687,26 @@ def check_suggested_enum_values(connection, **kwargs):
 
             # only return this field
             f_ex = '&field=' + field_name
-            q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=extension, f_ex=f_ex)
-            responses = ff_utils.search_metadata(q, connection.ff_keys)
+
+            common_responses = 'starting'
+            for an_ext in extensions:
+                q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=an_ext, f_ex=f_ex)
+                responses = ff_utils.search_metadata(q, connection.ff_keys)
+                # if any of this queries is empty, it means that the intersection will be empty too
+                if not responses:
+                    common_responses = []
+                    break
+                # if this is the first response, assign this as the first common response
+                if common_responses == 'starting':
+                    common_responses = responses
+                # if it is the subsequent responses, filter the commons ones with the new requests (intersection)
+                else:
+                    filter_ids = [i['@id'] for i in responses]
+                    common_responses = [i for i in common_responses if i['@id'] in filter_ids]
+                # let's check if we depleted common_responses
+                if not common_responses:
+                    break
+
             odds = []
             for response in responses:
                 odds.extend(extract_value(field_name, response, field_option))
