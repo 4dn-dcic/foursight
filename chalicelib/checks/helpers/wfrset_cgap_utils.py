@@ -171,8 +171,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "config": {
                     "instance_type": "c5n.18xlarge",
                     "ebs_size": "3x",
-                    "EBS_optimized": True,
-                    "behavior_on_capacity_limit": "wait_and_retry"
+                    "EBS_optimized": True
                 },
                 'custom_pf_fields': {
                     'gvcf': {
@@ -189,8 +188,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "config": {
                     "instance_type": "t3.medium",
                     "ebs_size": "2x",
-                    "EBS_optimized": True,
-                    "behavior_on_capacity_limit": "wait_and_retry"
+                    "EBS_optimized": True
                 },
                 'custom_pf_fields': {
                     'vcf': {
@@ -206,9 +204,28 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                "config": {
                  "instance_type": "t3.medium",
                  "ebs_size": "1.3x",
-                 "EBS_optimized": True,
-                 "behavior_on_capacity_limit": "wait_and_retry"
+                 "EBS_optimized": True
                }
+            },
+            {  # cram to fastq converter
+                'app_name': 'workflow_cram2fastq',
+                'workflow_uuid': '3258380c-608b-4fb6-89ef-249d1692f492',
+                'parameters': {"nthreads": 8},
+                "config": {
+                    "instance_type": "c5.2xlarge",
+                    "ebs_size": "30x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'fastq1': {
+                        'genome_assembly': genome,
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:1'},
+                    'fastq2': {
+                        'genome_assembly': genome,
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:2'}
+                        }
             },
             {  # temp
                 'app_name': '',
@@ -217,8 +234,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "config": {
                     "instance_type": "",
                     "ebs_size": "",
-                    "EBS_optimized": True,
-                    "behavior_on_capacity_limit": "wait_and_retry"
+                    "EBS_optimized": True
                 },
                 'custom_pf_fields': {
                     'temp': {

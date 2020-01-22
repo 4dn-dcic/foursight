@@ -75,6 +75,10 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
+    "workflow_cram2fastq": {
+        "run_time": 12,
+        "accepted_versions": ["v12"]
+    },
 }
 
 
@@ -122,7 +126,8 @@ def stepper(library, keep,
             additional_input={}, organism='human', no_output=False):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
-    It will also check for failed qcs on input files."""
+    It will also check for failed qcs on input files.
+    new_step_output_arg= can be str or list, will return str or list of @id for output files with given argument(s)"""
     step_output = ''
     # unpack library
     all_files = library['files']
@@ -166,7 +171,13 @@ def stepper(library, keep,
         input_file_accession = input_resp['accession']
         if step_status == 'complete':
             if new_step_output_arg:
-                step_output = step_result[new_step_output_arg]
+                if isinstance(new_step_output_arg, list):
+                    output_list = []
+                    for an_output_arg in new_step_output_arg:
+                        output_list.append(step_result[an_output_arg])
+                    step_output = output_list
+                else:
+                    step_output = step_result[new_step_output_arg]
             pass
         # if still running
         elif step_status == 'running':
@@ -339,7 +350,9 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'input_gvcf']
+    # arguments for finding the file with the attribution (as opposed to reference files)
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
+                 'fastq_R1', 'input_bam', 'input_gvcf', 'cram']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -359,7 +372,6 @@ def start_missing_run(run_info, auth, env):
                     attr_file = attr_file[0]
                 break
     # use pony_dev
-
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)

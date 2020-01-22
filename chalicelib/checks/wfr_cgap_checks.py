@@ -748,3 +748,161 @@ def bamqcCGAP_start(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     return action
+
+
+@check_function(start_date=None)
+def cram_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'cram_status')
+    my_auth = connection.ff_keys
+    check.action = "cram_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    q = '/search/?type=Sample&files.display_title=No+value&cram_files.display_title%21=No+value'
+    all_samples = ff_utils.search_metadata(q, my_auth)
+    print(len(all_samples))
+
+    for a_sample in all_samples[:1]:
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
+                                                           store_frame='embedded',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['experiment_relation',
+                                                                         'biosample_relation',
+                                                                         'references',
+                                                                         'reference_pubs'])
+        now = datetime.utcnow()
+        print(a_sample['accession'], (now-start).seconds, len(all_uuids))
+        if (now-start).seconds > lambda_limit:
+            break
+        # are all files uploaded ?
+        all_uploaded = True
+        cram_files = [i for i in all_items['file_processed'] if i['file_format']['file_format'] == 'CRAM']
+        print(len(cram_files))
+        for a_file in cram_files:
+            if a_file['status'] in ['uploading', 'upload failed']:
+                all_uploaded = False
+
+        if not all_uploaded:
+            final_status = a_sample['accession'] + ' skipped, waiting for file upload'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
+            continue
+
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
+        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
+        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+
+        keep = {'missing_run': [], 'running': [], 'problematic_run': []}
+        result_fastq_files = []
+        all_done = True
+        for a_cram in cram_files:
+            # RUN STEP 1
+            input_files = {'cram': a_cram['@id'],
+                           'reference_fasta': '/files-reference/GAPFIXRDPDK5/',
+                           'reference_md5_list': '/files-reference/GAPFIGWSGHNU/'}
+            tag = a_sample['accession'] + '_' + a_cram['@id']
+            keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
+                                                                  'cram2fastq', tag, a_cram['@id'],
+                                                                  input_files,  'workflow_cram2fastq',
+                                                                  ['fastq1', 'fastq2'])
+            # RUN STEP 2
+            if step1_status != 'complete':
+                all_done = False
+            else:
+                result_fastq_files.extend(step1_output)
+
+        final_status = a_sample['accession']  # start the reporting with acc
+        completed = []
+        # unpack results
+        missing_run = keep['missing_run']
+        running = keep['running']
+        problematic_run = keep['problematic_run']
+
+        if all_done:
+            final_status += ' completed'
+            completed = [a_sample['accession'], {'files': result_fastq_files}]
+            print('COMPLETED', result_fastq_files)
+        else:
+            if missing_run:
+                final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
+            if running:
+                final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
+
+        # add dictionaries to main ones
+        set_acc = a_sample['accession']
+        check.brief_output.append(final_status)
+        print(final_status)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if completed:
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+
+    # complete check values
+    check.summary = ""
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['skipped']:
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def cram_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'cram_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    cram_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = cram_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = cram_check_result.get('completed_runs')
+    action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    return action
