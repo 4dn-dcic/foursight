@@ -782,7 +782,7 @@ def cram_status(connection, **kwargs):
     all_samples = ff_utils.search_metadata(q, my_auth)
     print(len(all_samples))
 
-    for a_sample in all_samples[:1]:
+    for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
