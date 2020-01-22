@@ -1340,6 +1340,22 @@
             }
         }
     },
+    "cram_status" : {
+        "title": "d) CGAP pipeline cram2fastq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "elastic_search_space" : {
         "title": "ES Disk Space Check",
         "group": "Elasticsearch checks",
