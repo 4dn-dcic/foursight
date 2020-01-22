@@ -1668,6 +1668,7 @@ def check_suggested_enum_values(connection, **kwargs):
             field_option = i[1]
             # create queries - we might need multiple since there is a url length limit
             # Experimental - limit seems to be between 5260-5340
+            # all queries are appended by filter for No value
             character_limit = 2000
             extensions = []
             extension = ''
