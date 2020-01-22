@@ -167,7 +167,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {
                 'app_name': 'workflow_gatk-HaplotypeCaller',
                 'workflow_uuid': '7fd67e19-3425-45f8-8149-c7cac4278fdb',
-                'parameters': {},
+                'parameters': {"nthreads": 20},
                 "config": {
                     "instance_type": "c5n.18xlarge",
                     "ebs_size": "3x",
