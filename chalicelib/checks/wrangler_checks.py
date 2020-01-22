@@ -1666,9 +1666,26 @@ def check_suggested_enum_values(connection, **kwargs):
             extension = ""
             field_name = i[0]
             field_option = i[1]
-            field_option.append('No value')
+            # create queries - we might need multiple since there is a url length limit
+            # Experimental - limit seems to be between 5260-5340
+            character_limit = 2000
+            extensions = []
+            extension = ''
             for case in field_option:
-                extension += '&' + field_name + '!=' + case
+                if len(extension) < character_limit:
+                    extension += '&' + field_name + '!=' + case
+                else:
+                    # time to finalize, add no value
+                    extension += '&' + field_name + '!=' + 'No value'
+                    extensions.append(extension)
+                    # reset extension
+                    extension = '&' + field_name + '!=' + case
+            # add the leftover extension - there should be always one
+            if extension:
+                extension += '&' + field_name + '!=' + 'No value'
+                extensions.append(extension)
+
+            # only return this field
             f_ex = '&field=' + field_name
             q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=extension, f_ex=f_ex)
             responses = ff_utils.search_metadata(q, connection.ff_keys)
