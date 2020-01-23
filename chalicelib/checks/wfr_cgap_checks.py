@@ -282,7 +282,7 @@ def cgap_status(connection, **kwargs):
         check.brief_output = ['Waiting for indexing queue to clear']
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
-        return check
+        # return check
 
     query_base = '/search/?type=Sample&files.display_title%21=No+value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
@@ -300,7 +300,7 @@ def cgap_status(connection, **kwargs):
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_gatk-HaplotypeCaller'
 
-    for a_sample in all_samples:
+    for a_sample in all_samples[:1]:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -312,9 +312,19 @@ def cgap_status(connection, **kwargs):
         print(a_sample['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
+
+        # collect similar types of items under library
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
+        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
+        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+
         # are all files uploaded ?
         all_uploaded = True
-        for a_file in all_items['file_fastq']:
+        # get all fastq files (can be file_fastq or file_processed)
+        fastq_files = [i for i in all_files if i.get('file_format', {}).get('file_format') == 'fastq']
+        for a_file in fastq_files:
             if a_file['status'] in ['uploading', 'upload failed']:
                 all_uploaded = False
 
@@ -324,11 +334,6 @@ def cgap_status(connection, **kwargs):
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
             continue
-
-        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
-        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
-        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
-        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
 
         sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, all_items['file_fastq'])
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
