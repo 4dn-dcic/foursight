@@ -490,7 +490,6 @@ def find_fastq_info(my_sample, fastq_files, organism='human'):
     msg = '{} has mixed fastq files types {}'.format(my_sample['accession'], f_type)
     assert len(f_type) == 1, msg
     f_type = f_type[0]
-    print(f_type)
 
     if f_type == 'files-processed':
         for fastq_file in sample_files:
@@ -500,10 +499,8 @@ def find_fastq_info(my_sample, fastq_files, organism='human'):
         # we are assuming that this files are processed
         # # TODO: make sure that this is encoded in the metadata
         paired = 'Yes'
-
-        print('I am here')
-        print(adana)
-        pass
+        file_ids = [i['@id'] for i in sample_files]
+        files = [file_ids[i:i+2] for i in range(0, len(file_ids), 2)]
 
     elif f_type == 'files-fastq':
         for fastq_file in sample_files:
@@ -543,7 +540,6 @@ def find_fastq_info(my_sample, fastq_files, organism='human'):
     refs = {'pairing': paired,
             'organism': organism,
             'bwa_ref': bwa,
-            # 'chrsize_ref': chrsize,
             'f_size': str(f_size)+'GB'}
     return files, refs
 
