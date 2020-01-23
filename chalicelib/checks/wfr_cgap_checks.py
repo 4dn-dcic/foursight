@@ -196,7 +196,7 @@ def fastqcCGAP_status(connection, **kwargs):
         return check
 
     # Build the query (skip to be uploaded by workflow)
-    query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
+    query = ("/search/?type=File&file_format.file_format=fastq&&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
     # fastqcCGAP not properly reporting for long reads
     skip_instruments = ['PromethION', 'GridION', 'MinION', 'PacBio RS II']
