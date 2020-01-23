@@ -462,55 +462,80 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
     return check
 
 
-def find_fastq_info(exp, fastq_files):
-    """Find fastq files from experiment set
+def find_fastq_info(my_sample, fastq_files, organism='human'):
+    """Find fastq files from sample
     expects my_rep_set to be set response in frame object (search result)
-    will check if files are paired or not, and if paired will give list of lists for each exp
-    if not paired, with just give list of files per experiment.
+    will check if files are paired or not, and if paired will give list of lists for sample
+    if not paired, with just give list of files for sample.
 
-    result is 2 dictionaries
-    - file dict  { exp1 : [file1, file2, file3, file4]}  # unpaired
-      file dict  { exp1 : [ [file1, file2], [file3, file4]]} # paired
-    - refs keys  {pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab}
+    result is 2 lists
+    - file [file1, file2, file3, file4]  # unpaired
+      file [ [file1, file2], [file3, file4]] # paired
+    - refs keys  {pairing, organism, bwa_ref, f_size}
     """
+    # # TODO: re word for samples
     files = []
     refs = {}
     # check pairing for the first file, and assume all same
     paired = ""
+    # check if files are FileFastq or FileProcessed
+    f_type = ""
     total_f_size = 0
-    organism = 'human'
-    exp_files = exp['files']
+    sample_files = my_sample['files']
+    # Assumption: Fastq files are either all FileFastq or File processed
+    # File Processed ones don't have paired end information
+    # Assumption: File Processed fastq files are paired end in the order they are in sample files
+    types = [i['@id'].split('/')[1] for i in fastq_files]
+    f_type = list(set(types))
+    msg = '{} has mixed fastq files types {}'.format(my_sample['accession'], f_type)
+    assert len(f_type) == 1, msg
+    f_type = f_type[0]
+    print(f_type)
 
-    for fastq_file in exp_files:
-        file_resp = [i for i in fastq_files if i['uuid'] == fastq_file['uuid']][0]
-        if file_resp.get('file_size'):
-            total_f_size += file_resp['file_size']
-        # skip pair no 2
-        if file_resp.get('paired_end') == '2':
-            continue
-        # check that file has a pair
-        f1 = file_resp['@id']
-        f2 = ""
-        # assign pairing info by the first file
-        if not paired:
-            try:
+    if f_type == 'files-processed':
+        for fastq_file in sample_files:
+            file_resp = [i for i in fastq_files if i['uuid'] == fastq_file['uuid']][0]
+            if file_resp.get('file_size'):
+                total_f_size += file_resp['file_size']
+        # we are assuming that this files are processed
+        # # TODO: make sure that this is encoded in the metadata
+        paired = 'Yes'
+
+        print('I am here')
+        print(adana)
+        pass
+
+    elif f_type == 'files-fastq':
+        for fastq_file in sample_files:
+            file_resp = [i for i in fastq_files if i['uuid'] == fastq_file['uuid']][0]
+            if file_resp.get('file_size'):
+                total_f_size += file_resp['file_size']
+            # skip pair no 2
+            if file_resp.get('paired_end') == '2':
+                continue
+            # check that file has a pair
+            f1 = file_resp['@id']
+            f2 = ""
+            # assign pairing info by the first file
+            if not paired:
+                try:
+                    relations = file_resp['related_files']
+                    paired_files = [relation['file']['@id'] for relation in relations
+                                    if relation['relationship_type'] == 'paired with']
+                    assert len(paired_files) == 1
+                    paired = "Yes"
+                except:
+                    paired = "No"
+
+            if paired == 'No':
+                files.append(f1)
+            elif paired == 'Yes':
                 relations = file_resp['related_files']
                 paired_files = [relation['file']['@id'] for relation in relations
                                 if relation['relationship_type'] == 'paired with']
                 assert len(paired_files) == 1
-                paired = "Yes"
-            except:
-                paired = "No"
-
-        if paired == 'No':
-            files.append(f1)
-        elif paired == 'Yes':
-            relations = file_resp['related_files']
-            paired_files = [relation['file']['@id'] for relation in relations
-                            if relation['relationship_type'] == 'paired with']
-            assert len(paired_files) == 1
-            f2 = paired_files[0]
-            files.append((f1, f2))
+                f2 = paired_files[0]
+                files.append((f1, f2))
     bwa = bwa_index.get(organism)
     # chrsize = chr_size.get(organism)
 
