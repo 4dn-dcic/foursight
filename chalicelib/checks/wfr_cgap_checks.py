@@ -573,7 +573,8 @@ def cgapS2_status(connection, **kwargs):
         if (now-start).seconds > lambda_limit:
             break
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
-        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
@@ -815,7 +816,8 @@ def cram_status(connection, **kwargs):
             continue
 
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
-        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
 
