@@ -10,10 +10,14 @@ import json
 import datetime
 import time
 import itertools
+import random
 from fuzzywuzzy import fuzz
 import boto3
 from .helpers import wrangler_utils
 from collections import Counter
+
+# use a random number to stagger checks
+random_wait = 20
 
 
 @check_function(cmp_to_last=False)
@@ -28,6 +32,9 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
     my_key = connection.ff_keys
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # run the check
     search_query = 'search/?type=WorkflowRun&status!=deleted&input_files.value.status=deleted&limit=all'
     bad_wfrs = ff_utils.search_metadata(search_query, key=my_key)
@@ -135,13 +142,15 @@ def biorxiv_is_now_published(connection, **kwargs):
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
     fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # see if a 'manual' mapping was provided as a parameter
     fndcnt = 0
     if kwargs.get('add_to_result'):
         b2p = [pair.strip().split(' ') for pair in kwargs.get('add_to_result').split(',')]
         fulloutput['biorxivs2check'].update({b.strip(): [p.strip()] for b, p in b2p})
         fndcnt = len(b2p)
-
     search = 'search/?'
     if kwargs.get('uuid_list'):
         suffix = '&'.join(['uuid={}'.format(u) for u in [uid.strip() for uid in kwargs.get('uuid_list').split(',')]])
@@ -450,6 +459,9 @@ def item_counts_by_type(connection, **kwargs):
         return ret
 
     check = CheckResult(connection, 'item_counts_by_type')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # run the check
     item_counts = {}
     warn_item_counts = {}
@@ -488,6 +500,9 @@ def change_in_item_counts(connection, **kwargs):
     from ..utils import convert_camel_to_snake
     # use this check to get the comparison
     check = CheckResult(connection, 'change_in_item_counts')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     counts_check = CheckResult(connection, 'item_counts_by_type')
     latest_check = counts_check.get_primary_result()
     # get_item_counts run closest to 10 mins
@@ -570,6 +585,9 @@ def change_in_item_counts(connection, **kwargs):
 @check_function(file_type=None, status=None, file_format=None, search_add_on=None)
 def identify_files_without_filesize(connection, **kwargs):
     check = CheckResult(connection, 'identify_files_without_filesize')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # must set this to be the function name of the action
     check.action = "patch_file_size"
     check.allow_action = True
@@ -695,6 +713,9 @@ def new_or_updated_items(connection, **kwargs):
         return user_item.get('display_title')
 
     check = CheckResult(connection, 'new_or_updated_items')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     rundate = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
     last_result = check.get_latest_result()
     if last_result is None or last_result.get('status') == 'ERROR' or kwargs.get('reset') is True:
@@ -827,7 +848,9 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     check = CheckResult(connection, 'clean_up_webdev_wfrs')
     check.full_output = {'success': [], 'failure': []}
-
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # input for test pseudo hi-c-processing-bam
     response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
                                      key=connection.ff_keys)
@@ -871,6 +894,9 @@ def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
     check = CheckResult(connection, 'validate_entrez_geneids')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
@@ -922,6 +948,9 @@ def users_with_pending_lab(connection, **kwargs):
     """Define comma seperated emails in scope
     if you want to work on a subset of all the results"""
     check = CheckResult(connection, 'users_with_pending_lab')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     check.action = 'finalize_user_pending_labs'
     check.full_output = []
     check.status = 'PASS'
@@ -1016,6 +1045,9 @@ def users_with_doppelganger(connection, **kwargs):
     """
     check = CheckResult(connection, 'users_with_doppelganger')
     check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # do we want to add current results to ignore list
     ignore_current = False
     if kwargs.get('ignore_current'):
@@ -1145,7 +1177,9 @@ def users_with_doppelganger(connection, **kwargs):
 def check_assay_classification_short_names(connection, **kwargs):
     check = CheckResult(connection, 'check_assay_classification_short_names')
     check.action = 'patch_assay_subclass_short'
-
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     subclass_dict = {
         "replication timing": "Replication timing",
         "proximity to cellular component": "Proximity-seq",
@@ -1257,6 +1291,9 @@ def check_for_ontology_updates(connection, **kwargs):
     from the previous primary check result.
     '''
     check = CheckResult(connection, 'check_for_ontology_updates')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     ontologies = ff_utils.search_metadata(
         'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
         key=connection.ff_keys
@@ -1316,7 +1353,9 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     check = CheckResult(connection, 'states_files_without_higlass_defaults')
     check.action = 'patch_states_files_higlass_defaults'
     check.full_output = {'to_add': {}, 'problematic_files': {}}
-
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     query = '/search/?file_type=states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     for re in res:
@@ -1391,7 +1430,9 @@ def check_for_strandedness_consistency(connection, **kwargs):
     check.action = 'patch_strandedness_consistency_info'
     check.full_output = {'to_patch': {}, 'problematic': {}}
     check.brief_output = []
-
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # Build the query (RNA-seq experiments for now)
     query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
 
@@ -1547,6 +1588,9 @@ def check_suggested_enum_values(connection, **kwargs):
     *deleted items are not considered by this check
     """
     check = CheckResult(connection, 'check_suggested_enum_values')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # must set this to be the function name of the action
     check.action = "add_suggested_enum_values"
 

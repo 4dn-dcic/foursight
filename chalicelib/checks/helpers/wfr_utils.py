@@ -1,11 +1,13 @@
 import json
+import time
+import random
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
 from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
-
+random_wait = wfrset_utils.random_wait
 # check at the end
 # check extract_file_info has 4 arguments
 
@@ -251,6 +253,23 @@ mapper = {'human': 'GRCh38',
 
 # color map states bed file
 states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+
+
+def check_indexing(check, connection):
+    # wait for random time
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check, True
+    else:
+        return check, False
 
 
 # check for a specific tag in a states file
@@ -1466,7 +1485,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         not_verified = []
         for an_exp in exp_files:
             an_exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == an_exp][0]
-            tags = an_exp_resp.get('tags')
+            tags = an_exp_resp.get('tags', [])
             if 'strandedness_verified' not in tags:
                 not_verified.append(an_exp)
             elif not an_exp_resp.get('strandedness'):
@@ -1486,7 +1505,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
             strand_info = ''
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
-            tags = exp_resp.get('tags')
+            tags = exp_resp.get('tags', [])
             strand_info = exp_resp.get('strandedness')
 
             # run unstranded pipeline
