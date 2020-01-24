@@ -196,7 +196,7 @@ def fastqcCGAP_status(connection, **kwargs):
         return check
 
     # Build the query (skip to be uploaded by workflow)
-    query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
+    query = ("/search/?type=File&file_format.file_format=fastq&&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
     # fastqcCGAP not properly reporting for long reads
     skip_instruments = ['PromethION', 'GridION', 'MinION', 'PacBio RS II']
@@ -282,7 +282,7 @@ def cgap_status(connection, **kwargs):
         check.brief_output = ['Waiting for indexing queue to clear']
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
-        return check
+        # return check
 
     query_base = '/search/?type=Sample&files.display_title%21=No+value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
@@ -312,25 +312,26 @@ def cgap_status(connection, **kwargs):
         print(a_sample['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
+        # collect similar types of items under library
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
+        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
+        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
         # are all files uploaded ?
         all_uploaded = True
-        for a_file in all_items['file_fastq']:
+        # get all fastq files (can be file_fastq or file_processed)
+        fastq_files = [i for i in all_files if i.get('file_format', {}).get('file_format') == 'fastq']
+        for a_file in fastq_files:
             if a_file['status'] in ['uploading', 'upload failed']:
                 all_uploaded = False
-
         if not all_uploaded:
             final_status = a_sample['accession'] + ' skipped, waiting for file upload'
             print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
             continue
-
-        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
-        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
-        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
-        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
-
-        sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, all_items['file_fastq'])
+        sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, fastq_files)
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
         s3_input_bams = []
         stop_level_2 = False
@@ -357,7 +358,6 @@ def cgap_status(connection, **kwargs):
                 stop_level_2 = True
             else:
                 s3_input_bams.append(step2_output)
-
         # RUN STEP 3
         if stop_level_2:
             step3_status = ""
@@ -371,7 +371,6 @@ def cgap_status(connection, **kwargs):
                 keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
                                                                       'step3', a_sample['accession'], s3_input_bams,
                                                                       s3_input_files,  step3_name, 'merged_bam')
-
         # RUN STEP 4
         if step3_status != 'complete':
             step4_status = ""
@@ -380,7 +379,6 @@ def cgap_status(connection, **kwargs):
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
                                                                   'step4', a_sample['accession'], step3_output,
                                                                   s4_input_files,  step4_name, 'dupmarked_bam')
-
         # RUN STEP 5
         if step4_status != 'complete':
             step5_status = ""
@@ -389,7 +387,6 @@ def cgap_status(connection, **kwargs):
             keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
                                                                   'step5', a_sample['accession'], step4_output,
                                                                   s5_input_files,  step5_name, 'sorted_bam')
-
         # RUN STEP 6
         if step5_status != 'complete':
             step6_status = ""
@@ -399,7 +396,6 @@ def cgap_status(connection, **kwargs):
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   'step6', a_sample['accession'], step5_output,
                                                                   s6_input_files,  step6_name, 'recalibration_report')
-
         # RUN STEP 7
         if step6_status != 'complete':
             step7_status = ""
@@ -410,7 +406,6 @@ def cgap_status(connection, **kwargs):
             keep, step7_status, step7_output = cgap_utils.stepper(library, keep,
                                                                   'step7', a_sample['accession'], step6_output,
                                                                   s7_input_files,  step7_name, 'recalibrated_bam')
-
         # RUN STEP 8
         if step7_status != 'complete':
             step8_status = ""
@@ -421,7 +416,6 @@ def cgap_status(connection, **kwargs):
             keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
                                                                   'step8', a_sample['accession'], step7_output,
                                                                   s8_input_files,  step8_name, 'gvcf')
-
         final_status = a_sample['accession']
         completed = []
         pipeline_tag = cgap_partI_version[-1]
@@ -568,7 +562,8 @@ def cgapS2_status(connection, **kwargs):
         if (now-start).seconds > lambda_limit:
             break
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
-        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
@@ -810,7 +805,8 @@ def cram_status(connection, **kwargs):
             continue
 
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
-        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
 
