@@ -1,4 +1,6 @@
 import json
+import time
+import random
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
@@ -254,6 +256,10 @@ states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27
 
 
 def check_indexing(check, connection):
+    # wait for random time
+    wait = round(random.uniform(0.1, random_wait), 1)
+    print(wait)
+    time.sleep(wait)
     # check indexing queue
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
