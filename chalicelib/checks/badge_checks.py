@@ -210,7 +210,7 @@ def yellow_flag_biosamples(connection, **kwargs):
         if messages:
             if result.get('status') in REV:
                 check.brief_output[REV_KEY].append('{} missing {}'.format(
-                    result['@id'], ', '.join([item[item.index('missing') + 8:] for item in messages])
+                    result['@id'], ', '.join(list(set([item[item.index('missing') + 8:] for item in messages])))
                 ))
             else:
                 flagged[result['@id']] = messages
