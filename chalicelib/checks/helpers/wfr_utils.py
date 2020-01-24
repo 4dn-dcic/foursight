@@ -258,7 +258,6 @@ states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27
 def check_indexing(check, connection):
     # wait for random time
     wait = round(random.uniform(0.1, random_wait), 1)
-    print(wait)
     time.sleep(wait)
     # check indexing queue
     env = connection.ff_env
