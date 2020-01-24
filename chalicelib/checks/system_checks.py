@@ -201,14 +201,15 @@ def indexing_progress(connection, **kwargs):
 def indexing_records(connection, **kwargs):
     check = CheckResult(connection, 'indexing_records')
     client = es_utils.create_es_client(connection.ff_es, True)
+    namespaced_index = connection.ff_env + 'indexing'
     # make sure we have the index and items within it
-    if (not client.indices.exists('indexing') or
+    if (not client.indices.exists(namespaced_index) or
         client.count('indexing', 'indexing').get('count', 0) < 1):
         check.summary = check.description = 'No indexing records found'
         check.status = 'PASS'
         return check
 
-    res = client.search(index='indexing', doc_type='indexing', sort='uuid:desc', size=1000,
+    res = client.search(index=namespaced_index, doc_type='indexing', sort='uuid:desc', size=1000,
                         body={'query': {'query_string': {'query': '_exists_:indexing_status'}}})
     delta_days = datetime.timedelta(days=3)
     all_records = res.get('hits', {}).get('hits', [])
