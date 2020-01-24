@@ -22,13 +22,8 @@ def md5run_status_extra_file(connection, **kwargs):
     check.status = 'PASS'
 
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
 
     # Build the query

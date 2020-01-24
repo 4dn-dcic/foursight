@@ -5,7 +5,7 @@ from operator import itemgetter
 from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
-
+random_wait = wfrset_utils.random_wait
 # check at the end
 # check extract_file_info has 4 arguments
 
@@ -251,6 +251,20 @@ mapper = {'human': 'GRCh38',
 
 # color map states bed file
 states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+
+
+def check_indexing(check, connection):
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check, True
+    else:
+        return check, False
 
 
 # check for a specific tag in a states file
