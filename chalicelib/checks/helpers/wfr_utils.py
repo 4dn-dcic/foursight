@@ -1466,7 +1466,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         not_verified = []
         for an_exp in exp_files:
             an_exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == an_exp][0]
-            tags = an_exp_resp.get('tags')
+            tags = an_exp_resp.get('tags', [])
             if 'strandedness_verified' not in tags:
                 not_verified.append(an_exp)
             elif not an_exp_resp.get('strandedness'):
@@ -1486,7 +1486,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
             strand_info = ''
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
-            tags = exp_resp.get('tags')
+            tags = exp_resp.get('tags', [])
             strand_info = exp_resp.get('strandedness')
 
             # run unstranded pipeline
