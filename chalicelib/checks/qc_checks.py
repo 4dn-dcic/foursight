@@ -423,16 +423,17 @@ def identify_files_without_qc_summary_bam(connection, **kwargs):
 @action_function()
 def patch_quality_metric_summary_bam(connection, **kwargs):
     t0 = time.time()  # keep track of how start time
-    time_limit = 270  # 4.5 minutes
+    time_limit = 840  # 14 minutes
     action = ActionResult(connection, 'patch_quality_metric_summary_bam')
     action_logs = {'time out': False, 'skipping_format': [], 'patch_failure': [], 'patch_success': []}
     # get latest results from identify_files_without_qc_summary
     filesize_check_result = action.get_associated_check_result(kwargs)
     for hit in filesize_check_result.get('full_output', []):
         if round(time.time() - t0, 2) > time_limit:
-            action.status = 'FAIL'
+            action.description = 'Did not complete action due to time limitations'
             action_logs['time out'] = True
             action.output = action_logs
+            action.status = 'DONE'
             return action
         if hit['file_format']['file_format'] == 'bam':
             try:
