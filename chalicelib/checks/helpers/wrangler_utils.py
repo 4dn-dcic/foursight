@@ -32,7 +32,7 @@ def calculate_rna_strandedness(files):
             if strandedness_1 == strandedness_2:
                 final_strandedness = strandedness_1
             else:
-                final_strandedness = 'unknown'
+                final_strandedness = 'unknown - file1: ' + files[0]['accession'] + ' is ' + strandedness_1 + ' file2: ' + files[1]['accession'] + ' is ' + strandedness_2
         else:
             count_ratio_1 = files[0]['sense_count'] / (files[0]['sense_count'] + files[0]['antisense_count'])
             count_ratio_2 = files[1]['sense_count'] / (files[1]['sense_count'] + files[1]['antisense_count'])
@@ -54,7 +54,7 @@ def calculate_rna_strandedness(files):
             if strandedness_1 == strandedness_2:
                 final_strandedness = strandedness_1
             else:
-                final_strandedness = 'unknown'
+                final_strandedness = 'unknown - file1: ' + files[0]['accession'] + ' is ' + strandedness_1 + ' file2: ' + files[1]['accession'] + ' is ' + strandedness_2
 
     else:
         count_ratio = files[0]['sense_count'] / (files[0]['sense_count'] + files[0]['antisense_count'])
