@@ -1793,3 +1793,103 @@ def bamqc_start(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     return action
+
+
+@check_function(lab_title=None, start_date=None)
+def fastq_formatqc_status(connection, **kwargs):
+    """Searches for fastq files that don't have file_first_line field
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'fastq_formatqc_status')
+    my_auth = connection.ff_keys
+    check.action = "fastq_formatqc_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (RNA-seq experiments)
+    query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq'
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    targets = []
+    x = 0
+    for re in res:
+        if x == 5:
+            break
+        if not re.get('file_first_line'):
+            targets.append(re)
+        x = x + 1
+
+    if not targets:
+        check.summary = "All good!"
+        return check
+
+    running = []
+    missing_run = []
+
+    for a_file in targets:
+        fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq_formatqc", key=my_auth, md_qc=True)
+        if fastq_formatqc_report['status'] == 'running':
+            running.append(a_file['accession'])
+        elif fastq_formatqc_report['status'] != 'complete':
+            missing_run.append(a_file['accession'])
+
+    if running:
+        check.summary = 'Some files are running fastq_formatqc run'
+        msg = str(len(running)) + ' files are still running fastq_formatqc run.'
+        check.brief_output.append(msg)
+        check.full_output['files_running_fastq_formatqc_run'] = running
+
+    if missing_run:
+        check.summary = 'Some files are fastq_formatqc run'
+        msg = str(len(missing_run)) + ' file(s) lack a successful fastq_formatqc run'
+        check.brief_output.append(msg)
+        check.full_output['files_without_fastq_formatqc_run'] = missing_run
+        check.allow_action = True
+        check.status = 'WARN'
+
+    return check
+
+
+@action_function(start_missing=True)
+def fastq_formatqc_start(connection, **kwargs):
+    """Start fastq_formatqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'fastq_formatqc_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    fastq_formatqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    action_logs['kwargs'] = kwargs
+    if kwargs.get('start_missing'):
+        targets.extend(fastq_formatqc_check_result.get('files_without_fastq_formatqc_run', []))
+
+    action_logs['targets'] = targets
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        attributions = wfr_utils.get_attribution(a_target)
+        # Add function to calculate resolution automatically
+        inp_f = {'fastq': a_target['@id']}
+        wfr_setup = wfrset_utils.step_settings('fastq_formatqc',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_target['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
