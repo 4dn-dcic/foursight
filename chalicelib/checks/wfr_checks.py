@@ -1878,13 +1878,14 @@ def fastq_formatqc_start(connection, **kwargs):
         if (now-start).seconds > lambda_limit:
             action.description = 'Did not complete action due to time limitations'
             break
-        attributions = wfr_utils.get_attribution(a_target)
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
         # Add function to calculate resolution automatically
-        inp_f = {'fastq': a_target['@id']}
+        inp_f = {'fastq': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('fastq_formatqc',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_target['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
