@@ -1485,18 +1485,20 @@ def check_for_strandedness_consistency(connection, **kwargs):
                 tags = []
             if 'strandedness_verified' not in tags:
                 #  Calculate forward, reversed or unstranded
-                calculated_tag = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
-                if "unknown" in calculated_tag:
+                strandedness_report = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
+                if "unknown" in strandedness_report['calculated_strandedness']:
                     problematic['fastqs_unmatch_strandedness'].append({'exp':target_exp['meta']['accession'],
-                                                                        'strandedness_info': calculated_tag})
+                                                                        'strandedness_info': strandedness_report})
                     problm = True
-                elif calculated_tag == "zero":
-                    problematic['fastqs_zero_count_both_strands'].append(target_exp['meta']['accession'])
+                elif strandedness_report['calculated_strandedness'] == "zero":
+                    problematic['fastqs_zero_count_both_strands'].append({'exp':target_exp['meta']['accession'],
+                                                                          'strandedness_info': strandedness_report})
                     problm = True
-                elif target_exp['tag'] != calculated_tag:
+                elif target_exp['tag'] != strandedness_report['calculated_strandedness']:
                     problematic['inconsistent_strandedness'].append({'exp': target_exp['meta']['accession'],
-                                                                    'current_tag': target_exp['tag'],
-                                                                    'calculated_tag': calculated_tag})
+                                                                    'strandedness_metadata': target_exp['tag'],
+                                                                    'calculated_strandedness': strandedness_report['calculated_strandedness'],
+                                                                    'files': strandedness_report['files']})
                     problm = True
                 else:
                     missing_consistent_tag.append(target_exp['meta']['accession'])
