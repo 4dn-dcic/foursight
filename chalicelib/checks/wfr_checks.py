@@ -1820,14 +1820,10 @@ def fastq_formatqc_status(connection, **kwargs):
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     targets = []
-    x = 0
+
     for re in res:
-        if x == 5:
-            break
         if not re.get('file_first_line'):
             targets.append(re)
-        x = x + 1
-
     if not targets:
         check.summary = "All good!"
         return check
