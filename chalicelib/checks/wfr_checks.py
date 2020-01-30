@@ -1836,7 +1836,7 @@ def fastq_formatqc_status(connection, **kwargs):
     missing_run = []
 
     for a_file in targets:
-        fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq_formatqc", key=my_auth, md_qc=True)
+        fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-formatqc", key=my_auth, md_qc=True)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
         elif fastq_formatqc_report['status'] != 'complete':
@@ -1882,7 +1882,7 @@ def fastq_formatqc_start(connection, **kwargs):
         attributions = wfr_utils.get_attribution(a_file)
         # Add function to calculate resolution automatically
         inp_f = {'fastq': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('fastq_formatqc',
+        wfr_setup = wfrset_utils.step_settings('fastq-formatqc',
                                                'no_organism',
                                                attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)

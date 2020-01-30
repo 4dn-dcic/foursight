@@ -292,9 +292,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "overwrite_input_extra": False
         },
         {
-        "app_name": "fastq_formatqc",
+        "app_name": "fastq-formatqc",
         "workflow_uuid": "93a1a931-d55d-4623-adfb-0fa735daf6ae",
-        "overwrite_input_extra": False
+        "overwrite_input_extra": False,
+        'config': {'mem': 0.5, 'cpu': 1}
         },
         # temp
         {

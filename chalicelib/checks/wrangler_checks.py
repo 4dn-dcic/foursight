@@ -1549,9 +1549,9 @@ def patch_strandedness_consistency_info(connection, **kwargs):
             try:
                 ff_utils.patch_metadata(tags, i, key=connection.ff_keys)
             except Exception as e:
-                action_logs['patch_failure'].append({item: str(e)})
+                action_logs['patch_failure'].append({i: str(e)})
             else:
-                action_logs['patch_success'].append(item)
+                action_logs['patch_success'].append(i)
 
     if action_logs['patch_failure']:
         action.status = 'FAIL'
