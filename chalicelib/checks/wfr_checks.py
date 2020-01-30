@@ -1559,7 +1559,7 @@ def rna_strandedness_status(connection, **kwargs):
     start = datetime.utcnow()
     check = CheckResult(connection, 'rna_strandedness_status')
     my_auth = connection.ff_keys
-    check.action = "rna_strandness_start"
+    check.action = "rna_strandedness_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'

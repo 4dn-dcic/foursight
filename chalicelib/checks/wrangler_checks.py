@@ -1438,44 +1438,45 @@ def check_for_strandedness_consistency(connection, **kwargs):
 
     # The search
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
-    # experiments that need to be patched]
+    # experiments that need to be patched
     missing_consistent_tag = []
     problematic = {'fastqs_zero_count_both_strands': [], 'fastqs_unmatch_strandedness': [], 'inconsistent_strandedness': []}
-    target_experiments = []  # the experiments that we are interested in
+    target_experiments = []  # the experiments that we are interested in (fastqs with beta actin count tag)
 
-    # Filtering the experiments that have the strandedness info and contain files with beta-actin count info
+    # Filtering the experiments target experiments
     for re in res:
         if re.get("strandedness"):
-            exp_info = {'meta': re, 'files': [], 'tag': re['strandedness']}
-            ready = True
-            # verify that the files in the experiment have the beta-actin count info
-            for a_re_file in re['files']:
-                if a_re_file['file_format']['display_title'] == 'fastq':
-                    file_meta = ff_utils.get_metadata(a_re_file['accession'], connection.ff_keys)
-                    file_meta_keys = file_meta.keys()
-                    if 'beta_actin_sense_count' in file_meta_keys and 'beta_actin_antisense_count' in file_meta_keys:
-                        if file_meta.get('related_files'):
-                            paired = True
-                        else:
-                            paired = False
+            strandedness_meta = re['strandedness']
+        else:
+            strandedness_meta = 'missing'
 
-                        file_info = {'accession': file_meta['accession'],
-                                     'sense_count': file_meta['beta_actin_sense_count'],
-                                     'antisense_count': file_meta['beta_actin_antisense_count'],
-                                     'paired': paired}
-                        exp_info['files'].append(file_info)
+        exp_info = {'meta': re, 'files': [], 'tag': strandedness_meta}
 
+        # verify that the files in the experiment have the beta-actin count info
+        for a_re_file in re['files']:
+            if a_re_file['file_format']['display_title'] == 'fastq':
+                file_meta = ff_utils.get_metadata(a_re_file['accession'], connection.ff_keys)
+                file_meta_keys = file_meta.keys()
+                if 'beta_actin_sense_count' in file_meta_keys and 'beta_actin_antisense_count' in file_meta_keys:
+                    ready = True
+                    if file_meta.get('related_files'):
+                        paired = True
                     else:
-                        ready = False
-            if ready:
-                target_experiments.append(exp_info)
+                        paired = False
 
-    if not target_experiments:
-        check.status = 'PASS'
-        check.summary = 'All good!'
-        return check
+                    file_info = {'accession': file_meta['accession'],
+                                 'sense_count': file_meta['beta_actin_sense_count'],
+                                 'antisense_count': file_meta['beta_actin_antisense_count'],
+                                 'paired': paired}
+                    exp_info['files'].append(file_info)
 
-    else:
+                else:
+                    ready = False
+        if ready:
+            target_experiments.append(exp_info)
+
+    # Calculates if the beta-actin count is consistent with the metadata strandedness asignment.
+    if target_experiments:
         problm = False
         for target_exp in target_experiments:
             if target_exp['meta'].get('tags'):
@@ -1484,48 +1485,47 @@ def check_for_strandedness_consistency(connection, **kwargs):
                 tags = []
             if 'strandedness_verified' not in tags:
                 #  Calculate forward, reversed or unstranded
-                calculated_tag = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
-                if calculated_tag == "unknown":
-                    problematic['fastqs_unmatch_strandedness'].append(target_exp['meta']['accession'])
+                strandedness_report = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
+                if "unknown" in strandedness_report['calculated_strandedness']:
+                    problematic['fastqs_unmatch_strandedness'].append({'exp':target_exp['meta']['accession'],
+                                                                        'strandedness_info': strandedness_report})
                     problm = True
-                elif calculated_tag == "zero":
-                    problematic['fastqs_zero_count_both_strands'].append(target_exp['meta']['accession'])
+                elif strandedness_report['calculated_strandedness'] == "zero":
+                    problematic['fastqs_zero_count_both_strands'].append({'exp':target_exp['meta']['accession'],
+                                                                          'strandedness_info': strandedness_report})
                     problm = True
-                elif target_exp['tag'] != calculated_tag:
+                elif target_exp['tag'] != strandedness_report['calculated_strandedness']:
                     problematic['inconsistent_strandedness'].append({'exp': target_exp['meta']['accession'],
-                                                                    'current_tag': target_exp['tag'],
-                                                                    'calculated_tag': calculated_tag})
+                                                                    'strandedness_metadata': target_exp['tag'],
+                                                                    'calculated_strandedness': strandedness_report['calculated_strandedness'],
+                                                                    'files': strandedness_report['files']})
                     problm = True
                 else:
                     missing_consistent_tag.append(target_exp['meta']['accession'])
                     problm = True
 
-    if not problm:
+    if problm:
+        check.status = 'WARN'
+        check.description = 'Problematic experiments need to be addressed'
+        msg = str(len(missing_consistent_tag) + len(problematic['fastqs_unmatch_strandedness']) + len(problematic['fastqs_zero_count_both_strands']) +
+                len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
+        check.brief_output.append(msg)
+
+        if problematic['fastqs_zero_count_both_strands']:
+            check.full_output['problematic']['fastqs_zero_count_both_strands'] = problematic['fastqs_zero_count_both_strands']
+        if problematic['fastqs_unmatch_strandedness']:
+            check.full_output['problematic']['fastqs_unmatch_strandedness'] = problematic['fastqs_unmatch_strandedness']
+        if problematic['inconsistent_strandedness']:
+            check.full_output['problematic']['inconsistent_strandedness'] = problematic['inconsistent_strandedness']
+        if missing_consistent_tag:
+            check.full_output['to_patch']['strandedness_verified'] = missing_consistent_tag
+            check.summary = 'Some experiments are missing verified strandedness tag'
+            check.allow_action = True
+            check.description = 'Ready to patch verified strandedness tag'
+
+    else:
         check.status = 'PASS'
         check.summary = 'All good!'
-        return check
-
-    if problematic['fastqs_zero_count_both_strands']:
-        check.full_output['problematic']['fastqs_unmatch_strandedness'] = problematic['fastqs_zero_count_both_strands']
-        check.description = 'Problematic experiments need to be addressed'
-    if problematic['fastqs_unmatch_strandedness']:
-        check.full_output['problematic']['fastqs_unmatch_strandedness'] = problematic['fastqs_unmatch_strandedness']
-        check.description = 'Problematic experiments need to be addressed'
-    if problematic['inconsistent_strandedness']:
-        check.full_output['problematic']['inconsistent_strandedness'] = problematic['inconsistent_strandedness']
-        check.description = 'Problematic experiments need to be addressed'
-    if missing_consistent_tag:
-        check.full_output['to_patch']['strandedness_verified'] = missing_consistent_tag
-        check.summary = 'Some experiments are missing verified strandedness tag'
-        check.allow_action = True
-        check.description = 'Ready to patch verified strandedness tag'
-
-
-    check.status = 'WARN'
-    msg = str(len(missing_consistent_tag) + len(problematic['fastqs_unmatch_strandedness']) + len(problematic['fastqs_zero_count_both_strands']) +
-            len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
-    check.brief_output.append(msg)
-
     return check
 
 
