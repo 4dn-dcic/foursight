@@ -204,7 +204,7 @@ def indexing_records(connection, **kwargs):
     namespaced_index = connection.ff_env + 'indexing'
     # make sure we have the index and items within it
     if (not client.indices.exists(namespaced_index) or
-        client.count('indexing', 'indexing').get('count', 0) < 1):
+        client.count(index=namespaced_index).get('count', 0) < 1):
         check.summary = check.description = 'No indexing records found'
         check.status = 'PASS'
         return check
