@@ -117,7 +117,7 @@ workflow_details = {
         "run_time": 200,
         "accepted_versions": ["v2", "v3"]
     },
-    'fastq-formatqc': {
+    'fastq-first-line': {
         "run_time": 200,
         "accepted_versions": ["dev"]
     },
