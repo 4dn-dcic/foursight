@@ -5,10 +5,16 @@ def calculate_rna_strandedness(files):
     args: files = a list of fastq files metadata with the beta-actin count information
     returns: a string either forward, reverse, unstranded or unknown (if paired files are inconsistent)
     '''
-
+    strandedness_info = {}
+    problm = False
     for a_file in files:
         if a_file['sense_count'] == 0 and a_file['antisense_count'] == 0:
-            return "zero"
+            problm = True
+
+    if problm:
+        strandedness_info['files'] = files
+        strandedness_info['calculated_strandedness'] = "zero"
+        return strandedness_info
 
     if len(files) > 1:  # if more than one file
         if files[0]['paired']:
@@ -30,9 +36,13 @@ def calculate_rna_strandedness(files):
                 strandedness_2 = 'unstranded'
 
             if strandedness_1 == strandedness_2:
-                final_strandedness = strandedness_1
+                strandedness_info['calculated_strandedness'] = strandedness_1
+                strandedness_info['files'] = files
             else:
-                final_strandedness = 'unknown'
+                strandedness_info['calculated_strandedness'] = 'unknown'
+                strandedness_info['files'] = files
+                strandedness_info['summary'] = files[0]['accession'] + ' is ' + strandedness_1 + ' and ' + files[1]['accession'] + ' is ' + strandedness_2
+
         else:
             count_ratio_1 = files[0]['sense_count'] / (files[0]['sense_count'] + files[0]['antisense_count'])
             count_ratio_2 = files[1]['sense_count'] / (files[1]['sense_count'] + files[1]['antisense_count'])
@@ -52,9 +62,12 @@ def calculate_rna_strandedness(files):
                 strandedness_2 = 'unstranded'
 
             if strandedness_1 == strandedness_2:
-                final_strandedness = strandedness_1
+                strandedness_info['calculated_strandedness'] = strandedness_1
+                strandedness_info['files'] = files
             else:
-                final_strandedness = 'unknown'
+                strandedness_info['calculated_strandedness'] = 'unknown'
+                strandedness_info['files'] = files
+                strandedness_info['summary'] = files[0]['accession'] + ' is ' + strandedness_1 +' and ' + files[1]['accession'] + ' is ' + strandedness_2
 
     else:
         count_ratio = files[0]['sense_count'] / (files[0]['sense_count'] + files[0]['antisense_count'])
@@ -64,5 +77,7 @@ def calculate_rna_strandedness(files):
             final_strandedness = 'reverse'
         else:
             final_strandedness = 'unstranded'
+        strandedness_info['calculated_strandedness'] = final_strandedness
+        strandedness_info['files'] = files
 
-    return final_strandedness
+    return strandedness_info
