@@ -330,7 +330,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    time_limit = 240  # 4 minutes
+    time_limit = 480  # 8 minutes
     t0 = time.time()
     sent = 0
     deleted = 0
