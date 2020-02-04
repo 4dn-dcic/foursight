@@ -204,7 +204,7 @@ def indexing_records(connection, **kwargs):
     namespaced_index = connection.ff_env + 'indexing'
     # make sure we have the index and items within it
     if (not client.indices.exists(namespaced_index) or
-        client.count('indexing', 'indexing').get('count', 0) < 1):
+        client.count(index=namespaced_index).get('count', 0) < 1):
         check.summary = check.description = 'No indexing records found'
         check.status = 'PASS'
         return check
@@ -330,7 +330,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    time_limit = 240  # 4 minutes
+    time_limit = 480  # 8 minutes
     t0 = time.time()
     sent = 0
     deleted = 0
