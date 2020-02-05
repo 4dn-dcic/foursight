@@ -116,7 +116,11 @@ workflow_details = {
     'bamqc': {
         "run_time": 200,
         "accepted_versions": ["v2", "v3"]
-    }
+    },
+    'fastq-first-line': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
+    },
 }
 
 # accepted versions for completed pipelines
