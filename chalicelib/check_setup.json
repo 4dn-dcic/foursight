@@ -3,7 +3,7 @@
         "title": "Item counts by type",
         "group": "Metadata checks",
         "schedule": {
-            "ten_min_checks": {
+            "hourly_checks": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
