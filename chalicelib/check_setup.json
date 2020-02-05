@@ -16,7 +16,7 @@
         "group": "Elasticsearch checks",
         "conditions": ["put_env"],
         "schedule": {
-            "ten_min_checks": {
+            "hourly_checks": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": ["item_counts_by_type"]
