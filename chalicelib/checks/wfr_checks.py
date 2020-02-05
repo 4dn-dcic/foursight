@@ -1814,7 +1814,7 @@ def fastq_first_line_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # Build the query (RNA-seq experiments)
+
     query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq'
 
     # The search
