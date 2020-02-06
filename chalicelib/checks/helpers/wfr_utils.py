@@ -1622,3 +1622,22 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
     return check
+
+
+def check_qcs_on_files(file_meta, my_auth, qc_metric_name=None):
+    """  """
+    if not file_meta.get('quality_metric'):
+        return
+    qc_metric = file_meta['quality_metric']['@id']
+    if qc_metric['display_title'].startswith('QualityMetricQclist'):
+        if not qc_metric.get('qc_list'):
+            return
+        for qc in qc_metric['qc_list']:
+            if qc_metric_name in qc['value']['display_title']:
+                res = ff_utils.get_metadata(qc['value']['uuid'], key=my_auth)
+                return res
+
+    if qc_metric_name not in qc_metric['display_title']:
+        return
+
+    return file_meta['quality_metric']
