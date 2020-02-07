@@ -1706,7 +1706,7 @@ def rna_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='rnaseq')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='rnaseq')
     return action
 
 
