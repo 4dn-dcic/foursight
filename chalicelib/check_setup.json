@@ -3,7 +3,7 @@
         "title": "Item counts by type",
         "group": "Metadata checks",
         "schedule": {
-            "ten_min_checks": {
+            "hourly_checks": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -16,7 +16,7 @@
         "group": "Elasticsearch checks",
         "conditions": ["put_env"],
         "schedule": {
-            "ten_min_checks": {
+            "hourly_checks": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": ["item_counts_by_type"]
@@ -1465,6 +1465,18 @@
                     "dependencies": []
                 },
                 "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastq_first_line_status" : {
+        "title": "aa) Fastq first line",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }

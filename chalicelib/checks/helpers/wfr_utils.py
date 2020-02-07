@@ -116,7 +116,11 @@ workflow_details = {
     'bamqc': {
         "run_time": 200,
         "accepted_versions": ["v2", "v3"]
-    }
+    },
+    'fastq-first-line': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
+    },
 }
 
 # accepted versions for completed pipelines
@@ -161,7 +165,7 @@ accepted_versions = {
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
     'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1'],
-    # Testing for now from ENCONDE
+    # OFFICIAL
     'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
     'single cell Repli-seq': [''],
     'cryomilling TCC': [''],
