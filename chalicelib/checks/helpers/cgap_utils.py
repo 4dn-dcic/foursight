@@ -24,7 +24,7 @@ workflow_details = {
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11"]
+        "accepted_versions": ["v9", "v10", "v11", "v12"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
