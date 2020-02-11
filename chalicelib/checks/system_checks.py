@@ -308,7 +308,7 @@ def fourfront_performance_metrics(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(time_limit=480)
 def secondary_queue_deduplication(connection, **kwargs):
     from ..utils import get_stage_info
     check = CheckResult(connection, 'secondary_queue_deduplication')
@@ -330,7 +330,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     )
     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
     starting_count = int(visible)
-    time_limit = 480  # 8 minutes
+    time_limit = kwargs['time_limit']
     t0 = time.time()
     sent = 0
     deleted = 0
@@ -339,7 +339,6 @@ def secondary_queue_deduplication(connection, **kwargs):
     replaced = 0
     repeat_replaced = 0
     problem_msgs = []
-    done = False
     elapsed = round(time.time() - t0, 2)
     failed = []
     seen_uuids = set()
