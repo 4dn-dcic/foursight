@@ -18,7 +18,7 @@ from .s3_connection import S3Connection
 
 CHECK_DECO = 'check_function'
 ACTION_DECO = 'action_function'
-CHECK_TIMEOUT = 280  # in seconds. set to less than lambda limit (300 s)
+CHECK_TIMEOUT = 880  # in seconds. set to less than lambda limit (900 s)
 
 # compare strings in both python 2 and python 3
 # in other files, compare with utils.basestring
