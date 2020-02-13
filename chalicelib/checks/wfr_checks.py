@@ -1806,7 +1806,7 @@ def fastq_first_line_status(connection, **kwargs):
     start = datetime.utcnow()
     check = CheckResult(connection, 'fastq_first_line_status')
     my_auth = connection.ff_keys
-    check.action = "fastq_formatqc_start"
+    check.action = "fastq_first_line_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -1860,7 +1860,7 @@ def fastq_first_line_status(connection, **kwargs):
 def fastq_first_line_start(connection, **kwargs):
     """Start fastq_formatqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = ActionResult(connection, 'fastq_formatqc_start')
+    action = ActionResult(connection, 'fastq_first_line_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     fastq_formatqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
