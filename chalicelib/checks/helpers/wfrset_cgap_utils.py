@@ -186,8 +186,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'workflow_uuid': '4fbad226-859d-40d4-8192-10c305e819da',
                 'parameters': {},
                 "config": {
-                    "instance_type": "t3.medium",
-                    "ebs_size": "2x",
+                    "instance_type": "c5n.4xlarge",
+                    "ebs_size": "1.5x",
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
