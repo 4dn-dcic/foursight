@@ -1,11 +1,13 @@
 import json
+import time
+import random
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
 from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
-
+random_wait = wfrset_utils.random_wait
 # check at the end
 # check extract_file_info has 4 arguments
 
@@ -97,7 +99,7 @@ workflow_details = {
     },
     'imargi-processing-pairs': {
         "run_time": 200,
-        "accepted_versions": ["1.1"]
+        "accepted_versions": ["1.1.1_dcic_4"]
     },
     'encode-rnaseq-stranded': {
         "run_time": 200,
@@ -106,7 +108,19 @@ workflow_details = {
     'encode-rnaseq-unstranded': {
         "run_time": 200,
         "accepted_versions": ["1.1"]
-    }
+    },
+    'rna-strandedness': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
+    },
+    'bamqc': {
+        "run_time": 200,
+        "accepted_versions": ["v2", "v3"]
+    },
+    'fastq-first-line': {
+        "run_time": 200,
+        "accepted_versions": ["v2"]
+    },
 }
 
 # accepted versions for completed pipelines
@@ -125,6 +139,8 @@ accepted_versions = {
     'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network  # NO-RE NO-NORM
+    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
@@ -149,7 +165,7 @@ accepted_versions = {
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
     'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1'],
-    # Testing for now from ENCONDE
+    # OFFICIAL
     'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
     'single cell Repli-seq': [''],
     'cryomilling TCC': [''],
@@ -163,7 +179,7 @@ accepted_versions = {
     'RNA-DNA SPRITE': [''],
     'GAM': [''],
     'CUT&RUN': [''],
-    'TRIP': [''],
+    'TRIP': ['']
     }
 
 # Reference Files
@@ -198,7 +214,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'HindIII': '/files-reference/4DNFI823MBKE/',
                    'NcoI': '/files-reference/4DNFI3HVU2OD/',
                    'MspI': '/files-reference/4DNFI2JHR3OI/',
-                   'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/'
+                   'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/',
+                   'AluI': '/files-reference/4DNFIN4DB5O8/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
@@ -214,6 +231,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
 # re bed files for MARGI pipeline
 re_fragment = {"human": {'AluI': '/files-reference/4DNFIL1I5TSP/'}}
 
+# reference beta-actin 21kmer for rna_strandness pipeline
+re_kmer = {"human": '/files-reference/4DNFIDMVPFSO/',
+           "mouse": '/files-reference/4DNFIAQ4BI8Y'}
 
 # max_distance for species (used for pairsqc)
 max_size = {"human": None,
@@ -238,6 +258,23 @@ mapper = {'human': 'GRCh38',
 
 # color map states bed file
 states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+
+
+def check_indexing(check, connection):
+    # wait for random time
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check, True
+    else:
+        return check, False
 
 
 # check for a specific tag in a states file
@@ -342,7 +379,11 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
         return {'status': "no workflow in file with accepted version"}
     my_workflows = sorted(my_workflows, key=lambda k: k['run_hours'])
     same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
+
+    if not same_type_wfrs:
+        return {'status': "no workflow on file"}
     last_wfr = same_type_wfrs[0]
+
     # get metadata for the last wfr
     if all_wfrs:
         wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
@@ -745,11 +786,18 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no chrsize/bwa'})
             continue
-        if not refs['enz_ref'] and not nore:
-            set_summary += "| skipped - no enz"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: 'skipped - no enz'})
-            continue
+        # if enzyme is used in the pipeline, check required parameters
+        if not nore:
+            if not refs['enzyme']:
+                set_summary += "| skipped - missing enzyme metadata"
+                check.brief_output.append(set_summary)
+                check.full_output['skipped'].append({set_acc: 'skipped - missing enzyme metadata'})
+                continue
+            if not refs['enz_ref']:
+                set_summary += "| skipped - no reference NZ file"
+                check.brief_output.append(set_summary)
+                check.full_output['skipped'].append({set_acc: 'skipped - no reference NZ file'})
+                continue
         set_pairs = []
         # cycle through the experiments, skip the ones without usable files
         for exp in exp_files.keys():
@@ -1442,7 +1490,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         not_verified = []
         for an_exp in exp_files:
             an_exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == an_exp][0]
-            tags = an_exp_resp.get('tags')
+            tags = an_exp_resp.get('tags', [])
             if 'strandedness_verified' not in tags:
                 not_verified.append(an_exp)
             elif not an_exp_resp.get('strandedness'):
@@ -1462,7 +1510,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
             strand_info = ''
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp][0]
-            tags = exp_resp.get('tags')
+            tags = exp_resp.get('tags', [])
             strand_info = exp_resp.get('strandedness')
 
             # run unstranded pipeline

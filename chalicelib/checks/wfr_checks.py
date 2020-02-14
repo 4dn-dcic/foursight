@@ -20,17 +20,10 @@ def md5run_status_extra_file(connection, **kwargs):
     check = CheckResult(connection, 'md5run_status_extra_file')
     my_auth = connection.ff_keys
     check.status = 'PASS'
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
              '&extra_files.status!=uploaded&extra_files.href!=No value')
@@ -65,17 +58,10 @@ def md5run_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query
     query = '/search/?status=uploading&status=upload failed'
     # add file type
@@ -221,19 +207,12 @@ def fastqc_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query (skip to be uploaded by workflow)
-    query = ("/search/?type=FileFastq&quality_metric.uuid=No+value"
+    query = ("/search/?type=File&file_format.file_format=fastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
     # fastqc not properly reporting for long reads
     skip_instruments = ['PromethION', 'GridION', 'MinION', 'PacBio RS II']
@@ -305,17 +284,10 @@ def pairsqc_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?file_format.file_format=pairs&type=FileProcessed"
              "&status=pre-release&status=released&status=released+to+project&status=uploaded"
@@ -406,17 +378,10 @@ def bg2bw_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
              "extra_files.file_format.display_title!=bw"
@@ -493,17 +458,10 @@ def bed2beddb_status(connection, **kwargs):
     check.status = 'PASS'
     accepted_types = ['LADs', 'boundaries', 'domains']
     file_size_limit = 100000  # 100KB
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bed"
              "extra_files.file_format.display_title!=beddb"
@@ -588,17 +546,10 @@ def in_situ_hic_status(connection, **kwargs):
     exp_type = 'in situ Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -650,17 +601,10 @@ def dilution_hic_status(connection, **kwargs):
     exp_type = 'Dilution Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -714,17 +658,10 @@ def tcc_status(connection, **kwargs):
     exp_type = 'TCC'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -776,17 +713,10 @@ def dnase_hic_status(connection, **kwargs):
     exp_type = 'DNase Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -900,17 +830,10 @@ def micro_c_status(connection, **kwargs):
     exp_type = 'Micro-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -962,17 +885,10 @@ def chia_pet_status(connection, **kwargs):
     exp_type = 'ChIA-PET'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -990,6 +906,61 @@ def chia_pet_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
     action = ActionResult(connection, 'chia_pet_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = hic_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = hic_check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def in_situ_chia_pet_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'in_situ_chia_pet_status')
+    my_auth = connection.ff_keys
+    check.action = "in_situ_chia_pet_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'in situ ChIA-PET'
+    # completion tag
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nonorm=True)
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def in_situ_chia_pet_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'in_situ_chia_pet_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -1024,17 +995,10 @@ def trac_loop_status(connection, **kwargs):
     exp_type = 'TrAC-loop'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -1086,17 +1050,10 @@ def plac_seq_status(connection, **kwargs):
     exp_type = 'PLAC-seq'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -1146,17 +1103,10 @@ def repli_2_stage_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = '2-stage Repli-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1206,17 +1156,10 @@ def repli_multi_stage_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = 'Multi-stage Repli-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1266,17 +1209,10 @@ def tsa_seq_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = 'TSA-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1327,17 +1263,10 @@ def nad_seq_status(connection, **kwargs):
     check.status = 'PASS'
     exp_type = 'NAD-seq'
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1387,17 +1316,6 @@ def atac_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ATAC-seq'
-
-    # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
-        return check
-
     return check
 
 
@@ -1480,17 +1398,10 @@ def margi_status(connection, **kwargs):
     exp_type = 'MARGI'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     # The search
@@ -1538,17 +1449,10 @@ def bed2multivec_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'WARN'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query (find bed files without bed.multires.mv5 files)
     query = ("search/?file_format.file_format=bed&file_type=states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
     # add date
@@ -1644,6 +1548,108 @@ def bed2multivec_start(connection, **kwargs):
     return action
 
 
+@check_function(lab_title=None, start_date=None)
+def rna_strandedness_status(connection, **kwargs):
+    """Searches for fastq files of experiment seq type that don't have beta_actin_count fields
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'rna_strandedness_status')
+    my_auth = connection.ff_keys
+    check.action = "rna_strandedness_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (RNA-seq experiments)
+    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&status=pre-release&status=released&status=released to project'
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    targets = []
+    for re in res:
+        for a_re_file in re['files']:
+            if a_re_file['file_format']['display_title'] == 'fastq':
+                file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
+                file_meta_keys = file_meta.keys()
+                if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
+                    targets.append(file_meta)
+    if not targets:
+        check.summary = "All good!"
+        return check
+
+    running = []
+    missing_run = []
+
+    for a_file in targets:
+        strandedness_report = wfr_utils.get_wfr_out(a_file, "rna-strandedness", key=my_auth, versions='v2', md_qc=True)
+        if strandedness_report['status'] == 'running':
+            running.append(a_file['accession'])
+        elif strandedness_report['status'] != 'complete':
+            missing_run.append(a_file['accession'])
+
+    if running:
+        check.summary = 'Some files are running rna_strandedness run'
+        msg = str(len(running)) + ' files are still running rna_strandedness run.'
+        check.brief_output.append(msg)
+        check.full_output['files_running_rna_strandedness_run'] = running
+
+    if missing_run:
+        check.summary = 'Some files are missing rna_strandedness run'
+        msg = str(len(missing_run)) + ' file(s) lack a successful rna_strandedness run'
+        check.brief_output.append(msg)
+        check.full_output['files_without_rna_strandedness_run'] = missing_run
+        check.allow_action = True
+        check.status = 'WARN'
+
+    return check
+
+
+@action_function(start_missing=True)
+def rna_strandedness_start(connection, **kwargs):
+    """Start rna_strandness runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'rna_strandedness_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    rna_strandedness_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    action_logs['kwargs'] = kwargs
+    if kwargs.get('start_missing'):
+        targets.extend(rna_strandedness_check_result.get('files_without_rna_strandedness_run', []))
+
+    action_logs['targets'] = targets
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        org = a_file['experiments'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+        kmer_file = wfr_utils.re_kmer[org]
+        # Add function to calculate resolution automatically
+        inp_f = {'fastq': a_file['@id'], 'ACTB_reference': kmer_file}
+        wfr_setup = wfrset_utils.step_settings('rna-strandedness',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
 @check_function(lab_title=None, start_date=None, query='')
 def rna_seq_status(connection, **kwargs):
     """
@@ -1666,17 +1672,10 @@ def rna_seq_status(connection, **kwargs):
     exp_type = 'RNA-seq'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     user_query = kwargs.get('query')
     if user_query:
@@ -1707,5 +1706,192 @@ def rna_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='rnaseq')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='rnaseq')
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def bamqc_status(connection, **kwargs):
+    """Searches for annotated bam files that do not have a qc object
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'bamqc_status')
+    my_auth = connection.ff_keys
+    check.action = "bamqc_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (find bam files produced bt the Hi-C Post Alignment Processing wfr)
+    default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
+    wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
+    stati = 'status=' + (kwargs.get('status') or default_stati)
+    query = 'search/?file_type=alignment&{}'.format(stati)
+    query += '&type=FileProcessed'
+    query += wfr_outputs
+    query += '&quality_metric.display_title=No+value'
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.action_message = 'No action required at this moment'
+        check.summary = 'All Good!'
+        return check
+    check.summary = '{} files need a bamqc'. format(len(res))
+    check.status = 'WARN'
+    check = wfr_utils.check_runs_without_output(res, check, 'bamqc', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bamqc_start(connection, **kwargs):
+    """Start bamqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'bamqc_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bamqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bamqc_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bamqc_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        org = [k for k, v in wfr_utils.mapper.items() if v == a_file['genome_assembly']][0]
+        chrsize = wfr_utils.chr_size[org]
+
+        inp_f = {'bamfile': a_file['@id'], 'chromsizes': chrsize}
+        wfr_setup = wfrset_utils.step_settings('bamqc',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def fastq_first_line_status(connection, **kwargs):
+    print('Entering the check function')
+    """Searches for fastq files that don't have file_first_line field
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'fastq_first_line_status')
+    my_auth = connection.ff_keys
+    check.action = "fastq_first_line_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+
+    query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq'
+
+    # The search
+    print('About to query ES for files')
+    res = ff_utils.search_metadata(query, key=my_auth)
+    targets = []
+
+    print('About to check metadata field for each result in the search')
+    for re in res:
+        if not re.get('file_first_line'):
+            targets.append(re)
+
+    if not targets:
+        check.summary = "All good!"
+        return check
+
+    running = []
+    missing_run = []
+
+    print('About to check for workflow runs for each file')
+    for a_file in targets:
+        fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
+        if fastq_formatqc_report['status'] == 'running':
+            running.append(a_file['accession'])
+        elif fastq_formatqc_report['status'] != 'complete':
+            missing_run.append(a_file['accession'])
+    print('Done! I have the results I want')
+    if running:
+        check.summary = 'Some files are running fastq_formatqc run'
+        msg = str(len(running)) + ' files are still running fastq_formatqc run.'
+        check.brief_output.append(msg)
+        check.full_output['files_running_fastq_formatqc_run'] = running
+
+    if missing_run:
+        check.summary = 'Some files are fastq_formatqc run'
+        msg = str(len(missing_run)) + ' file(s) lack a successful fastq_formatqc run'
+        check.brief_output.append(msg)
+        check.full_output['files_without_fastq_formatqc_run'] = missing_run
+        check.allow_action = True
+        check.status = 'WARN'
+
+    return check
+
+
+@action_function(start_missing=True)
+def fastq_first_line_start(connection, **kwargs):
+    """Start fastq_formatqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'fastq_first_line_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    fastq_formatqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    action_logs['kwargs'] = kwargs
+    if kwargs.get('start_missing'):
+        targets.extend(fastq_formatqc_check_result.get('files_without_fastq_formatqc_run', []))
+
+    action_logs['targets'] = targets
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        # Add function to calculate resolution automatically
+        inp_f = {'fastq': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('fastq-first-line',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
     return action

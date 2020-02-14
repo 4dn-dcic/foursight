@@ -10,8 +10,14 @@ import json
 import datetime
 import time
 import itertools
+import random
 from fuzzywuzzy import fuzz
 import boto3
+from .helpers import wrangler_utils
+from collections import Counter
+
+# use a random number to stagger checks
+random_wait = 20
 
 
 @check_function(cmp_to_last=False)
@@ -26,6 +32,9 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
     check.status = "PASS"
     check.action = "patch_workflow_run_to_deleted"
     my_key = connection.ff_keys
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # run the check
     search_query = 'search/?type=WorkflowRun&status!=deleted&input_files.value.status=deleted&limit=all'
     bad_wfrs = ff_utils.search_metadata(search_query, key=my_key)
@@ -108,7 +117,7 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     return action
 
 
-@check_function(uuid_list=None, false_positives=None)
+@check_function(uuid_list=None, false_positives=None, add_to_result=None)
 def biorxiv_is_now_published(connection, **kwargs):
     ''' To restrict the check to just certain biorxivs use a comma separated list
         of biorxiv uuids in uuid_list kwarg.  This is useful if you want to
@@ -120,11 +129,28 @@ def biorxiv_is_now_published(connection, **kwargs):
         the 'false_positive' field of full_output.  To add new entries to this field use the
         'false_positive' kwarg with format "rxiv_uuid1: number_part_only_of_PMID, rxiv_uuid2: ID ..."
          eg. fd3827e5-bc4c-4c03-bf22-919ee8f4351f:31010829 and to reset to empty use 'RESET'
+
+        There are some examples of the title and author list being different enough so
+        that the pubmid esearch query doesn't find the journal article.  In order to
+        allow the replacement, movement of all the relevant fields and adding static sections
+        in the action - a parameter is provided to manually input a mapping between biorxiv (uuid)
+        to journal article (PMID:ID) - to add that pairing to the result full_output. It will
+        be acted on by the associated action format of input is uuid PMID:nnnnnn, uuid PMID:nnnnnn
     '''
     check = CheckResult(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
+    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
+    # see if a 'manual' mapping was provided as a parameter
+    fndcnt = 0
+    if kwargs.get('add_to_result'):
+        b2p = [pair.strip().split(' ') for pair in kwargs.get('add_to_result').split(',')]
+        fulloutput['biorxivs2check'].update({b.strip(): [p.strip()] for b, p in b2p})
+        fndcnt = len(b2p)
     search = 'search/?'
     if kwargs.get('uuid_list'):
         suffix = '&'.join(['uuid={}'.format(u) for u in [uid.strip() for uid in kwargs.get('uuid_list').split(',')]])
@@ -133,7 +159,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     # run the check
     search_query = search + suffix
     biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys)
-    if not biorxivs:
+    if not biorxivs and not fndcnt:
         check.status = "FAIL"
         check.description = "Could not retrieve biorxiv records from fourfront"
         return check
@@ -155,7 +181,6 @@ def biorxiv_is_now_published(connection, **kwargs):
             check.status = 'ERROR'
             return check
     last_result = last_result.get('full_output')
-    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
     try:
         false_pos = last_result.get('false_positives', {})
     except AttributeError:  # if check errored last result is a list of error rather than a dict
@@ -172,7 +197,6 @@ def biorxiv_is_now_published(connection, **kwargs):
     fulloutput['false_positives'] = false_pos
     pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json'
     problems = {}
-    fndcnt = 0
     for bx in biorxivs:
         title = bx.get('title')
         authors = bx.get('authors')
@@ -435,6 +459,9 @@ def item_counts_by_type(connection, **kwargs):
         return ret
 
     check = CheckResult(connection, 'item_counts_by_type')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # run the check
     item_counts = {}
     warn_item_counts = {}
@@ -473,6 +500,9 @@ def change_in_item_counts(connection, **kwargs):
     from ..utils import convert_camel_to_snake
     # use this check to get the comparison
     check = CheckResult(connection, 'change_in_item_counts')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     counts_check = CheckResult(connection, 'item_counts_by_type')
     latest_check = counts_check.get_primary_result()
     # get_item_counts run closest to 10 mins
@@ -555,8 +585,12 @@ def change_in_item_counts(connection, **kwargs):
 @check_function(file_type=None, status=None, file_format=None, search_add_on=None)
 def identify_files_without_filesize(connection, **kwargs):
     check = CheckResult(connection, 'identify_files_without_filesize')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # must set this to be the function name of the action
     check.action = "patch_file_size"
+    check.allow_action = True
     default_filetype = 'File'
     default_stati = 'released%20to%20project&status=released&status=uploaded&status=pre-release'
     filetype = kwargs.get('file_type') or default_filetype
@@ -574,6 +608,9 @@ def identify_files_without_filesize(connection, **kwargs):
     problem_files = []
     file_hits = ff_utils.search_metadata(search_query, key=connection.ff_keys, page_limit=200)
     if not file_hits:
+        check.allow_action = False
+        check.summary = 'All files have file size'
+        check.description = 'All files have file size'
         check.status = 'PASS'
         return check
 
@@ -676,6 +713,9 @@ def new_or_updated_items(connection, **kwargs):
         return user_item.get('display_title')
 
     check = CheckResult(connection, 'new_or_updated_items')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     rundate = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
     last_result = check.get_latest_result()
     if last_result is None or last_result.get('status') == 'ERROR' or kwargs.get('reset') is True:
@@ -808,7 +848,9 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
     check = CheckResult(connection, 'clean_up_webdev_wfrs')
     check.full_output = {'success': [], 'failure': []}
-
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # input for test pseudo hi-c-processing-bam
     response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
                                      key=connection.ff_keys)
@@ -852,6 +894,9 @@ def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
     check = CheckResult(connection, 'validate_entrez_geneids')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
@@ -903,6 +948,9 @@ def users_with_pending_lab(connection, **kwargs):
     """Define comma seperated emails in scope
     if you want to work on a subset of all the results"""
     check = CheckResult(connection, 'users_with_pending_lab')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     check.action = 'finalize_user_pending_labs'
     check.full_output = []
     check.status = 'PASS'
@@ -997,6 +1045,9 @@ def users_with_doppelganger(connection, **kwargs):
     """
     check = CheckResult(connection, 'users_with_doppelganger')
     check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     # do we want to add current results to ignore list
     ignore_current = False
     if kwargs.get('ignore_current'):
@@ -1126,7 +1177,9 @@ def users_with_doppelganger(connection, **kwargs):
 def check_assay_classification_short_names(connection, **kwargs):
     check = CheckResult(connection, 'check_assay_classification_short_names')
     check.action = 'patch_assay_subclass_short'
-
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     subclass_dict = {
         "replication timing": "Replication timing",
         "proximity to cellular component": "Proximity-seq",
@@ -1238,6 +1291,9 @@ def check_for_ontology_updates(connection, **kwargs):
     from the previous primary check result.
     '''
     check = CheckResult(connection, 'check_for_ontology_updates')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     ontologies = ff_utils.search_metadata(
         'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
         key=connection.ff_keys
@@ -1297,7 +1353,9 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     check = CheckResult(connection, 'states_files_without_higlass_defaults')
     check.action = 'patch_states_files_higlass_defaults'
     check.full_output = {'to_add': {}, 'problematic_files': {}}
-
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
     query = '/search/?file_type=states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     for re in res:
@@ -1362,5 +1420,376 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
         action.status = 'FAIL'
     else:
         action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function()
+def check_for_strandedness_consistency(connection, **kwargs):
+    check = CheckResult(connection, 'check_for_strandedness_consistency')
+    check.action = 'patch_strandedness_consistency_info'
+    check.full_output = {'to_patch': {}, 'problematic': {}}
+    check.brief_output = []
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
+    # Build the query (RNA-seq experiments for now)
+    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
+
+    # The search
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    # experiments that need to be patched
+    missing_consistent_tag = []
+    problematic = {'fastqs_zero_count_both_strands': [], 'fastqs_unmatch_strandedness': [], 'inconsistent_strandedness': []}
+    target_experiments = []  # the experiments that we are interested in (fastqs with beta actin count tag)
+
+    # Filtering the experiments target experiments
+    for re in res:
+        if re.get("strandedness"):
+            strandedness_meta = re['strandedness']
+        else:
+            strandedness_meta = 'missing'
+
+        exp_info = {'meta': re, 'files': [], 'tag': strandedness_meta}
+
+        # verify that the files in the experiment have the beta-actin count info
+        for a_re_file in re['files']:
+            if a_re_file['file_format']['display_title'] == 'fastq':
+                file_meta = ff_utils.get_metadata(a_re_file['accession'], connection.ff_keys)
+                file_meta_keys = file_meta.keys()
+                if 'beta_actin_sense_count' in file_meta_keys and 'beta_actin_antisense_count' in file_meta_keys:
+                    ready = True
+                    if file_meta.get('related_files'):
+                        paired = True
+                    else:
+                        paired = False
+
+                    file_info = {'accession': file_meta['accession'],
+                                 'sense_count': file_meta['beta_actin_sense_count'],
+                                 'antisense_count': file_meta['beta_actin_antisense_count'],
+                                 'paired': paired}
+                    exp_info['files'].append(file_info)
+
+                else:
+                    ready = False
+        if ready:
+            target_experiments.append(exp_info)
+
+    # Calculates if the beta-actin count is consistent with the metadata strandedness asignment.
+    if target_experiments:
+        problm = False
+        for target_exp in target_experiments:
+            if target_exp['meta'].get('tags'):
+                tags = target_exp['meta']['tags']
+            else:
+                tags = []
+            if 'strandedness_verified' not in tags:
+                #  Calculate forward, reversed or unstranded
+                strandedness_report = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
+                if "unknown" in strandedness_report['calculated_strandedness']:
+                    problematic['fastqs_unmatch_strandedness'].append({'exp':target_exp['meta']['accession'],
+                                                                        'strandedness_info': strandedness_report})
+                    problm = True
+                elif strandedness_report['calculated_strandedness'] == "zero":
+                    problematic['fastqs_zero_count_both_strands'].append({'exp':target_exp['meta']['accession'],
+                                                                          'strandedness_info': strandedness_report})
+                    problm = True
+                elif target_exp['tag'] != strandedness_report['calculated_strandedness']:
+                    problematic['inconsistent_strandedness'].append({'exp': target_exp['meta']['accession'],
+                                                                    'strandedness_metadata': target_exp['tag'],
+                                                                    'calculated_strandedness': strandedness_report['calculated_strandedness'],
+                                                                    'files': strandedness_report['files']})
+                    problm = True
+                else:
+                    missing_consistent_tag.append(target_exp['meta']['accession'])
+                    problm = True
+
+    if problm:
+        check.status = 'WARN'
+        check.description = 'Problematic experiments need to be addressed'
+        msg = str(len(missing_consistent_tag) + len(problematic['fastqs_unmatch_strandedness']) + len(problematic['fastqs_zero_count_both_strands']) +
+                len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
+        check.brief_output.append(msg)
+
+        if problematic['fastqs_zero_count_both_strands']:
+            check.full_output['problematic']['fastqs_zero_count_both_strands'] = problematic['fastqs_zero_count_both_strands']
+        if problematic['fastqs_unmatch_strandedness']:
+            check.full_output['problematic']['fastqs_unmatch_strandedness'] = problematic['fastqs_unmatch_strandedness']
+        if problematic['inconsistent_strandedness']:
+            check.full_output['problematic']['inconsistent_strandedness'] = problematic['inconsistent_strandedness']
+        if missing_consistent_tag:
+            check.full_output['to_patch']['strandedness_verified'] = missing_consistent_tag
+            check.summary = 'Some experiments are missing verified strandedness tag'
+            check.allow_action = True
+            check.description = 'Ready to patch verified strandedness tag'
+
+    else:
+        check.status = 'PASS'
+        check.summary = 'All good!'
+    return check
+
+
+@action_function()
+def patch_strandedness_consistency_info(connection, **kwargs):
+    """Start rna_strandness runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'patch_strandedness_consistency_info')
+    check_res = action.get_associated_check_result(kwargs)
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    total_patches = check_res['full_output']['to_patch']
+    for key, item in total_patches.items():
+        for i in item:
+            tags = {'tags': []}
+            meta = ff_utils.get_metadata(i, key=connection.ff_keys)
+            if meta.get('tags'):
+                tags['tags'] = [tg for tg in meta['tags']]
+                tags['tags'].append(key)
+
+            else:
+                tags = {'tags': [key]}
+            try:
+                ff_utils.patch_metadata(tags, i, key=connection.ff_keys)
+            except Exception as e:
+                action_logs['patch_failure'].append({i: str(e)})
+            else:
+                action_logs['patch_success'].append(i)
+
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function()
+def check_suggested_enum_values(connection, **kwargs):
+    """On our schemas we have have a list of suggested fields for
+    suggested_enum tagged fields. A value that is not listed in this list
+    can be accepted, and with this check we will find all values for
+    each suggested enum field that is not in this list.
+    There are 2 functions below:
+
+    - find_suggested_enum
+    This functions takes properties for a item type (taken from /profiles/)
+    and goes field by field, looks for suggested enum lists, and is also recursive
+    for taking care of sub-embedded objects (tagged as type=object)
+
+    * after running this function, we construct a search url for each field,
+    where we exclude all values listed under suggested_enum from the search:
+    i.e. if it was FileProcessed field 'my_field' with options [val1, val2]
+    url would be:
+    /search/?type=FileProcessed&my_field!=val1&my_field!=val2&my_field!=No value
+
+    - extract value
+    Once we have the search result for a field, we disect it
+    (again for subembbeded items or lists) to extract the field value, and =
+    count occurences of each new value. (i.e. val3:10, val4:15)
+
+    *deleted items are not considered by this check
+    """
+    check = CheckResult(connection, 'check_suggested_enum_values')
+    # add random wait
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
+    # must set this to be the function name of the action
+    check.action = "add_suggested_enum_values"
+
+    def find_suggested_enum(properties, parent='', is_submember=False):
+        """Filter schema propteries for fields with suggested enums.
+        This functions takes properties for a item type (taken from /profiles/)
+        and goes field by field, looks for suggested enum lists, and is also recursive
+        for taking care of sub-embedded objects (tagged as type=object)
+        """
+        def is_subobject(field):
+            if field.get('type') == 'object':
+                return True
+            try:
+                return field['items']['type'] == 'object'
+            except:
+                return False
+
+        def dotted_field_name(field_name, parent_name=None):
+            if parent_name:
+                return "%s.%s" % (parent_name, field_name)
+            else:
+                return field_name
+
+        def get_field_type(field):
+            field_type = field.get('type', '')
+            if field_type == 'string':
+                if field.get('linkTo', ''):
+                    return "Item:" + field.get('linkTo')
+                # if multiple objects are linked by "anyOf"
+                if field.get('anyOf', ''):
+                    links = list(filter(None, [d.get('linkTo', '') for d in field.get('anyOf')]))
+                    if links:
+                        return "Item:" + ' or '.join(links)
+                # if not object return string
+                return 'string'
+            elif field_type == 'array':
+                return 'array of ' + get_field_type(field.get('items'))
+            return field_type
+
+        fields = []
+        for name, props in properties.items():
+            options = []
+            # focus on suggested_enum ones
+            if 'suggested_enum' not in str(props):
+                continue
+            # skip calculated
+            if props.get('calculatedProperty'):
+                continue
+            is_array = False
+            if is_subobject(props) and name != 'attachment':
+                is_array = get_field_type(props).startswith('array')
+                obj_props = {}
+                if is_array:
+                    obj_props = props['items']['properties']
+                else:
+                    obj_props = props['properties']
+                fields.extend(find_suggested_enum(obj_props, name, is_array))
+            else:
+                field_name = dotted_field_name(name, parent)
+                field_type = get_field_type(props)
+                # check props here
+                if 'suggested_enum' in props:
+                    options = props['suggested_enum']
+                # if array of string with enum
+                if is_submember or field_type.startswith('array'):
+                    sub_props = props.get('items', '')
+                    if 'suggested_enum' in sub_props:
+                        options = sub_props['suggested_enum']
+                # copy paste exp set for ease of keeping track of different types in experiment objects
+                fields.append((field_name, options))
+        return(fields)
+
+    def extract_value(field_name, item, options=[]):
+        """Given a json, find the values for a given field.
+        Once we have the search result for a field, we disect it
+        (again for subembbeded items or lists) to extract the field value(s)
+        """
+        # let's exclude also empty new_values
+        options.append('')
+        new_vals = []
+        if '.' in field_name:
+            part1, part2 = field_name.split('.')
+            val1 = item.get(part1)
+            if isinstance(val1, list):
+                for an_item in val1:
+                    if an_item.get(part2):
+                        new_vals.append(an_item[part2])
+            else:
+                if val1.get(part2):
+                    new_vals.append(val1[part2])
+        else:
+            val1 = item.get(field_name)
+            if val1:
+                if isinstance(val1, list):
+                    new_vals.extend(val1)
+                else:
+                    new_vals.append(val1)
+        # are these linkTo items
+        if new_vals:
+            if isinstance(new_vals[0], dict):
+                new_vals = [i['display_title'] for i in new_vals]
+        new_vals = [i for i in new_vals if i not in options]
+        return new_vals
+
+    outputs = []
+    # Get Schemas
+    schemas = ff_utils.get_metadata('/profiles/', key=connection.ff_keys)
+    sug_en_cases = {}
+    for an_item_type in schemas:
+        properties = schemas[an_item_type]['properties']
+        sug_en_fields = find_suggested_enum(properties)
+        if sug_en_fields:
+            sug_en_cases[an_item_type] = sug_en_fields
+
+    for item_type in sug_en_cases:
+        for i in sug_en_cases[item_type]:
+            extension = ""
+            field_name = i[0]
+            field_option = i[1]
+            # create queries - we might need multiple since there is a url length limit
+            # Experimental - limit seems to be between 5260-5340
+            # all queries are appended by filter for No value
+            character_limit = 2000
+            extensions = []
+            extension = ''
+            for case in field_option:
+                if len(extension) < character_limit:
+                    extension += '&' + field_name + '!=' + case
+                else:
+                    # time to finalize, add no value
+                    extension += '&' + field_name + '!=' + 'No value'
+                    extensions.append(extension)
+                    # reset extension
+                    extension = '&' + field_name + '!=' + case
+            # add the leftover extension - there should be always one
+            if extension:
+                extension += '&' + field_name + '!=' + 'No value'
+                extensions.append(extension)
+
+            # only return this field
+            f_ex = '&field=' + field_name
+
+            common_responses = 'starting'
+            for an_ext in extensions:
+                q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=an_ext, f_ex=f_ex)
+                responses = ff_utils.search_metadata(q, connection.ff_keys)
+                # if any of this queries is empty, it means that the intersection will be empty too
+                if not responses:
+                    common_responses = []
+                    break
+                # if this is the first response, assign this as the first common response
+                if common_responses == 'starting':
+                    common_responses = responses
+                # if it is the subsequent responses, filter the commons ones with the new requests (intersection)
+                else:
+                    filter_ids = [i['@id'] for i in responses]
+                    common_responses = [i for i in common_responses if i['@id'] in filter_ids]
+                # let's check if we depleted common_responses
+                if not common_responses:
+                    break
+
+            odds = []
+            for response in common_responses:
+                odds.extend(extract_value(field_name, response, field_option))
+            if len(odds) > 0:
+                outputs.append(
+                    {
+                        'item_type': item_type,
+                        'field': field_name,
+                        'new_values': dict(Counter(odds))
+                    })
+    if not outputs:
+        check.allow_action = False
+        check.brief_output = []
+        check.full_output = []
+        check.status = 'PASS'
+        check.summary = 'No new values for suggested enum fields'
+        check.description = 'No new values for suggested enum fields'
+    else:
+        b_out = []
+        for res in outputs:
+            b_out.append(res['item_type'] + ': ' + res['field'])
+        check.allow_action = False
+        check.brief_output = b_out
+        check.full_output = outputs
+        check.status = 'WARN'
+        check.summary = 'Suggested enum fields have new values'
+        check.description = 'Suggested enum fields have new values'
+    return check
+
+
+@action_function()
+def add_suggested_enum_values(connection, **kwargs):
+    """No action is added yet, this is a placeholder for
+    automated pr that adds the new values."""
+    # TODO: for linkTo items, the current values are @ids, and might need a change
+    action = ActionResult(connection, 'add_suggested_enum_values')
+    action_logs = {}
+    # check_result = action.get_associated_check_result(kwargs)
+    action.status = 'DONE'
     action.output = action_logs
     return action

@@ -16,7 +16,7 @@ CONFIG_BASE = {
       "api_gateway_stage": "api",
       "autogen_policy": False,
       "lambda_memory_size": 512,
-      "lambda_timeout": 300,
+      "lambda_timeout": 900,  # 15 mins in seconds
       "environment_variables": {
           "chalice_stage": "dev"
       }
@@ -25,7 +25,7 @@ CONFIG_BASE = {
       "api_gateway_stage": "api",
       "autogen_policy": False,
       "lambda_memory_size": 512,
-      "lambda_timeout": 300,
+      "lambda_timeout": 900,  # 15 mins in seconds
       "environment_variables": {
           "chalice_stage": "prod"
       }
@@ -42,11 +42,10 @@ def build_config_and_deploy(stage):
     client_id = os.environ.get("CLIENT_ID")
     client_secret = os.environ.get("CLIENT_SECRET")
     dev_secret = os.environ.get("DEV_SECRET")
-    admin = os.environ.get("FS_ADMIN")
     if not (s3_enc_secret and client_id and client_secret and dev_secret):
         print(''.join(['ERROR. You are missing one more more environment ',
                        'variables needed to deploy Foursight.\n',
-                       'Need: S3_ENCRYPT_KEY, CLIENT_ID, CLIENT_SECRET, DEV_SECRET, FS_ADMIN.'])
+                       'Need: S3_ENCRYPT_KEY, CLIENT_ID, CLIENT_SECRET, DEV_SECRET.'])
               )
         sys.exit()
     for curr_stage in ['dev', 'prod']:
@@ -54,13 +53,14 @@ def build_config_and_deploy(stage):
         CONFIG_BASE['stages'][curr_stage]['environment_variables']['CLIENT_ID'] = client_id
         CONFIG_BASE['stages'][curr_stage]['environment_variables']['CLIENT_SECRET'] = client_secret
         CONFIG_BASE['stages'][curr_stage]['environment_variables']['DEV_SECRET'] = dev_secret
-        CONFIG_BASE['stages'][curr_stage]['environment_variables']['ADMIN'] = admin
 
     file_dir, _ = os.path.split(os.path.abspath(__file__))
     filename = os.path.join(file_dir, '.chalice/config.json')
     print(''.join(['Writing: ', filename]))
     with open(filename, 'w') as config_file:
         config_file.write(json.dumps(CONFIG_BASE))
+    # export poetry into requirements
+    subprocess.check_call(['poetry', 'export', '-f', 'requirements.txt', '--without-hashes', '-o', 'requirements.txt'])
     # actually deploy
     subprocess.call(['chalice', 'deploy', '--stage', stage])
 

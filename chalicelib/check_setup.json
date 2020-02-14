@@ -3,7 +3,7 @@
         "title": "Item counts by type",
         "group": "Metadata checks",
         "schedule": {
-            "ten_min_checks": {
+            "hourly_checks": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -16,7 +16,7 @@
         "group": "Elasticsearch checks",
         "conditions": ["put_env"],
         "schedule": {
-            "ten_min_checks": {
+            "hourly_checks": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": ["item_counts_by_type"]
@@ -110,7 +110,7 @@
         "title": "Change in item counts",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks": {
+            "morning_checks_2": {
                 "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -344,11 +344,11 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod" },
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -360,7 +360,7 @@
         "schedule": {
             "morning_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "webdev": {
@@ -388,6 +388,22 @@
     },
     "identify_files_without_qc_summary_bed": {
         "title": "Bed files without quality metric summary",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "identify_files_without_qc_summary_rnaseq": {
+        "title": "RNA-seq tsv/bam files without quality metric summary",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
@@ -740,7 +756,7 @@
         "title": "Process Download Tracking Items",
         "group": "System checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": ["purge_download_tracking_items"]
@@ -890,11 +906,27 @@
             }
         }
     },
+    "check_suggested_enum_values": {
+        "title": "Check fields with suggested enum",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "purge_download_tracking_items": {
         "title": "Purge Download Tracking Items",
         "group": "Cleanup checks",
         "schedule": {
-            "hourly_checks": {
+            "ten_min_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
@@ -1128,6 +1160,18 @@
             }
         }
     },
+    "in_situ_chia_pet_status" : {
+        "title": "m) in situ ChIA-PET",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "trac_loop_status" : {
         "title": "n) TrAC-loop",
         "group": "Pipeline checks",
@@ -1296,6 +1340,22 @@
             }
         }
     },
+    "cram_status" : {
+        "title": "d) CGAP pipeline cram2fastq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "elastic_search_space" : {
         "title": "ES Disk Space Check",
         "group": "Elasticsearch checks",
@@ -1355,6 +1415,70 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true}
+                }
+            }
+        }
+    },
+    "rna_strandedness_status" : {
+        "title": "y) RNA Strandedness",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_for_strandedness_consistency": {
+        "title": "RNA-seq experiments without strandedness verification",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "bamqc_status" : {
+        "title": "z) BamQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "identify_files_without_qc_summary_bam": {
+        "title": "Bam files from Hi-C pipeline without quality metric summary",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastq_first_line_status" : {
+        "title": "aa) Fastq first line",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }

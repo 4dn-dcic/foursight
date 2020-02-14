@@ -1,5 +1,6 @@
 # Step Settings
-lambda_limit = 240
+lambda_limit = 750
+random_wait = 20
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
@@ -211,6 +212,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
             }
         },
+        {
+        "app_name": "rna-strandedness",
+        "workflow_uuid": "af97597e-877a-40b7-b211-98ec0cfb17b4",
+        'config': {'mem': 0.5, 'cpu': 1, 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
+        },
+
         # RNA SEQ
         {
         "app_name": "encode-rnaseq-stranded",
@@ -278,6 +285,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'description': 'Output file from RNA seq pipeline'
             }
             }
+        },
+        {
+        "app_name": "bamqc",
+        "workflow_uuid": "42683ab1-59bf-4ec5-a973-030053a134f1",
+        "overwrite_input_extra": False
+        },
+        {
+        "app_name": "fastq-first-line",
+        "workflow_uuid": "93a1a931-d55d-4623-adfb-0fa735daf6ae",
+        "overwrite_input_extra": False,
+        'config': {'mem': 0.5, 'cpu': 1}
         },
         # temp
         {

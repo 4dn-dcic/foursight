@@ -24,7 +24,7 @@ workflow_details = {
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11"]
+        "accepted_versions": ["v9", "v10", "v11", "v12"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
@@ -75,6 +75,10 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
+    "workflow_cram2fastq": {
+        "run_time": 12,
+        "accepted_versions": ["v12"]
+    },
 }
 
 
@@ -92,41 +96,103 @@ bwa_index = {'human': 'GAPFI4U1HXIY'}
 #             "chicken": "4DNFIQFZW4DX"}
 
 
-def stepper(all_files, all_wfrs, running, problematic_run, missing_run,
+def check_qcs_on_files(file_meta, all_qcs):
+    """Go over qc related fields, and check for overall quality score."""
+    def check_qc(file_accession, resp, failed_qcs_list):
+        """format errors and return a errors list."""
+        quality_score = resp.get('overall_quality_status', '')
+        if quality_score.upper() != 'PASS':
+            failed_qcs_list.append([file_accession, resp['display_title'], resp['uuid']])
+        return failed_qcs_list
+
+    failed_qcs = []
+    if not file_meta.get('quality_metric'):
+        return
+    qc_result = [i for i in all_qcs if i['@id'] == file_meta['quality_metric']['@id']][0]
+    if qc_result['display_title'].startswith('QualityMetricQclist'):
+        if not qc_result.get('qc_list'):
+            return
+        for qc in qc_result['qc_list']:
+            qc_resp = [i for i in all_qcs if i['@id'] == qc['@id']][0]
+            failed_qcs = check_qc(file_meta['accession'], qc_resp, failed_qcs)
+    else:
+        failed_qcs = check_qc(file_meta['accession'], qc_result, failed_qcs)
+    return failed_qcs
+
+
+def stepper(library, keep,
             step_tag, sample_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input, organism, no_output=False):
+            additional_input={}, organism='human', no_output=False):
+    """This functions packs the core of wfr check, for a given workflow and set of
+    input files, it will return the status of process on these files.
+    It will also check for failed qcs on input files.
+    new_step_output_arg= can be str or list, will return str or list of @id for output files with given argument(s)"""
     step_output = ''
+    # unpack library
+    all_files = library['files']
+    all_wfrs = library['wfrs']
+    all_qcs = library['qcs']
+    # unpack keep
+    running = keep['running']
+    problematic_run = keep['problematic_run']
+    missing_run = keep['missing_run']
+
     # Lets get the repoinse from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
     # new_step_input_file must be the @id
+    # also check for qc status
+    qc_errors = []
     if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
-        input_resp = [i for i in all_files if i['@id'] == new_step_input_file[0]][0]
+        for an_input in new_step_input_file:
+            input_resp = [i for i in all_files if i['@id'] == an_input][0]
+            errors = check_qcs_on_files(input_resp, all_qcs)
+            if errors:
+                qc_errors.extend(errors)
         name_tag = '_'.join([i.split('/')[2] for i in new_step_input_file])
     else:
         input_resp = [i for i in all_files if i['@id'] == new_step_input_file][0]
+        errors = check_qcs_on_files(input_resp, all_qcs)
+        if errors:
+            qc_errors.extend(errors)
         name_tag = new_step_input_file.split('/')[2]
-    if no_output:
-        step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+    # if there are qc errors, return with qc qc_errors
+    if qc_errors:
+        problematic_run.append([step_tag + ' input file qc error', qc_errors])
+        step_status = "no complete run, qc error"
+    # if no qc problem, go on with the run check
     else:
-        step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
-    step_status = step_result['status']
-    # if successful
-    if step_status == 'complete':
-        if new_step_output_arg:
-            step_output = step_result[new_step_output_arg]
-        pass
-    # if still running
-    elif step_status == 'running':
-        running.append([step_tag, sample_tag])
-    # if run is not successful
-    elif step_status.startswith("no complete run, too many"):
-        problematic_run.append([step_tag, sample_tag])
-    else:
-        # add step 4
-        missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
+        if no_output:
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+        else:
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+        step_status = step_result['status']
+        # if successful
+        input_file_accession = input_resp['accession']
+        if step_status == 'complete':
+            if new_step_output_arg:
+                if isinstance(new_step_output_arg, list):
+                    output_list = []
+                    for an_output_arg in new_step_output_arg:
+                        output_list.append(step_result[an_output_arg])
+                    step_output = output_list
+                else:
+                    step_output = step_result[new_step_output_arg]
+            pass
+        # if still running
+        elif step_status == 'running':
+            running.append([step_tag, sample_tag, input_file_accession])
+        # if run is not successful
+        elif step_status.startswith("no complete run, too many"):
+            problematic_run.append([step_tag, sample_tag, input_file_accession])
+        else:
+            # add step 4
+            missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
 
-    return running, problematic_run, missing_run, step_status, step_output
+    keep['running'] = running
+    keep['problematic_run'] = problematic_run
+    keep['missing_run'] = missing_run
+    return keep, step_status, step_output
 
 
 def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
@@ -284,7 +350,9 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'input_gvcf']
+    # arguments for finding the file with the attribution (as opposed to reference files)
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
+                 'fastq_R1', 'input_bam', 'input_gvcf', 'cram']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -304,7 +372,6 @@ def start_missing_run(run_info, auth, env):
                     attr_file = attr_file[0]
                 break
     # use pony_dev
-
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
@@ -395,55 +462,77 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
     return check
 
 
-def find_fastq_info(exp, fastq_files):
-    """Find fastq files from experiment set
+def find_fastq_info(my_sample, fastq_files, organism='human'):
+    """Find fastq files from sample
     expects my_rep_set to be set response in frame object (search result)
-    will check if files are paired or not, and if paired will give list of lists for each exp
-    if not paired, with just give list of files per experiment.
+    will check if files are paired or not, and if paired will give list of lists for sample
+    if not paired, with just give list of files for sample.
 
-    result is 2 dictionaries
-    - file dict  { exp1 : [file1, file2, file3, file4]}  # unpaired
-      file dict  { exp1 : [ [file1, file2], [file3, file4]]} # paired
-    - refs keys  {pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab}
+    result is 2 lists
+    - file [file1, file2, file3, file4]  # unpaired
+      file [ [file1, file2], [file3, file4]] # paired
+    - refs keys  {pairing, organism, bwa_ref, f_size}
     """
+    # # TODO: re word for samples
     files = []
     refs = {}
     # check pairing for the first file, and assume all same
     paired = ""
+    # check if files are FileFastq or FileProcessed
+    f_type = ""
     total_f_size = 0
-    organism = 'human'
-    exp_files = exp['files']
+    sample_files = my_sample['files']
+    # Assumption: Fastq files are either all FileFastq or File processed
+    # File Processed ones don't have paired end information
+    # Assumption: File Processed fastq files are paired end in the order they are in sample files
+    types = [i['@id'].split('/')[1] for i in fastq_files]
+    f_type = list(set(types))
+    msg = '{} has mixed fastq files types {}'.format(my_sample['accession'], f_type)
+    assert len(f_type) == 1, msg
+    f_type = f_type[0]
 
-    for fastq_file in exp_files:
-        file_resp = [i for i in fastq_files if i['uuid'] == fastq_file['uuid']][0]
-        if file_resp.get('file_size'):
-            total_f_size += file_resp['file_size']
-        # skip pair no 2
-        if file_resp.get('paired_end') == '2':
-            continue
-        # check that file has a pair
-        f1 = file_resp['@id']
-        f2 = ""
-        # assign pairing info by the first file
-        if not paired:
-            try:
+    if f_type == 'files-processed':
+        for fastq_file in sample_files:
+            file_resp = [i for i in fastq_files if i['uuid'] == fastq_file['uuid']][0]
+            if file_resp.get('file_size'):
+                total_f_size += file_resp['file_size']
+        # we are assuming that this files are processed
+        # # TODO: make sure that this is encoded in the metadata
+        paired = 'Yes'
+        file_ids = [i['@id'] for i in sample_files]
+        files = [file_ids[i:i+2] for i in range(0, len(file_ids), 2)]
+
+    elif f_type == 'files-fastq':
+        for fastq_file in sample_files:
+            file_resp = [i for i in fastq_files if i['uuid'] == fastq_file['uuid']][0]
+            if file_resp.get('file_size'):
+                total_f_size += file_resp['file_size']
+            # skip pair no 2
+            if file_resp.get('paired_end') == '2':
+                continue
+            # check that file has a pair
+            f1 = file_resp['@id']
+            f2 = ""
+            # assign pairing info by the first file
+            if not paired:
+                try:
+                    relations = file_resp['related_files']
+                    paired_files = [relation['file']['@id'] for relation in relations
+                                    if relation['relationship_type'] == 'paired with']
+                    assert len(paired_files) == 1
+                    paired = "Yes"
+                except:
+                    paired = "No"
+
+            if paired == 'No':
+                files.append(f1)
+            elif paired == 'Yes':
                 relations = file_resp['related_files']
                 paired_files = [relation['file']['@id'] for relation in relations
                                 if relation['relationship_type'] == 'paired with']
                 assert len(paired_files) == 1
-                paired = "Yes"
-            except:
-                paired = "No"
-
-        if paired == 'No':
-            files.append(f1)
-        elif paired == 'Yes':
-            relations = file_resp['related_files']
-            paired_files = [relation['file']['@id'] for relation in relations
-                            if relation['relationship_type'] == 'paired with']
-            assert len(paired_files) == 1
-            f2 = paired_files[0]
-            files.append((f1, f2))
+                f2 = paired_files[0]
+                files.append((f1, f2))
     bwa = bwa_index.get(organism)
     # chrsize = chr_size.get(organism)
 
@@ -451,7 +540,6 @@ def find_fastq_info(exp, fastq_files):
     refs = {'pairing': paired,
             'organism': organism,
             'bwa_ref': bwa,
-            # 'chrsize_ref': chrsize,
             'f_size': str(f_size)+'GB'}
     return files, refs
 
@@ -505,13 +593,10 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
 def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
     if not file_meta.get('quality_metric'):
         return False
-
     qc_results = ff_utils.get_metadata(file_meta['quality_metric']['uuid'], key=my_auth)
-
     if qc_results['display_title'].startswith('QualityMetricQclist'):
         if not qc_results.get('qc_list'):
             return False
-
         for qc in qc_results['qc_list']:
             if qc_metric_name not in qc['value']['display_title']:
                 return False

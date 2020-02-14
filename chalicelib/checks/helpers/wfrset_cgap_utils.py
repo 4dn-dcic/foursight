@@ -51,7 +51,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {
                 'app_name': 'workflow_add-readgroups-check',
-                'workflow_uuid': '1ebf697c-949d-46b2-b9a4-8b1a7699ef1f',
+                'workflow_uuid': '6ea6bf43-76c2-4616-8dd6-dd60d72a2bf2',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5.2xlarge",
@@ -167,12 +167,11 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {
                 'app_name': 'workflow_gatk-HaplotypeCaller',
                 'workflow_uuid': '7fd67e19-3425-45f8-8149-c7cac4278fdb',
-                'parameters': {},
+                'parameters': {"nthreads": 20},
                 "config": {
                     "instance_type": "c5n.18xlarge",
                     "ebs_size": "3x",
-                    "EBS_optimized": True,
-                    "behavior_on_capacity_limit": "wait_and_retry"
+                    "EBS_optimized": True
                 },
                 'custom_pf_fields': {
                     'gvcf': {
@@ -189,8 +188,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "config": {
                     "instance_type": "t3.medium",
                     "ebs_size": "2x",
-                    "EBS_optimized": True,
-                    "behavior_on_capacity_limit": "wait_and_retry"
+                    "EBS_optimized": True
                 },
                 'custom_pf_fields': {
                     'vcf': {
@@ -206,9 +204,28 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                "config": {
                  "instance_type": "t3.medium",
                  "ebs_size": "1.3x",
-                 "EBS_optimized": True,
-                 "behavior_on_capacity_limit": "wait_and_retry"
+                 "EBS_optimized": True
                }
+            },
+            {  # cram to fastq converter
+                'app_name': 'workflow_cram2fastq',
+                'workflow_uuid': '3258380c-608b-4fb6-89ef-249d1692f492',
+                'parameters': {"nthreads": 8},
+                "config": {
+                    "instance_type": "c5.2xlarge",
+                    "ebs_size": "30x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'fastq1': {
+                        'genome_assembly': genome,
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:1'},
+                    'fastq2': {
+                        'genome_assembly': genome,
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:2'}
+                        }
             },
             {  # temp
                 'app_name': '',
@@ -217,8 +234,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "config": {
                     "instance_type": "",
                     "ebs_size": "",
-                    "EBS_optimized": True,
-                    "behavior_on_capacity_limit": "wait_and_retry"
+                    "EBS_optimized": True
                 },
                 'custom_pf_fields': {
                     'temp': {
