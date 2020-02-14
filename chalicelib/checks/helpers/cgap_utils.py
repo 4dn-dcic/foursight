@@ -77,7 +77,7 @@ workflow_details = {
     },
     "workflow_cram2fastq": {
         "run_time": 12,
-        "accepted_versions": ["v12"]
+        "accepted_versions": ["v12", "v13"]
     },
 }
 
