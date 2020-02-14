@@ -210,9 +210,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {  # cram to fastq converter
                 'app_name': 'workflow_cram2fastq',
                 'workflow_uuid': '3258380c-608b-4fb6-89ef-249d1692f492',
-                'parameters': {"nthreads": 8},
+                'parameters': {"nthreads": 16},
                 "config": {
-                    "instance_type": "c5.2xlarge",
+                    "instance_type": "c5.4xlarge",
                     "ebs_size": "30x",
                     "EBS_optimized": True
                 },
