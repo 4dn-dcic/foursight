@@ -540,17 +540,17 @@ def cgapS2_status(connection, **kwargs):
 
     # iterate over msa
     print(len(res))
-    for a_sample in res:
+    for an_msa in res:
 
-        input_bam = a_sample['processed_files'][0]
+        input_bam = an_msa['processed_files'][0]
         input_bam_id = input_bam['@id']
         input_bam_acc = input_bam['display_title'].split('.')[0]
         if not input_bam['display_title'].endswith('.bam'):
-            check.full_output['problematic_runs'].append({a_sample['accession']: 'processed file is not bam'})
+            check.full_output['problematic_runs'].append({an_msa['accession']: 'processed file is not bam'})
             continue
         print('===================')
-        print(a_sample['accession'])
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
+        print(an_msa['accession'])
+        all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['experiment_relation',
@@ -558,7 +558,7 @@ def cgapS2_status(connection, **kwargs):
                                                                          'references',
                                                                          'reference_pubs'])
         now = datetime.utcnow()
-        print(a_sample['accession'], (now-start).seconds, len(all_uuids))
+        print(an_msa['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
@@ -571,7 +571,7 @@ def cgapS2_status(connection, **kwargs):
         s1_input_files = {'input_bam': input_bam_id,
                           'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
                           'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-        s1_tag = a_sample['accession'] + '_S2run1_' + input_bam_acc
+        s1_tag = an_msa['accession'] + '_S2run1_' + input_bam_acc
         keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                               'step1', s1_tag, input_bam_id,
                                                               s1_input_files,  step1_name, 'gvcf')
@@ -582,12 +582,12 @@ def cgapS2_status(connection, **kwargs):
             s2_input_files = {'input_gvcf': step1_output,
                               "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
                               "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0"}
-            s2_tag = a_sample['accession'] + '_S2run2' + step1_output.split('/')[2]
+            s2_tag = an_msa['accession'] + '_S2run2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1_output,
                                                                   s2_input_files,  step2_name, 'vcf')
 
-        final_status = a_sample['accession']
+        final_status = an_msa['accession']
         completed = []
 
         # unpack results
@@ -597,8 +597,8 @@ def cgapS2_status(connection, **kwargs):
 
         if step2_status == 'complete':
             final_status += ' completed'
-            existing_pf = [i['@id'] for i in a_sample['processed_files']]
-            completed = [a_sample['accession'], {'processed_files': existing_pf + [step2_output]}]
+            existing_pf = [i['@id'] for i in an_msa['processed_files']]
+            completed = [an_msa['accession'], {'processed_files': existing_pf + [step2_output]}]
             print('COMPLETED', step2_output)
         else:
             if missing_run:
@@ -607,7 +607,7 @@ def cgapS2_status(connection, **kwargs):
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
 
         # add dictionaries to main ones
-        set_acc = a_sample['accession']
+        set_acc = an_msa['accession']
         check.brief_output.append(final_status)
         if running:
             check.full_output['running_runs'].append({set_acc: running})
