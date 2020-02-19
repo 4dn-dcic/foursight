@@ -57,7 +57,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             'annotated_bam': {
                 'genome_assembly': genome,
-                'file_type': 'alignment',
+                'file_type': 'alignments',
                 'description': out_n},
             'filtered_pairs': {
                 'genome_assembly': genome,
@@ -94,7 +94,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             'out_bam': {
                 'genome_assembly': genome,
-                'file_type': 'alignment',
+                'file_type': 'alignments',
                 'description': "This is an alignment file for fastq pairs from the MARGI processing pipeline"}
         }},
         {
@@ -133,7 +133,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             'filtered_sorted_deduped_bam': {
                 'genome_assembly': genome,
-                'file_type': 'alignment',
+                'file_type': 'alignments',
                 'description': 'This is an output file of the RepliSeq processing pipeline'},
             'count_bg': {
                 'genome_assembly': genome,
@@ -208,7 +208,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,
-                'file_type': 'insulation score - diamond',
+                'file_type': 'insulation score-diamond',
                 'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
             }
         },
