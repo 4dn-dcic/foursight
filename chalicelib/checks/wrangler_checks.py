@@ -1666,7 +1666,6 @@ def check_suggested_enum_values(connection, **kwargs):
                         options = sub_props['suggested_enum']
                         if 'ignored_enum' in sub_props:
                             options.extend(sub_props['ignored_enum'])
-                # copy paste exp set for ease of keeping track of different types in experiment objects
                 fields.append((field_name, options))
         return(fields)
 
@@ -1740,16 +1739,12 @@ def check_suggested_enum_values(connection, **kwargs):
             # only return this field
             f_ex = '&field=' + field_name
 
-            common_responses = 'starting'
+            common_responses = []
             for an_ext in extensions:
                 q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=an_ext, f_ex=f_ex)
                 responses = ff_utils.search_metadata(q, connection.ff_keys)
-                # if any of this queries is empty, it means that the intersection will be empty too
-                if not responses:
-                    common_responses = []
-                    break
                 # if this is the first response, assign this as the first common response
-                if common_responses == 'starting':
+                if not common_responses:
                     common_responses = responses
                 # if it is the subsequent responses, filter the commons ones with the new requests (intersection)
                 else:
