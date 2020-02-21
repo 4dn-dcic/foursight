@@ -1571,13 +1571,15 @@ def check_suggested_enum_values(connection, **kwargs):
 
     - find_suggested_enum
     This functions takes properties for a item type (taken from /profiles/)
-    and goes field by field, looks for suggested enum lists, and is also recursive
-    for taking care of sub-embedded objects (tagged as type=object)
+    and goes field by field, looks for suggested enum lists, and is also
+    recursive for taking care of sub-embedded objects (tagged as type=object).
+    Additionally, it also takes ignored enum lists (enums which are not
+    suggested, but are ignored in the subsequent search).
 
     * after running this function, we construct a search url for each field,
-    where we exclude all values listed under suggested_enum from the search:
-    i.e. if it was FileProcessed field 'my_field' with options [val1, val2]
-    url would be:
+    where we exclude all values listed under suggested_enum (and ignored_enum)
+    from the search: i.e. if it was FileProcessed field 'my_field' with options
+    [val1, val2], url would be:
     /search/?type=FileProcessed&my_field!=val1&my_field!=val2&my_field!=No value
 
     - extract value
@@ -1597,8 +1599,9 @@ def check_suggested_enum_values(connection, **kwargs):
     def find_suggested_enum(properties, parent='', is_submember=False):
         """Filter schema propteries for fields with suggested enums.
         This functions takes properties for a item type (taken from /profiles/)
-        and goes field by field, looks for suggested enum lists, and is also recursive
-        for taking care of sub-embedded objects (tagged as type=object)
+        and goes field by field, looks for suggested enum lists, and is also
+        recursive for taking care of sub-embedded objects (tagged as
+        type=object). It also looks fore ignored enum lists.
         """
         def is_subobject(field):
             if field.get('type') == 'object':
@@ -1654,11 +1657,15 @@ def check_suggested_enum_values(connection, **kwargs):
                 # check props here
                 if 'suggested_enum' in props:
                     options = props['suggested_enum']
+                    if 'ignored_enum' in props:
+                        options.extend(props['ignored_enum'])
                 # if array of string with enum
                 if is_submember or field_type.startswith('array'):
                     sub_props = props.get('items', '')
                     if 'suggested_enum' in sub_props:
                         options = sub_props['suggested_enum']
+                        if 'ignored_enum' in sub_props:
+                            options.extend(sub_props['ignored_enum'])
                 # copy paste exp set for ease of keeping track of different types in experiment objects
                 fields.append((field_name, options))
         return(fields)
