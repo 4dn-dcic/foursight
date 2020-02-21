@@ -1571,13 +1571,15 @@ def check_suggested_enum_values(connection, **kwargs):
 
     - find_suggested_enum
     This functions takes properties for a item type (taken from /profiles/)
-    and goes field by field, looks for suggested enum lists, and is also recursive
-    for taking care of sub-embedded objects (tagged as type=object)
+    and goes field by field, looks for suggested enum lists, and is also
+    recursive for taking care of sub-embedded objects (tagged as type=object).
+    Additionally, it also takes ignored enum lists (enums which are not
+    suggested, but are ignored in the subsequent search).
 
     * after running this function, we construct a search url for each field,
-    where we exclude all values listed under suggested_enum from the search:
-    i.e. if it was FileProcessed field 'my_field' with options [val1, val2]
-    url would be:
+    where we exclude all values listed under suggested_enum (and ignored_enum)
+    from the search: i.e. if it was FileProcessed field 'my_field' with options
+    [val1, val2], url would be:
     /search/?type=FileProcessed&my_field!=val1&my_field!=val2&my_field!=No value
 
     - extract value
@@ -1597,8 +1599,9 @@ def check_suggested_enum_values(connection, **kwargs):
     def find_suggested_enum(properties, parent='', is_submember=False):
         """Filter schema propteries for fields with suggested enums.
         This functions takes properties for a item type (taken from /profiles/)
-        and goes field by field, looks for suggested enum lists, and is also recursive
-        for taking care of sub-embedded objects (tagged as type=object)
+        and goes field by field, looks for suggested enum lists, and is also
+        recursive for taking care of sub-embedded objects (tagged as
+        type=object). It also looks fore ignored enum lists.
         """
         def is_subobject(field):
             if field.get('type') == 'object':
@@ -1654,12 +1657,15 @@ def check_suggested_enum_values(connection, **kwargs):
                 # check props here
                 if 'suggested_enum' in props:
                     options = props['suggested_enum']
+                    if 'ignored_enum' in props:
+                        options.extend(props['ignored_enum'])
                 # if array of string with enum
                 if is_submember or field_type.startswith('array'):
                     sub_props = props.get('items', '')
                     if 'suggested_enum' in sub_props:
                         options = sub_props['suggested_enum']
-                # copy paste exp set for ease of keeping track of different types in experiment objects
+                        if 'ignored_enum' in sub_props:
+                            options.extend(sub_props['ignored_enum'])
                 fields.append((field_name, options))
         return(fields)
 
@@ -1733,16 +1739,12 @@ def check_suggested_enum_values(connection, **kwargs):
             # only return this field
             f_ex = '&field=' + field_name
 
-            common_responses = 'starting'
+            common_responses = []
             for an_ext in extensions:
                 q = "/search/?type={it}{ex}{f_ex}".format(it=item_type, ex=an_ext, f_ex=f_ex)
                 responses = ff_utils.search_metadata(q, connection.ff_keys)
-                # if any of this queries is empty, it means that the intersection will be empty too
-                if not responses:
-                    common_responses = []
-                    break
                 # if this is the first response, assign this as the first common response
-                if common_responses == 'starting':
+                if not common_responses:
                     common_responses = responses
                 # if it is the subsequent responses, filter the commons ones with the new requests (intersection)
                 else:
