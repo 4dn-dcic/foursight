@@ -82,6 +82,27 @@ workflow_details = {
 }
 
 
+def check_workflow_version(workflows):
+    errors = []
+    for a_wf in workflows:
+        wf_name = a_wf['app_name']
+        # make sure the workflow is in our control list
+        if wf_name not in workflow_details:
+            errors.apend(wf_name + ' not in worflow_details')
+            continue
+        wf_info = workflow_details[wf_name]
+        versions = wf_info['accepted_versions']
+        # latest version should be the last one on the list
+        last_version = versions[-1]
+        workflow_version = a_wf['app_version']
+        if last_version != workflow_version:
+            err = '{} version is not up to date on foursight({} vs {})'.format(wf_name,
+                                                                               last_version,
+                                                                               workflow_version)
+            errors.append(err)
+    return errors
+
+
 # accepted versions for completed pipelines
 # accepted_versions = {
 #     'WGS':  ["WGS_Pipeline_V8"]
