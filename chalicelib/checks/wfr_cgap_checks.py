@@ -304,7 +304,8 @@ def cgap_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
+                                                           ignore_field=['previous_version',
+                                                                         'experiment_relation',
                                                                          'biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])
@@ -562,7 +563,8 @@ def cgapS2_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
+                                                           ignore_field=['previous_version',
+                                                                         'experiment_relation',
                                                                          'biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])

@@ -96,6 +96,9 @@ def check_workflow_version(workflows):
         last_version = versions[-1]
         workflow_version = a_wf['app_version']
         if last_version != workflow_version:
+            # we might need to just check if workflow version exists in the versions
+            # instead of an equality check, you might pull and old and accepted wf version
+            # leaving it like this for now to see if we ever come up with this scenerio
             err = '{} version is not up to date on foursight({} vs {})'.format(wf_name,
                                                                                last_version,
                                                                                workflow_version)
