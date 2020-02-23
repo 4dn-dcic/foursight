@@ -331,6 +331,15 @@ def cgap_status(connection, **kwargs):
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
             continue
+        # check for workflow version problems
+        all_wfs = all_items.get('workflow')
+        wf_errs = cgap_utils.check_workflow_version(all_wfs)
+        # if there are problems kill the loop, and report the error
+        if wf_errs:
+            final_status = a_sample['accession'] + ' error, workflow versions'
+            check.brief_output.extend(wf_errs)
+            check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
+            break
         sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, fastq_files)
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
         s3_input_bams = []
