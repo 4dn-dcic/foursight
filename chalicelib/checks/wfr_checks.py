@@ -1797,6 +1797,7 @@ def bamqc_start(connection, **kwargs):
 
 @check_function(lab_title=None, start_date=None)
 def fastq_first_line_status(connection, **kwargs):
+    print('Entering the check function')
     """Searches for fastq files that don't have file_first_line field
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
@@ -1806,7 +1807,7 @@ def fastq_first_line_status(connection, **kwargs):
     start = datetime.utcnow()
     check = CheckResult(connection, 'fastq_first_line_status')
     my_auth = connection.ff_keys
-    check.action = "fastq_formatqc_start"
+    check.action = "fastq_first_line_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -1818,9 +1819,11 @@ def fastq_first_line_status(connection, **kwargs):
     query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq'
 
     # The search
+    print('About to query ES for files')
     res = ff_utils.search_metadata(query, key=my_auth)
     targets = []
 
+    print('About to check metadata field for each result in the search')
     for re in res:
         if not re.get('file_first_line'):
             targets.append(re)
@@ -1832,13 +1835,14 @@ def fastq_first_line_status(connection, **kwargs):
     running = []
     missing_run = []
 
+    print('About to check for workflow runs for each file')
     for a_file in targets:
         fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
         elif fastq_formatqc_report['status'] != 'complete':
             missing_run.append(a_file['accession'])
-
+    print('Done! I have the results I want')
     if running:
         check.summary = 'Some files are running fastq_formatqc run'
         msg = str(len(running)) + ' files are still running fastq_formatqc run.'
@@ -1860,7 +1864,7 @@ def fastq_first_line_status(connection, **kwargs):
 def fastq_first_line_start(connection, **kwargs):
     """Start fastq_formatqc runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = ActionResult(connection, 'fastq_formatqc_start')
+    action = ActionResult(connection, 'fastq_first_line_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
     my_auth = connection.ff_keys
     fastq_formatqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
