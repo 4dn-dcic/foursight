@@ -1857,7 +1857,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 continue
 
             # Based on the filetype, construct a payload to upload to the higlass server.
-            payload = {'coordSystem': hit['genome_assembly']}
+            payload = {}
             if ftype == 'chromsizes':
                 payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'chromsizes-tsv'
