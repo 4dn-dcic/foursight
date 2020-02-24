@@ -152,6 +152,7 @@ def check_function(*default_args, **default_kwargs):
                     check.full_output = traceback.format_exc().split('\n')
                 kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
                 check.kwargs = kwargs
+                os.kill(child_pid, signal.SIGKILL)  # we finished, so kill child
                 return check.store_result()
             else:  # we are the child who handles the timeout
                 partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': True,
@@ -196,6 +197,7 @@ def action_function(*default_args, **default_kwargs):
                     action.output = traceback.format_exc().split('\n')
                 kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
                 action.kwargs = kwargs
+                os.kill(child_pid, signal.SIGKILL)  # we finished, so kill child
                 return action.store_result()
             else:  # we are the child who handles the timeout
                 partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': False,
