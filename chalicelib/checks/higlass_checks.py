@@ -1278,6 +1278,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
                         "genome_assembly": fil["genome_assembly"],
                         "files": [],
                         "type": filegroup["type"],
+                        "higlass_item_uuid": filegroup.get('higlass_view_config', {}).get('uuid')
                     }
 
                 # add file accessions to this group
