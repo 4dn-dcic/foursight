@@ -1441,6 +1441,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
         new_viewconfs = {}
         viewconfs_updated_goal += len(filegroups_to_update[accession].keys())
         number_of_posted_viewconfs = 0
+        expset_patch = False
         for title, info in filegroups_to_update[accession].items():
             # If we've taken more than 270 seconds to complete, break immediately
             if time.time() - start_time > 270:
@@ -1507,33 +1508,37 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
                 matching_title_filegroups = [ newfilegroup, ]
 
             # Add the higlass_view_config to the filegroup
-            matching_title_filegroups[0]["higlass_view_config"] = higlass_item_results["item_uuid"]
-            matching_title_filegroups[0]["higlass_view_config"]
+            if matching_title_filegroups[0].get("higlass_view_config", {}).get('uuid') != higlass_item_results["item_uuid"]:
+                expset_patch = True
+                matching_title_filegroups[0]["higlass_view_config"] = higlass_item_results["item_uuid"]
 
             new_viewconfs[title] = higlass_item_results["item_uuid"]
             number_of_posted_viewconfs += 1
 
-        # The other_processed_files section has been updated. Patch the changes.
-        try:
-            # Make sure all higlass_view_config fields just show the uuid.
-            for g in [ group for group in expsets_to_update[accession]["other_processed_files"] if "higlass_view_config" in group ]:
-                if isinstance(g["higlass_view_config"], dict):
-                    uuid = g["higlass_view_config"]["uuid"]
-                    g["higlass_view_config"] = uuid
+        if expset_patch:
+            # The other_processed_files section has been updated. Patch the changes.
+            try:
+                # Make sure all higlass_view_config fields just show the uuid.
+                for g in [ group for group in expsets_to_update[accession]["other_processed_files"] if "higlass_view_config" in group ]:
+                    if isinstance(g["higlass_view_config"], dict):
+                        uuid = g["higlass_view_config"]["uuid"]
+                        g["higlass_view_config"] = uuid
 
-            ff_utils.patch_metadata(
-                {'other_processed_files': expsets_to_update[accession]["other_processed_files"]},
-                obj_id=accession,
-                key=connection.ff_keys
-            )
+                ff_utils.patch_metadata(
+                    {'other_processed_files': expsets_to_update[accession]["other_processed_files"]},
+                    obj_id=accession,
+                    key=connection.ff_keys
+                )
+                number_of_viewconfs_updated += number_of_posted_viewconfs
+            except Exception as e:
+                if accession not in action_logs['failed_to_patch_expset']:
+                    action_logs['failed_to_patch_expset'][accession] = {}
+                if title not in action_logs['failed_to_patch_expset'][accession]:
+                    action_logs['failed_to_patch_expset'][accession][title] = {}
+                action_logs['failed_to_patch_expset'][accession][title] = str(e)
+                continue
+        else:
             number_of_viewconfs_updated += number_of_posted_viewconfs
-        except Exception as e:
-            if accession not in action_logs['failed_to_patch_expset']:
-                action_logs['failed_to_patch_expset'][accession] = {}
-            if title not in action_logs['failed_to_patch_expset'][accession]:
-                action_logs['failed_to_patch_expset'][accession][title] = {}
-            action_logs['failed_to_patch_expset'][accession][title] = str(e)
-            continue
 
         # Success. Note which titles link to which HiGlass view configs.
         if accession not in action_logs['successes']:
