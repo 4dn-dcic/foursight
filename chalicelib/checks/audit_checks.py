@@ -336,15 +336,26 @@ def check_help_page_urls(connection, **kwargs):
     check = CheckResult(connection, 'check_help_page_urls')
 
     server = connection.ff_keys['server']
-    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body',
+    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body&field=options',
                                        key=connection.ff_keys)
     sections_w_broken_links = {}
     for result in results:
         broken_links = []
-        urls = re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', result.get('body', ''))
+        body = result.get('body', '')
+        urls = []
+        if result.get('options', {}).get('filetype') == 'md':
+            links = re.findall('\[[^\]]+\]\([^\)]+\)', body)
+            for link in links:
+                idx = link.index(']')
+                url = link[link.index('(', idx)+1:-1]
+                body = body[:body.index(link)] + body[body.index(link)+len(link):]
+        urls += re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', body)
         for url in urls:
-            if url.startswith('/'):
-                # fill in appropriate url
+            if url.startswith('mailto'):
+                continue
+            if url.startswith('#'):  # section of static page
+                url = result['@id'] + url
+            if url.startswith('/'):  # fill in appropriate url for relative link
                 url = server + url
             request = requests.get(url)
             if request.status_code not in [200, 412]:
