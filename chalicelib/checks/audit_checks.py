@@ -693,7 +693,10 @@ def check_bio_feature_organism_name(connection, **kwargs):
         else:
             if linked_orgn_name:
                 if orgn_name != linked_orgn_name:
-                    if linked_orgn_name == 'unspecified':
+                    if linked_orgn_name == 'unspecified' or orgn_name == 'engineered reagent':
+                        # unspecified here means an organism or multiple coule not be found from linked genes or other criteria
+                        # for engineered reagent may find a linked name depending on what is linked to bio_feature
+                        # usually want to keep the given 'engineered reagent' label but warrants occasional review
                         name_trumps_guess += 1
                         to_report['name_trumps_guess'].update({bfuuid: (orgn_name, linked_orgn_name)})
                     elif orgn_name == 'unspecified':  # patch if a specific name is found
@@ -708,6 +711,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
                     matches += 1
             else:
                 to_report['name_trumps_guess'].update({bfuuid: (orgn_name, None)})
+                name_trumps_guess += 1
     brief_report.sort()
     cnt_rep = [
         'MATCHES: {}'.format(matches),
