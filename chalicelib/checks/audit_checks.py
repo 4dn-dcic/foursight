@@ -336,15 +336,30 @@ def check_help_page_urls(connection, **kwargs):
     check = CheckResult(connection, 'check_help_page_urls')
 
     server = connection.ff_keys['server']
-    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body',
+    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body&field=options',
                                        key=connection.ff_keys)
     sections_w_broken_links = {}
     for result in results:
         broken_links = []
-        urls = re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', result.get('body', ''))
+        body = result.get('body', '')
+        urls = []
+        if result.get('options', {}).get('filetype') == 'md':
+            # look for markdown links - e.g. [text](link)
+            links = re.findall('\[[^\]]+\]\([^\)]+\)', body)
+            for link in links:
+                # test only link part of match (not text part, even if it looks like a link)
+                idx = link.index(']')
+                url = link[link.index('(', idx)+1:-1]
+                # remove these from body so body can be checked for other types of links
+                body = body[:body.index(link)] + body[body.index(link)+len(link):]
+        # looks for links starting with http (full) or / (relative) inside parentheses or brackets
+        urls += re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', body)
         for url in urls:
-            if url.startswith('/'):
-                # fill in appropriate url
+            if url.startswith('mailto'):
+                continue
+            if url.startswith('#'):  # section of static page
+                url = result['@id'] + url
+            if url.startswith('/'):  # fill in appropriate url for relative link
                 url = server + url
             request = requests.get(url)
             if request.status_code not in [200, 412]:
@@ -693,7 +708,10 @@ def check_bio_feature_organism_name(connection, **kwargs):
         else:
             if linked_orgn_name:
                 if orgn_name != linked_orgn_name:
-                    if linked_orgn_name == 'unspecified':
+                    if linked_orgn_name == 'unspecified' or orgn_name == 'engineered reagent':
+                        # unspecified here means an organism or multiple coule not be found from linked genes or other criteria
+                        # for engineered reagent may find a linked name depending on what is linked to bio_feature
+                        # usually want to keep the given 'engineered reagent' label but warrants occasional review
                         name_trumps_guess += 1
                         to_report['name_trumps_guess'].update({bfuuid: (orgn_name, linked_orgn_name)})
                     elif orgn_name == 'unspecified':  # patch if a specific name is found
@@ -708,6 +726,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
                     matches += 1
             else:
                 to_report['name_trumps_guess'].update({bfuuid: (orgn_name, None)})
+                name_trumps_guess += 1
     brief_report.sort()
     cnt_rep = [
         'MATCHES: {}'.format(matches),
