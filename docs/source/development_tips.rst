@@ -25,6 +25,9 @@ Let's assume that you've already finished steps 1 through 3 in the list above (t
 .. code-block:: python
 
    >>> import app
+   # set the stage for foursight - currently 'dev' is the default
+   # NOTE: you probably want to change this to 'prod' to get a result posted to s3 (see below)
+   >>> app.set_stage('prod')
    # create a Foursight connection to the 'mastertest' environment
    >>> connection = app.init_connection('mastertest')
    # run your check using the run_check_or_action utility
