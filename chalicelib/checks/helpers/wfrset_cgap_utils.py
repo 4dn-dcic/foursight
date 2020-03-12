@@ -227,6 +227,129 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'Fastq files produced from CRAM files - paired end:2'}
                         }
             },
+            {  # micro-annotation
+                'app_name': 'workflow_mutanno-micro-annot-check',
+                'workflow_uuid': '04caaa82-6a32-46d3-b52c-c1017cc0490a',
+                'parameters': {
+                    "nthreads": 70,
+                    "blocksize": 1000000
+                },
+                "config": {
+                    "instance_type": "c5n.18xlarge",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alignment file'}
+                        }
+            },
+            {  # whitelist
+                'app_name': 'workflow_granite-whiteList-check',
+                'workflow_uuid': 'ce7f9e0b-a0d1-4119-bd66-373ccfcabac7',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.large",
+                    "ebs_size": "2x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alignment file'}
+                        }
+            },
+            {  # blacklist
+                'app_name': 'workflow_granite-blackList-check',
+                'workflow_uuid': 'c258d1ec-397d-4b0a-a0be-7c8211d65e6a',
+                'parameters': {
+                    "aftag": "gnomADgenome",
+                    "afthr": 0.01
+                },
+                "config": {
+                    "instance_type": "t3.small",
+                    "ebs_size": "1.2x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alignment file'}
+                        }
+            },
+            {  # novocaller
+                'app_name': 'workflow_granite-novoCaller-rck-check',
+                'workflow_uuid': '35daf195-4fc5-4e2a-ada3-7a0cce08a7e4',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.xlarge",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alignment file'}
+                        }
+            },
+            {  # full annotation
+                'app_name': 'workflow_mutanno-annot-check',
+                'workflow_uuid': '883b7846-8c62-4f5a-a691-c84706420b93',
+                'parameters': {
+                    "nthreads": 1,
+                    "blocksize": 10000
+                },
+                "config": {
+                    "instance_type": "c5.large",
+                    "ebs_size": "1.2x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alignment file'}
+                        }
+            },
+            {  # mpileupCounts
+                'app_name': 'workflow_granite-mpileupCounts',
+                'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
+                'parameters': {
+                    "nthreads": 15
+                },
+                "config": {
+                    "instance_type": "c5.4xlarge",
+                    "ebs_size": "3.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alignment file'}
+                        }
+            },
+            {  # rckTar
+                'app_name': 'workflow_granite-rckTar',
+                'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.xlarge",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'temp': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate alignment file'}
+                        }
+            },
             {  # temp
                 'app_name': '',
                 'workflow_uuid': '',
