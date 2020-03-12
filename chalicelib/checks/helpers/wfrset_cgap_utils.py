@@ -240,7 +240,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'converted_bam': {
                         'genome_assembly': genome,
                         'file_type': 'alignments',
-                        'description': 'BAM file produced from CRAM file'
+                        'description': 'BAM file converted from CRAM file'
                     }
                 }
             },
@@ -254,11 +254,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'annotated_vcf': {
                         'genome_assembly': genome,
                         'file_type': 'micro-annotated VCF',
-                        'description': 'micro-annotated VCF file'}
-                        }
+                        'description': 'micro-annotated VCF file'
+                    }
+                }
             },
             {  # whitelist
                 'app_name': 'workflow_granite-whiteList-check',
@@ -270,11 +271,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'whiteList_vcf': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
-                        }
+                        'description': 'Intermediate VCF file'
+                    }
+                }
             },
             {  # blacklist
                 'app_name': 'workflow_granite-blackList-check',
@@ -289,11 +291,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'blackList_vcf': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
-                        }
+                        'description': 'Intermediate VCF file'
+                    }
+                 }
             },
             {  # novocaller
                 'app_name': 'workflow_granite-novoCaller-rck-check',
@@ -305,11 +308,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'novoCaller_vcf': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
-                        }
+                        'description': 'Intermediate VCF file'
+                    }
+                }
             },
             {  # full annotation
                 'app_name': 'workflow_mutanno-annot-check',
@@ -321,11 +325,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'annotated_vcf': {
                         'genome_assembly': genome,
-                        'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
-                        }
+                        'file_type': 'full-annotated VCF',
+                        'description': 'full-annotated VCF file'
+                    }
+                }
             },
             {  # mpileupCounts
                 'app_name': 'workflow_granite-mpileupCounts',
@@ -337,11 +342,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'rck': {
                         'genome_assembly': genome,
-                        'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
-                        }
+                        'file_type': 'read counts (rck)',
+                        'description': 'read counts (rck) file'
+                    }
+                }
             },
             {  # rckTar
                 'app_name': 'workflow_granite-rckTar',
@@ -353,11 +359,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'temp': {
+                    'rck_tar': {
                         'genome_assembly': genome,
-                        'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
-                        }
+                        'file_type': 'tarred read counts (rck)',
+                        'description': 'tarred read counts (rck) file'
+                    }
+                }
             },
             {  # temp
                 'app_name': '',
