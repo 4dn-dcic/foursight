@@ -79,7 +79,7 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v12", "v13"]
     },
-    "workflow_cram2bam": {
+    "workflow_cram2bam-check": {
         "run_time": 12,
         "accepted_versions": ["v13"]
     },
