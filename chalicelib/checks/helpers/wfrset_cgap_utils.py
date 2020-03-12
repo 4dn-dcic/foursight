@@ -230,10 +230,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {  # micro-annotation
                 'app_name': 'workflow_mutanno-micro-annot-check',
                 'workflow_uuid': '04caaa82-6a32-46d3-b52c-c1017cc0490a',
-                'parameters': {
-                    "nthreads": 70,
-                    "blocksize": 1000000
-                },
+                'parameters': {},
                 "config": {
                     "instance_type": "c5n.18xlarge",
                     "ebs_size": "3x",
@@ -300,10 +297,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {  # full annotation
                 'app_name': 'workflow_mutanno-annot-check',
                 'workflow_uuid': '883b7846-8c62-4f5a-a691-c84706420b93',
-                'parameters': {
-                    "nthreads": 1,
-                    "blocksize": 10000
-                },
+                'parameters': {},
                 "config": {
                     "instance_type": "c5.large",
                     "ebs_size": "1.2x",
@@ -319,9 +313,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {  # mpileupCounts
                 'app_name': 'workflow_granite-mpileupCounts',
                 'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
-                'parameters': {
-                    "nthreads": 15
-                },
+                'parameters': {},
                 "config": {
                     "instance_type": "c5.4xlarge",
                     "ebs_size": "3.5x",
