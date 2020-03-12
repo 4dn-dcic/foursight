@@ -227,6 +227,23 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'Fastq files produced from CRAM files - paired end:2'}
                         }
             },
+            {  # cram to bam converter
+                'app_name': 'workflow_cram2bam-check',
+                'workflow_uuid': '2a086f2b-7be4-4708-9516-1b39639292bf',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.2xlarge",
+                    "ebs_size": "4.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'converted_bam': {
+                        'genome_assembly': genome,
+                        'file_type': 'alignments',
+                        'description': 'BAM file produced from CRAM file'
+                    }
+                }
+            },
             {  # micro-annotation
                 'app_name': 'workflow_mutanno-micro-annot-check',
                 'workflow_uuid': '04caaa82-6a32-46d3-b52c-c1017cc0490a',
@@ -239,8 +256,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'custom_pf_fields': {
                     'temp': {
                         'genome_assembly': genome,
-                        'file_type': 'intermediate file',
-                        'description': 'Intermediate alignment file'}
+                        'file_type': 'micro-annotated VCF',
+                        'description': 'micro-annotated VCF file'}
                         }
             },
             {  # whitelist
