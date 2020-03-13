@@ -227,6 +227,145 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'Fastq files produced from CRAM files - paired end:2'}
                         }
             },
+            {  # cram to bam converter
+                'app_name': 'workflow_cram2bam-check',
+                'workflow_uuid': '2a086f2b-7be4-4708-9516-1b39639292bf',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.2xlarge",
+                    "ebs_size": "4.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'converted_bam': {
+                        'genome_assembly': genome,
+                        'file_type': 'alignments',
+                        'description': 'BAM file converted from CRAM file'
+                    }
+                }
+            },
+            {  # micro-annotation
+                'app_name': 'workflow_mutanno-micro-annot-check',
+                'workflow_uuid': '04caaa82-6a32-46d3-b52c-c1017cc0490a',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5n.18xlarge",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'annotated_vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'micro-annotated VCF',
+                        'description': 'micro-annotated VCF file'
+                    }
+                }
+            },
+            {  # whitelist
+                'app_name': 'workflow_granite-whiteList-check',
+                'workflow_uuid': 'ce7f9e0b-a0d1-4119-bd66-373ccfcabac7',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.large",
+                    "ebs_size": "2x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'whiteList_vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate VCF file'
+                    }
+                }
+            },
+            {  # blacklist
+                'app_name': 'workflow_granite-blackList-check',
+                'workflow_uuid': 'c258d1ec-397d-4b0a-a0be-7c8211d65e6a',
+                'parameters': {
+                    "aftag": "gnomADgenome",
+                    "afthr": 0.01
+                },
+                "config": {
+                    "instance_type": "t3.small",
+                    "ebs_size": "1.2x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'blackList_vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate VCF file'
+                    }
+                 }
+            },
+            {  # novocaller
+                'app_name': 'workflow_granite-novoCaller-rck-check',
+                'workflow_uuid': '35daf195-4fc5-4e2a-ada3-7a0cce08a7e4',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.xlarge",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'novoCaller_vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate VCF file'
+                    }
+                }
+            },
+            {  # full annotation
+                'app_name': 'workflow_mutanno-annot-check',
+                'workflow_uuid': '883b7846-8c62-4f5a-a691-c84706420b93',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.large",
+                    "ebs_size": "1.2x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'annotated_vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'full-annotated VCF',
+                        'description': 'full-annotated VCF file'
+                    }
+                }
+            },
+            {  # mpileupCounts
+                'app_name': 'workflow_granite-mpileupCounts',
+                'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.4xlarge",
+                    "ebs_size": "3.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'rck': {
+                        'genome_assembly': genome,
+                        'file_type': 'read counts (rck)',
+                        'description': 'read counts (rck) file'
+                    }
+                }
+            },
+            {  # rckTar
+                'app_name': 'workflow_granite-rckTar',
+                'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.xlarge",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'rck_tar': {
+                        'genome_assembly': genome,
+                        'file_type': 'tarred read counts (rck)',
+                        'description': 'tarred read counts (rck) file'
+                    }
+                }
+            },
             {  # temp
                 'app_name': '',
                 'workflow_uuid': '',
