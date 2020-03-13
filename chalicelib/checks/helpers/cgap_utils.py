@@ -110,7 +110,7 @@ workflow_details = {
     "workflow_granite-rckTar": {
         "run_time": 12,
         "accepted_versions": ["v13"]
-    } 
+    }
 }
 
 
