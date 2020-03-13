@@ -9,8 +9,8 @@ from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
 # list of acceptible version
-cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12']
-cgap_partII_version = ['WGS_PartII_V11']
+cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13']
+cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13']
 
 
 @check_function(file_type='File', start_date=None)
