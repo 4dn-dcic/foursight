@@ -126,11 +126,21 @@ def check_workflow_version(workflows):
         versions = wf_info['accepted_versions']
         # latest version should be the last one on the list
         last_version = versions[-1]
-        workflow_version = a_wf['app_version']
-        if workflow_version not in versions:
-            err = '{} version {} is not in accepted versions {})'.format(wf_name,
-                                                                         workflow_version,
-                                                                         str(versions))
+        # sometimes there are 2 or more workflows with same app name
+        # and the old one might not have the latest version
+        # look for all wfs with same name and make sure the latest version is on one
+        all_wf_versions = [i.get('app_version', '') for i in workflows if i['app_name'] == wf_name]
+        # make sure all versions are in accepted
+        for a_version in all_wf_versions:
+            if a_version not in versions:
+                err = '{} version {} is not in accepted versions {})'.format(wf_name,
+                                                                             a_version,
+                                                                             str(versions))
+                errors.append(err)
+        # make sure the latest is also on one of the wfrs
+        if last_version not in all_wf_versions:
+            err = '{} version {} is not on any wf app_version)'.format(wf_name,
+                                                                       last_version)
             errors.append(err)
     return errors
 
