@@ -120,7 +120,7 @@ def check_workflow_version(workflows):
         wf_name = a_wf['app_name']
         # make sure the workflow is in our control list
         if wf_name not in workflow_details:
-            errors.apend(wf_name + ' not in worflow_details')
+            errors.append(wf_name + ' not in worflow_details')
             continue
         wf_info = workflow_details[wf_name]
         versions = wf_info['accepted_versions']
