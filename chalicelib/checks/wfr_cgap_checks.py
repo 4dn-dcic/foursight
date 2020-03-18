@@ -300,6 +300,7 @@ def cgap_status(connection, **kwargs):
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_gatk-HaplotypeCaller'
 
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
@@ -321,7 +322,9 @@ def cgap_status(connection, **kwargs):
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
 
         # check for workflow version problems
-        all_wfs = all_items.get('workflow')
+        all_collected_wfs = all_items.get('workflow')
+        all_app_names = [i['app_name'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
