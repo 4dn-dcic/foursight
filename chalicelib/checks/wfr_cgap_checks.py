@@ -9,8 +9,8 @@ from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
 # list of acceptible version
-cgap_partI_version = ['WGS_partI_V11']
-cgap_partII_version = ['WGS_PartII_V11']
+cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13']
+cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13']
 
 
 @check_function(file_type='File', start_date=None)
@@ -300,11 +300,13 @@ def cgap_status(connection, **kwargs):
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_gatk-HaplotypeCaller'
 
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
+                                                           ignore_field=['previous_version',
+                                                                         'experiment_relation',
                                                                          'biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])
@@ -318,6 +320,19 @@ def cgap_status(connection, **kwargs):
         all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+
+        # check for workflow version problems
+        all_collected_wfs = all_items.get('workflow')
+        all_app_names = [i['app_name'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
+        wf_errs = cgap_utils.check_workflow_version(all_wfs)
+        # if there are problems kill the loop, and report the error
+        if wf_errs:
+            final_status = a_sample['accession'] + ' error, workflow versions'
+            check.brief_output.extend(wf_errs)
+            check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
+            break
+
         # are all files uploaded ?
         all_uploaded = True
         # get all fastq files (can be file_fastq or file_processed)
@@ -331,6 +346,7 @@ def cgap_status(connection, **kwargs):
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
             continue
+
         sample_raw_files, refs = cgap_utils.find_fastq_info(a_sample, fastq_files)
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
         s3_input_bams = []
@@ -553,7 +569,8 @@ def cgapS2_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
+                                                           ignore_field=['previous_version',
+                                                                         'experiment_relation',
                                                                          'biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])
@@ -567,6 +584,17 @@ def cgapS2_status(connection, **kwargs):
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
+
+        # check for workflow version problems
+        all_wfs = all_items.get('workflow')
+        wf_errs = cgap_utils.check_workflow_version(all_wfs)
+        # if there are problems kill the loop, and report the error
+        if wf_errs:
+            final_status = a_sample['accession'] + ' error, workflow versions'
+            check.brief_output.extend(wf_errs)
+            check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
+            break
+
         # RUN STEP 1
         s1_input_files = {'input_bam': input_bam_id,
                           'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
