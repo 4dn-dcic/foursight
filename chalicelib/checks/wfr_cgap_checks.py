@@ -545,6 +545,7 @@ def cgapS2_status(connection, **kwargs):
     query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
     q = query_base + version_filter
+    print(q)
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
@@ -552,20 +553,11 @@ def cgapS2_status(connection, **kwargs):
     # list step names
     step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
-    step3_name = 'workflow_gatk-VQSR-check'
+    # step3_name = 'workflow_gatk-VQSR-check'
 
     # iterate over msa
     print(len(res))
     for an_msa in res:
-
-        input_bam = an_msa['processed_files'][0]
-        input_bam_id = input_bam['@id']
-        input_bam_acc = input_bam['display_title'].split('.')[0]
-        if not input_bam['display_title'].endswith('.bam'):
-            check.full_output['problematic_runs'].append({an_msa['accession']: 'processed file is not bam'})
-            continue
-        print('===================')
-        print(an_msa['accession'])
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -578,6 +570,7 @@ def cgapS2_status(connection, **kwargs):
         print(an_msa['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
+
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
         all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
@@ -595,14 +588,46 @@ def cgapS2_status(connection, **kwargs):
             check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
             break
 
-        # RUN STEP 1
-        s1_input_files = {'input_bam': input_bam_id,
-                          'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                          'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-        s1_tag = an_msa['accession'] + '_S2run1_' + input_bam_acc
-        keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                              'step1', s1_tag, input_bam_id,
-                                                              s1_input_files,  step1_name, 'gvcf')
+        # if there are multiple samples merge them
+        # if not skip step 1
+        input_samples = an_msa['samples']
+
+
+
+
+        input_bam = an_msa['processed_files'][0]
+        input_bam_id = input_bam['@id']
+        input_bam_acc = input_bam['display_title'].split('.')[0]
+        if not input_bam['display_title'].endswith('.bam'):
+            check.full_output['problematic_runs'].append({an_msa['accession']: 'processed file is not bam'})
+            continue
+        print('===================')
+        print(an_msa['accession'])
+
+
+
+
+        if len(input_samples) > 1:
+            s1_input_files = {'input_bam': input_bam_id,
+                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            s1_tag = an_msa['accession'] + '_S2run1_' + input_bam_acc
+            keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
+                                                                  'step1', s1_tag, input_bam_id,
+                                                                  s1_input_files,  step1_name, 'gvcf')
+            if step1_status != 'complete':
+                step2_status = ""
+        else:
+            step1_status = 'complete'
+            step1_output = # sample input
+
+
+
+
+
+
+
+
         if step1_status != 'complete':
             step2_status = ""
         else:
