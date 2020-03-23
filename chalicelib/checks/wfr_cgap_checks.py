@@ -567,7 +567,7 @@ def cgapS2_status(connection, **kwargs):
                                                                          'references',
                                                                          'reference_pubs'])
         now = datetime.utcnow()
-        print(an_msa['accession'], (now-start).seconds, len(all_uuids))
+        print(an_msa['@id'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
 
@@ -591,6 +591,19 @@ def cgapS2_status(connection, **kwargs):
         # if there are multiple samples merge them
         # if not skip step 1
         input_samples = an_msa['samples']
+        # check all samples and collect input files
+        samples_ready = True
+        for a_sample in input_samples:
+            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']]
+            comp_tags = sample_resp.get('completed_processes')
+            # did sample complete upstream processing
+            if not set(comp_tags) & set(cgap_partI_version):
+                samples_ready = False
+                break
+
+        if not samples_ready:
+
+
 
 
 
@@ -615,18 +628,9 @@ def cgapS2_status(connection, **kwargs):
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                                   'step1', s1_tag, input_bam_id,
                                                                   s1_input_files,  step1_name, 'gvcf')
-            if step1_status != 'complete':
-                step2_status = ""
         else:
             step1_status = 'complete'
             step1_output = # sample input
-
-
-
-
-
-
-
 
         if step1_status != 'complete':
             step2_status = ""
