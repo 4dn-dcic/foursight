@@ -299,7 +299,7 @@ def cgap_status(connection, **kwargs):
     step6_name = 'workflow_gatk-BaseRecalibrator'
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_gatk-HaplotypeCaller'
-
+    # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
@@ -435,6 +435,7 @@ def cgap_status(connection, **kwargs):
         final_status = a_sample['accession']
         completed = []
         pipeline_tag = cgap_partI_version[-1]
+        previous_tags = a_sample.get('completed_processes', [])
 
         # unpack results
         missing_run = keep['missing_run']
@@ -446,7 +447,7 @@ def cgap_status(connection, **kwargs):
             completed = [
                 a_sample['accession'],
                 {'processed_files': [step7_output, step8_output],
-                 'completed_processes': [pipeline_tag]}
+                 'completed_processes': previous_tags + [pipeline_tag]}
                          ]
             print('COMPLETED', step8_output)
         else:
@@ -545,6 +546,7 @@ def cgapS2_status(connection, **kwargs):
     query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
     q = query_base + version_filter
+    print(q)
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
@@ -552,21 +554,15 @@ def cgapS2_status(connection, **kwargs):
     # list step names
     step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
-    step3_name = 'workflow_gatk-VQSR-check'
+    # step3_name = 'workflow_gatk-VQSR-check'
+
+    # collect all wf for wf version check
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
 
     # iterate over msa
     print(len(res))
-    for a_sample in res:
-
-        input_bam = a_sample['processed_files'][0]
-        input_bam_id = input_bam['@id']
-        input_bam_acc = input_bam['display_title'].split('.')[0]
-        if not input_bam['display_title'].endswith('.bam'):
-            check.full_output['problematic_runs'].append({a_sample['accession']: 'processed file is not bam'})
-            continue
-        print('===================')
-        print(a_sample['accession'])
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
+    for an_msa in res:
+        all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['previous_version',
@@ -575,9 +571,10 @@ def cgapS2_status(connection, **kwargs):
                                                                          'references',
                                                                          'reference_pubs'])
         now = datetime.utcnow()
-        print(a_sample['accession'], (now-start).seconds, len(all_uuids))
+        print(an_msa['@id'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
+
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
         all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
@@ -586,37 +583,77 @@ def cgapS2_status(connection, **kwargs):
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
 
         # check for workflow version problems
-        all_wfs = all_items.get('workflow')
+        all_collected_wfs = all_items.get('workflow')
+        all_app_names = [i['app_name'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
-            final_status = a_sample['accession'] + ' error, workflow versions'
+            final_status = an_msa['@id'] + ' error, workflow versions'
             check.brief_output.extend(wf_errs)
-            check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
+            check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
             break
 
-        # RUN STEP 1
-        s1_input_files = {'input_bam': input_bam_id,
-                          'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                          'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-        s1_tag = a_sample['accession'] + '_S2run1_' + input_bam_acc
-        keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                              'step1', s1_tag, input_bam_id,
-                                                              s1_input_files,  step1_name, 'gvcf')
+        # if there are multiple samples merge them
+        # if not skip step 1
+        input_samples = an_msa['samples']
+        input_vcfs = []
+        # check all samples and collect input files
+        samples_ready = True
+        for a_sample in input_samples:
+            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
+            comp_tags = sample_resp.get('completed_processes')
+            # did sample complete upstream processing
+            if not set(comp_tags) & set(cgap_partI_version):
+                samples_ready = False
+                break
+            vcf = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('gvcf.gz')][0]['@id']
+            input_vcfs.append(vcf)
+
+        if not samples_ready:
+            final_status = an_msa['@id'] + ' waiting for upstream part'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({an_msa['@id']: 'missing upstream part'})
+            continue
+
+        # if multiple sample, merge vcfs, if not skip it
+        if len(input_samples) > 1:
+            s1_input_files = {'input_gvcfs': input_vcfs,
+                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
+                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            # benchmarking
+            if len(input_samples) < 4:
+                ebs_size = '10x'
+            else:
+                ebs_size = str(10 + len(input_samples) - 3) + 'x'
+            update_pars = {"config": {"ebs_size": ebs_size}}
+            s1_tag = an_msa['@id'] + '_S2run1' + input_vcfs[0].split('/')[2]
+            keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
+                                                                  'step1', s1_tag, input_vcfs,
+                                                                  s1_input_files,  step1_name, 'combined_gvcf',
+                                                                  additional_input=update_pars)
+        else:
+            step1_status = 'complete'
+            step1_output = input_vcfs[0]
+
         if step1_status != 'complete':
             step2_status = ""
         else:
             # run step2
             s2_input_files = {'input_gvcf': step1_output,
                               "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
-                              "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0"}
-            s2_tag = a_sample['accession'] + '_S2run2' + step1_output.split('/')[2]
+                              "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0",
+                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980'}
+            s2_tag = an_msa['@id'] + '_S2run2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1_output,
                                                                   s2_input_files,  step2_name, 'vcf')
 
-        final_status = a_sample['accession']
+        final_status = an_msa['@id']
         completed = []
+        pipeline_tag = cgap_partII_version[-1]
+        previous_tags = an_msa.get('completed_processes', [])
 
         # unpack results
         missing_run = keep['missing_run']
@@ -625,8 +662,11 @@ def cgapS2_status(connection, **kwargs):
 
         if step2_status == 'complete':
             final_status += ' completed'
-            existing_pf = [i['@id'] for i in a_sample['processed_files']]
-            completed = [a_sample['accession'], {'processed_files': existing_pf + [step2_output]}]
+            # existing_pf = [i['@id'] for i in an_msa['processed_files']]
+            completed = [
+                an_msa['@id'],
+                {'processed_files': [step2_output],
+                 'completed_processes': previous_tags + [pipeline_tag, ]}]
             print('COMPLETED', step2_output)
         else:
             if missing_run:
@@ -635,7 +675,7 @@ def cgapS2_status(connection, **kwargs):
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
 
         # add dictionaries to main ones
-        set_acc = a_sample['accession']
+        set_acc = an_msa['@id']
         check.brief_output.append(final_status)
         if running:
             check.full_output['running_runs'].append({set_acc: running})

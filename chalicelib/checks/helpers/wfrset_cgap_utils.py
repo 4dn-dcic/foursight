@@ -182,19 +182,34 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             # Multi sample analysis
             {
+                'app_name': 'workflow_gatk-CombineGVCFs',
+                'workflow_uuid': 'c7223a1c-ed48-4c54-a39f-35f05d61e850',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5n.4xlarge",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'combined_gvcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'combined VCF',
+                        'description': 'processed output from cgap downstream pipeline'}
+                        }
+            },
+            {
                 'app_name': 'workflow_gatk-GenotypeGVCFs-check',
                 'workflow_uuid': '4fbad226-859d-40d4-8192-10c305e819da',
                 'parameters': {},
                 "config": {
-                    "instance_type": "t3.medium",
-                    "ebs_size": "2x",
+                    "instance_type": "c5n.4xlarge",
+                    "ebs_size": "1.5x",
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
                     'vcf': {
                         'genome_assembly': genome,
                         'file_type': 'raw VCF',
-                        'description': 'processed output from cgap upstream pipeline'}
+                        'description': 'processed output from cgap downstream pipeline'}
                         }
             },
             {
