@@ -415,7 +415,8 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 def start_missing_run(run_info, auth, env):
     # arguments for finding the file with the attribution (as opposed to reference files)
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
-                 'fastq_R1', 'input_bam', 'input_gvcf', 'cram']
+                 'fastq_R1', 'input_bam', 'input_gvcf', 'cram',
+                 'input_gvcfs']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]

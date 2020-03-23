@@ -435,6 +435,7 @@ def cgap_status(connection, **kwargs):
         final_status = a_sample['accession']
         completed = []
         pipeline_tag = cgap_partI_version[-1]
+        previous_tags = a_sample.get('completed_processes', [])
 
         # unpack results
         missing_run = keep['missing_run']
@@ -446,7 +447,7 @@ def cgap_status(connection, **kwargs):
             completed = [
                 a_sample['accession'],
                 {'processed_files': [step7_output, step8_output],
-                 'completed_processes': [pipeline_tag]}
+                 'completed_processes': previous_tags + [pipeline_tag]}
                          ]
             print('COMPLETED', step8_output)
         else:
@@ -583,9 +584,9 @@ def cgapS2_status(connection, **kwargs):
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
-            final_status = a_sample['@id'] + ' error, workflow versions'
+            final_status = an_msa['@id'] + ' error, workflow versions'
             check.brief_output.extend(wf_errs)
-            check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
+            check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
             break
 
         # if there are multiple samples merge them
@@ -617,12 +618,13 @@ def cgapS2_status(connection, **kwargs):
         # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
             s1_input_files = {'input_gvcfs': input_vcfs,
-                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
+                              # ask soo
+                              # 'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-            s1_tag = an_msa['@id'] + '_S2run1'
+            s1_tag = an_msa['@id'] + '_S2run1' + input_vcfs[0].split('/')[2]
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'step1', s1_tag, input_vcfs[0],
-                                                                  s1_input_files,  step1_name, 'gvcf')
+                                                                  'step1', s1_tag, input_vcfs,
+                                                                  s1_input_files,  step1_name, 'combined_gvcf')
         else:
             step1_status = 'complete'
             step1_output = input_vcfs[0]
@@ -634,13 +636,15 @@ def cgapS2_status(connection, **kwargs):
             s2_input_files = {'input_gvcf': step1_output,
                               "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
                               "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0"}
-            s2_tag = an_msa['accession'] + '_S2run2' + step1_output.split('/')[2]
+            s2_tag = an_msa['@id'] + '_S2run2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1_output,
                                                                   s2_input_files,  step2_name, 'vcf')
 
-        final_status = an_msa['accession']
+        final_status = an_msa['@id']
         completed = []
+        pipeline_tag = cgap_partII_version[-1]
+        previous_tags = an_msa.get('completed_processes', [])
 
         # unpack results
         missing_run = keep['missing_run']
@@ -650,7 +654,10 @@ def cgapS2_status(connection, **kwargs):
         if step2_status == 'complete':
             final_status += ' completed'
             existing_pf = [i['@id'] for i in an_msa['processed_files']]
-            completed = [an_msa['accession'], {'processed_files': existing_pf + [step2_output]}]
+            completed = [
+                an_msa['@id'],
+                {'processed_files': existing_pf + [step2_output],
+                 'completed_processes': previous_tags + [pipeline_tag, ]}]
             print('COMPLETED', step2_output)
         else:
             if missing_run:
@@ -659,7 +666,7 @@ def cgapS2_status(connection, **kwargs):
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
 
         # add dictionaries to main ones
-        set_acc = an_msa['accession']
+        set_acc = an_msa['@id']
         check.brief_output.append(final_status)
         if running:
             check.full_output['running_runs'].append({set_acc: running})
