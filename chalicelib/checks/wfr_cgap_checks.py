@@ -583,7 +583,7 @@ def cgapS2_status(connection, **kwargs):
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
-            final_status = a_sample['accession'] + ' error, workflow versions'
+            final_status = a_sample['@id'] + ' error, workflow versions'
             check.brief_output.extend(wf_errs)
             check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
             break
@@ -591,6 +591,7 @@ def cgapS2_status(connection, **kwargs):
         # if there are multiple samples merge them
         # if not skip step 1
         input_samples = an_msa['samples']
+        input_vcfs = []
         # check all samples and collect input files
         samples_ready = True
         for a_sample in input_samples:
@@ -600,37 +601,31 @@ def cgapS2_status(connection, **kwargs):
             if not set(comp_tags) & set(cgap_partI_version):
                 samples_ready = False
                 break
+            vcf = [i for i in a_sample['processed_files'] if i['display_title'].endswith('gvcf.gz')]['@id']
+            input_vcfs.append(vcf)
 
         if not samples_ready:
-
-
-
-
-
-
-        input_bam = an_msa['processed_files'][0]
-        input_bam_id = input_bam['@id']
-        input_bam_acc = input_bam['display_title'].split('.')[0]
-        if not input_bam['display_title'].endswith('.bam'):
-            check.full_output['problematic_runs'].append({an_msa['accession']: 'processed file is not bam'})
+            final_status = an_msa['@id'] + ' waiting for upstream part'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({an_msa['@id']: 'missing upstream part'})
             continue
+
         print('===================')
-        print(an_msa['accession'])
+        print(an_msa['@id'])
 
-
-
-
+        # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
-            s1_input_files = {'input_bam': input_bam_id,
-                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+            s1_input_files = {'input_gvcfs': input_vcfs,
+                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-            s1_tag = an_msa['accession'] + '_S2run1_' + input_bam_acc
+            s1_tag = an_msa['@id'] + '_S2run1'
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'step1', s1_tag, input_bam_id,
+                                                                  'step1', s1_tag, input_vcfs[0],
                                                                   s1_input_files,  step1_name, 'gvcf')
         else:
             step1_status = 'complete'
-            step1_output = # sample input
+            step1_output = input_vcfs[0]
 
         if step1_status != 'complete':
             step2_status = ""
