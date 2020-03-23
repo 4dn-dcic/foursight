@@ -620,8 +620,7 @@ def cgapS2_status(connection, **kwargs):
         # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
             s1_input_files = {'input_gvcfs': input_vcfs,
-                              # ask soo
-                              # 'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
+                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
             # benchmarking
             if len(input_samples) < 4:
@@ -644,7 +643,8 @@ def cgapS2_status(connection, **kwargs):
             # run step2
             s2_input_files = {'input_gvcf': step1_output,
                               "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
-                              "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0"}
+                              "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0",
+                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980'}
             s2_tag = an_msa['@id'] + '_S2run2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1_output,
@@ -662,10 +662,10 @@ def cgapS2_status(connection, **kwargs):
 
         if step2_status == 'complete':
             final_status += ' completed'
-            existing_pf = [i['@id'] for i in an_msa['processed_files']]
+            # existing_pf = [i['@id'] for i in an_msa['processed_files']]
             completed = [
                 an_msa['@id'],
-                {'processed_files': existing_pf + [step2_output],
+                {'processed_files': [step2_output],
                  'completed_processes': previous_tags + [pipeline_tag, ]}]
             print('COMPLETED', step2_output)
         else:
