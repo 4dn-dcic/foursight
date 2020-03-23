@@ -299,7 +299,7 @@ def cgap_status(connection, **kwargs):
     step6_name = 'workflow_gatk-BaseRecalibrator'
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_gatk-HaplotypeCaller'
-
+    # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
@@ -556,6 +556,9 @@ def cgapS2_status(connection, **kwargs):
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
     # step3_name = 'workflow_gatk-VQSR-check'
 
+    # collect all wf for wf version check
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
+
     # iterate over msa
     print(len(res))
     for an_msa in res:
@@ -580,7 +583,9 @@ def cgapS2_status(connection, **kwargs):
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
 
         # check for workflow version problems
-        all_wfs = all_items.get('workflow')
+        all_collected_wfs = all_items.get('workflow')
+        all_app_names = [i['app_name'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
@@ -596,13 +601,13 @@ def cgapS2_status(connection, **kwargs):
         # check all samples and collect input files
         samples_ready = True
         for a_sample in input_samples:
-            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']]
+            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
             comp_tags = sample_resp.get('completed_processes')
             # did sample complete upstream processing
             if not set(comp_tags) & set(cgap_partI_version):
                 samples_ready = False
                 break
-            vcf = [i for i in a_sample['processed_files'] if i['display_title'].endswith('gvcf.gz')]['@id']
+            vcf = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('gvcf.gz')][0]['@id']
             input_vcfs.append(vcf)
 
         if not samples_ready:
@@ -611,9 +616,6 @@ def cgapS2_status(connection, **kwargs):
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({an_msa['@id']: 'missing upstream part'})
             continue
-
-        print('===================')
-        print(an_msa['@id'])
 
         # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
