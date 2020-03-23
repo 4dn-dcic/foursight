@@ -187,7 +187,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'parameters': {},
                 "config": {
                     "instance_type": "c5n.4xlarge",
-                    "ebs_size": "10x",
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {

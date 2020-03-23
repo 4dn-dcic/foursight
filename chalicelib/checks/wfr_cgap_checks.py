@@ -621,10 +621,17 @@ def cgapS2_status(connection, **kwargs):
                               # ask soo
                               # 'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            # benchmarking
+            if len(input_samples) < 4:
+                ebs_size = '10x'
+            else:
+                ebs_size = str(10 + len(input_samples) - 3) + 'x'
+            update_pars = {"config": {"ebs_size": ebs_size}}
             s1_tag = an_msa['@id'] + '_S2run1' + input_vcfs[0].split('/')[2]
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                                   'step1', s1_tag, input_vcfs,
-                                                                  s1_input_files,  step1_name, 'combined_gvcf')
+                                                                  s1_input_files,  step1_name, 'combined_gvcf',
+                                                                  additional_input=update_pars)
         else:
             step1_status = 'complete'
             step1_output = input_vcfs[0]
