@@ -9,8 +9,8 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6"
-dcicutils = "0.9.1"
+python = ">=3.6,<3.7"
+dcicutils = "0.9.6"
 click = "6.7"
 PyJWT = "1.5.3"
 Jinja2 = "2.10.1"
