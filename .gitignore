@@ -10,3 +10,12 @@ htmlcov/
 coverage.xml
 *.ipynb
 !*LocalTest.ipynb
+
+# Virtual environments
+*env/
+
+# Emacs
+*~
+
+# PyCharm
+.idea/
