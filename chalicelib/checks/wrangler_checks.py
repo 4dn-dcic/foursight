@@ -542,13 +542,14 @@ def change_in_item_counts(connection, **kwargs):
     search_query += '&status=deleted&status=replaced'
     search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys))
     for res in search_resp:
-        # convert type to index name. e.g. ExperimentSet --> experiment_set
-        res_index = res['@type'][0]
-        if res_index in diff_counts:
-            diff_counts[res_index]['ES'] = diff_counts[res_index]['ES'] + 1 if 'ES' in diff_counts[res_index] else 1
+
+        # Stick with given type name in CamelCase since we need it to match ES type-name
+        _type = res['@type'][0]
+        if _type in diff_counts:
+            diff_counts[_type]['ES'] = diff_counts[_type]['ES'] + 1 if 'ES' in diff_counts[_type] else 1
         else:
             # db entry wasn't already present for this index
-            diff_counts[res_index] = {'DB': 0, 'ES': 1}
+            diff_counts[_type] = {'DB': 0, 'ES': 1}
 
     check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&',
                              'type=OntologyTerm&type=TrackingItem&date_created.from=',
