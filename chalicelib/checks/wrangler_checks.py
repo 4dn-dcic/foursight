@@ -497,7 +497,6 @@ def item_counts_by_type(connection, **kwargs):
 
 @check_function()
 def change_in_item_counts(connection, **kwargs):
-    from ..utils import convert_camel_to_snake
     # use this check to get the comparison
     check = CheckResult(connection, 'change_in_item_counts')
     # add random wait
@@ -531,6 +530,7 @@ def change_in_item_counts(connection, **kwargs):
 
     # now do a metadata search to make sure they match
     # date_created endpoints for the FF search
+    # XXX: We should revisit if we really think this is necessary. - will 3-26-2020
     to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     # tracking items and ontology terms must be explicitly searched for
@@ -541,10 +541,9 @@ def change_in_item_counts(connection, **kwargs):
     # add deleted/replaced items
     search_query += '&status=deleted&status=replaced'
     search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys))
-    search_output = []
     for res in search_resp:
         # convert type to index name. e.g. ExperimentSet --> experiment_set
-        res_index = convert_camel_to_snake(res['@type'][0])
+        res_index = res['@type'][0]
         if res_index in diff_counts:
             diff_counts[res_index]['ES'] = diff_counts[res_index]['ES'] + 1 if 'ES' in diff_counts[res_index] else 1
         else:
@@ -560,7 +559,7 @@ def change_in_item_counts(connection, **kwargs):
     total_counts_db = sum([diff_counts[coll]['DB'] for coll in diff_counts if diff_counts[coll]['DB'] >= 0])
     # see if we have negative counts
     # allow negative counts, but make note of, for the following types
-    purged_types = ['tracking_item', 'higlass_view_config']
+    purged_types = ['TrackingItem', 'HiglassViewConfig']
     negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
     inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
     if negative_types:
