@@ -530,7 +530,7 @@ def change_in_item_counts(connection, **kwargs):
 
     # now do a metadata search to make sure they match
     # date_created endpoints for the FF search
-    # XXX: We should revisit if we really think this is necessary. - will 3-26-2020
+    # XXX: We should revisit if we really think this search is necessary. - will 3-26-2020
     to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     # tracking items and ontology terms must be explicitly searched for
@@ -543,13 +543,13 @@ def change_in_item_counts(connection, **kwargs):
     search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys))
     for res in search_resp:
 
-        # Stick with given type name in CamelCase since we need it to match ES type-name
+        # Stick with given type name in CamelCase since this is now what we get on the counts page
         _type = res['@type'][0]
+        _entry = diff_counts.get(_type)
+        if not _entry:
+            diff_counts[_type] = _entry = {'DB': 0, 'ES': 0}
         if _type in diff_counts:
-            diff_counts[_type]['ES'] = diff_counts[_type]['ES'] + 1 if 'ES' in diff_counts[_type] else 1
-        else:
-            # db entry wasn't already present for this index
-            diff_counts[_type] = {'DB': 0, 'ES': 1}
+            _entry['ES'] += 1
 
     check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&',
                              'type=OntologyTerm&type=TrackingItem&date_created.from=',

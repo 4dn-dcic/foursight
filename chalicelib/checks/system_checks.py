@@ -562,7 +562,8 @@ def snapshot_rds(connection, **kwargs):
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
-    rds_name = 'fourfront-webprod' if 'webprod' in connection.ff_env else connection.ff_env
+    # XXX: must be updated when cgap-blue/cgap-green come to fruition -will 4-1-2020
+    rds_name = 'fourfront-production' if ('green' in connection.ff_env or 'blue' in connection.ff_env) else connection.ff_env
     # snapshot ID can only have letters, numbers, and hyphens
     snap_time = datetime.datetime.strptime(kwargs['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%dT%H-%M-%S")
     snapshot_name = 'foursight-snapshot-%s-%s' % (rds_name, snap_time)
