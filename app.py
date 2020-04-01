@@ -11,7 +11,7 @@ app.debug = True
 STAGE = os.environ.get('chalice_stage', 'dev')
 DEFAULT_ENV = 'data'
 
-######### SCHEDULED FXNS #########
+'''######### SCHEDULED FXNS #########'''
 
 # this dictionary defines the CRON schedules for the dev and prod foursight
 # stagger them to reduce the load on Fourfront. Times are UTC
@@ -23,6 +23,7 @@ foursight_cron_by_schedule = {
         'thirty_min_checks': Cron('0/30', '*', '*', '*', '?', '*'),
         'hourly_checks': Cron('0', '0/1', '*', '*', '?', '*'),
         'hourly_checks_2': Cron('15', '0/1', '*', '*', '?', '*'),
+        'early_morning_checks': Cron('0', '8', '*', '*', '?', '*'),
         'morning_checks': Cron('0', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('15', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('0', '9', '?', '*', '2', '*'),
@@ -33,12 +34,14 @@ foursight_cron_by_schedule = {
         'thirty_min_checks': Cron('15/30', '*', '*', '*', '?', '*'),
         'hourly_checks': Cron('30', '0/1', '*', '*', '?', '*'),
         'hourly_checks_2': Cron('45', '0/1', '*', '*', '?', '*'),
+        'early_morning_checks': Cron('0', '8', '*', '*', '?', '*'),
         'morning_checks': Cron('30', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('45', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('30', '9', '?', '*', '2', '*'),
         'monthly_checks': Cron('30', '9', '1', '*', '?', '*')
     }
 }
+
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['ten_min_checks'])
 def ten_min_checks(event):
@@ -47,35 +50,46 @@ def ten_min_checks(event):
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['thirty_min_checks'])
 def thirty_min_checks(event):
-    queue_scheduled_checks('all','thirty_min_checks')
+    queue_scheduled_checks('all', 'thirty_min_checks')
 
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks'])
 def hourly_checks(event):
     queue_scheduled_checks('all', 'hourly_checks')
 
+
 @app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks_2'])
 def hourly_checks_2(event):
     queue_scheduled_checks('all', 'hourly_checks_2')
+
+
+@app.schedule(foursight_cron_by_schedule[STAGE]['early_morning_checks'])
+def early_morning_checks(event):
+    queue_scheduled_checks('all', 'early_morning_checks')
+
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks'])
 def morning_checks(event):
     queue_scheduled_checks('all', 'morning_checks')
 
+
 @app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks_2'])
 def morning_checks_2(event):
     queue_scheduled_checks('all', 'morning_checks_2')
 
+
 @app.schedule(foursight_cron_by_schedule[STAGE]['monday_checks'])
 def monday_checks(event):
     queue_scheduled_checks('all', 'monday_checks')
+
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['monthly_checks'])
 def monthly_checks(event):
     queue_scheduled_checks('all', 'monthly_checks')
 
 
-######### END SCHEDULED FXNS #########
+'''######### END SCHEDULED FXNS #########'''
+
 
 @app.route('/callback')
 def auth0_callback():
@@ -119,7 +133,7 @@ def auth0_callback():
         expires_in = res.json().get('expires_in', None)
         if expires_in:
             expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)
-            cookie_str +=  (' Expires=' + expires.strftime("%a, %d %b %Y %H:%M:%S GMT") + ';')
+            cookie_str += (' Expires=' + expires.strftime("%a, %d %b %Y %H:%M:%S GMT") + ';')
         resp_headers['Set-Cookie'] = cookie_str
     return Response(status_code=302, body=json.dumps(resp_headers), headers=resp_headers)
 
