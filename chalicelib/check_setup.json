@@ -886,7 +886,7 @@
         "title": "Find Cypress Test files to Purge",
         "group": "Cleanup checks",
         "schedule": {
-            "morning_checks": {
+            "early_morning_checks": {
                 "data": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
