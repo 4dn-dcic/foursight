@@ -5,6 +5,7 @@ from ..utils import (
 )
 from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
+import re
 import requests
 import json
 import datetime
@@ -1185,6 +1186,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "proximity to cellular component": "Proximity-seq",
         "dna binding": "DNA binding",
         "open chromatin": "Open Chromatin",
+        "open chromatin - single cell": "Open Chromatin",
         "dna-dna pairwise interactions": "Hi-C",
         "dna-dna pairwise interactions - single cell": "Hi-C (single cell)",
         "dna-dna multi-way interactions": "Hi-C (multi-contact)",
@@ -1193,6 +1195,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "dna-dna pairwise interactions of selected loci": "3/4/5-C",
         "ligation-free 3c": "Ligation-free 3C",
         "transcription": "Transcription",
+        "transcription - single cell": "Transcription",
         "rna-dna pairwise interactions": "RNA-DNA HiC",
         "fixed sample dna localization": "DNA FISH",
         "fixed sample rna localization": "RNA FISH",
@@ -1295,45 +1298,56 @@ def check_for_ontology_updates(connection, **kwargs):
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
     ontologies = ff_utils.search_metadata(
-        'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
+        'search/?type=Ontology&frame=object',
         key=connection.ff_keys
     )
+    ontologies = [o for o in ontologies if o['ontology_prefix'] != '4DN']
     versions = {
         o['ontology_prefix']: {
             'current': o.get('current_ontology_version'),
             'needs_update': False
         } for o in ontologies
     }
-    del versions['4DN']
-    efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
-    versions['EFO']['latest'] = efo.json()[0]['tag_name']
-    uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
-    ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
-    versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
-    obi = requests.get('https://api.github.com/repos/obi-ontology/obi/releases')
-    versions['OBI']['latest'] = obi.json()[0]['tag_name'].lstrip('v')
-    so = requests.get(
-        'https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so.owl',
-        headers={"Range": "bytes=0-1000"}
-    )
-    idx = so.text.index('versionIRI')
-    so_release = so.text[idx:idx+150].split('/')
-    if 'releases' in so_release:
-        versions['SO']['latest'] = so_release[so_release.index('releases') + 1]
-    else:
-        versions['SO']['latest'] = 'Error'
+    for o in ontologies:
+        # UBERON needs different behavior
+        if o['ontology_prefix'] == 'UBERON':
+            uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
+            ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
+            versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
+        # instead of repos etc, check download url for ontology header to get version
+        elif o.get('download_url'):
+            owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
+            if 'versionIRI' in owl.text:
+                idx = owl.text.index('versionIRI')
+                vline = owl.text[idx:idx+150]
+                if 'releases'in vline:
+                    vline = vline.split('/')
+                    v = vline[vline.index('releases')+1]
+                    versions[o['ontology_prefix']]['latest'] = v
+                    continue
+                else:
+                    # looks for date string in versionIRI line
+                    match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
+                    if match:
+                        v = match.group()
+                        versions[o['ontology_prefix']]['latest'] = v
+                        continue
+            # SO removed version info from versionIRI, use date field instead
+            if 'oboInOwl:date' in owl.text:
+                idx = owl.text.index('>', owl.text.index('oboInOwl:date'))
+                vline = owl.text[idx+1:owl.text.index('<', idx)]
+                v = vline.split()[0]
+                versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
     for k, v in versions.items():
         if not v['current']:
-            update = True
+            v['needs_update'] = True
         elif k == 'EFO' and semver2int(v['latest']) > semver2int(v['current']):
-            update = True
+            v['needs_update'] = True
         elif k != 'EFO' and v['latest'] > v['current']:
-            update = True
-        else:
-            update = False
-        v['needs_update'] = update
+            v['needs_update'] = True
     check.full_output = versions
-    check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
+    check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update']
+                          else k + ' OK' for k in check.full_output.keys()]
     num = ''.join(check.brief_output).count('update')
     if num:
         check.summary = 'Ontology updates available'
