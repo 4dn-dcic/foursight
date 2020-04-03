@@ -1309,10 +1309,12 @@ def check_for_ontology_updates(connection, **kwargs):
         } for o in ontologies
     }
     for o in ontologies:
+        # UBERON needs different behavior
         if o['ontology_prefix'] == 'UBERON':
             uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
             ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
             versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
+        # instead of repos etc, check download url for ontology header to get version
         elif o.get('download_url'):
             owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
             if 'versionIRI' in owl.text:
@@ -1324,17 +1326,18 @@ def check_for_ontology_updates(connection, **kwargs):
                     versions[o['ontology_prefix']]['latest'] = v
                     continue
                 else:
+                    # looks for date string in versionIRI line
                     match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
                     if match:
                         v = match.group()
                         versions[o['ontology_prefix']]['latest'] = v
                         continue
+            # SO removed version info from versionIRI, use date field instead
             if 'oboInOwl:date' in owl.text:
                 idx = owl.text.index('>', owl.text.index('oboInOwl:date'))
                 vline = owl.text[idx+1:owl.text.index('<', idx)]
                 v = vline.split()[0]
                 versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
-    print(versions)
     for k, v in versions.items():
         if not v['current']:
             v['needs_update'] = True
