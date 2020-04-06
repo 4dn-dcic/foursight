@@ -10,7 +10,8 @@ from datetime import (
 from types import FunctionType
 from calendar import monthrange
 from collections import OrderedDict
-from apiclient.discovery import build
+from dcicutils.env_utils import FF_PROD_BUCKET_ENV
+from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 from dcicutils import (
     ff_utils,
@@ -65,9 +66,8 @@ class GoogleAPISyncer:
     Arguments:
         ff_access_keys      - Optional. A dictionary with a 'key', 'secret', and 'server', identifying admin account access keys and FF server to POST to.
         google_api_key      - Optional. Override default API key for accessing Google.
-        s3UtilsInstance     - Optional. Provide an S3Utils class instance which is connecting to `fourfront-webprod` fourfront environment in order
-                              to obtain proper Google API key (if none supplied otherwise).
-                              If not supplied, a new S3 connection will be created to `fourfront-webprod`.
+        s3UtilsInstance     - Optional. Provide an S3Utils class instance connected to a bucket with a proper Google API key (if none supplied otherwise).
+                              If not supplied, a new S3 connection will be created to the Fourfront production bucket.
         extra_config        - Additional Google API config, e.g. OAuth2 scopes and Analytics View ID. Shouldn't need to set this.
     '''
 
@@ -95,7 +95,7 @@ class GoogleAPISyncer:
     ):
         '''Authenticate with Google APIs and initialize sub-class instances.'''
         if s3UtilsInstance is None:
-            self._s3Utils = s3_utils.s3Utils(env="fourfront-webprod") # Google API Keys are stored on production bucket only ATM.
+            self._s3Utils = s3_utils.s3Utils(env=FF_PROD_BUCKET_ENV) # Google API Keys are stored on production bucket only ATM.
         else:
             self._s3Utils = s3UtilsInstance
 
