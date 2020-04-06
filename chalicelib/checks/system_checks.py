@@ -8,7 +8,8 @@ from ..run_result import CheckResult, ActionResult
 from dcicutils import (
     ff_utils,
     es_utils,
-    beanstalk_utils
+    beanstalk_utils,
+    env_utils
 )
 
 import requests
@@ -562,7 +563,8 @@ def snapshot_rds(connection, **kwargs):
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
-    rds_name = 'fourfront-webprod' if 'webprod' in connection.ff_env else connection.ff_env
+    # XXX: must be updated when cgap-blue/cgap-green come to fruition -will 4-1-2020
+    rds_name = 'fourfront-production' if (env_utils.is_fourfront_env(connection.ff_env) and env_utils.is_stg_or_prd_env(connection.ff_env)) else connection.ff_env
     # snapshot ID can only have letters, numbers, and hyphens
     snap_time = datetime.datetime.strptime(kwargs['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%dT%H-%M-%S")
     snapshot_name = 'foursight-snapshot-%s-%s' % (rds_name, snap_time)
