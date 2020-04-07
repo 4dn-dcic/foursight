@@ -1816,7 +1816,7 @@ def fastq_first_line_status(connection, **kwargs):
     if skip:
         return check
 
-    query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq'
+    query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq&file_first_line=No value'
 
     # The search
     print('About to query ES for files')
