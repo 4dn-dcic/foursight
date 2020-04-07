@@ -8,6 +8,7 @@ from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
 random_wait = wfrset_utils.random_wait
+load_wait = wfrset_utils.load_wait
 # check at the end
 # check extract_file_info has 4 arguments
 
@@ -536,6 +537,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 
 
 def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
+    time.sleep(load_wait)
     all_inputs = []
     for arg, files in input_files.items():
         inp = extract_file_info(files, arg, auth, env)
