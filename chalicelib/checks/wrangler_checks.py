@@ -5,6 +5,7 @@ from ..utils import (
 )
 from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
+from dcicutils.env_utils import FF_PROD_BUCKET_ENV
 import re
 import requests
 import json
@@ -1402,7 +1403,7 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     total_patches = check_res['full_output']['to_add']
 
     s3 = boto3.resource('s3')
-    bucket = s3.Bucket('elasticbeanstalk-fourfront-webprod-files')
+    bucket = s3.Bucket('elasticbeanstalk-%s-files' % FF_PROD_BUCKET_ENV)
 
     query = '/search/?type=FileReference'
     all_ref_files = ff_utils.search_metadata(query, key=connection.ff_keys)

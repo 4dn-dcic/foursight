@@ -459,7 +459,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
-    # input_json['env_name'] = 'fourfront-cgap'
+    # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
     input_json['step_function_name'] = 'tibanna_zebra'
     # input_json['public_postrun_json'] = True
     try:
