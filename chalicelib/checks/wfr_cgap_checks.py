@@ -282,7 +282,7 @@ def cgap_status(connection, **kwargs):
         check.brief_output = ['Waiting for indexing queue to clear']
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
-        # return check
+        return check
 
     query_base = '/search/?type=Sample&files.display_title%21=No+value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
