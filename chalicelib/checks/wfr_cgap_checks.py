@@ -300,7 +300,7 @@ def cgap_status(connection, **kwargs):
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_gatk-HaplotypeCaller'
     # collect all wf for wf version check
-    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
@@ -557,7 +557,7 @@ def cgapS2_status(connection, **kwargs):
     # step3_name = 'workflow_gatk-VQSR-check'
 
     # collect all wf for wf version check
-    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
 
     # iterate over msa
     print(len(res))
