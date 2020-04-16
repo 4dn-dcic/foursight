@@ -1324,7 +1324,7 @@ def check_for_ontology_updates(connection, **kwargs):
                 versions[o['ontology_prefix']]['latest'] = 'WARN: 404 at download_url'
                 check.summary = '404 at download_url'
                 check.description = 'One or more ontologies has a download_url with a 404 error.'
-                check.description += ' Please update or try again later.'
+                check.description += ' Please update ontology item or try again later.'
                 check.status = 'WARN'
                 continue
             if 'versionIRI' in owl.text:
