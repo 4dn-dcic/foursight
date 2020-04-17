@@ -602,7 +602,7 @@ def cgapS2_status(connection, **kwargs):
         samples_ready = True
         for a_sample in input_samples:
             sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
-            comp_tags = sample_resp.get('completed_processes')
+            comp_tags = sample_resp.get('completed_processes', [])
             # did sample complete upstream processing
             if not set(comp_tags) & set(cgap_partI_version):
                 samples_ready = False
