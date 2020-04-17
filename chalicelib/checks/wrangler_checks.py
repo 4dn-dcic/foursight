@@ -1205,6 +1205,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "scanning electron microscopy": "SEM",
         "transmission electron microscopy": "TEM",
         "immunofluorescence": "Immunofluorescence",
+        "synthetic condensation": "OptoDroplet",
         "capture hi-c": "Enrichment Hi-C"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
@@ -1295,6 +1296,7 @@ def check_for_ontology_updates(connection, **kwargs):
     from the previous primary check result.
     '''
     check = CheckResult(connection, 'check_for_ontology_updates')
+    check.summary = ''
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
@@ -1318,6 +1320,13 @@ def check_for_ontology_updates(connection, **kwargs):
         # instead of repos etc, check download url for ontology header to get version
         elif o.get('download_url'):
             owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
+            if owl.status_code == 404:
+                versions[o['ontology_prefix']]['latest'] = 'WARN: 404 at download_url'
+                check.summary = '404 at download_url'
+                check.description = 'One or more ontologies has a download_url with a 404 error.'
+                check.description += ' Please update ontology item or try again later.'
+                check.status = 'WARN'
+                continue
             if 'versionIRI' in owl.text:
                 idx = owl.text.index('versionIRI')
                 vline = owl.text[idx:idx+150]
@@ -1339,27 +1348,34 @@ def check_for_ontology_updates(connection, **kwargs):
                 vline = owl.text[idx+1:owl.text.index('<', idx)]
                 v = vline.split()[0]
                 versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
+    check.brief_output = []
     for k, v in versions.items():
-        if not v['current']:
+        if v.get('latest') and '404' in v['latest']:
+            check.brief_output.append('{} - 404'.format(k))
+        elif not v['current']:
             v['needs_update'] = True
+            check.brief_output.append('{} needs update'.format(k))
         elif k == 'EFO' and semver2int(v['latest']) > semver2int(v['current']):
             v['needs_update'] = True
+            check.brief_output.append('{} needs update'.format(k))
         elif k != 'EFO' and v['latest'] > v['current']:
             v['needs_update'] = True
+            check.brief_output.append('{} needs update'.format(k))
+        else:
+            check.brief_output.append('{} OK'.format(k))
     check.full_output = versions
-    check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update']
-                          else k + ' OK' for k in check.full_output.keys()]
     num = ''.join(check.brief_output).count('update')
-    if num:
-        check.summary = 'Ontology updates available'
-        check.description = '{} ontologies need update'.format(num)
-        check.status = 'WARN'
-    else:
-        check.summary = 'Ontologies up-to-date'
-        check.description = 'No ontology updates needed'
-        check.status = 'PASS'
-    if num == 1 & versions['SO']['needs_update']:
-        check.status = 'PASS'
+    if '404' not in check.summary:
+        if num:
+            check.summary = 'Ontology updates available'
+            check.description = '{} ontologies need update'.format(num)
+            check.status = 'WARN'
+        else:
+            check.summary = 'Ontologies up-to-date'
+            check.description = 'No ontology updates needed'
+            check.status = 'PASS'
+        if num == 1 & versions['SO']['needs_update']:
+            check.status = 'PASS'
     return check
 
 

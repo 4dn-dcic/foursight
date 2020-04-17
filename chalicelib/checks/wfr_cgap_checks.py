@@ -282,7 +282,7 @@ def cgap_status(connection, **kwargs):
         check.brief_output = ['Waiting for indexing queue to clear']
         check.summary = 'Waiting for indexing queue to clear'
         check.full_output = {}
-        # return check
+        return check
 
     query_base = '/search/?type=Sample&files.display_title%21=No+value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
@@ -300,7 +300,7 @@ def cgap_status(connection, **kwargs):
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_gatk-HaplotypeCaller'
     # collect all wf for wf version check
-    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
                                                            store_frame='embedded',
@@ -557,7 +557,7 @@ def cgapS2_status(connection, **kwargs):
     # step3_name = 'workflow_gatk-VQSR-check'
 
     # collect all wf for wf version check
-    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow', my_auth)
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
 
     # iterate over msa
     print(len(res))
@@ -602,7 +602,7 @@ def cgapS2_status(connection, **kwargs):
         samples_ready = True
         for a_sample in input_samples:
             sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
-            comp_tags = sample_resp.get('completed_processes')
+            comp_tags = sample_resp.get('completed_processes', [])
             # did sample complete upstream processing
             if not set(comp_tags) & set(cgap_partI_version):
                 samples_ready = False
