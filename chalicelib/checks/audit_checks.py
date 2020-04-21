@@ -782,3 +782,32 @@ def patch_bio_feature_organism_name(connection, **kwargs):
         action.status = 'DONE'
         action.output = action_logs
         return action
+
+
+@check_function()
+def check_fastq_read_id(connection, **kwargs):
+    '''
+        Reports if there are uploaded fastq files with integer read ids
+    '''
+    check = CheckResult(connection, 'check_fastq_read_id')
+    check.description = 'Reports fastq files that have integer read ids uploaded after 2020-04-13'
+    check.summary = 'No fastq files with integer ids'
+    check.full_output = {}
+    check.status = 'PASS'
+    query = '/search/?date_created.from=2020-04-13&file_format.file_format=fastq&status=uploaded&type=FileFastq'
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    if not res:
+        return check
+    target_files = {}
+    for a_re in res:
+        if a_re.get('file_first_line'):
+            read_id = a_re['file_first_line'].split(' ')[0][1:]
+            if read_id.isnumeric():
+                target_files[a_re['@id']] = {'Experiment': a_re['experiments'][0]['@id'], 'Experiment_title': a_re['experiments'][0]['display_title']}
+
+    if target_files:
+        check.status = 'WARN'
+        check.brief_output = '%s fastq files have integer read ids' % len(target_files)
+        check.full_output = target_files
+
+    return check
