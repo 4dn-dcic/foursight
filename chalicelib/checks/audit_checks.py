@@ -794,7 +794,7 @@ def check_fastq_read_id(connection, **kwargs):
     check.summary = 'No fastq files with integer ids'
     check.full_output = {}
     check.status = 'PASS'
-    query = '/search/?date_created.from=2020-04-13&file_format.file_format=fastq&status=uploaded&type=FileFastq'
+    query = '/search/?date_created.from=2019-01-01&file_format.file_format=fastq&status=uploaded&type=FileFastq'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     if not res:
         return check
@@ -803,11 +803,20 @@ def check_fastq_read_id(connection, **kwargs):
         if a_re.get('file_first_line'):
             read_id = a_re['file_first_line'].split(' ')[0][1:]
             if read_id.isnumeric():
-                target_files[a_re['@id']] = {'Experiment': a_re['experiments'][0]['@id'], 'Experiment_title': a_re['experiments'][0]['display_title']}
+                if a_re.get('experiments'):
+                    exp = a_re['experiments'][0]['@id']
+                    exp_title = a_re['experiments'][0]['display_title']
+                else:
+                    exp = 'No experiment associated'
+                    exp_title = ''
+
+                if exp not in target_files:
+                    target_files[exp] = {'title': exp_title, 'files': []}
+                target_files[exp]['files'].append(a_re['accession'])
 
     if target_files:
         check.status = 'WARN'
-        check.brief_output = '%s fastq files have integer read ids' % len(target_files)
+        check.summary = '%s fastq files have integer read ids' % (sum([len(v['files']) for i, v in target_files.items()]))
         check.full_output = target_files
 
     return check
