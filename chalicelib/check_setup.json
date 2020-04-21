@@ -1498,5 +1498,17 @@
                 }
             }
         }
+    },
+    "check_fastq_read_id": {
+        "title": "Fastq files with integer read ids",
+        "group": "Audit checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
