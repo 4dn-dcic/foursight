@@ -794,7 +794,7 @@ def check_fastq_read_id(connection, **kwargs):
     check.summary = 'No fastq files with integer ids'
     check.full_output = {}
     check.status = 'PASS'
-    query = '/search/?date_created.from=2019-01-01&file_format.file_format=fastq&status=uploaded&type=FileFastq'
+    query = '/search/?date_created.from=2020-04-13&file_format.file_format=fastq&status=uploaded&type=FileFastq'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     if not res:
         return check
