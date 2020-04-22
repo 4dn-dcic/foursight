@@ -13,6 +13,10 @@ class FSConnection(object):
     - ff_server: string server name of the linked FF
     - ff_env: string EB enviroment name of FF (such as 'fourfront-webprod').
               This is kept up-to-date for data and staging
+              (COMPATIBILITY NOTE: This argument is mis-named.
+               It isn't really an ff_env but rather an s3 bucket key,
+               so 'fourfront-webprod' still names the bucket used
+               by environment 'fourfront-blue' and 'fourfront-green'.)
     - ff_s3: s3Utils connection to the FF environment (see dcicutils.s3_utils)
     - ff_keys: FF keys for the environment with 'key', 'secret' and 'server'
     - ff_es: string server of the elasticsearch for the FF

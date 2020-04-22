@@ -1346,11 +1346,11 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "cgapwolf": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1490,6 +1490,18 @@
     "fastq_first_line_status" : {
         "title": "aa) Fastq first line",
         "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_fastq_read_id": {
+        "title": "Fastq files with integer read ids",
+        "group": "Audit checks",
         "schedule": {
             "hourly_checks": {
                 "data": {

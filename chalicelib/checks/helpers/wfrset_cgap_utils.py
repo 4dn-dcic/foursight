@@ -401,7 +401,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
     update_config = {
-        "spot_instance": True,
+        "spot_instance": False,
         "log_bucket": "tibanna-output",
         "key_name": "4dn-encode",
         "public_postrun_json": True,
