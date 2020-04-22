@@ -782,3 +782,75 @@ def patch_bio_feature_organism_name(connection, **kwargs):
         action.status = 'DONE'
         action.output = action_logs
         return action
+
+
+@check_function()
+def released_hela_sequences(connection, **kwargs):
+    '''
+    Check if BAMs and FASTQs from HeLa cells have a visible status.
+    '''
+    check = CheckResult(connection, 'released_hela_sequences')
+    visible_statuses = ['released to project', 'released',
+                        'archived to project', 'archived', 'replaced']
+    formats = ['fastq', 'bam']
+    # get current list of HeLa-related biosources
+    url_hela = ('search/?type=Biosource'
+                '&individual.uuid=8b2bd1cc-3d14-441c-bd82-8bc004ac326a'
+                '&frame=raw&field=biosource_name')
+    search_hela = ff_utils.search_metadata(url_hela, key=connection.ff_keys)
+    # search experiments with HeLa-biosources
+    url_exp = ('search/?type=Experiment'
+               ''.join(['&biosample.biosource_summary=' + bio['biosource_name']
+                        for bio in search_hela])
+               '&field=files&field=processed_files&field=other_processed_files'
+               '&frame=raw')
+    search_exp = ff_utils.search_metadata(url_exp, key=connection.ff_keys)
+
+    seq_files = []  # all sequence files linked to the experiments
+    for experiment in search_exp:
+        all_files = (
+            experiment.get('files', []) +
+            experiment.get('processed_files', []) +
+            [an_opf for opf in experiment.get('other_processed_files', []) for an_opf in opf.get('files', [])])
+        seq_files.extend([a_file['uuid'] for a_file in all_files
+                          if a_file.get('file_format').get('display_title') in formats])
+    # TODO get the date of last successful check run
+    es_items = ff_utils.get_es_metadata(list(set(seq_files)),
+                                        # filters={},  # TODO filter for date last modified
+                                        key=connection.ff_keys)
+
+    interm_files = []  # intermediate files linked from all sequence files
+    error = {}
+    for an_item in es_items:
+        if an_item['embedded']['status'] in visible_statuses:
+            error[an_item['uuid']] = an_item['embedded']['status']
+        if an_item['embedded']['file_format']['display_title'] == 'bam':
+            for wfr_out in an_item['embedded']['workflow_run_outputs']:
+                for input_file in wfr_out['input_files']:
+                    if input_file['value']['file_format']['display_title'] == 'bam':
+                        interm_files.append(input_file['value']['uuid'])
+        elif an_item['embedded']['file_format']['display_title'] == 'fastq':
+            for wfr_in in an_item['embedded']['workflow_run_inputs']:
+                for output_file in wfr_in['output_files']:
+                    if output_file.get('value') and output_file['value']['file_format']['display_title'] == 'fastq':
+                        interm_files.append(output_file['value']['uuid'])
+
+    es_int = ff_utils.get_es_metadata(list(set(interm_files)),
+                                      filters={'status': visible_statuses},
+                                      key=connection.ff_keys)
+    for an_int_file in es_int:
+        error[an_int_file.get('uuid')] = an_int_file['embedded']['status']
+        # list_wrong.append(an_item.get('uuid'))
+
+    if error:
+        check.status = 'WARN'
+        check.summary = '%s sequence files from HeLa with visible status found' % #add number here
+        check.description = '%s fastq or bam files from HeLa found with status: ' + str(visible_statuses).strip('[]')
+    else:
+        check.status = 'PASS'
+        check.summary = 'No sequence files from HeLa with visible status found'
+        check.description = 'No fastq or bam files from HeLa found with status: ' + str(visible_statuses).strip('[]')
+
+    check.full_output = error
+    check.brief_output = ''
+    return check
