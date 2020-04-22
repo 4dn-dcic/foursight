@@ -1943,7 +1943,7 @@ def bam_re_status(connection, **kwargs):
             if nz not in missing_nz:
                 missing_nz.append(nz)
 
-    check = wfr_utils.check_runs_without_output(res, check, 'bam_re', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
         nzs = ', '.join(missing_nz)
         message = ', can not processed enzyme ' + nzs
@@ -1971,15 +1971,21 @@ def bam_re_start(connection, **kwargs):
             action.description = 'Did not complete action due to time limitations'
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
         attributions = wfr_utils.get_attribution(a_file)
-        inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('bam_re', 'no_organism', attributions)
+        inp_f = {'bamfile': a_file['@id']}
+        additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
+        wfr_setup = wfrset_utils.step_settings('re_checker_workflow',
+                                               'no_organism',
+                                               attributions,
+                                               overwrite=additional_setup)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
         else:
             action_logs['runs_failed'].append([a_target, url])
+        break
     action.output = action_logs
     action.status = 'DONE'
     return action
