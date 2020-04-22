@@ -820,3 +820,75 @@ def check_fastq_read_id(connection, **kwargs):
         check.full_output = target_files
 
     return check
+
+
+@check_function()
+def released_hela_sequences(connection, **kwargs):
+    '''
+    Check if fastq and bam files from HeLa cells have a visible status.
+    '''
+    check = CheckResult(connection, 'released_hela_sequences')
+    visible_statuses = ['released to project', 'released',
+                        'archived to project', 'archived', 'replaced']
+    formats = ['fastq', 'bam']
+    # get current list of HeLa-related biosources
+    url_hela = ('search/?type=Biosource'
+                '&individual.uuid=8b2bd1cc-3d14-441c-bd82-8bc004ac326a'
+                '&frame=raw&field=biosource_name')
+    search_hela = ff_utils.search_metadata(url_hela, key=connection.ff_keys)
+    # search experiments with HeLa-biosources
+    url_exp = ('search/?type=Experiment'
+               ''.join(['&biosample.biosource_summary=' + bio['biosource_name'] for bio in search_hela])
+               '&field=files&field=processed_files&field=other_processed_files&frame=raw')
+    search_exp = ff_utils.search_metadata(url_exp, key=connection.ff_keys)
+
+    seq_files = []  # all sequence files linked to the experiments
+    for experiment in search_exp:
+        all_files = (
+            experiment.get('files', []) +
+            experiment.get('processed_files', []) +
+            [an_opf for opf in experiment.get('other_processed_files', []) for an_opf in opf.get('files', [])])
+        seq_files.extend([a_file['uuid'] for a_file in all_files
+                          if a_file.get('file_format').get('display_title') in formats])
+    # TODO get the date of last successful check run
+    es_files = ff_utils.get_es_metadata(list(set(seq_files)),
+                                        # filters={},  # TODO filter for properties.last_modified.date_modified
+                                        key=connection.ff_keys)
+
+    interm_files = []  # intermediate files linked from all sequence files
+    visible = []
+    for a_file in es_files:
+        if a_file['embedded']['status'] in visible_statuses:
+            visible.append({'accession': a_file['embedded']['accession'],
+                            'file format': a_file['embedded']['file_format']['display_title'],
+                            'status': a_file['embedded']['status']})
+        if a_file['embedded']['file_format']['display_title'] == 'bam':
+            for wfr_out in a_file['embedded']['workflow_run_outputs']:
+                for input_file in wfr_out['input_files']:
+                    if input_file['value']['file_format']['display_title'] == 'bam':
+                        interm_files.append(input_file['value']['uuid'])
+        elif a_file['embedded']['file_format']['display_title'] == 'fastq':
+            for wfr_in in a_file['embedded']['workflow_run_inputs']:
+                for output_file in wfr_in['output_files']:
+                    if output_file.get('value') and output_file['value']['file_format']['display_title'] == 'fastq':
+                        interm_files.append(output_file['value']['uuid'])
+    es_int = ff_utils.get_es_metadata(list(set(interm_files)),
+                                      filters={'status': visible_statuses},
+                                      key=connection.ff_keys)
+    for int_file in es_int:
+        visible.append({'accession': int_file['embedded']['accession'],
+                        'file format': int_file['embedded']['file_format']['display_title'],
+                        'status': int_file['embedded']['status']})
+
+    if visible:
+        check.status = 'WARN'
+        check.summary = '%s sequence files from HeLa with visible status found' % len(visible)
+        check.description = '%s fastq or bam files from HeLa found with status: ' + str(visible_statuses).strip('[]')
+    else:
+        check.status = 'PASS'
+        check.summary = 'No sequence files from HeLa with visible status found'
+        check.description = 'No fastq or bam files from HeLa found with status: ' + str(visible_statuses).strip('[]')
+
+    check.full_output = visible
+    check.brief_output = ''
+    return check
