@@ -1897,6 +1897,98 @@ def fastq_first_line_start(connection, **kwargs):
     return action
 
 
+@check_function()
+def bam_re_status(connection, **kwargs):
+    """Searches for fastq files that don't have bam_re"""
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'bam_re_status')
+    my_auth = connection.ff_keys
+    check.action = "bam_re_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (skip to be uploaded by workflow)
+    exp_types = ['in+situ+Hi-C',
+                 'Dilution+Hi-C',
+                 'Capture+Hi-C',
+                 'TCC',
+                 'in+situ+ChIA-PET',
+                 'PLAC-seq']
+    query = "/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed&status!=uploading"
+    exp_type_key = '&track_and_facet_info.experiment_type='
+    exp_type_filter = exp_type_key + exp_type_key.join(exp_types)
+    exclude_processed = '&percent_clipped_sites_with_re_motif=No value'
+    query += exp_type_filter
+    query += exclude_processed
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    # check if they were processed with an acceptable enzyme
+    # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
+    acceptable_enzymes = ["AluI", "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI"]
+    filtered_res = []
+    missing_nz = []
+    for a_file in res:
+        # expecting all files to have an experiment
+        nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
+        if nz in acceptable_enzymes:
+            filtered_res.append(a_file)
+        else:
+            if nz not in missing_nz:
+                missing_nz.append(nz)
+
+    check = wfr_utils.check_runs_without_output(res, check, 'bam_re', my_auth, start)
+    if missing_nz:
+        nzs = ', '.join(missing_nz)
+        message = ', can not processed enzyme ' + nzs
+        check.summary += message
+        check.brief_output.insert(0, message)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bam_re_start(connection, **kwargs):
+    """Start bam_re runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'bam_re_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bam_re_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(bam_re_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bam_re_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        inp_f = {'input_fastq': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('bam_re', 'no_organism', attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+###################################
+###################################
+# TEMPLATES
+
 # ##Template for qc type runs
 @check_function()
 def template_status(connection, **kwargs):
