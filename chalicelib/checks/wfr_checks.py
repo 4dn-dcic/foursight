@@ -1895,3 +1895,62 @@ def fastq_first_line_start(connection, **kwargs):
     action.output = action_logs
     action.status = 'DONE'
     return action
+
+
+# ##Template for qc type runs
+@check_function()
+def template_status(connection, **kwargs):
+    """Searches for fastq files that don't have template"""
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'template_status')
+    my_auth = connection.ff_keys
+    check.action = "template_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (skip to be uploaded by workflow)
+    query = ("/search/?type=File&my_own_field=my_value")
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_runs_without_output(res, check, 'template', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def template_start(connection, **kwargs):
+    """Start template runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'template_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    template_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(template_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(template_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        inp_f = {'input_fastq': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('template', 'no_organism', attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
