@@ -122,6 +122,10 @@ workflow_details = {
         "run_time": 200,
         "accepted_versions": ["v2"]
     },
+    're_checker_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['v1.1']
+    }
 }
 
 # accepted versions for completed pipelines
@@ -714,7 +718,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
             problems.append(file_id)
         elif report['status'] != 'complete':
             missing_run.append(file_id)
-        # There is a successful run, but no extra_file
+        # There is a successful run, but not the expected change (should be part of query)
         elif report['status'] == 'complete':
             missing_meta_changes.append(file_id)
     if running:
