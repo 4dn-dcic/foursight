@@ -1052,6 +1052,18 @@
             }
         }
     },
+    "bamqc_status" : {
+        "title": "b) BamQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "bg2bw_status" : {
         "title": "c) BedGraph to BigWig",
         "group": "Pipeline checks",
@@ -1304,6 +1316,32 @@
             }
         }
     },
+    "rna_strandedness_status" : {
+        "title": "m) RNA Strandedness",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastq_first_line_status" : {
+        "title": "n) Fastq first line",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+
+
     "md5runCGAP_status" : {
         "title": "a) md5 runs",
         "group": "Pipeline checks",
@@ -1447,18 +1485,7 @@
             }
         }
     },
-    "rna_strandedness_status" : {
-        "title": "y) RNA Strandedness",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true,  "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
+
     "check_for_strandedness_consistency": {
         "title": "RNA-seq experiments without strandedness verification",
         "group": "Metadata checks",
@@ -1466,18 +1493,6 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "bamqc_status" : {
-        "title": "z) BamQC",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1493,18 +1508,6 @@
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "fastq_first_line_status" : {
-        "title": "aa) Fastq first line",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
