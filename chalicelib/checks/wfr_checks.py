@@ -1945,9 +1945,10 @@ def bam_re_status(connection, **kwargs):
 
     check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
+        skipped_files = str(len(res) - len(filtered_res))
         nzs = ', '.join(missing_nz)
-        message = ', can not processed enzyme ' + nzs
-        check.summary += message
+        message = 'INFO: skipping files ({}) using' + nzs
+        check.summary += ', ' + message
         check.brief_output.insert(0, message)
     return check
 
