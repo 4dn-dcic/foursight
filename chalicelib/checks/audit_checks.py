@@ -837,10 +837,9 @@ def released_hela_sequences(connection, **kwargs):
                 '&frame=raw&field=biosource_name')
     search_hela = ff_utils.search_metadata(url_hela, key=connection.ff_keys)
     # search experiments with HeLa-biosources
-    url_exp = ('search/?type=Experiment'
-               ''.join(['&biosample.biosource_summary=' + bio['biosource_name'] for bio in search_hela])
-               '&field=files&field=processed_files&field=other_processed_files'
-               '&field=accession&frame=raw')
+    url_exp = 'search/?type=Experiment'
+    url_exp += ''.join(['&biosample.biosource_summary=' + bio['biosource_name'] for bio in search_hela])
+    url_exp += '&field=files&field=processed_files&field=other_processed_files&field=accession&frame=raw'
     search_exp = ff_utils.search_metadata(url_exp, key=connection.ff_keys)
     # search files from experiments
     seq_files = {}  # maps file to experiment
@@ -853,7 +852,7 @@ def released_hela_sequences(connection, **kwargs):
             if a_file.get('file_format').get('display_title') in formats:
                 seq_files[a_file['uuid']] = experiment['accession']
     # TODO get the date of last successful check run
-    es_files = ff_utils.get_es_metadata(seq_files.keys(),
+    es_files = ff_utils.get_es_metadata(list(seq_files.keys()),
                                         # filters={},  # TODO filter for properties.last_modified.date_modified
                                         key=connection.ff_keys)
     interm_files = {}  # maps intermediate files to experiment
@@ -878,7 +877,7 @@ def released_hela_sequences(connection, **kwargs):
                     if output_file.get('value') and output_file['value']['file_format']['display_title'] == 'fastq':
                         interm_files[output_file['value']['uuid']] = exp_accession
     # get status of intermediate files
-    es_int = ff_utils.get_es_metadata(interm_files.keys(),
+    es_int = ff_utils.get_es_metadata(list(interm_files.keys()),
                                       filters={'status': visible_statuses},
                                       key=connection.ff_keys)
     for int_file in es_int:
@@ -888,7 +887,7 @@ def released_hela_sequences(connection, **kwargs):
             'file format': int_file['embedded']['file_format']['display_title'],
             'status': int_file['embedded']['status']})
 
-    visible_files = [file for exp in visible_hela.keys() for file in visible_hela[exp]]
+    visible_files = [file for exp in visible_hela for file in visible_hela[exp]]
     if visible_hela:
         check.status = 'WARN'
         check.summary = 'Sequence files from HeLa with visible status found'
