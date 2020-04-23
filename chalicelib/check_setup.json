@@ -1340,8 +1340,6 @@
             }
         }
     },
-
-
     "md5runCGAP_status" : {
         "title": "a) md5 runs",
         "group": "Pipeline checks",
@@ -1485,7 +1483,6 @@
             }
         }
     },
-
     "check_for_strandedness_consistency": {
         "title": "RNA-seq experiments without strandedness verification",
         "group": "Metadata checks",
