@@ -1947,7 +1947,7 @@ def bam_re_status(connection, **kwargs):
     if missing_nz:
         skipped_files = str(len(res) - len(filtered_res))
         nzs = ', '.join(missing_nz)
-        message = 'INFO: skipping files ({}) using' + nzs
+        message = 'INFO: skipping files ({}) using {}'.format(skipped_files, nzs)
         check.summary += ', ' + message
         check.brief_output.insert(0, message)
     return check
