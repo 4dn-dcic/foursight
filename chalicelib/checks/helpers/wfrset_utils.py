@@ -300,7 +300,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'config': {'mem': 0.5, 'cpu': 1}
         },
         {
-        "app_name": "re_checker",
+        "app_name": "re_checker_workflow",
         "workflow_uuid": "e9eefa69-39b1-4e61-8889-5cb1cea401c0",
         "parameters": {},
         "config": {"mem": 4,

@@ -122,7 +122,7 @@ workflow_details = {
         "run_time": 200,
         "accepted_versions": ["v2"]
     },
-    're_checker': {
+    're_checker_workflow': {
         "run_time": 200,
         "accepted_versions": ['v1.1']
     }

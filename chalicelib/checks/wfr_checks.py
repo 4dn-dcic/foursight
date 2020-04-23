@@ -1943,7 +1943,7 @@ def bam_re_status(connection, **kwargs):
             if nz not in missing_nz:
                 missing_nz.append(nz)
 
-    check = wfr_utils.check_runs_without_output(res, check, 're_checker', my_auth, start)
+    check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
         nzs = ', '.join(missing_nz)
         message = ', can not processed enzyme ' + nzs
@@ -1975,7 +1975,13 @@ def bam_re_start(connection, **kwargs):
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'bamfile': a_file['@id']}
         additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
-        wfr_setup = wfrset_utils.step_settings('re_checker',
+        # for small files set ebs to 10 (otherwise 2x)
+        # file_size = a_file.get('file_size')
+        # if file_size:
+        #     if file_size < 5000000000:
+        #         additional_setup['config'] = {"ebs_size": 10}
+
+        wfr_setup = wfrset_utils.step_settings('re_checker_workflow',
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
@@ -1985,7 +1991,6 @@ def bam_re_start(connection, **kwargs):
             action_logs['runs_started'].append(url)
         else:
             action_logs['runs_failed'].append([a_target, url])
-        break
     action.output = action_logs
     action.status = 'DONE'
     return action
