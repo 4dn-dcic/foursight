@@ -1932,7 +1932,11 @@ def bam_re_status(connection, **kwargs):
     # check if they were processed with an acceptable enzyme
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = ["AluI", "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI"]
+    # make a new list of files to work on
     filtered_res = []
+    # make a list of skipped files
+    missing_nz_files = []
+    # make a list of skipped enzymes
     missing_nz = []
     for a_file in res:
         # expecting all files to have an experiment
@@ -1940,15 +1944,18 @@ def bam_re_status(connection, **kwargs):
         if nz in acceptable_enzymes:
             filtered_res.append(a_file)
         else:
+            missing_nz_files.append(a_file)
             if nz not in missing_nz:
                 missing_nz.append(nz)
 
     check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
+        skipped_files = str(len(res) - len(filtered_res))
         nzs = ', '.join(missing_nz)
-        message = ', can not processed enzyme ' + nzs
-        check.summary += message
+        message = 'INFO: skipping files ({}) using {}'.format(skipped_files, nzs)
+        check.summary += ', ' + message
         check.brief_output.insert(0, message)
+        check.full_output['skipped'] = [i['accession'] for i in missing_nz_files]
     return check
 
 
