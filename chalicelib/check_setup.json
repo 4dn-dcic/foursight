@@ -1233,7 +1233,7 @@
         }
     },
     "tsa_seq_status" : {
-        "title": "f) TSA-seq",
+        "title": "e) TSA-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1245,7 +1245,7 @@
         }
     },
     "nad_seq_status" : {
-        "title": "g) NAD-seq",
+        "title": "e) NAD-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1257,7 +1257,7 @@
         }
     },
     "atac_seq_status" : {
-        "title": "h) ATAC-seq",
+        "title": "f) ATAC-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1269,7 +1269,7 @@
         }
     },
     "chip_seq_status" : {
-        "title": "i) ChIP-seq",
+        "title": "g) ChIP-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1281,7 +1281,7 @@
         }
     },
     "margi_status" : {
-        "title": "j) MARGI",
+        "title": "h) MARGI",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1293,7 +1293,7 @@
         }
     },
     "rna_seq_status" : {
-        "title": "k) RNA-seq",
+        "title": "i) RNA-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1317,7 +1317,7 @@
         }
     },
     "rna_strandedness_status" : {
-        "title": "m) RNA Strandedness",
+        "title": "l) RNA Strandedness",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1329,7 +1329,7 @@
         }
     },
     "fastq_first_line_status" : {
-        "title": "n) Fastq first line",
+        "title": "l) Fastq first line",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
