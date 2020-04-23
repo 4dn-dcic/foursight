@@ -892,7 +892,7 @@ def released_hela_sequences(connection, **kwargs):
         check.status = 'WARN'
         check.summary = 'Sequence files from HeLa with visible status found'
         check.description = '{} fastq or bam files from HeLa found with status: {}'.format(
-            len([visible_files]),
+            len(visible_files),
             str(visible_statuses).strip('[]'))
     else:
         check.status = 'PASS'
