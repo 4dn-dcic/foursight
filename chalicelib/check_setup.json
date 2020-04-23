@@ -1292,6 +1292,18 @@
             }
         }
     },
+    "bam_re_status" : {
+        "title": "wa) Restriction Enzyme Check",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "md5runCGAP_status" : {
         "title": "a) md5 runs",
         "group": "Pipeline checks",
