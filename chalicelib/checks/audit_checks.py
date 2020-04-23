@@ -900,7 +900,7 @@ def released_hela_sequences(connection, **kwargs):
         check.description = 'No fastq or bam files from HeLa found with status: {}'.format(
             str(visible_statuses).strip('[]'))
     check.full_output = visible_hela
-    check.brief_output = [visible_files['file accession'] for f in visible_files]
+    check.brief_output = [vf['file accession'] for vf in visible_files]
     return check
 
 
