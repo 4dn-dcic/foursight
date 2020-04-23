@@ -888,11 +888,12 @@ def released_hela_sequences(connection, **kwargs):
             'file format': int_file['embedded']['file_format']['display_title'],
             'status': int_file['embedded']['status']})
 
+    visible_files = [file for exp in visible_hela.keys() for file in visible_hela[exp]]
     if visible_hela:
         check.status = 'WARN'
         check.summary = 'Sequence files from HeLa with visible status found'
         check.description = '{} fastq or bam files from HeLa found with status: {}'.format(
-            len([file for exp in visible_hela.keys() for file in visible_hela[exp]]),
+            len([visible_files]),
             str(visible_statuses).strip('[]'))
     else:
         check.status = 'PASS'
@@ -900,7 +901,7 @@ def released_hela_sequences(connection, **kwargs):
         check.description = 'No fastq or bam files from HeLa found with status: {}'.format(
             str(visible_statuses).strip('[]'))
     check.full_output = visible_hela
-    check.brief_output = [f['file accession'] for exp in visible_hela.keys() for f in visible_hela[exp]]
+    check.brief_output = [visible_files['file accession'] for f in visible_files]
     return check
 
 
