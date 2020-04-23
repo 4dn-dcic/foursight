@@ -828,6 +828,7 @@ def released_hela_sequences(connection, **kwargs):
     Check if fastq and bam files from HeLa cells have a visible status.
     '''
     check = CheckResult(connection, 'released_hela_sequences')
+    check.action = 'restrict_hela_sequences'
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
     formats = ['fastq', 'bam']
     # get current list of HeLa-related biosources
@@ -901,3 +902,28 @@ def released_hela_sequences(connection, **kwargs):
     check.full_output = visible_hela
     check.brief_output = [f['file accession'] for exp in visible_hela.keys() for f in visible_hela[exp]]
     return check
+
+
+@action_function()
+def restrict_hela_sequences(connection, **kwargs):
+    '''
+    Patch the status of all visible HeLa sequence files to "restricted"
+    '''
+    action = ActionResult(connection, 'restrict_hela_sequences')
+    check_res = action.get_associated_check_result(kwargs)
+    files_to_patch = check_res['brief_output']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    patch = {'status': 'restricted'}
+    for file_acc in files_to_patch:
+        try:
+            ff_utils.patch_metadata(patch, file_acc, key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({file_acc: str(e)})
+        else:
+            action_logs['patch_success'].append(file_acc)
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
