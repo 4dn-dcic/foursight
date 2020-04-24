@@ -1515,7 +1515,7 @@
         "title": "HeLa files not restricted",
         "group": "Audit checks",
         "schedule": {
-            "monday_checks": {
+            "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
