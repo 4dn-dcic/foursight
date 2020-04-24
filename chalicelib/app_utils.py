@@ -804,7 +804,7 @@ def run_delete_environment(environ):
                 body = {
                     'status': 'success',
                     'details': 'Successfully deleted environment %s' % environ,
-                    'environ': environ
+                    'environment': environ
                 },
                 status_code = 200
             )
