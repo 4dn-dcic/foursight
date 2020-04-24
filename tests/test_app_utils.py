@@ -1,4 +1,8 @@
 from conftest import *
+import json
+import boto3
+from botocore.exceptions import ClientError
+from moto import mock_s3
 
 class TestAppUtils():
     """
@@ -194,3 +198,32 @@ class TestAppUtils():
         assert (literal_params['none_str'] is None)
         assert ('empty_str' not in literal_params)
         assert (literal_params['special'] == '&limit=all')
+
+    @mock_s3
+    def test_delete_foursight_env(self):
+        """ Tests the delete foursight API using moto """
+        client = boto3.client('s3', region_name='us-east-1')
+        resource = boto3.resource('s3', region_name='us-east-1')
+
+        # lets give it our 'expected' layout
+        resource.create_bucket(Bucket='foursight-envs')
+        client.put_object(Bucket='foursight-envs', Key='data', Body=json.dumps({'test': 'env'}))
+        client.put_object(Bucket='foursight-envs', Key='staging', Body=json.dumps({'test': 'env'}))
+        client.put_object(Bucket='foursight-envs', Key='blue', Body=json.dumps({'test': 'env'}))
+
+        # lets delete the 'blue' bucket, all other buckets should be there
+        app_utils.run_delete_environment('blue')
+
+        # we should now only have 2 with keys 'data' and 'staging'
+        try:
+            data_body = json.loads(resource.Object('foursight-envs', 'data').get()['Body'].read().decode("utf-8"))
+            staging_body = json.loads(resource.Object('foursight-envs', 'staging').get()['Body'].read().decode("utf-8"))
+            assert data_body['test'] == 'env'
+            assert staging_body['test'] == 'env'
+        except Exception as e:
+            raise AssertionError('Was not able to get expected foursight-envs configs, got exception: %s' % str(e))
+
+        # ensure the one we wanted to delete is actually gone
+        with pytest.raises(ClientError):
+            json.loads(resource.Object('foursight-envs', 'blue').get()['Body'].read().decode("utf-8"))
+

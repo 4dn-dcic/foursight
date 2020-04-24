@@ -286,6 +286,22 @@ def get_environment_route(environ):
     else:
         return forbidden_response()
 
+
+@app.route('/environments/{environ}/delete', methods=['DELETE'])
+def delete_environment(environ):
+    """
+    Takes a DELETE request and purges the foursight environment specified by 'environ'.
+    NOTE: This only de-schedules all checks, it does NOT wipe data associated with this
+    environment - that can only be done directly from S3 (for safety reasons).
+
+    Protected route
+    """
+    if check_authorization(app.current_request.to_dict(), environ):
+        return run_delete_environment(environ)
+    else:
+        return forbidden_response()
+
+
 ######### PURE LAMBDA FUNCTIONS #########
 
 @app.lambda_function()
