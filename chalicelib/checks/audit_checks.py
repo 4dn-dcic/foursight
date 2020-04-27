@@ -851,9 +851,7 @@ def released_hela_sequences(connection, **kwargs):
         for a_file in all_files:
             if a_file.get('file_format').get('display_title') in formats:
                 seq_files[a_file['uuid']] = experiment['accession']
-    # TODO get the date of last successful check run
     es_files = ff_utils.get_es_metadata(list(seq_files.keys()),
-                                        # filters={},  # TODO filter for properties.last_modified.date_modified
                                         key=connection.ff_keys)
     interm_files = {}  # maps intermediate files to experiment
     visible_hela = {}  # collects visible hela sequence files
@@ -899,6 +897,9 @@ def released_hela_sequences(connection, **kwargs):
         check.summary = 'No sequence files from HeLa with visible status found'
         check.description = 'No fastq or bam files from HeLa found with status: {}'.format(
             str(visible_statuses).strip('[]'))
+        check.action_message = 'Will attempt to patch {} files to status=restricted'.format(
+            len(visible_files))
+        check.allow_action = True  # allows the action to be run
     check.full_output = visible_hela
     check.brief_output = [vf['file accession'] for vf in visible_files]
     return check
