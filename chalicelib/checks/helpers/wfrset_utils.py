@@ -304,7 +304,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "workflow_uuid": "e9eefa69-39b1-4e61-8889-5cb1cea401c0",
         "parameters": {},
         "config": {"mem": 4,
-                   "ebs_size": '2x',
+                   "ebs_size": '10',
                    "instance_type": "t3.medium"
                    }
         },

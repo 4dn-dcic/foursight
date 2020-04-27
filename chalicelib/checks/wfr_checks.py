@@ -1982,17 +1982,11 @@ def bam_re_start(connection, **kwargs):
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'bamfile': a_file['@id']}
         additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
-        # for small files set ebs to 10 (otherwise 2x)
-        # file_size = a_file.get('file_size')
-        # if file_size:
-        #     if file_size < 5000000000:
-        #         additional_setup['config'] = {"ebs_size": 10}
-
         wfr_setup = wfrset_utils.step_settings('re_checker_workflow',
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
