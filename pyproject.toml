@@ -27,7 +27,6 @@ chalice = "1.11.1"
 pytest = "5.1.2"
 pytest-cov = "2.7.1"
 flaky = "3.6.1"
-moto = "1.3.7"
 
 [build-system]
 requires = ["poetry>=0.12"]

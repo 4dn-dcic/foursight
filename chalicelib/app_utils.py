@@ -789,7 +789,7 @@ def run_delete_environment(environ, bucket='foursight-envs'):
             status_code = 400
         )
     else:
-        our_key = keys_deleted[0]  # since we only passed on key to be deleted, the response will be a length 1 list
+        our_key = keys_deleted[0]  # since we only passed one key to be deleted, the response will be a length 1 list
         if our_key['Key'] != environ:
             response = Response(
                 body = {
