@@ -1931,7 +1931,9 @@ def bam_re_status(connection, **kwargs):
         return check
     # check if they were processed with an acceptable enzyme
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
-    acceptable_enzymes = ["AluI", "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI"]
+    acceptable_enzymes = ["AluI", "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
+                          "MspI", "NcoI_MspI_BspHI"  # added patterns in action
+                          ]
     # make a new list of files to work on
     filtered_res = []
     # make a list of skipped files
@@ -1956,6 +1958,7 @@ def bam_re_status(connection, **kwargs):
         check.summary += ', ' + message
         check.brief_output.insert(0, message)
         check.full_output['skipped'] = [i['accession'] for i in missing_nz_files]
+        check.status = 'WARN'
     return check
 
 
@@ -1968,6 +1971,11 @@ def bam_re_start(connection, **kwargs):
     my_auth = connection.ff_keys
     bam_re_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
+    # these enzymes are not covered by workflow, but can be covered with these patterns
+    nz_patterns = {"MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
+                   "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
+                                                           "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
+                                                           "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}}}
     if kwargs.get('start_missing_run'):
         targets.extend(bam_re_check_result.get('files_without_run', []))
     if kwargs.get('start_missing_meta'):
@@ -1981,7 +1989,10 @@ def bam_re_start(connection, **kwargs):
         nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'bamfile': a_file['@id']}
-        additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
+        if nz in nz_patterns:
+            additional_setup = {"parameters": nz_patterns[nz]}
+        else:
+            additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
         wfr_setup = wfrset_utils.step_settings('re_checker_workflow',
                                                'no_organism',
                                                attributions,
