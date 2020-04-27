@@ -42,7 +42,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
         {
         'app_name': 'pairsqc-single',
-        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3'
+        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3',
+        "config": {"ebs_size": 10}
     },
         {
         'app_name': 'bwa-mem',
@@ -293,7 +294,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bamqc",
         "workflow_uuid": "42683ab1-59bf-4ec5-a973-030053a134f1",
-        "overwrite_input_extra": False
+        "overwrite_input_extra": False,
+        "config": {"ebs_size": 10}
         },
         {
         "app_name": "fastq-first-line",
