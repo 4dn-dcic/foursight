@@ -771,6 +771,47 @@ def run_get_environment(environ):
     return process_response(response)
 
 
+def run_delete_environment(environ, bucket='foursight-envs'):
+    """
+    Removes the environ entry from the Foursight envs bucket. This effectively de-schedules all checks
+    but does not remove any data.
+    """
+    s3_connection = S3Connection(bucket)
+    s3_resp = s3_connection.delete_keys([environ])
+    keys_deleted = s3_resp['Deleted']
+    if not keys_deleted:
+        response = Response(
+            body = {
+                'status': 'error',
+                'description': 'Unable to comply with request',
+                'environment': environ
+            },
+            status_code = 400
+        )
+    else:
+        our_key = keys_deleted[0]  # since we only passed one key to be deleted, the response will be a length 1 list
+        if our_key['Key'] != environ:
+            response = Response(
+                body = {
+                    'status': 'error',
+                    'description': 'An error occurred during environment deletion, please check S3 directly',
+                    'environment': environ
+                },
+                status_code = 400
+            )
+        else:  # we were successful
+            response = Response(
+                body = {
+                    'status': 'success',
+                    'details': 'Successfully deleted environment %s' % environ,
+                    'environment': environ
+                },
+                status_code = 200
+            )
+    return process_response(response)
+
+
+
 ##### QUEUE / CHECK RUNNER FUNCTIONS #####
 
 def queue_scheduled_checks(sched_environ, schedule_name, conditions=None):
