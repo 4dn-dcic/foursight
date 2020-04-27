@@ -783,7 +783,7 @@ def run_delete_environment(environ):
         response = Response(
             body = {
                 'status': 'error',
-                'description': 'Invalid environment provided to delete',
+                'description': 'Unable to comply with request',
                 'environment': environ
             },
             status_code = 400
@@ -794,7 +794,7 @@ def run_delete_environment(environ):
             response = Response(
                 body = {
                     'status': 'error',
-                    'description': 'An error occured during environment deletion, please check S3 directly',
+                    'description': 'An error occurred during environment deletion, please check S3 directly',
                     'environment': environ
                 },
                 status_code = 400

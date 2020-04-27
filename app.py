@@ -296,7 +296,7 @@ def delete_environment(environ):
 
     Protected route
     """
-    if check_authorization(app.current_request.to_dict(), environ):
+    if check_authorization(app.current_request.to_dict(), environ):  # TODO (C4-138) Centralize authorization check
         return run_delete_environment(environ)
     else:
         return forbidden_response()
