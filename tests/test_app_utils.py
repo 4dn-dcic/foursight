@@ -198,11 +198,11 @@ class TestAppUtils():
         assert ('empty_str' not in literal_params)
         assert (literal_params['special'] == '&limit=all')
 
-    # Take my word for it - it works, it's just moto's mock_s3 decorator does not, so this test ends up
-    # getting executed on the 'real' S3 so we must skip it. -Will 4/27/2020
-    @pytest.mark.skip
+    # XXX: mock_s3 does not work (mocks resource but not client), so use 'real' S3 in a safe way
+    # hopefully this will be fixed eventually -Will 4/27/2020
+    @pytest.mark.integrated
     def test_delete_foursight_env(self):
-        """ Tests the delete foursight API using moto """
+        """ Tests the delete foursight API on real S3 using a test bucket and fake env names """
         client = boto3.client('s3', region_name='us-east-1')
         resource = boto3.resource('s3', region_name='us-east-1')
         test_bucket = 'foursight-unit-test-envs'
@@ -214,7 +214,7 @@ class TestAppUtils():
         client.put_object(Bucket=test_bucket, Key='red', Body=json.dumps({'test': 'env'}))
 
         # lets delete the 'red' bucket, all other buckets should be there
-        app_utils.run_delete_environment('red')
+        app_utils.run_delete_environment('red', bucket=test_bucket)
 
         # we should now only have 2 with keys 'data' and 'staging'
         try:
@@ -223,15 +223,16 @@ class TestAppUtils():
             assert yellow_body['test'] == 'env'
             assert pink_body['test'] == 'env'
         except Exception as e:
-            raise AssertionError('Was not able to get expected foursight-envs configs, got exception: %s' % str(e))
+            raise AssertionError('Was not able to get expected foursight-unit-test-envs configs, '
+                                 'got exception: %s' % str(e))
 
         # ensure the one we wanted to delete is actually gone
         with pytest.raises(ClientError):
             json.loads(resource.Object(test_bucket, 'red').get()['Body'].read().decode("utf-8"))
 
         # delete the remaining
-        app_utils.run_delete_environment('pink')
-        app_utils.run_delete_environment('yellow')
+        app_utils.run_delete_environment('pink', bucket=test_bucket)
+        app_utils.run_delete_environment('yellow', bucket=test_bucket)
 
         # verify those deletes were successful
         with pytest.raises(ClientError):

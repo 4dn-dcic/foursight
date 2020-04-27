@@ -771,12 +771,12 @@ def run_get_environment(environ):
     return process_response(response)
 
 
-def run_delete_environment(environ):
+def run_delete_environment(environ, bucket='foursight-envs'):
     """
     Removes the environ entry from the Foursight envs bucket. This effectively de-schedules all checks
     but does not remove any data.
     """
-    s3_connection = S3Connection('foursight-envs')
+    s3_connection = S3Connection(bucket)
     s3_resp = s3_connection.delete_keys([environ])
     keys_deleted = s3_resp['Deleted']
     if not keys_deleted:
