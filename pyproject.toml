@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "0.10.0"
+version = "0.10.1"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN Team <william_ronchetti@hms.harvard.edu>"]
 license = "MIT"
@@ -10,7 +10,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.6,<3.7"
-dcicutils = ">=0.13.2,<1"
+dcicutils = "^0.18.0"
 click = "6.7"
 PyJWT = "1.5.3"
 Jinja2 = "2.10.1"
