@@ -852,7 +852,8 @@ def released_hela_sequences(connection, **kwargs):
             if a_file.get('file_format').get('display_title') in formats:
                 seq_files[a_file['uuid']] = experiment['accession']
     es_files = ff_utils.get_es_metadata(list(seq_files.keys()),
-                                        key=connection.ff_keys)
+                                        key=connection.ff_keys,
+                                        chunk_size=200, is_generator=True)
     interm_files = {}  # maps intermediate files to experiment
     visible_hela = {}  # collects visible hela sequence files
     for a_file in es_files:
