@@ -865,16 +865,14 @@ def released_hela_sequences(connection, **kwargs):
                 'file accession': a_file['embedded']['accession'],
                 'file format': file_format,
                 'status': file_status})
-        if file_format == 'bam':  # get uuid of intermediate bam
-            for wfr_out in a_file['embedded']['workflow_run_outputs']:
-                for input_file in wfr_out['input_files']:
-                    if input_file['value']['file_format']['display_title'] == 'bam':
-                        interm_files[input_file['value']['uuid']] = exp_accession
-        elif file_format == 'fastq':  # get uuid of intermediate fastq
-            for wfr_in in a_file['embedded']['workflow_run_inputs']:
-                for output_file in wfr_in['output_files']:
-                    if output_file.get('value') and output_file['value']['file_format']['display_title'] == 'fastq':
-                        interm_files[output_file['value']['uuid']] = exp_accession
+        for wfr_out in a_file['embedded'].get('workflow_run_outputs', []):
+            for input_file in wfr_out.get('input_files', []):
+                if input_file.get('value') and input_file['value']['file_format']['display_title'] == 'bam':
+                    interm_files[input_file['value']['uuid']] = exp_accession
+        for wfr_in in a_file['embedded'].get('workflow_run_inputs', []):
+            for output_file in wfr_in.get('output_files', []):
+                if output_file.get('value') and output_file['value']['file_format']['display_title'] == 'fastq':
+                    interm_files[output_file['value']['uuid']] = exp_accession
     # get status of intermediate files
     es_int = ff_utils.get_es_metadata(list(interm_files.keys()),
                                       filters={'status': visible_statuses},
