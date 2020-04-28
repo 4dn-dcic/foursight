@@ -510,19 +510,22 @@ def check_opf_status_mismatch(connection, **kwargs):
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.expand_es_metadata(list(set(files)), key=connection.ff_keys)
-    opf_status_dict = {
-        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] in files
-    }
+    resp =  ff_utils.get_es_metadata(list(set(files)),
+                                     sources=['links.quality_metric', 'object.status', 'uuid'],
+                                     key=connection.ff_keys)
+    opf_status_dict = {item['uuid']: item['object']['status'] for item in resp if item['uuid'] in files}
     opf_linked_dict = {
-        item['uuid']: item.get('quality_metric') for val in resp[0].values() for item in val if item['uuid'] in files
+        item['uuid']: item.get('links', {}).get('quality_metric', []) for item in resp if item['uuid'] in files
     }
-    opf_other_dict = {
-        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] not in files
-    }
+    quality_metrics = [uuid for item in resp for uuid in item.get('links', {}).get('quality_metric', [])]
+    qm_resp = ff_utils.get_es_metadata(list(set(quality_metrics)),
+                                       sources=['uuid', 'object.status'],
+                                       key=connection.ff_keys)
+    opf_other_dict = {item['uuid']: item['object']['status'] for item in qm_resp if item not in files}
     check.full_output = {}
     for result in results:
-        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid') for item in result.get('other_processed_files', [])}
+        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid')
+                   for item in result.get('other_processed_files', [])}
         titles = [item['title'] for item in result.get('other_processed_files', [])]
         titles.extend([item['title'] for exp in result.get('experiments_in_set', [])
                        for item in exp.get('other_processed_files', [])])
@@ -541,22 +544,22 @@ def check_opf_status_mismatch(connection, **kwargs):
                     problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
             elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
                 if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
-                    problem_dict[title] = {'files': list(statuses)[0], 'higlass_view_config': opf_status_dict[hg_dict[title]]}
-            elif 'release' not in result['status'] and (
-                STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
-            ):  # if ExpSet not released, and opf collection has higher status
+                    problem_dict[title] = {'files': list(statuses)[0],
+                                           'higlass_view_config': opf_status_dict[hg_dict[title]]}
+            elif 'release' not in result['status'] and (STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]):
+                # if ExpSet not released, and opf collection has higher status
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
             for f in file_list:
                 if opf_linked_dict.get(f['uuid']):
-                    if (STATUS_LEVEL[opf_other_dict[opf_linked_dict[f['uuid']]]] !=
-                        STATUS_LEVEL[opf_status_dict[f['uuid']]]):
-                        if title not in problem_dict:
-                            problem_dict[title] = {}
-                        if f['@id'] not in problem_dict[title]:
-                            problem_dict[title][f['@id']] = {}
-                        problem_dict[title][f['@id']]['quality_metric'] = {
-                            'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[opf_linked_dict[f['uuid']]]
-                        }
+                    for qm in opf_linked_dict[f['uuid']]:
+                        if (STATUS_LEVEL[opf_other_dict[qm]] != STATUS_LEVEL[opf_status_dict[f['uuid']]]):
+                            if title not in problem_dict:
+                                problem_dict[title] = {}
+                            if f['@id'] not in problem_dict[title]:
+                                problem_dict[title][f['@id']] = {}
+                            problem_dict[title][f['@id']]['quality_metric'] = {
+                                'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[qm]
+                            }
         if problem_dict:
             check.full_output[result['@id']] = problem_dict
     if check.full_output:
