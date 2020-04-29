@@ -1017,7 +1017,7 @@
         }
     },
     "md5run_status_extra_file" : {
-        "title": "b) MD5run extrafiles",
+        "title": "a) MD5run extrafiles",
         "group": "Pipeline checks",
         "schedule": {
             "morning_checks": {
@@ -1029,7 +1029,7 @@
         }
     },
     "fastqc_status" : {
-        "title": "c) FastQC",
+        "title": "b) FastQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1041,7 +1041,19 @@
         }
     },
     "pairsqc_status" : {
-        "title": "d) PairsQC",
+        "title": "b) PairsQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "bamqc_status" : {
+        "title": "b) BamQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1053,7 +1065,7 @@
         }
     },
     "bg2bw_status" : {
-        "title": "e) BedGraph to BigWig",
+        "title": "c) BedGraph to BigWig",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1065,7 +1077,7 @@
         }
     },
     "bed2beddb_status" : {
-        "title": "f) Bed to Beddb",
+        "title": "c) Bed to Beddb",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1077,7 +1089,7 @@
         }
     },
     "in_situ_hic_status" : {
-        "title": "g) in situ Hi-C",
+        "title": "d) in situ Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1089,7 +1101,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "h) Dilution Hi-C",
+        "title": "d) Dilution Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1101,7 +1113,7 @@
         }
     },
     "tcc_status" : {
-        "title": "i) TCC",
+        "title": "d) TCC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1113,7 +1125,7 @@
         }
     },
     "dnase_hic_status" : {
-        "title": "j) DNAse Hi-C",
+        "title": "d) DNAse Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1125,7 +1137,7 @@
         }
     },
     "capture_hic_status" : {
-        "title": "k) Capture Hi-C",
+        "title": "d) Capture Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1137,7 +1149,7 @@
         }
     },
     "micro_c_status" : {
-        "title": "l) Micro-C",
+        "title": "d) Micro-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1149,7 +1161,7 @@
         }
     },
     "chia_pet_status" : {
-        "title": "m) ChIA-PET",
+        "title": "d) ChIA-PET",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1161,7 +1173,7 @@
         }
     },
     "in_situ_chia_pet_status" : {
-        "title": "m) in situ ChIA-PET",
+        "title": "d) in situ ChIA-PET",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1173,7 +1185,7 @@
         }
     },
     "trac_loop_status" : {
-        "title": "n) TrAC-loop",
+        "title": "d) TrAC-loop",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1185,7 +1197,7 @@
         }
     },
     "plac_seq_status" : {
-        "title": "o) PLAC-seq",
+        "title": "d) PLAC-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1197,7 +1209,7 @@
         }
     },
     "repli_2_stage_status" : {
-        "title": "p) Repliseq - 2 Stage",
+        "title": "e) Repliseq - 2 Stage",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1209,7 +1221,7 @@
         }
     },
     "repli_multi_stage_status" : {
-        "title": "q) Repliseq - Multi Stage",
+        "title": "e) Repliseq - Multi Stage",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1221,7 +1233,7 @@
         }
     },
     "tsa_seq_status" : {
-        "title": "r) TSA-seq",
+        "title": "e) TSA-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1233,7 +1245,7 @@
         }
     },
     "nad_seq_status" : {
-        "title": "s) NAD-seq",
+        "title": "e) NAD-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1245,7 +1257,7 @@
         }
     },
     "atac_seq_status" : {
-        "title": "t) ATAC-seq",
+        "title": "f) ATAC-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1257,7 +1269,7 @@
         }
     },
     "chip_seq_status" : {
-        "title": "u) ChIP-seq",
+        "title": "g) ChIP-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1269,7 +1281,7 @@
         }
     },
     "margi_status" : {
-        "title": "v) MARGI",
+        "title": "h) MARGI",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1281,12 +1293,48 @@
         }
     },
     "rna_seq_status" : {
-        "title": "w) RNA-seq",
+        "title": "i) RNA-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "bam_re_status" : {
+        "title": "l) Restriction Enzyme Check",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "rna_strandedness_status" : {
+        "title": "l) RNA Strandedness",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastq_first_line_status" : {
+        "title": "l) Fastq first line",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1435,18 +1483,6 @@
             }
         }
     },
-    "rna_strandedness_status" : {
-        "title": "y) RNA Strandedness",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true,  "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "check_for_strandedness_consistency": {
         "title": "RNA-seq experiments without strandedness verification",
         "group": "Metadata checks",
@@ -1454,18 +1490,6 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "bamqc_status" : {
-        "title": "z) BamQC",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1481,18 +1505,6 @@
                     "dependencies": []
                 },
                 "webdev": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "fastq_first_line_status" : {
-        "title": "aa) Fastq first line",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }

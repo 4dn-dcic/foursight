@@ -32,15 +32,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     wf_dict = [{
         'app_name': 'md5',
-        'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6'
+        'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
+        "config": {"ebs_size": 10}
     },
         {
         'app_name': 'fastqc-0-11-4-1',
-        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
+        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9',
+        "config": {"ebs_size": 10}
     },
         {
         'app_name': 'pairsqc-single',
-        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3'
+        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3',
+        "config": {"ebs_size": 10}
     },
         {
         'app_name': 'bwa-mem',
@@ -291,13 +294,23 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bamqc",
         "workflow_uuid": "42683ab1-59bf-4ec5-a973-030053a134f1",
-        "overwrite_input_extra": False
+        "overwrite_input_extra": False,
+        "config": {"ebs_size": 10}
         },
         {
         "app_name": "fastq-first-line",
         "workflow_uuid": "93a1a931-d55d-4623-adfb-0fa735daf6ae",
         "overwrite_input_extra": False,
         'config': {'mem': 0.5, 'cpu': 1}
+        },
+        {
+        "app_name": "re_checker_workflow",
+        "workflow_uuid": "8479d16e-667a-41e9-8ace-391128f50dc5",
+        "parameters": {},
+        "config": {"mem": 4,
+                   "ebs_size": 10,
+                   "instance_type": "t3.medium"
+                   }
         },
         # temp
         {
