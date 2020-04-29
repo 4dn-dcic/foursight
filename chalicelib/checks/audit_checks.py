@@ -823,93 +823,96 @@ def check_fastq_read_id(connection, **kwargs):
 
 
 @check_function()
-def released_hela_sequences(connection, **kwargs):
+def released_hela_fastq(connection, **kwargs):
     '''
-    Check if fastq and bam files from HeLa cells have a visible status.
+    Check if fastq files from HeLa cells have a visible status.
     '''
-    check = CheckResult(connection, 'released_hela_sequences')
-    check.action = 'restrict_hela_sequences'
+    # TODO: add the possibility to ignore files
+    check = CheckResult(connection, 'released_hela_fastq')
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
-    formats = ['fastq', 'bam']
-    # get current list of HeLa-related biosources
-    url_hela = ('search/?type=Biosource'
-                '&individual.uuid=8b2bd1cc-3d14-441c-bd82-8bc004ac326a'
-                '&frame=raw&field=biosource_name')
-    search_hela = ff_utils.search_metadata(url_hela, key=connection.ff_keys)
-    # search experiments with HeLa-biosources
-    url_exp = 'search/?type=Experiment'
-    url_exp += ''.join(['&biosample.biosource_summary=' + bio['biosource_name'] for bio in search_hela])
-    url_exp += '&field=files&field=processed_files&field=other_processed_files&field=accession&frame=raw'
-    search_exp = ff_utils.search_metadata(url_exp, key=connection.ff_keys)
-    # search files from experiments
-    seq_files = {}  # maps file to experiment
-    for experiment in search_exp:
-        all_files = (
-            experiment.get('files', []) +
-            experiment.get('processed_files', []) +
-            [an_opf for opf in experiment.get('other_processed_files', []) for an_opf in opf.get('files', [])])
-        for a_file in all_files:
-            if a_file.get('file_format').get('display_title') in formats:
-                seq_files[a_file['uuid']] = experiment['accession']
-    es_files = ff_utils.get_es_metadata(list(seq_files.keys()),
-                                        key=connection.ff_keys,
-                                        chunk_size=200, is_generator=True)
-    interm_files = {}  # maps intermediate files to experiment
-    visible_hela = {}  # collects visible hela sequence files
-    for a_file in es_files:
-        exp_accession = seq_files[a_file['uuid']]
-        file_status = a_file['embedded']['status']
-        file_format = a_file['embedded']['file_format']['display_title']
-        if file_status in visible_statuses:
-            visible_hela.setdefault(exp_accession, []).append({
-                'file accession': a_file['embedded']['accession'],
-                'file format': file_format,
-                'status': file_status})
-        for wfr_out in a_file['embedded'].get('workflow_run_outputs', []):
-            for input_file in wfr_out.get('input_files', []):
-                if input_file.get('value') and input_file['value']['file_format']['display_title'] == 'bam':
-                    interm_files[input_file['value']['uuid']] = exp_accession
-        for wfr_in in a_file['embedded'].get('workflow_run_inputs', []):
-            for output_file in wfr_in.get('output_files', []):
-                if output_file.get('value') and output_file['value']['file_format']['display_title'] == 'fastq':
-                    interm_files[output_file['value']['uuid']] = exp_accession
-    # get status of intermediate files
-    es_int = ff_utils.get_es_metadata(list(interm_files.keys()),
-                                      filters={'status': visible_statuses},
-                                      key=connection.ff_keys)
-    for int_file in es_int:
-        exp_accession = interm_files[int_file['uuid']]
-        visible_hela.setdefault(exp_accession, []).append({
-            'file accession': int_file['embedded']['accession'],
-            'file format': int_file['embedded']['file_format']['display_title'],
-            'status': int_file['embedded']['status']})
-
-    visible_files = [file for exp in visible_hela for file in visible_hela[exp]]
-    if visible_hela:
+    query_fastq = 'search/?type=FileFastq'
+    query_fastq += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
+    query_fastq += ''.join(['&status=' + status for status in visible_statuses])
+    res_fastq = ff_utils.search_metadata(query_fastq + '&field=accession', key=connection.ff_keys)
+    if res_fastq:
         check.status = 'WARN'
-        check.summary = 'Sequence files from HeLa with visible status found'
-        check.description = '{} fastq or bam files from HeLa found with status: {}'.format(
-            len(visible_files),
-            str(visible_statuses).strip('[]'))
+        check.summary = 'Fastq files from HeLa with visible status found'
+        check.description = '{} fastq files from HeLa found with status: {}'.format(len(res_fastq), str(visible_statuses).strip('[]'))
+        check.action_message = 'Will attempt to patch {} files to status=restricted'.format(len(res_fastq))
+        check.allow_action = True
     else:
         check.status = 'PASS'
-        check.summary = 'No sequence files from HeLa with visible status found'
-        check.description = 'No fastq or bam files from HeLa found with status: {}'.format(
-            str(visible_statuses).strip('[]'))
-        check.action_message = 'Will attempt to patch {} files to status=restricted'.format(
-            len(visible_files))
-        check.allow_action = True  # allows the action to be run
-    check.full_output = visible_hela
-    check.brief_output = [vf['file accession'] for vf in visible_files]
+        check.summary = 'No fastq files from HeLa with visible status found'
+        check.description = 'No fastq files from HeLa found with status: {}'.format(str(visible_statuses).strip('[]'))
+    check.brief_output = [hela_fastq['accession'] for hela_fastq in res_fastq]
+    check.action = 'restrict_hela'
+    return check
+
+
+@check_function()
+def released_output_from_restricted_input(connection, **kwargs):
+    '''
+    Check if fastq or bam files produced by workflows with restricted input
+    files (typically because from HeLa cells) have a visible status.
+    '''
+    check = CheckResult(connection, released_output_from_restricted_input)
+    visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
+    formats = ['fastq', 'bam']
+    query_wfr = 'search/?type=WorkflowRun'
+    query_wfr += '&input_files.value.status=restricted'
+    query_wfr += ''.join(['&output_files.value.status=' + st for st in visible_statuses])
+    query_wfr += ''.join(['&output_files.value.file_format.display_title=' + f for f in formats])
+    query_wfr += '&field=output_files'
+    res_wfr = ff_utils.search_metadata(query_wfr, key=connection.ff_keys)
+    # this returns wfrs that have AT LEAST one output file with these values
+    # import pdb; pdb.set_trace()
+    files_visible = []
+    for a_wfr in res_wfr:
+        for a_file in a_wfr.get('output_files', []):
+            if a_file.get('value'):
+                accession = a_file['value']['accession']
+                format = a_file['value']['file_format']['display_title']
+                status = a_file['value']['status']
+                if format in formats and status in visible_statuses:
+                    files_visible.append({
+                        'accession': accession,
+                        'file_format': format,
+                        'file_status': status})
+
+    # add a search for processed files without workflow input
+    query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value'
+    query_pf += ''.join(['&output_files.value.status=' + st for st in visible_statuses])
+    query_pf += ''.join(['&file_format.file_format=' + f for f in formats])
+    query_pf += '&field=accession&field=status&field=file_format'
+    res_pf = ff_utils.search_metadata(query_pf, key=connection.ff_keys)
+    for a_pf in res_pf:
+        files_visible.append({
+            'accession': a_pf['accession'],
+            'file_format': a_pf['file_format']['display_title'],
+            'file_status': a_pf['status']})
+    # import pdb; pdb.set_trace()
+    if files_visible:
+        check.status = 'WARN'
+        check.summary = 'Output files with un-restricted status found'
+        check.description = '{} visible output files found from wfr with restricted files as input'.format(len(files_visible))
+        check.action_message = 'Will attempt to patch {} files to status=restricted'.format(len(files_visible))
+        check.allow_action = True
+    else:
+        check.status = 'PASS'
+        check.summary = 'No output files with un-restricted status found'
+        check.description = 'No visible output files found from wfr with restricted files as input'.format(str(visible_statuses).strip('[]'))
+    check.full_output = files_visible
+    check.brief_output = [a_file['accession'] for a_file in files_visible]
+    check.action = 'restrict_hela'
     return check
 
 
 @action_function()
-def restrict_hela_sequences(connection, **kwargs):
+def restrict_hela(connection, **kwargs):
     '''
-    Patch the status of all visible HeLa sequence files to "restricted"
+    Patch the status of visible HeLa files to "restricted"
     '''
-    action = ActionResult(connection, 'restrict_hela_sequences')
+    action = ActionResult(connection, 'restrict_hela')
     check_res = action.get_associated_check_result(kwargs)
     files_to_patch = check_res['brief_output']
     action_logs = {'patch_success': [], 'patch_failure': []}

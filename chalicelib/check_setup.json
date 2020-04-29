@@ -1511,8 +1511,20 @@
             }
         }
     },
-    "released_hela_sequences": {
-        "title": "HeLa files not restricted",
+    "released_hela_fastq": {
+        "title": "HeLa fastq files not restricted",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "released_output_from_restricted_input": {
+        "title": "Output files not restricted",
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
