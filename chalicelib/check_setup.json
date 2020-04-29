@@ -1536,7 +1536,7 @@
         }
     },
     "released_output_from_restricted_input": {
-        "title": "Output files not restricted",
+        "title": "Processed files not restricted",
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {

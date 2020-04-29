@@ -830,24 +830,31 @@ def released_hela_fastq(connection, **kwargs):
     '''
     Check if fastq files from HeLa cells have a visible status.
     '''
-    # TODO: add the possibility to ignore files
     check = CheckResult(connection, 'released_hela_fastq')
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
     query_fastq = 'search/?type=FileFastq'
     query_fastq += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
     query_fastq += ''.join(['&status=' + status for status in visible_statuses])
-    res_fastq = ff_utils.search_metadata(query_fastq + '&field=accession', key=connection.ff_keys)
-    if res_fastq:
+    query_fastq += '&field=uuid&field=file_format&field=status'
+    res_fastq = ff_utils.search_metadata(query_fastq, key=connection.ff_keys)
+    files = {'visible': []}
+    for a_file in res_fastq:
+        files['visible'].append({
+            'uuid': a_file['uuid'],
+            'file_format': a_file['file_format']['file_format'],
+            'file_status': a_file['status']})
+    if files['visible']:
         check.status = 'WARN'
         check.summary = 'Fastq files from HeLa with visible status found'
-        check.description = '{} fastq files from HeLa found with status: {}'.format(len(res_fastq), str(visible_statuses).strip('[]'))
-        check.action_message = 'Will attempt to patch {} files to status=restricted'.format(len(res_fastq))
+        check.description = '%s fastq files from HeLa found with status: %s' % (len(files['visible']), str(visible_statuses).strip('[]'))
+        check.action_message = 'Will attempt to patch %s files to status=restricted' % len(files['visible'])
         check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'No fastq files from HeLa with visible status found'
-        check.description = 'No fastq files from HeLa found with status: {}'.format(str(visible_statuses).strip('[]'))
-    check.brief_output = [hela_fastq['accession'] for hela_fastq in res_fastq]
+        check.description = 'No fastq files from HeLa found with status: %s' % str(visible_statuses).strip('[]')
+    check.brief_output = {'visible': '%s files' % len(files['visible'])}
+    check.full_output = files
     check.action = 'restrict_hela'
     return check
 
@@ -856,7 +863,10 @@ def released_hela_fastq(connection, **kwargs):
 def released_output_from_restricted_input(connection, **kwargs):
     '''
     Check if fastq or bam files produced by workflows with restricted input
-    files (typically because from HeLa cells) have a visible status.
+    files (typically because deriving from HeLa cells) have a visible status.
+    In addition, check if any fastq or bam processed file (with visible
+    status) is not output of a workflow ('unlinked'). If this happens, the
+    check cannot ensure that all processed files are analyzed.
     '''
     check = CheckResult(connection, 'released_output_from_restricted_input')
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
@@ -868,43 +878,45 @@ def released_output_from_restricted_input(connection, **kwargs):
     query_wfr += '&field=output_files'
     res_wfr = ff_utils.search_metadata(query_wfr, key=connection.ff_keys)
     # this returns wfrs that have AT LEAST one output file with these values
-    files_visible = []
+    files = {'visible': [], 'unlinked': []}
     for a_wfr in res_wfr:
         for a_file in a_wfr.get('output_files', []):
             if a_file.get('value'):
-                accession = a_file['value']['accession']
                 format = a_file['value']['file_format']['display_title']
                 status = a_file['value']['status']
                 if format in formats and status in visible_statuses:
-                    files_visible.append({
-                        'accession': accession,
+                    files['visible'].append({
+                        'uuid': a_file['value']['uuid'],
                         'file_format': format,
                         'file_status': status})
-
-    # add a search for processed files without workflow input
+    # search for visible fastq or bam processed files that are not output of any workflow
     query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value'
-    query_pf += ''.join(['&output_files.value.status=' + st for st in visible_statuses])
+    query_pf += ''.join(['&status=' + st for st in visible_statuses])
     query_pf += ''.join(['&file_format.file_format=' + f for f in formats])
-    query_pf += '&field=accession&field=status&field=file_format'
+    query_pf += '&field=uuid&field=status&field=file_format'
     res_pf = ff_utils.search_metadata(query_pf, key=connection.ff_keys)
     for a_pf in res_pf:
-        files_visible.append({
-            'accession': a_pf['accession'],
+        files['unlinked'].append({
+            'uuid': a_pf['uuid'],
             'file_format': a_pf['file_format']['display_title'],
             'file_status': a_pf['status']})
 
-    if files_visible:
+    if files['visible'] or files['unlinked']:
         check.status = 'WARN'
-        check.summary = 'Output files with un-restricted status found'
-        check.description = '{} visible output files found from wfr with restricted files as input'.format(len(files_visible))
-        check.action_message = 'Will attempt to patch {} files to status=restricted'.format(len(files_visible))
-        check.allow_action = True
+        check.summary = "Problematic processed files found"
+        check.description = "Found %s problematic FASTQ or BAM processed files: 'visible' files should be restricted" % (len(files['visible']) + len(files['unlinked']))
+        if files['unlinked']:
+            check.description += "; 'unlinked' files are not output of any workflow, therefore cannot be analyzed (consider linking)"
+        if files['visible']:
+            check.allow_action = True
+            check.action_message = "Will attempt to patch %s 'visible' files to status=restricted" % len(files['visible'])
     else:
         check.status = 'PASS'
-        check.summary = 'No output files with un-restricted status found'
-        check.description = 'No visible output files found from wfr with restricted files as input'.format(str(visible_statuses).strip('[]'))
-    check.full_output = files_visible
-    check.brief_output = [a_file['accession'] for a_file in files_visible]
+        check.summary = "No problematic processed files found"
+        check.description = "No visible output files found from wfr with restricted files as input"
+    check.full_output = files
+    check.brief_output = {'visible': '%s files' % len(files['visible']),
+                          'unlinked': '%s files' % len(files['unlinked'])}
     check.action = 'restrict_hela'
     return check
 
@@ -916,16 +928,16 @@ def restrict_hela(connection, **kwargs):
     '''
     action = ActionResult(connection, 'restrict_hela')
     check_res = action.get_associated_check_result(kwargs)
-    files_to_patch = check_res['brief_output']
+    files_to_patch = check_res['full_output']['visible']
     action_logs = {'patch_success': [], 'patch_failure': []}
     patch = {'status': 'restricted'}
-    for file_acc in files_to_patch:
+    for a_file in files_to_patch:
         try:
-            ff_utils.patch_metadata(patch, file_acc, key=connection.ff_keys)
+            ff_utils.patch_metadata(patch, a_file['uuid'], key=connection.ff_keys)
         except Exception as e:
-            action_logs['patch_failure'].append({file_acc: str(e)})
+            action_logs['patch_failure'].append({a_file['uuid']: str(e)})
         else:
-            action_logs['patch_success'].append(file_acc)
+            action_logs['patch_success'].append(a_file['uuid'])
     if action_logs['patch_failure']:
         action.status = 'FAIL'
     else:
