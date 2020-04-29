@@ -858,7 +858,7 @@ def released_output_from_restricted_input(connection, **kwargs):
     Check if fastq or bam files produced by workflows with restricted input
     files (typically because from HeLa cells) have a visible status.
     '''
-    check = CheckResult(connection, released_output_from_restricted_input)
+    check = CheckResult(connection, 'released_output_from_restricted_input')
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
     formats = ['fastq', 'bam']
     query_wfr = 'search/?type=WorkflowRun'
@@ -868,7 +868,6 @@ def released_output_from_restricted_input(connection, **kwargs):
     query_wfr += '&field=output_files'
     res_wfr = ff_utils.search_metadata(query_wfr, key=connection.ff_keys)
     # this returns wfrs that have AT LEAST one output file with these values
-    # import pdb; pdb.set_trace()
     files_visible = []
     for a_wfr in res_wfr:
         for a_file in a_wfr.get('output_files', []):
@@ -893,7 +892,7 @@ def released_output_from_restricted_input(connection, **kwargs):
             'accession': a_pf['accession'],
             'file_format': a_pf['file_format']['display_title'],
             'file_status': a_pf['status']})
-    # import pdb; pdb.set_trace()
+
     if files_visible:
         check.status = 'WARN'
         check.summary = 'Output files with un-restricted status found'
