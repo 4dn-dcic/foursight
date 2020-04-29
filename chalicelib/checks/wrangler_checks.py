@@ -143,7 +143,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     chkstatus = ''
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
-    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
+    fulloutput = {'biorxivs2check': {}, 'false_positives': {}, 'GEO datasets found': {}}
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
@@ -243,6 +243,18 @@ def biorxiv_is_now_published(connection, **kwargs):
             # we have possible article(s) - populate check_result
             fndcnt += 1
             fulloutput['biorxivs2check'][buuid] = ['PMID:' + id for id in ids]
+            # look for GEO datasets
+            for id_ in ids:
+                result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
+                                      'elink.fcgi?dbfrom=pubmed&db=gds&id={}&retmode=json'.format(id_))
+                geo_ids = [num for link in json.loads(result.text).get('linksets', [])
+                           for item in link.get('linksetdbs', []) for num in item.get('links', [])]
+                geo_accs = []
+                for geo_id in geo_ids:
+                    geo_result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
+                                              'efetch.fcgi?db=gds&id={}'.format(geo_id))
+                    geo_accs.extend([item for item in geo_result.text.split() if item.startswith('GSE')])
+                fulloutput['GEO datasets found']['PMID:' + id_] = geo_accs
 
     if fndcnt != 0:
         chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
