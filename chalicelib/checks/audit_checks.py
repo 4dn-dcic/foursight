@@ -826,15 +826,17 @@ def check_fastq_read_id(connection, **kwargs):
 
 
 @check_function()
-def released_hela_fastq(connection, **kwargs):
+def released_hela_files(connection, **kwargs):
     '''
-    Check if fastq files from HeLa cells have a visible status.
+    Check if fastq or bam files from HeLa cells have a visible status.
     '''
-    check = CheckResult(connection, 'released_hela_fastq')
+    check = CheckResult(connection, 'released_hela_files')
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
-    query_fastq = 'search/?type=FileFastq'
+    formats = ['fastq', 'bam']
+    query_fastq = 'search/?type=File'
+    query_fastq += ''.join(['&file_format.file_format=' + f for f in formats])
     query_fastq += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
-    query_fastq += ''.join(['&status=' + status for status in visible_statuses])
+    query_fastq += ''.join(['&status=' + s for s in visible_statuses])
     query_fastq += '&field=uuid&field=file_format&field=status'
     res_fastq = ff_utils.search_metadata(query_fastq, key=connection.ff_keys)
     files = {'visible': []}
@@ -873,7 +875,7 @@ def released_output_from_restricted_input(connection, **kwargs):
     formats = ['fastq', 'bam']
     query_wfr = 'search/?type=WorkflowRun'
     query_wfr += '&input_files.value.status=restricted'
-    query_wfr += ''.join(['&output_files.value.status=' + st for st in visible_statuses])
+    query_wfr += ''.join(['&output_files.value.status=' + s for s in visible_statuses])
     query_wfr += ''.join(['&output_files.value.file_format.display_title=' + f for f in formats])
     query_wfr += '&field=output_files'
     res_wfr = ff_utils.search_metadata(query_wfr, key=connection.ff_keys)

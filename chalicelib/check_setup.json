@@ -1523,8 +1523,8 @@
             }
         }
     },
-    "released_hela_fastq": {
-        "title": "HeLa fastq files not restricted",
+    "released_hela_files": {
+        "title": "HeLa fastq or bam files not restricted",
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
