@@ -833,14 +833,14 @@ def released_hela_files(connection, **kwargs):
     check = CheckResult(connection, 'released_hela_files')
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
     formats = ['fastq', 'bam']
-    query_fastq = 'search/?type=File'
-    query_fastq += ''.join(['&file_format.file_format=' + f for f in formats])
-    query_fastq += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
-    query_fastq += ''.join(['&status=' + s for s in visible_statuses])
-    query_fastq += '&field=uuid&field=file_format&field=status'
-    res_fastq = ff_utils.search_metadata(query_fastq, key=connection.ff_keys)
+    query = 'search/?type=File'
+    query += ''.join(['&file_format.file_format=' + f for f in formats])
+    query += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
+    query += ''.join(['&status=' + s for s in visible_statuses])
+    query += '&field=uuid&field=file_format&field=status'
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
     files = {'visible': []}
-    for a_file in res_fastq:
+    for a_file in res:
         files['visible'].append({
             'uuid': a_file['uuid'],
             'file_format': a_file['file_format']['file_format'],
@@ -853,8 +853,8 @@ def released_hela_files(connection, **kwargs):
         check.allow_action = True
     else:
         check.status = 'PASS'
-        check.summary = 'No fastq files from HeLa with visible status found'
-        check.description = 'No fastq files from HeLa found with status: %s' % str(visible_statuses).strip('[]')
+        check.summary = 'No fastq or bam files from HeLa with visible status found'
+        check.description = 'No fastq or bam files from HeLa found with status: %s' % str(visible_statuses).strip('[]')
     check.brief_output = {'visible': '%s files' % len(files['visible'])}
     check.full_output = files
     check.action = 'restrict_hela'
