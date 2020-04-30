@@ -247,14 +247,18 @@ def biorxiv_is_now_published(connection, **kwargs):
             for id_ in ids:
                 result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
                                       'elink.fcgi?dbfrom=pubmed&db=gds&id={}&retmode=json'.format(id_))
+                if result.status_code != 200:
+                    continue
                 geo_ids = [num for link in json.loads(result.text).get('linksets', [])
                            for item in link.get('linksetdbs', []) for num in item.get('links', [])]
                 geo_accs = []
                 for geo_id in geo_ids:
                     geo_result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
                                               'efetch.fcgi?db=gds&id={}'.format(geo_id))
-                    geo_accs.extend([item for item in geo_result.text.split() if item.startswith('GSE')])
-                fulloutput['GEO datasets found']['PMID:' + id_] = geo_accs
+                    if geo_result.status_code == 200:
+                        geo_accs.extend([item for item in geo_result.text.split() if item.startswith('GSE')])
+                if geo_accs:
+                    fulloutput['GEO datasets found']['PMID:' + id_] = geo_accs
 
     if fndcnt != 0:
         chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
