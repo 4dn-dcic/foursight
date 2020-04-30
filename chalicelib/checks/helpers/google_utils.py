@@ -95,7 +95,7 @@ class GoogleAPISyncer:
     ):
         '''Authenticate with Google APIs and initialize sub-class instances.'''
         if s3UtilsInstance is None:
-            self._s3Utils = s3_utils.s3Utils(env=FF_PROD_BUCKET_ENV) # Google API Keys are stored on production bucket only ATM.
+            self._s3Utils = s3_utils.s3Utils(env='data') # Google API Keys are stored on production bucket only ATM.
         else:
             self._s3Utils = s3UtilsInstance
 
@@ -225,7 +225,7 @@ class GoogleAPISyncer:
                     raise Exception('Expected monthly interval(s) for analytics, but startDate and endDate "YYYY-MD" are different.')
                 for_date = common_start_date
 
-            return { 
+            return {
                 "reports"        : parsed_reports,
                 "for_date"       : for_date,
                 "date_increment" : date_increment
@@ -236,10 +236,10 @@ class GoogleAPISyncer:
         def __init__(self, syncer_instance):
             _NestedGoogleServiceAPI.__init__(self, syncer_instance)
             self.view_id = self.owner.extra_config.get('analytics_view_id', DEFAULT_GOOGLE_API_CONFIG['analytics_view_id'])
-            self._api = build('analyticsreporting', 'v4', credentials=self.owner.credentials)
+            self._api = build('analyticsreporting', 'v4', credentials=self.owner.credentials, cache_discovery=False)
 
 
-    
+
         def get_report_provider_method_names(self):
             '''
             Collects name of every single method defined on this classes which is
@@ -264,7 +264,7 @@ class GoogleAPISyncer:
 
             Arguments:
                 report_requests - A list of reportRequests.
-            
+
             Returns:
                 Parsed and transformed analytics data. See: GoogleAPISyncer.AnalyticsAPI.transform_report_result()
             '''
@@ -401,7 +401,7 @@ class GoogleAPISyncer:
 
             counter = 0
             created_list = []
-    
+
             if increment == 'daily':
                 end_date = today - timedelta(days=1)
 
@@ -412,7 +412,7 @@ class GoogleAPISyncer:
                     for_date_str = date_to_fill_from.isoformat()
                     response = self.create_tracking_item(
                         do_post_request = True,
-                        start_date      = for_date_str, 
+                        start_date      = for_date_str,
                         end_date        = for_date_str,
                         increment       = increment
                     )
@@ -727,4 +727,3 @@ class GoogleAPISyncer:
         TODO: Implement
         '''
         pass
-
