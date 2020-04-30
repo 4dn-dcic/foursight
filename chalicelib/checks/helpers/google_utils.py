@@ -95,7 +95,7 @@ class GoogleAPISyncer:
     ):
         '''Authenticate with Google APIs and initialize sub-class instances.'''
         if s3UtilsInstance is None:
-            self._s3Utils = s3_utils.s3Utils(env='data') # Google API Keys are stored on production bucket only ATM.
+            self._s3Utils = s3_utils.s3Utils(env='data')  # Google API Keys are stored on production bucket only ATM.
         else:
             self._s3Utils = s3UtilsInstance
 
