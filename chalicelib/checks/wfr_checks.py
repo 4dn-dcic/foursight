@@ -1733,7 +1733,7 @@ def bamqc_status(connection, **kwargs):
     default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
-    query = 'search/?file_type=alignment&{}'.format(stati)
+    query = 'search/?file_type=alignments&{}'.format(stati)
     query += '&type=FileProcessed'
     query += wfr_outputs
     query += '&quality_metric.display_title=No+value'
