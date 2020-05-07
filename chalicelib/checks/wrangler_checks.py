@@ -1842,3 +1842,30 @@ def add_suggested_enum_values(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def check_external_references_uri(connection, **kwargs):
+    '''
+    Check if external_references.uri is missing while external_references.ref
+    is present. Note that this check does not detect cases where multiple
+    references are present but not all have problems.
+    '''
+    check = CheckResult(connection, 'check_external_references_uri')
+    search = ('search/?type=Item&dbxrefs%21=No+value'
+              '&external_references.uri=No+value&field=dbxrefs&field=@id')
+    result = ff_utils.search_metadata(search, key=connection.ff_keys)
+    names = [ref.split(':')[0] for item in result for ref in item['dbxrefs']]
+    name_counts = [{na: names.count(na)} for na in set(names)]
+    items = [{'@id': item['@id'], 'dbxrefs': item['dbxrefs']} for item in result]
+    if items:
+        check.status = 'WARN'
+        check.summary = 'external_references.uri is missing'
+        check.description = '%s items missing uri' % len(items)
+    else:
+        check.status = 'PASS'
+        check.summary = 'All external_references uri are present'
+        check.description = 'All dbxrefs are formatted properly'
+    check.brief_output = name_counts
+    check.full_output = items
+    return check
