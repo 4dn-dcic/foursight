@@ -1403,7 +1403,7 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-    query = '/search/?file_type=states&type=File'
+    query = '/search/?file_type=chromatin states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     for re in res:
         if not re.get('higlass_defaults'):
