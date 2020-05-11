@@ -457,6 +457,9 @@ def bed2beddb_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
+    check.summary = 'Check is under construction'
+    return check
+
     accepted_types = ['LADs', 'boundaries', 'domain calls']
     file_size_limit = 100000  # 100KB
     # check indexing queue
