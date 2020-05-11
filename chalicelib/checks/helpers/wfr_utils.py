@@ -125,6 +125,10 @@ workflow_details = {
     're_checker_workflow': {
         "run_time": 200,
         "accepted_versions": ['v1.1', 'v1.2']
+    },
+    'merge-fastq': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
     }
 }
 
