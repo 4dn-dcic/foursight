@@ -384,7 +384,7 @@ def bg2bw_status(connection, **kwargs):
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
-             "extra_files.file_format.display_title!=bw"
+             "&extra_files.file_format.display_title!=bw"
              "&status!=uploading&status!=to be uploaded by workflow")
     # add date
     s_date = kwargs.get('start_date')
@@ -394,6 +394,7 @@ def bg2bw_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -456,7 +457,7 @@ def bed2beddb_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-    accepted_types = ['LADs', 'boundaries', 'domains']
+    accepted_types = ['LADs', 'boundaries', 'domain calls']
     file_size_limit = 100000  # 100KB
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
@@ -464,7 +465,7 @@ def bed2beddb_status(connection, **kwargs):
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bed"
-             "extra_files.file_format.display_title!=beddb"
+             "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow")
     query += "".join(["&file_type=" + i for i in accepted_types])
     # add date
@@ -1454,7 +1455,7 @@ def bed2multivec_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find bed files without bed.multires.mv5 files)
-    query = ("search/?file_format.file_format=bed&file_type=states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
+    query = ("search/?file_format.file_format=bed&file_type=chromatin states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:

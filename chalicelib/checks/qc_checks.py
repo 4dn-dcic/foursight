@@ -373,7 +373,7 @@ def identify_files_without_qc_summary_bam(connection, **kwargs):
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
     addon = kwargs.get('search_add_on')
-    search_query = 'search/?file_type=alignment&{}'.format(stati)
+    search_query = 'search/?file_type=alignments&{}'.format(stati)
     search_query += '&type=FileProcessed'
     search_query += wfr_outputs
 
