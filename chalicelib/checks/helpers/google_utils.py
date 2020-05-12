@@ -13,10 +13,7 @@ from collections import OrderedDict
 from dcicutils.env_utils import FF_PROD_BUCKET_ENV
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
-from dcicutils import (
-    ff_utils,
-    s3_utils
-)
+from dcicutils import ff_utils, s3_utils
 
 
 
@@ -29,7 +26,19 @@ DEFAULT_GOOGLE_API_CONFIG = {
 
     ],
     "analytics_view_id" : '132680007',
-    "analytics_page_size" : 10000
+    "analytics_page_size" : 10000,
+    "analytics_dimension_name_map" : {
+        "currentFilters"    : 1,
+        "name"              : 2,
+        "field"             : 3,
+        "term"              : 4,
+        "experimentType"    : 5,
+        "userGroups"        : 6
+    },
+    "analytics_metric_name_map" : {
+        "filesize"          : 1,
+        "downloads"         : 2
+    },
 }
 
 
@@ -509,6 +518,11 @@ class GoogleAPISyncer:
 
 
 
+        ################################
+        ### Item Views & Impressions ###
+        ################################
+
+
         @report
         def views_by_file(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
@@ -516,7 +530,11 @@ class GoogleAPISyncer:
                 'metrics': [
                     { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
-                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' }
+                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:uniquePurchases', 'formattingType' : 'INTEGER' }, # Total downloads + range queries
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("downloads", 2)), 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("filesize", 1)), 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:calcMetric_PercentRangeQueries', 'formattingType' : 'INTEGER' }
                 ],
                 'dimensions': [
                     { 'name': 'ga:productName' },
@@ -524,20 +542,26 @@ class GoogleAPISyncer:
                     { 'name': 'ga:productCategoryLevel2' },
                     { 'name': 'ga:productBrand' }
                 ],
-                "orderBys" : [{ 'fieldName' : 'ga:productDetailViews', 'sortOrder' : 'descending' }],
+                "orderBys" : [
+                    { 'fieldName': 'ga:uniquePurchases', 'sortOrder' : 'descending' },
+                    { 'fieldName' : 'ga:productDetailViews', 'sortOrder' : 'descending' }
+                ],
                 'dimensionFilterClauses' : [
                     {
                         "filters" : [
-                            { "dimensionName" : "ga:productCategoryLevel1", "expressions" : ["File"], "operator" : "EXACT" }
+                            {
+                                "dimensionName" : "ga:productCategoryLevel1",
+                                "expressions" : ["File"],
+                                "operator" : "EXACT"
+                            }
                         ]
                     }
                 ],
-                'pageSize' : 100
+                'pageSize' : 500
             }
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
-
 
 
         @report
@@ -568,7 +592,6 @@ class GoogleAPISyncer:
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
-
 
 
         @report(disabled=True)
@@ -613,6 +636,11 @@ class GoogleAPISyncer:
 
 
 
+        ################################
+        ####### Search Analytics #######
+        ################################
+
+
         @report(disabled=True)
         def search_search_queries(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
@@ -641,7 +669,6 @@ class GoogleAPISyncer:
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
-
 
 
         @report(disabled=True)
@@ -674,15 +701,14 @@ class GoogleAPISyncer:
             return report_request_json
 
 
-
         @report
         def fields_faceted(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'dimensions': [
                     #{ 'name': 'ga:eventLabel' }, # Too many distinct terms if we make it this granular.
-                    { 'name': 'ga:dimension3' }, # Field Name
-                    #{ 'name': 'ga:dimension4' }  # Term Name # # Too many distinct terms if we make it this granular.
+                    { 'name': 'ga:dimension' + str(self.owner.extra_config["analytics_dimension_name_map"].get("field", 3)) }, # Field Name
+                    #{ 'name': 'ga:dimension' + str(self.owner.extra_config["analytics_dimension_name_map"].get("term", 4)) }  # Term Name # # Too many distinct terms if we make it this granular.
                 ],
                 'metrics': [
                     { 'expression': 'ga:totalEvents', 'formattingType' : 'INTEGER' },
@@ -690,13 +716,52 @@ class GoogleAPISyncer:
                     { 'expression': 'ga:users', 'formattingType' : 'INTEGER' }
                 ],
                 "orderBys" : [{ 'fieldName' : 'ga:totalEvents', 'sortOrder' : 'descending' }],
-                'dimensionFilterClauses' : [
+                "dimensionFilterClauses" : [
                     {
                         "filters" : [
                             {
                                 "dimensionName" : "ga:eventAction",
                                 "expressions" : ["Set Filter"],
                                 "operator" : "EXACT"
+                            }
+                        ]
+                    }
+                ]
+            }
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+
+
+        #################################
+        #### File Download Analytics ####
+        #################################
+
+
+        @report
+        def file_downloads_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
+            report_request_json = {
+                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
+                'dimensions': [
+                    { 'name': 'ga:country' }
+                ],
+                'metrics': [
+                    #{ 'expression': 'ga:totalEvents', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:uniquePurchases', 'formattingType' : 'INTEGER' }, # Total downloads + range queries
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("downloads", 2)), 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("filesize", 1)), 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:calcMetric_PercentRangeQueries', 'formattingType' : 'INTEGER' }
+                ],
+                #"orderBys" : [{ 'fieldName' : 'ga:totalEvents', 'sortOrder' : 'descending' }],
+                "dimensionFilterClauses" : [
+                    {
+                        "filters" : [
+                            {
+                                "dimensionName" : "ga:productCategoryLevel1",
+                                "expressions" : ["File"],
+                                "operator" : "EXACT",
+                                "caseSensitive" : True
                             }
                         ]
                     }
@@ -727,3 +792,48 @@ class GoogleAPISyncer:
         TODO: Implement
         '''
         pass
+
+
+
+
+######### CODE TO TEST THE ABOVE #########
+
+'''
+The following is code to test the above class(es).
+Run this file in interactive mode and continue on:
+
+> python3 -i google_utils.py
+
+'''
+
+
+if __name__ == "__main__":
+    import sys
+    import os
+
+    if not sys.flags.interactive:
+        sys.exit("Exiting, not in interactive mode.\nRun interactively via `python3 -i google_utils.py`")
+
+    ak = {
+        "server": "http://localhost:8000",
+        "key": os.environ["AWS_ACCESS_KEY_ID"],
+        "secret": os.environ["AWS_SECRET_ACCESS_KEY"]
+    }
+
+    google = GoogleAPISyncer(ak)
+
+    # Examples of how to test next.
+    # No unit tests are setup since data in Google Analytics will vary day-by-day.
+    # Instead, manually compare results of output vs data shown in analytics UI to assert.
+
+    # > res_file_downloads1 = google.analytics.file_downloads_by_country()
+    # > res_file_downloads1
+
+    # Check to ensure data aligns with analytics, e.g.
+    # > res_search1 = google.analytics.search_search_queries()
+    # > res_search1["reports"]["search_search_queries"]
+    # > res_facets1 = google.analytics.fields_faceted()
+    # > res_facets1["reports"]["fields_faceted"]
+
+
+
