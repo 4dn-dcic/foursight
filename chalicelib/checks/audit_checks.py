@@ -313,10 +313,11 @@ def page_children_routes(connection, **kwargs):
     results = ff_utils.search_metadata(page_search, key=connection.ff_keys)
     problem_routes = {}
     for result in results:
-        bad_children = [child['name'] for child in result['children'] if
-                        child['name'] != result['name'] + '/' + child['name'].split('/')[-1]]
-        if bad_children:
-            problem_routes[result['name']] = bad_children
+        if result['name'] != 'resources/data-collections':
+            bad_children = [child['name'] for child in result['children'] if
+                            child['name'] != result['name'] + '/' + child['name'].split('/')[-1]]
+            if bad_children:
+                problem_routes[result['name']] = bad_children
 
     if problem_routes:
         check.status = 'WARN'

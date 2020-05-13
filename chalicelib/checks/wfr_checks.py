@@ -384,7 +384,7 @@ def bg2bw_status(connection, **kwargs):
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
-             "extra_files.file_format.display_title!=bw"
+             "&extra_files.file_format.display_title!=bw"
              "&status!=uploading&status!=to be uploaded by workflow")
     # add date
     s_date = kwargs.get('start_date')
@@ -394,6 +394,7 @@ def bg2bw_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -456,17 +457,21 @@ def bed2beddb_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-    accepted_types = ['LADs', 'boundaries', 'domains']
-    file_size_limit = 100000  # 100KB
+    check.summary = ''
+
+    # These are the accepted file types for this check
+    accepted_types = ['LADs', 'boundaries', 'domain calls', 'peaks']
+
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bed"
-             "extra_files.file_format.display_title!=beddb"
+             "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow")
     query += "".join(["&file_type=" + i for i in accepted_types])
+
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -475,17 +480,14 @@ def bed2beddb_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
     # The search
     res_all = ff_utils.search_metadata(query, key=my_auth)
 
-    res = [i for i in res_all if i['file_size'] < file_size_limit]
-    if not res:
+    if not res_all:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'bedtobeddb', my_auth, start)
-    if len(res_all) > len(res):
-        check.summary = 'Files with large size skipped, check parameters might need to change'
-        check.status = 'FAIL'
+    check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
     return check
 
 
@@ -1454,7 +1456,7 @@ def bed2multivec_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find bed files without bed.multires.mv5 files)
-    query = ("search/?file_format.file_format=bed&file_type=states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
+    query = ("search/?file_format.file_format=bed&file_type=chromatin states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1733,7 +1735,7 @@ def bamqc_status(connection, **kwargs):
     default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
-    query = 'search/?file_type=alignment&{}'.format(stati)
+    query = 'search/?file_type=alignments&{}'.format(stati)
     query += '&type=FileProcessed'
     query += wfr_outputs
     query += '&quality_metric.display_title=No+value'
