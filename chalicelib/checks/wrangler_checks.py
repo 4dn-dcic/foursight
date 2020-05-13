@@ -1853,7 +1853,7 @@ def check_external_references_uri(connection, **kwargs):
     '''
     check = CheckResult(connection, 'check_external_references_uri')
     search = ('search/?type=Item&dbxrefs%21=No+value'
-              '&external_references.uri=No+value&field=dbxrefs&field=@id')
+              '&external_references.uri=No+value&field=dbxrefs')
     result = ff_utils.search_metadata(search, key=connection.ff_keys)
     names = [ref.split(':')[0] for item in result for ref in item['dbxrefs']]
     name_counts = [{na: names.count(na)} for na in set(names)]
