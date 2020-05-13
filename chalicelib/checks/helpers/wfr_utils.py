@@ -1604,6 +1604,9 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 set_summary += "| missing step 1"
             elif problematic_run:
                 set_summary += "| problem in step 1"
+        # if there is a single replicate, skip madqc
+        elif len(step2_files) == 1:
+            step2_status = 'ready'
         # run step2 if step1 s are complete
         else:
             step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
