@@ -271,7 +271,7 @@
             <a class="title-image-hover opacity-transition" href={{context + 'view/' + env}}>
                 <img class="in-line" alt="FS logo" style="margin:-5px 2px 0px 0px;" height="30" src={{favicon}}></img>
             </a>
-            <span>{{'Foursight (' + stage + ')'}}</span>
+            <span>{{'Foursight'}}</span>
         </h3>
         {% if load_time %}
             <h5 class="center-element">
@@ -280,7 +280,8 @@
         {% endif %}
         {% if is_admin %}
             <h5 class="center-element">
-                <span>{{'Currently logged in as admin'}}</span>
+                <span>{{'Currently logged in as admin'}}</span> <br />
+                <span>{{'Deployment Stage is ' + stage + ''}}</span>
             </h5>
         {% else %}
             <h5 class="center-element">
