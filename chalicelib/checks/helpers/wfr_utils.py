@@ -1610,10 +1610,29 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 set_summary += "| problem in step 1"
         # run step2 if step1 s are complete
         else:
+            step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs)
 
-            step2_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
-
-
+            # if successful
+            if step2_result['status'] == 'complete':
+                pass
+            # if still running
+            elif step2_result['status'] == 'running':
+                step2_status = 'not ready'
+                running.append(['step2', set_acc])
+            # if run is not successful
+            elif step2_result['status'].startswith("no complete run, too many"):
+                step1_status = 'not ready'
+                problematic_run.append(['step2', set_acc])
+            # if it is missing
+            else:
+                step2_status = 'not ready'
+                # add part
+                name_tag = set_acc
+                inp_f = {'mad_qc.quantfiles': step2_files}
+                missing_run.append(['step2', ['mad_qc_workflow', organism, {}], inp_f, name_tag])
+        if step2_status != 'ready':
+            final_status = 'not ready'
 
         if final_status == 'ready':
             # add the tag
