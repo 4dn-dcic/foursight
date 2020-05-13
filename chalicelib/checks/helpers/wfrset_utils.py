@@ -308,6 +308,14 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                    "instance_type": "t3.medium"
                    }
         },
+        {
+        "app_name": "mad_qc_workflow",
+        "workflow_uuid": "4dba38f0-af7a-4432-88e4-ca804dea64f8",
+        "parameters": {},
+        "config": {"ebs_size": '10',
+                   "instance_type": "t3.medium"
+                   }
+        },
         # temp
         {
         "app_name": "",

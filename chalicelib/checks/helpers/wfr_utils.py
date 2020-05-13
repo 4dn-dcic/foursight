@@ -125,8 +125,13 @@ workflow_details = {
     're_checker_workflow': {
         "run_time": 200,
         "accepted_versions": ['v1.1']
+    },
+    'mad_qc_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['1.1_dcic_2']
     }
 }
+
 
 # accepted versions for completed pipelines
 accepted_versions = {
