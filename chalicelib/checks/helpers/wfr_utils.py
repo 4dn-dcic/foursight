@@ -1237,7 +1237,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'rna.fastqs_R1']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1611,7 +1612,9 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         # run step2 if step1 s are complete
         else:
             step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
-            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs)
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
+            print(step2_input['accession'])
+            print(step2_result)
 
             # if successful
             if step2_result['status'] == 'complete':
@@ -1640,11 +1643,11 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             complete['add_tag'] = [set_acc, tag]
         else:
             if running:
-                set_summary += "| running step 1"
+                set_summary += "| running step 2"
             elif missing_run:
-                set_summary += "| missing step 1"
+                set_summary += "| missing step 2"
             elif problematic_run:
-                set_summary += "| problem in step 1"
+                set_summary += "| problem in step 2"
 
         check.brief_output.append(set_summary)
         if running:
