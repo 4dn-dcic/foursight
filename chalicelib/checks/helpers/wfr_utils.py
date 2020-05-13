@@ -1480,9 +1480,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
 
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
-        for i in exp_files:
-            print(i, exp_files[i])
-
         paired = refs['pairing']
         organism = refs['organism']
         set_summary = " - ".join([set_acc, organism, refs['f_size']])
@@ -1496,7 +1493,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
         if organism not in ['mouse', 'human']:
             msg = 'No reference file for ' + organism
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
@@ -1513,7 +1509,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 not_verified.append(an_exp)
         if not_verified:
             msg = ', '.join(not_verified) + ' Not verified for strandedness'
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
@@ -1613,8 +1608,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         else:
             step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
             step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
-            print(step2_input['accession'])
-            print(step2_result)
 
             # if successful
             if step2_result['status'] == 'complete':
