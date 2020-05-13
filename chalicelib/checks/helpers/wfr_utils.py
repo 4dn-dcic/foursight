@@ -124,11 +124,15 @@ workflow_details = {
     },
     're_checker_workflow': {
         "run_time": 200,
-        "accepted_versions": ['v1.1']
+        "accepted_versions": ['v1.1', 'v1.2']
     },
     'mad_qc_workflow': {
         "run_time": 200,
         "accepted_versions": ['1.1_dcic_2']
+    },
+    'merge-fastq': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
     }
 }
 
@@ -1606,7 +1610,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 set_summary += "| problem in step 1"
         # run step2 if step1 s are complete
         else:
-            
+
             step2_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
 
 

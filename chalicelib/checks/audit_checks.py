@@ -510,19 +510,22 @@ def check_opf_status_mismatch(connection, **kwargs):
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.expand_es_metadata(list(set(files)), key=connection.ff_keys)
-    opf_status_dict = {
-        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] in files
-    }
+    resp =  ff_utils.get_es_metadata(list(set(files)),
+                                     sources=['links.quality_metric', 'object.status', 'uuid'],
+                                     key=connection.ff_keys)
+    opf_status_dict = {item['uuid']: item['object']['status'] for item in resp if item['uuid'] in files}
     opf_linked_dict = {
-        item['uuid']: item.get('quality_metric') for val in resp[0].values() for item in val if item['uuid'] in files
+        item['uuid']: item.get('links', {}).get('quality_metric', []) for item in resp if item['uuid'] in files
     }
-    opf_other_dict = {
-        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] not in files
-    }
+    quality_metrics = [uuid for item in resp for uuid in item.get('links', {}).get('quality_metric', [])]
+    qm_resp = ff_utils.get_es_metadata(list(set(quality_metrics)),
+                                       sources=['uuid', 'object.status'],
+                                       key=connection.ff_keys)
+    opf_other_dict = {item['uuid']: item['object']['status'] for item in qm_resp if item not in files}
     check.full_output = {}
     for result in results:
-        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid') for item in result.get('other_processed_files', [])}
+        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid')
+                   for item in result.get('other_processed_files', [])}
         titles = [item['title'] for item in result.get('other_processed_files', [])]
         titles.extend([item['title'] for exp in result.get('experiments_in_set', [])
                        for item in exp.get('other_processed_files', [])])
@@ -541,22 +544,22 @@ def check_opf_status_mismatch(connection, **kwargs):
                     problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
             elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
                 if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
-                    problem_dict[title] = {'files': list(statuses)[0], 'higlass_view_config': opf_status_dict[hg_dict[title]]}
-            elif 'release' not in result['status'] and (
-                STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
-            ):  # if ExpSet not released, and opf collection has higher status
+                    problem_dict[title] = {'files': list(statuses)[0],
+                                           'higlass_view_config': opf_status_dict[hg_dict[title]]}
+            elif 'release' not in result['status'] and (STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]):
+                # if ExpSet not released, and opf collection has higher status
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
             for f in file_list:
                 if opf_linked_dict.get(f['uuid']):
-                    if (STATUS_LEVEL[opf_other_dict[opf_linked_dict[f['uuid']]]] !=
-                        STATUS_LEVEL[opf_status_dict[f['uuid']]]):
-                        if title not in problem_dict:
-                            problem_dict[title] = {}
-                        if f['@id'] not in problem_dict[title]:
-                            problem_dict[title][f['@id']] = {}
-                        problem_dict[title][f['@id']]['quality_metric'] = {
-                            'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[opf_linked_dict[f['uuid']]]
-                        }
+                    for qm in opf_linked_dict[f['uuid']]:
+                        if (STATUS_LEVEL[opf_other_dict[qm]] != STATUS_LEVEL[opf_status_dict[f['uuid']]]):
+                            if title not in problem_dict:
+                                problem_dict[title] = {}
+                            if f['@id'] not in problem_dict[title]:
+                                problem_dict[title][f['@id']] = {}
+                            problem_dict[title][f['@id']]['quality_metric'] = {
+                                'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[qm]
+                            }
         if problem_dict:
             check.full_output[result['@id']] = problem_dict
     if check.full_output:
@@ -820,3 +823,126 @@ def check_fastq_read_id(connection, **kwargs):
         check.full_output = target_files
 
     return check
+
+
+@check_function()
+def released_hela_files(connection, **kwargs):
+    '''
+    Check if fastq or bam files from HeLa cells have a visible status.
+    '''
+    check = CheckResult(connection, 'released_hela_files')
+    visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
+    formats = ['fastq', 'bam']
+    query = 'search/?type=File'
+    query += ''.join(['&file_format.file_format=' + f for f in formats])
+    query += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
+    query += ''.join(['&status=' + s for s in visible_statuses])
+    query += '&field=uuid&field=file_format&field=status'
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    files = {'visible': []}
+    for a_file in res:
+        files['visible'].append({
+            'uuid': a_file['uuid'],
+            'file_format': a_file['file_format']['file_format'],
+            'file_status': a_file['status']})
+    if files['visible']:
+        check.status = 'WARN'
+        check.summary = 'Fastq files from HeLa with visible status found'
+        check.description = '%s fastq files from HeLa found with status: %s' % (len(files['visible']), str(visible_statuses).strip('[]'))
+        check.action_message = 'Will attempt to patch %s files to status=restricted' % len(files['visible'])
+        check.allow_action = True
+    else:
+        check.status = 'PASS'
+        check.summary = 'No fastq or bam files from HeLa with visible status found'
+        check.description = 'No fastq or bam files from HeLa found with status: %s' % str(visible_statuses).strip('[]')
+    check.brief_output = {'visible': '%s files' % len(files['visible'])}
+    check.full_output = files
+    check.action = 'restrict_hela'
+    return check
+
+
+@check_function()
+def released_output_from_restricted_input(connection, **kwargs):
+    '''
+    Check if fastq or bam files produced by workflows with restricted input
+    files (typically because deriving from HeLa cells) have a visible status.
+    In addition, check if any fastq or bam processed file (with visible
+    status) is not output of a workflow ('unlinked'). If this happens, the
+    check cannot ensure that all processed files are analyzed.
+    '''
+    check = CheckResult(connection, 'released_output_from_restricted_input')
+    visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
+    formats = ['fastq', 'bam']
+    query_wfr = 'search/?type=WorkflowRun'
+    query_wfr += '&input_files.value.status=restricted'
+    query_wfr += ''.join(['&output_files.value.status=' + s for s in visible_statuses])
+    query_wfr += ''.join(['&output_files.value.file_format.display_title=' + f for f in formats])
+    query_wfr += '&field=output_files'
+    res_wfr = ff_utils.search_metadata(query_wfr, key=connection.ff_keys)
+    # this returns wfrs that have AT LEAST one output file with these values
+    files = {'visible': [], 'unlinked': []}
+    for a_wfr in res_wfr:
+        for a_file in a_wfr.get('output_files', []):
+            if a_file.get('value'):
+                format = a_file['value']['file_format']['display_title']
+                status = a_file['value']['status']
+                if format in formats and status in visible_statuses:
+                    files['visible'].append({
+                        'uuid': a_file['value']['uuid'],
+                        'file_format': format,
+                        'file_status': status})
+    # search for visible fastq or bam processed files that are not output of any workflow
+    query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value'
+    query_pf += ''.join(['&status=' + st for st in visible_statuses])
+    query_pf += ''.join(['&file_format.file_format=' + f for f in formats])
+    query_pf += '&field=uuid&field=status&field=file_format'
+    res_pf = ff_utils.search_metadata(query_pf, key=connection.ff_keys)
+    for a_pf in res_pf:
+        files['unlinked'].append({
+            'uuid': a_pf['uuid'],
+            'file_format': a_pf['file_format']['display_title'],
+            'file_status': a_pf['status']})
+
+    if files['visible'] or files['unlinked']:
+        check.status = 'WARN'
+        check.summary = "Problematic processed files found"
+        check.description = "Found %s problematic FASTQ or BAM processed files: 'visible' files should be restricted" % (len(files['visible']) + len(files['unlinked']))
+        if files['unlinked']:
+            check.description += "; 'unlinked' files are not output of any workflow, therefore cannot be analyzed (consider linking)"
+        if files['visible']:
+            check.allow_action = True
+            check.action_message = "Will attempt to patch %s 'visible' files to status=restricted" % len(files['visible'])
+    else:
+        check.status = 'PASS'
+        check.summary = "No problematic processed files found"
+        check.description = "No visible output files found from wfr with restricted files as input"
+    check.full_output = files
+    check.brief_output = {'visible': '%s files' % len(files['visible']),
+                          'unlinked': '%s files' % len(files['unlinked'])}
+    check.action = 'restrict_hela'
+    return check
+
+
+@action_function()
+def restrict_hela(connection, **kwargs):
+    '''
+    Patch the status of visible HeLa files to "restricted"
+    '''
+    action = ActionResult(connection, 'restrict_hela')
+    check_res = action.get_associated_check_result(kwargs)
+    files_to_patch = check_res['full_output']['visible']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    patch = {'status': 'restricted'}
+    for a_file in files_to_patch:
+        try:
+            ff_utils.patch_metadata(patch, a_file['uuid'], key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({a_file['uuid']: str(e)})
+        else:
+            action_logs['patch_success'].append(a_file['uuid'])
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action

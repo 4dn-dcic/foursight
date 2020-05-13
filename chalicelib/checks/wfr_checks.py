@@ -181,7 +181,7 @@ def md5run_start(connection, **kwargs):
         inp_f = {'input_file': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
 
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -258,7 +258,7 @@ def fastqc_start(connection, **kwargs):
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -352,7 +352,7 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -384,7 +384,7 @@ def bg2bw_status(connection, **kwargs):
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
-             "extra_files.file_format.display_title!=bw"
+             "&extra_files.file_format.display_title!=bw"
              "&status!=uploading&status!=to be uploaded by workflow")
     # add date
     s_date = kwargs.get('start_date')
@@ -394,6 +394,7 @@ def bg2bw_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -456,7 +457,10 @@ def bed2beddb_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-    accepted_types = ['LADs', 'boundaries', 'domains']
+    check.summary = 'Check is under construction'
+    return check
+
+    accepted_types = ['LADs', 'boundaries', 'domain calls']
     file_size_limit = 100000  # 100KB
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
@@ -464,7 +468,7 @@ def bed2beddb_status(connection, **kwargs):
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bed"
-             "extra_files.file_format.display_title!=beddb"
+             "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow")
     query += "".join(["&file_type=" + i for i in accepted_types])
     # add date
@@ -1454,7 +1458,7 @@ def bed2multivec_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find bed files without bed.multires.mv5 files)
-    query = ("search/?file_format.file_format=bed&file_type=states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
+    query = ("search/?file_format.file_format=bed&file_type=chromatin states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1733,7 +1737,7 @@ def bamqc_status(connection, **kwargs):
     default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
-    query = 'search/?file_type=alignment&{}'.format(stati)
+    query = 'search/?file_type=alignments&{}'.format(stati)
     query += '&type=FileProcessed'
     query += wfr_outputs
     query += '&quality_metric.display_title=No+value'
@@ -1931,7 +1935,9 @@ def bam_re_status(connection, **kwargs):
         return check
     # check if they were processed with an acceptable enzyme
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
-    acceptable_enzymes = ["AluI", "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI"]
+    acceptable_enzymes = ["AluI", "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
+                          "MspI", "NcoI_MspI_BspHI"  # added patterns in action
+                          ]
     # make a new list of files to work on
     filtered_res = []
     # make a list of skipped files
@@ -1956,6 +1962,7 @@ def bam_re_status(connection, **kwargs):
         check.summary += ', ' + message
         check.brief_output.insert(0, message)
         check.full_output['skipped'] = [i['accession'] for i in missing_nz_files]
+        check.status = 'WARN'
     return check
 
 
@@ -1968,6 +1975,11 @@ def bam_re_start(connection, **kwargs):
     my_auth = connection.ff_keys
     bam_re_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
+    # these enzymes are not covered by workflow, but can be covered with these patterns
+    nz_patterns = {"MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
+                   "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
+                                                           "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
+                                                           "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}}}
     if kwargs.get('start_missing_run'):
         targets.extend(bam_re_check_result.get('files_without_run', []))
     if kwargs.get('start_missing_meta'):
@@ -1981,18 +1993,15 @@ def bam_re_start(connection, **kwargs):
         nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'bamfile': a_file['@id']}
-        additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
-        # for small files set ebs to 10 (otherwise 2x)
-        # file_size = a_file.get('file_size')
-        # if file_size:
-        #     if file_size < 5000000000:
-        #         additional_setup['config'] = {"ebs_size": 10}
-
+        if nz in nz_patterns:
+            additional_setup = {"parameters": nz_patterns[nz]}
+        else:
+            additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
         wfr_setup = wfrset_utils.step_settings('re_checker_workflow',
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
