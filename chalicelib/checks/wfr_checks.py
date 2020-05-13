@@ -401,6 +401,15 @@ def bg2bw_status(connection, **kwargs):
                "&extra_files.status=uploading"
                "&extra_files.status=to be uploaded by workflow"
                "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
     res_one = ff_utils.search_metadata(query, key=my_auth)
     res_two = ff_utils.search_metadata(query_f, key=my_auth)
