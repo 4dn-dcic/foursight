@@ -488,7 +488,6 @@ def bed2beddb_status(connection, **kwargs):
              "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow")
     query += "".join(["&file_type=" + i for i in accepted_types])
-
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -498,8 +497,25 @@ def bed2beddb_status(connection, **kwargs):
     if lab:
         query += '&lab.display_title=' + lab
 
+    # build a second query for checking failed ones
+    query_f = ("/search/?type=FileProcessed&file_format.file_format=bed"
+               "&extra_files.file_format.display_title=beddb"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
-    res_all = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res_all = res_one + res_two
 
     if not res_all:
         check.summary = 'All Good!'
