@@ -1515,7 +1515,11 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             continue
 
         # cycle through the experiments, skip the ones without usable files
+        # accumulate files for madqc
+        step2_files = []
+        step2_status = 'ready'
         for exp in exp_files.keys():
+            step1_status = 'ready'
             if not exp_files.get(exp):
                 continue
 
@@ -1553,6 +1557,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
             # if successful
             if step1_result['status'] == 'complete':
+                # add  madqc file
+                step2_files.append(step1_result['rna.gene_expression'])
                 # create processed files list for experiment
                 exp_results = []
                 for a_type in ['rna.outbam',
@@ -1566,15 +1572,15 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 complete['patch_opf'].append([exp, exp_results])
             # if still running
             elif step1_result['status'] == 'running':
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 running.append(['step1', exp])
             # if run is not successful
             elif step1_result['status'].startswith("no complete run, too many"):
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 problematic_run.append(['step1', exp])
             # if it is missing
             else:
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 # add part
                 name_tag = exp
                 inp_f = {'rna.align_index': rna_star_index[organism],
@@ -1588,6 +1594,22 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                     inp_f['rna.fastqs_R1'] = [input_files]
                 overwrite = {'parameters': pars}
                 missing_run.append(['step1', [app_name, organism, overwrite], inp_f, name_tag])
+            if step1_status != 'ready':
+                step2_status = 'not ready'
+
+        if step2_status != 'ready':
+            if running:
+                set_summary += "| running step 1"
+            elif missing_run:
+                set_summary += "| missing step 1"
+            elif problematic_run:
+                set_summary += "| problem in step 1"
+        # run step2 if step1 s are complete
+        else:
+            
+            step2_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
+
+
 
         if final_status == 'ready':
             # add the tag
