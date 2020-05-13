@@ -1618,7 +1618,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 running.append(['step2', set_acc])
             # if run is not successful
             elif step2_result['status'].startswith("no complete run, too many"):
-                step1_status = 'not ready'
+                step2_status = 'not ready'
                 problematic_run.append(['step2', set_acc])
             # if it is missing
             else:
