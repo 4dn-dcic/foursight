@@ -395,8 +395,16 @@ def bg2bw_status(connection, **kwargs):
     if lab:
         query += '&lab.display_title=' + lab
 
+    # build a second query for checking failed ones
+    query_f = ("/search/?type=FileProcessed&file_format.file_format=bg"
+               "&extra_files.file_format.display_title=bw"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res = res_one + res_two
     if not res:
         check.summary = 'All Good!'
         return check
