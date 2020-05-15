@@ -1844,15 +1844,27 @@ def add_suggested_enum_values(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(days_back=None)
 def check_external_references_uri(connection, **kwargs):
     '''
     Check if external_references.uri is missing while external_references.ref
     is present.
     '''
     check = CheckResult(connection, 'check_external_references_uri')
-    search = ('search/?type=Item&external_references.ref%21=No+value'
-              '&field=external_references')
+    wait = round(random.uniform(0.1, random_wait), 1)
+    time.sleep(wait)
+
+    days_back = kwargs.get('days_back', None)
+    from_date_query = ''
+    if days_back is not None and days_back.isnumeric():
+        days_back = int(days_back)
+        date_now = datetime.datetime.now(datetime.timezone.utc)
+        date_diff = datetime.timedelta(days=days_back)
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
+        from_date_query = '&last_modified.date_modified.from=' + from_date
+
+    search = ('search/?type=Item&external_references.ref%21=No+value' +
+              '&field=external_references' + from_date_query)
     result = ff_utils.search_metadata(search, key=connection.ff_keys, is_generator=True)
     items = []
     for res in result:
