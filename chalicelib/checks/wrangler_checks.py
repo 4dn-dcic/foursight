@@ -1842,3 +1842,43 @@ def add_suggested_enum_values(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function(days_back=None)
+def check_external_references_uri(connection, **kwargs):
+    '''
+    Check if external_references.uri is missing while external_references.ref
+    is present.
+    '''
+    check = CheckResult(connection, 'check_external_references_uri')
+
+    days_back = kwargs.get('days_back', None)
+    from_date_query = ''
+    if days_back is not None and days_back.isnumeric():
+        date_now = datetime.datetime.now(datetime.timezone.utc)
+        date_diff = datetime.timedelta(days=int(days_back))
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
+        from_date_query = '&last_modified.date_modified.from=' + from_date
+
+    search = ('search/?type=Item&external_references.ref%21=No+value' +
+              '&field=external_references' + from_date_query)
+    result = ff_utils.search_metadata(search, key=connection.ff_keys, is_generator=True)
+    items = []
+    for res in result:
+        bad_refs = [er.get('ref') for er in res.get('external_references', []) if not er.get('uri')]
+        if bad_refs:
+            items.append({'@id': res['@id'], 'refs': bad_refs})
+    names = [ref.split(':')[0] for item in items for ref in item['refs']]
+    name_counts = [{na: names.count(na)} for na in set(names)]
+
+    if items:
+        check.status = 'WARN'
+        check.summary = 'external_references.uri is missing'
+        check.description = '%s items missing uri' % len(items)
+    else:
+        check.status = 'PASS'
+        check.summary = 'All external_references uri are present'
+        check.description = 'All dbxrefs are formatted properly'
+    check.brief_output = name_counts
+    check.full_output = items
+    return check
