@@ -1851,15 +1851,12 @@ def check_external_references_uri(connection, **kwargs):
     is present.
     '''
     check = CheckResult(connection, 'check_external_references_uri')
-    wait = round(random.uniform(0.1, random_wait), 1)
-    time.sleep(wait)
 
     days_back = kwargs.get('days_back', None)
     from_date_query = ''
     if days_back is not None and days_back.isnumeric():
-        days_back = int(days_back)
         date_now = datetime.datetime.now(datetime.timezone.utc)
-        date_diff = datetime.timedelta(days=days_back)
+        date_diff = datetime.timedelta(days=int(days_back))
         from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
         from_date_query = '&last_modified.date_modified.from=' + from_date
 
