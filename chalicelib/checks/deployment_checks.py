@@ -1,4 +1,9 @@
+import os
+import shutil
 import boto3
+import datetime
+import tempfile
+from git import Repo
 
 from ..run_result import CheckResult, ActionResult
 from ..utils import check_function, action_function
@@ -19,6 +24,20 @@ def try_to_describe_indexer_env(env):
         return None  # env does not exist
     except Exception:
         raise  # something else happened we should (probably) raise
+
+
+def clone_repo_to_temporary_dir(repo='https://github.com/4dn-dcic/fourfront.git', name='fourfront'):
+    """ Clones the given repo (default fourfront) to a temporary directory whose
+        absolute path is returned.
+    """
+    tempdir = tempfile.mkdtemp()
+    Repo.clone_from(url=repo, to_path=tempdir, branch='master')
+    return os.path.join(tempdir, './fourfront')
+
+
+def cleanup_tempdir(tempdir):
+    """ Wrapper for shutil.rmtree that cleans up the (repo dir) we just created """
+    shutil.rmtree(tempdir)
 
 
 @check_function(env=FF_ENV_INDEXER)  # XXX: Scope?
@@ -80,6 +99,8 @@ def terminate_indexer_server(connection, **kwargs):
 def provision_indexer_environment(connection, **kwargs):
     """ Provisions an indexer environment for the given env. Note that only one indexer can be online
         per application (one for 4DN, one for CGAP).
+
+        NOTE: env is an EB ENV NAME ('data', 'staging' are NOT valid).
     """
     check = CheckResult(connection, 'provision_indexer_environment')
     env = kwargs.get('env', None)
@@ -111,3 +132,43 @@ def provision_indexer_environment(connection, **kwargs):
 
     return check
 
+
+@check_function(env=None, branch=None, application_version_name=None, repo=None)
+def deploy_application_to_beanstalk(connection, **kwargs):
+    """ Deploys application to beanstalk, given an env and a branch """
+    check = CheckResult(connection, 'deploy_application_to_beanstalk')
+    env = kwargs.get('env', 'fourfront-mastertest')  # by default
+    branch = kwargs.get('branch', 'master')  # by default deploy master
+    application_version_name = kwargs.get('application_version_name', None)
+    repo = kwargs.get('repo', None)
+
+    if application_version_name is None:  # if not specified, use branch+timestamp
+        application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
+
+    if repo is not None:
+        repo_location = clone_repo_to_temporary_dir(repo)
+    else:
+        repo_location = clone_repo_to_temporary_dir()
+
+    packaging_was_successful = EBDeployer.build_application_version(repo_location,
+                                                                    application_version_name,
+                                                                    branch=branch)
+    if packaging_was_successful:
+        try:
+            deploy_succeeded = EBDeployer.deploy_new_version(env, repo_location, application_version_name)
+            if deploy_succeeded:
+                check.status = 'PASS'
+                check.summary = 'Successfully deployed version %s to env %s' % (application_version_name, env)
+            else:
+                check.status = 'WARN'
+                check.summary = 'Something went wrong when provisioning: %s' \
+                                'Please check the AWS EB Console.' % deploy_succeeded
+        except Exception as e:
+            check.status = 'ERROR'
+            check.summary = 'Error encountered while deploying: %s' % str(e)
+    else:
+        check.status = 'ERROR'
+        check.summary = 'Could not package repository: %s' % packaging_was_successful
+
+    cleanup_tempdir(os.path.join(repo_location, '../'))  # cleanup tempdir that houses repo
+    return check
