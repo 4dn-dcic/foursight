@@ -95,7 +95,7 @@ def terminate_indexer_server(connection, **kwargs):
     return action
 
 
-@check_function(env='fourfront-green', application_version=None)
+@check_function(env='fourfront-hotseat', application_version=None)
 def provision_indexer_environment(connection, **kwargs):
     """ Provisions an indexer environment for the given env. Note that only one indexer can be online
         per application (one for 4DN, one for CGAP).
@@ -113,7 +113,10 @@ def provision_indexer_environment(connection, **kwargs):
         return check
 
     def _deploy_indexer(e, version):
-        description = try_to_describe_indexer_env(e)
+        if is_fourfront_env(e):
+            description = try_to_describe_indexer_env(FF_ENV_INDEXER)
+        else:
+            description = try_to_describe_indexer_env(CGAP_ENV_INDEXER)
         if description is not None:
             check.status = 'ERROR'
             check.summary = 'Tried to spin up indexer env for %s when one already exists for this portal' % e
@@ -126,6 +129,9 @@ def provision_indexer_environment(connection, **kwargs):
         if success:
             check.status = 'PASS'
             check.summary = 'Successfully triggered indexer-server provision for environment %s' % env
+        else:
+            check.status = 'ERROR'
+            check.summary = 'An error occurred on deployment. Check the AWS EB Console.'
     else:
         check.status = 'FAIL'
         check.summary = 'Gave an unknown environment: %s' % env
@@ -133,9 +139,14 @@ def provision_indexer_environment(connection, **kwargs):
     return check
 
 
-@check_function(env=None, branch=None, application_version_name=None, repo=None)
+@check_function(env='fourfront-mastertest',
+                branch='master',
+                application_version_name=None, repo=None)
 def deploy_application_to_beanstalk(connection, **kwargs):
-    """ Deploys application to beanstalk, given an env and a branch """
+    """ Deploys application to beanstalk under the given application_version name + a branch
+
+        NOTE: CGAP requires kwargs!
+    """
     check = CheckResult(connection, 'deploy_application_to_beanstalk')
     env = kwargs.get('env', 'fourfront-mastertest')  # by default
     branch = kwargs.get('branch', 'master')  # by default deploy master
