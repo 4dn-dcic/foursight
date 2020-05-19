@@ -1546,5 +1546,17 @@
                 }
             }
         }
+    },
+    "check_external_references_uri": {
+        "title": "Check dbxrefs links",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }

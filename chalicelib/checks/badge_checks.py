@@ -208,6 +208,7 @@ def yellow_flag_biosamples(connection, **kwargs):
         if 'HAP-1' in result.get('biosource_summary') and not ploidy:
             messages.append('HAP-1 biosample missing ploidy authentication')
         if messages:
+            messages = [messages[i] for i in range(len(messages)) if messages[i] not in messages[:i]]
             if result.get('status') in REV:
                 check.brief_output[REV_KEY].append('{} missing {}'.format(
                     result['@id'], ', '.join(list(set([item[item.index('missing') + 8:] for item in messages])))
