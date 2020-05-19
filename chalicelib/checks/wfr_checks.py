@@ -1489,7 +1489,9 @@ def bed2multivec_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find bed files without bed.multires.mv5 files)
-    query = ("search/?file_format.file_format=bed&file_type=chromatin states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
+    query = ("search/?type=FileProcessed&file_format.file_format=bed&file_type=chromatin states"
+             "&extra_files.file_format.display_title!=bed.multires.mv5"
+             "&status!=uploading&status!=to be uploaded by workflow")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1498,8 +1500,26 @@ def bed2multivec_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
+    # build a second query for checking failed ones
+    query_f = ("search/?type=FileProcessed&file_format.file_format=bed&file_type=chromatin states"
+               "&extra_files.file_format.display_title=bed.multires.mv5"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res = res_one + res_two
 
     if not res:
         check.summary = 'All Good!'
