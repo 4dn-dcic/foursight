@@ -457,11 +457,11 @@ def bed2beddb_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-    check.summary = 'Check is under construction'
-    return check
+    check.summary = ''
 
-    accepted_types = ['LADs', 'boundaries', 'domain calls']
-    file_size_limit = 100000  # 100KB
+    # These are the accepted file types for this check
+    accepted_types = ['LADs', 'boundaries', 'domain calls', 'peaks']
+
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
@@ -471,6 +471,7 @@ def bed2beddb_status(connection, **kwargs):
              "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow")
     query += "".join(["&file_type=" + i for i in accepted_types])
+
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -479,17 +480,14 @@ def bed2beddb_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
     # The search
     res_all = ff_utils.search_metadata(query, key=my_auth)
 
-    res = [i for i in res_all if i['file_size'] < file_size_limit]
-    if not res:
+    if not res_all:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'bedtobeddb', my_auth, start)
-    if len(res_all) > len(res):
-        check.summary = 'Files with large size skipped, check parameters might need to change'
-        check.status = 'FAIL'
+    check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
     return check
 
 
