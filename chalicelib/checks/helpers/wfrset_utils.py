@@ -149,7 +149,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "bedtobeddb",
         'parameters': {"assembly": pairs_assembly},
         "workflow_uuid": "9d575e99-5ffe-4ea4-b74f-ad40f621cd39",
-        "config": {"instance_type": "t2.micro"},
+        "config": {"instance_type": "t2.micro", "ebs_size": 10},
         "overwrite_input_extra": True
         },
         {
@@ -161,7 +161,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bedGraphToBigWig",
         "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
-        "config": {"instance_type": "t2.micro"},
+        "config": {"instance_type": "t2.micro", "ebs_size": 10},
         "overwrite_input_extra": True
         },
         {"app_name": "encode-chipseq",
