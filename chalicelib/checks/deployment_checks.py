@@ -169,21 +169,25 @@ def deploy_application_to_beanstalk(connection, **kwargs):
     else:
         repo_location = clone_repo_to_temporary_dir()
 
-    packaging_was_successful = EBDeployer.build_application_version(repo_location,
-                                                                    application_version_name,
-                                                                    branch=branch)
-    time.sleep(10)  # give EB some time to index the new template
-    if packaging_was_successful:
-        try:
-            EBDeployer.deploy_new_version(env, repo_location, application_version_name)
-            check.status = 'PASS'
-            check.summary = 'Successfully deployed version %s to env %s' % (application_version_name, env)
-        except Exception as e:
+    try:
+        packaging_was_successful = EBDeployer.build_application_version(repo_location, application_version_name,
+                                                                        branch=branch)
+        time.sleep(10)  # give EB some time to index the new template
+        if packaging_was_successful:
+            try:
+                EBDeployer.deploy_new_version(env, repo_location, application_version_name)
+                check.status = 'PASS'
+                check.summary = 'Successfully deployed version %s to env %s' % (application_version_name, env)
+            except Exception as e:
+                check.status = 'ERROR'
+                check.summary = 'Exception thrown while deploying: %s' % str(e)
+        else:
             check.status = 'ERROR'
-            check.summary = 'Error encountered while deploying: %s' % str(e)
-    else:
+            check.summary = 'Could not package repository: %s' % packaging_was_successful
+    except Exception as e:
         check.status = 'ERROR'
-        check.summary = 'Could not package repository: %s' % packaging_was_successful
+        check.summary = 'Exception thrown while building application version: %s' % str(e)
+    finally:
+        cleanup_tempdir(repo_location)
 
-    cleanup_tempdir(repo_location)
     return check
