@@ -96,11 +96,6 @@ def monthly_checks(event):
     queue_scheduled_checks('all', 'monthly_checks')
 
 
-@app.schedule(foursight_cron_by_schedule[STAGE]['manual_checks'])
-def manual_checks(event):  # should have no effect since cron schedule will never run
-    queue_scheduled_checks('all', 'manual_checks')
-
-
 '''######### END SCHEDULED FXNS #########'''
 
 
