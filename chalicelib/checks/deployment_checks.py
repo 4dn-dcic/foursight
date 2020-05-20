@@ -74,7 +74,7 @@ def indexer_server_status(connection, **kwargs):
         check.action_message = 'Will terminate indexer env %s when indexing is not done yet!' % env
         check.summary = 'Env %s has not finished indexing with remaining counts %s' % (env, ' '.join(counts))
 
-    check.full_output = env  # full_output contains env we checked
+    check.full_output = indexer_env  # full_output contains indexer_env we checked
     return check
 
 
