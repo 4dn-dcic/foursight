@@ -1853,17 +1853,12 @@ def check_external_references_uri(connection, **kwargs):
     check = CheckResult(connection, 'check_external_references_uri')
 
     days_back = kwargs.get('days_back', None)
-    try:
-        days_back = float(days_back)
-    except (ValueError, TypeError):
-        from_date_query = ''
-        from_text = ''
-    else:
+    from_date_query = ''
+    if days_back is not None and days_back.isnumeric():
         date_now = datetime.datetime.now(datetime.timezone.utc)
-        date_diff = datetime.timedelta(days=days_back)
+        date_diff = datetime.timedelta(days=int(days_back))
         from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
         from_date_query = '&last_modified.date_modified.from=' + from_date
-        from_text = 'modified from %s ' % from_date
 
     search = ('search/?type=Item&external_references.ref%21=No+value' +
               '&field=external_references' + from_date_query)
@@ -1879,11 +1874,11 @@ def check_external_references_uri(connection, **kwargs):
     if items:
         check.status = 'WARN'
         check.summary = 'external_references.uri is missing'
-        check.description = '%s items %sare missing uri' % (len(items), from_text)
+        check.description = '%s items missing uri' % len(items)
     else:
         check.status = 'PASS'
         check.summary = 'All external_references uri are present'
-        check.description = 'All dbxrefs %sare formatted properly' % from_text
+        check.description = 'All dbxrefs are formatted properly'
     check.brief_output = name_counts
     check.full_output = items
     return check
