@@ -13,6 +13,12 @@ DEFAULT_ENV = 'data'
 
 '''######### SCHEDULED FXNS #########'''
 
+
+def effectively_never():
+    """Every February 31st, a.k.a. 'never'."""
+    return Cron('0', '0', '31', '2', '?', '?')
+
+
 # this dictionary defines the CRON schedules for the dev and prod foursight
 # stagger them to reduce the load on Fourfront. Times are UTC
 # info: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
@@ -27,7 +33,8 @@ foursight_cron_by_schedule = {
         'morning_checks': Cron('0', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('15', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('0', '9', '?', '*', '2', '*'),
-        'monthly_checks': Cron('0', '9', '1', '*', '?', '*')
+        'monthly_checks': Cron('0', '9', '1', '*', '?', '*'),
+        'manual_checks': effectively_never()
     },
     'dev': {
         'ten_min_checks': Cron('5/10', '*', '*', '*', '?', '*'),
@@ -38,7 +45,8 @@ foursight_cron_by_schedule = {
         'morning_checks': Cron('30', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('45', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('30', '9', '?', '*', '2', '*'),
-        'monthly_checks': Cron('30', '9', '1', '*', '?', '*')
+        'monthly_checks': Cron('30', '9', '1', '*', '?', '*'),
+        'manual_checks': effectively_never()
     }
 }
 

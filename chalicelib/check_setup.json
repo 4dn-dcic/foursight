@@ -1558,5 +1558,44 @@
                 }
             }
         }
+    },
+    "indexer_server_status": {
+        "title": "Indexer Server Status",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "provision_indexer_environment": {
+        "title": "Provision Indexer Environment",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "deploy_application_to_beanstalk": {
+        "title": "Deploy Version to ElasticBeanstalk",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
     }
 }
