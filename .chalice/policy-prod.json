@@ -10,7 +10,8 @@
         "es:*",
         "rds:*",
         "ec2:*",
-        "cloudformation:*"
+        "cloudformation:*",
+        "application-autoscaling:*"
       ],
       "Resource": [
         "*"
