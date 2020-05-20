@@ -10,7 +10,9 @@
         "es:*",
         "rds:*",
         "ec2:*",
+        "logs:*",
         "cloudformation:*",
+        "cloudwatch:*",
         "autoscaling:*",
         "iam:PassRole",
         "elasticloadbalancing:*"
