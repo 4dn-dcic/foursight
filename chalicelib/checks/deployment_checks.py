@@ -205,7 +205,6 @@ def deploy_ff_staging(connection, **kwargs):
     """ Deploys Fourfront master to whoever staging is.
         Runs as part of the 'deployment_checks' schedule on data ONLY.
     """
-    import pdb; pdb.set_trace()
     return deploy_application_to_beanstalk(connection,
                                            env=who_is_ff_staging(),
                                            branch='master')
