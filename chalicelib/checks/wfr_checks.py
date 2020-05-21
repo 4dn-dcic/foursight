@@ -395,8 +395,25 @@ def bg2bw_status(connection, **kwargs):
     if lab:
         query += '&lab.display_title=' + lab
 
+    # build a second query for checking failed ones
+    query_f = ("/search/?type=FileProcessed&file_format.file_format=bg"
+               "&extra_files.file_format.display_title=bw"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res = res_one + res_two
     if not res:
         check.summary = 'All Good!'
         return check
@@ -435,7 +452,7 @@ def bg2bw_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedGraphToBigWig',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -475,7 +492,6 @@ def bed2beddb_status(connection, **kwargs):
              "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow")
     query += "".join(["&file_type=" + i for i in accepted_types])
-
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -484,22 +500,50 @@ def bed2beddb_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
+    # build a second query for checking failed ones
+    query_f = ("/search/?type=FileProcessed&file_format.file_format=bed"
+               "&extra_files.file_format.display_title=beddb"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
-    res_all = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res_all = res_one + res_two
+    missing = []
+    for a_file in res_all:
+        if not a_file.get('genome_assembly'):
+            missing.append(a_file['accession'])
+    res_all = [i for i in res_all if i.get('genome_assembly')]
     if not res_all:
         check.summary = 'All Good!'
         return check
     check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
-    # disable while under construction
-    check.allow_action = False
-    check.summary = 'Check is under construction.'
-    check.description = 'Check is under construction.'
+    if missing:
+        check['full_output']['missing_assembly'] = missing
+        msg = str(len(missing)) + ' files missing genome assembly'
+        check['brief_output'].insert(0, msg)
     return check
 
 
 @action_function(start_missing_run=True, start_missing_meta=True)
 def bed2beddb_start(connection, **kwargs):
     """Start bed2beddb runs by sending compiled input_json to run_workflow endpoint"""
+    # converter for workflow parameters
+    genome = {"GRCh38": "hg38",
+              "GRCm38": "mm10",
+              "dm6": 'dm6',
+              "galGal5": "galGal5"}
     start = datetime.utcnow()
     action = ActionResult(connection, 'bed2beddb_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
@@ -519,10 +563,12 @@ def bed2beddb_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'bedfile': a_file['@id']}
+        override = {'parameters': {'assembly': genome[a_file['genome_assembly']]}}
         wfr_setup = wfrset_utils.step_settings('bedtobeddb',
                                                'no_organism',
-                                               attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+                                               attributions,
+                                               overwrite=override)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1462,7 +1508,9 @@ def bed2multivec_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find bed files without bed.multires.mv5 files)
-    query = ("search/?file_format.file_format=bed&file_type=chromatin states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
+    query = ("search/?type=FileProcessed&file_format.file_format=bed&file_type=chromatin states"
+             "&extra_files.file_format.display_title!=bed.multires.mv5"
+             "&status!=uploading&status!=to be uploaded by workflow")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1471,8 +1519,26 @@ def bed2multivec_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
+    # build a second query for checking failed ones
+    query_f = ("search/?type=FileProcessed&file_format.file_format=bed&file_type=chromatin states"
+               "&extra_files.file_format.display_title=bed.multires.mv5"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res = res_one + res_two
 
     if not res:
         check.summary = 'All Good!'

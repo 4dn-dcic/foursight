@@ -126,11 +126,16 @@ workflow_details = {
         "run_time": 200,
         "accepted_versions": ['v1.1', 'v1.2']
     },
+    'mad_qc_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['1.1_dcic_2']
+    },
     'merge-fastq': {
         "run_time": 200,
         "accepted_versions": ['v1']
     }
 }
+
 
 # accepted versions for completed pipelines
 accepted_versions = {
@@ -156,7 +161,7 @@ accepted_versions = {
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
-    # Preliminary - Released to network
+    # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
                       'RepliSeq_Pipeline_v16_step1'],
@@ -1232,7 +1237,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'rna.fastqs_R1']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1474,9 +1480,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
 
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
-        for i in exp_files:
-            print(i, exp_files[i])
-
         paired = refs['pairing']
         organism = refs['organism']
         set_summary = " - ".join([set_acc, organism, refs['f_size']])
@@ -1490,7 +1493,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
         if organism not in ['mouse', 'human']:
             msg = 'No reference file for ' + organism
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
@@ -1507,14 +1509,17 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 not_verified.append(an_exp)
         if not_verified:
             msg = ', '.join(not_verified) + ' Not verified for strandedness'
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
             continue
 
         # cycle through the experiments, skip the ones without usable files
+        # accumulate files for madqc
+        step2_files = []
+        step2_status = 'ready'
         for exp in exp_files.keys():
+            step1_status = 'ready'
             if not exp_files.get(exp):
                 continue
 
@@ -1552,6 +1557,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
             # if successful
             if step1_result['status'] == 'complete':
+                # add  madqc file
+                step2_files.append(step1_result['rna.gene_expression'])
                 # create processed files list for experiment
                 exp_results = []
                 for a_type in ['rna.outbam',
@@ -1565,15 +1572,15 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 complete['patch_opf'].append([exp, exp_results])
             # if still running
             elif step1_result['status'] == 'running':
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 running.append(['step1', exp])
             # if run is not successful
             elif step1_result['status'].startswith("no complete run, too many"):
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 problematic_run.append(['step1', exp])
             # if it is missing
             else:
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 # add part
                 name_tag = exp
                 inp_f = {'rna.align_index': rna_star_index[organism],
@@ -1587,6 +1594,44 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                     inp_f['rna.fastqs_R1'] = [input_files]
                 overwrite = {'parameters': pars}
                 missing_run.append(['step1', [app_name, organism, overwrite], inp_f, name_tag])
+            if step1_status != 'ready':
+                step2_status = 'not ready'
+
+        if step2_status != 'ready':
+            if running:
+                set_summary += "| running step 1"
+            elif missing_run:
+                set_summary += "| missing step 1"
+            elif problematic_run:
+                set_summary += "| problem in step 1"
+        # if there is a single replicate, skip madqc
+        elif len(step2_files) == 1:
+            step2_status = 'ready'
+        # run step2 if step1 s are complete
+        else:
+            step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
+
+            # if successful
+            if step2_result['status'] == 'complete':
+                pass
+            # if still running
+            elif step2_result['status'] == 'running':
+                step2_status = 'not ready'
+                running.append(['step2', set_acc])
+            # if run is not successful
+            elif step2_result['status'].startswith("no complete run, too many"):
+                step2_status = 'not ready'
+                problematic_run.append(['step2', set_acc])
+            # if it is missing
+            else:
+                step2_status = 'not ready'
+                # add part
+                name_tag = set_acc
+                inp_f = {'mad_qc.quantfiles': step2_files}
+                missing_run.append(['step2', ['mad_qc_workflow', organism, {}], inp_f, name_tag])
+        if step2_status != 'ready':
+            final_status = 'not ready'
 
         if final_status == 'ready':
             # add the tag
@@ -1594,11 +1639,11 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             complete['add_tag'] = [set_acc, tag]
         else:
             if running:
-                set_summary += "| running step 1"
+                set_summary += "| running step 2"
             elif missing_run:
-                set_summary += "| missing step 1"
+                set_summary += "| missing step 2"
             elif problematic_run:
-                set_summary += "| problem in step 1"
+                set_summary += "| problem in step 2"
 
         check.brief_output.append(set_summary)
         if running:
