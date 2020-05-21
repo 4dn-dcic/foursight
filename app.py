@@ -39,7 +39,7 @@ foursight_cron_by_schedule = {
         'monday_checks': Cron('0', '9', '?', '*', '2', '*'),
         'monthly_checks': Cron('0', '9', '1', '*', '?', '*'),
         'manual_checks': effectively_never(),
-        'deployment_checks': end_of_day_on_weekdays()  # no deployment_checks on dev
+        'deployment_checks': end_of_day_on_weekdays()
     },
     'dev': {
         'ten_min_checks': Cron('5/10', '*', '*', '*', '?', '*'),
@@ -51,7 +51,8 @@ foursight_cron_by_schedule = {
         'morning_checks_2': Cron('45', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('30', '9', '?', '*', '2', '*'),
         'monthly_checks': Cron('30', '9', '1', '*', '?', '*'),
-        'manual_checks': effectively_never()
+        'manual_checks': effectively_never(),
+        'deployment_checks': end_of_day_on_weekdays()  # disabled (?) manually
     }
 }
 
@@ -103,6 +104,8 @@ def monthly_checks(event):
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['deployment_checks'])
 def deployment_checks(event):
+    if STAGE == 'dev':
+        return
     queue_scheduled_checks('all', 'deployment_checks')
 
 

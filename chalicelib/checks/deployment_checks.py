@@ -200,11 +200,12 @@ def who_is_ff_staging():
     return ({FF_ENV_PRODUCTION_BLUE, FF_ENV_PRODUCTION_GREEN} - {compute_ff_prd_env()}).pop()
 
 
-@check_function
+@check_function()
 def deploy_ff_staging(connection, **kwargs):
     """ Deploys Fourfront master to whoever staging is.
         Runs as part of the 'deployment_checks' schedule on data ONLY.
     """
+    import pdb; pdb.set_trace()
     return deploy_application_to_beanstalk(connection,
                                            env=who_is_ff_staging(),
                                            branch='master')
