@@ -516,17 +516,30 @@ def bed2beddb_status(connection, **kwargs):
     res_one = ff_utils.search_metadata(query, key=my_auth)
     res_two = ff_utils.search_metadata(query_f, key=my_auth)
     res_all = res_one + res_two
-
+    missing = []
+    for a_file in res_all:
+        if not a_file.get('genome_assembly'):
+            missing.append(a_file['accession'])
+    res_all = [i for i in res_all if i.get('genome_assembly')]
     if not res_all:
         check.summary = 'All Good!'
         return check
     check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
+    if missing:
+        check['full_output']['missing_assembly'] = missing
+        msg = str(len(missing)) + ' files missing genome assembly'
+        check['brief_output'].insert(0, msg)
     return check
 
 
 @action_function(start_missing_run=True, start_missing_meta=True)
 def bed2beddb_start(connection, **kwargs):
     """Start bed2beddb runs by sending compiled input_json to run_workflow endpoint"""
+    # converter for workflow parameters
+    genome = {"GRCh38": "hg38",
+              "GRCm38": "mm10",
+              "dm6": 'dm6',
+              "galGal5": "galGal5"}
     start = datetime.utcnow()
     action = ActionResult(connection, 'bed2beddb_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
@@ -546,9 +559,11 @@ def bed2beddb_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'bedfile': a_file['@id']}
+        override = {'parameters': {'assembly': genome[a_file['genome_assembly']]}}
         wfr_setup = wfrset_utils.step_settings('bedtobeddb',
                                                'no_organism',
-                                               attributions)
+                                               attributions,
+                                               overwrite=override)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
