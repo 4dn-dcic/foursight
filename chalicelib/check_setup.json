@@ -1597,5 +1597,18 @@
                 }
             }
         }
+    },
+    "deploy_ff_staging": {
+        "title": "Deploy Fourfront master to staging.4dnucleome.org",
+        "group": "Deployment Checks",
+        "schedule": {
+            "deployment_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
     }
 }
