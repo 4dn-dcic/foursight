@@ -149,18 +149,20 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "bedtobeddb",
         'parameters': {"assembly": pairs_assembly},
         "workflow_uuid": "9d575e99-5ffe-4ea4-b74f-ad40f621cd39",
-        "overwrite_input_extra": False
+        "config": {'mem': 4, 'cpu': 2, "ebs_size": 10},
+        "overwrite_input_extra": True
         },
         {
         "app_name": "bedtomultivec",
         "workflow_uuid": "a52b9b9d-1654-4967-883f-4d2adee77bc7",
         'config': {'mem': 4, 'cpu': 2, 'EBS_optimized': 'false'},
-        "overwrite_input_extra": False
+        "overwrite_input_extra": True
         },
         {
         "app_name": "bedGraphToBigWig",
         "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
-        "overwrite_input_extra": False
+        "config": {'mem': 4, 'cpu': 2, "ebs_size": 10},
+        "overwrite_input_extra": True
         },
         {"app_name": "encode-chipseq",
          "workflow_uuid": "5b44ce1b-0347-40a6-bc9c-f39fb5d7bce3",
