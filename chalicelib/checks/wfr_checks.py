@@ -401,6 +401,10 @@ def bg2bw_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
     check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
+    # disable while under construction
+    check.allow_action = False
+    check.summary = 'Check is under construction.'
+    check.description = 'Check is under construction.'
     return check
 
 
@@ -480,14 +484,16 @@ def bed2beddb_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
-
     # The search
     res_all = ff_utils.search_metadata(query, key=my_auth)
-
     if not res_all:
         check.summary = 'All Good!'
         return check
     check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
+    # disable while under construction
+    check.allow_action = False
+    check.summary = 'Check is under construction.'
+    check.description = 'Check is under construction.'
     return check
 
 
