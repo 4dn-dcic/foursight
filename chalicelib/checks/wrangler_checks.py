@@ -1908,7 +1908,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
     else:
         date_now = datetime.datetime.now(datetime.timezone.utc)
         date_diff = datetime.timedelta(days=days_back)
-        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d+%H:%M")
         from_date_query = '&last_modified.date_modified.from=' + from_date
         from_text = 'modified from %s ' % from_date
 
@@ -1919,18 +1919,26 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
               '&field=lab&field=contributing_labs' + from_date_query)
     result = ff_utils.search_metadata(search, key=connection.ff_keys)
 
+    opf = {'to_patch': [], 'problematic': []}
     exp_set_uuids = []  # Exp or ExpSet uuid list
     for res in result:
         if res.get('experiments'):
-            if len(res['experiments']) != 1:
-                return check  # this should not happen
+            if len(res['experiments']) != 1:  # this should not happen
+                opf['problematic'].append({
+                    '@id': res['@id'],
+                    'experiments': [exp['uuid'] for exp in res['experiments']]})
+                continue
             exp_or_set = res['experiments'][0]
         elif res.get('experiment_sets'):
-            if len(res['experiment_sets']) != 1:
-                return check  # this should not happen
+            if len(res['experiment_sets']) != 1:  # this should not happen
+                opf['problematic'].append({
+                    '@id': res['@id'],
+                    'experiment_sets': [es['uuid'] for es in res['experiment_sets']]})
+                continue
             exp_or_set = res['experiment_sets'][0]
-        else:
-            return check  # this should not happen
+        else:  # this should not happen
+            opf['problematic'].append({'@id': res['@id']})
+            continue
         res['exp_set_uuid'] = exp_or_set['uuid']
         if res['exp_set_uuid'] not in exp_set_uuids:
             exp_set_uuids.append(res['exp_set_uuid'])
@@ -1942,31 +1950,36 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
         uuid_2_lab[item['uuid']] = item['properties']['lab']
 
     # evaluate contributing lab
-    to_patch = []
     for res in result:
-        contr_lab = []
-        exp_set_lab = uuid_2_lab[res['exp_set_uuid']]
-        if exp_set_lab == res['lab']['uuid']:
-            continue
-        elif res.get('contributing_labs'):
-            contr_lab = [lab['uuid'] for lab in res['contributing_labs']]
-            if exp_set_lab in contr_lab:
+        if res['@id'] not in [pr['@id'] for pr in opf['problematic']]:
+            contr_lab = []
+            exp_set_lab = uuid_2_lab[res['exp_set_uuid']]
+            if exp_set_lab == res['lab']['uuid']:
                 continue
-        contr_lab.append(exp_set_lab)
-        to_patch.append({'@id': res['@id'],
-                         'contributing_labs': contr_lab,
-                         'lab': res['lab']['display_title']})
+            elif res.get('contributing_labs'):
+                contr_lab = [lab['uuid'] for lab in res['contributing_labs']]
+                if exp_set_lab in contr_lab:
+                    continue
+            contr_lab.append(exp_set_lab)
+            opf['to_patch'].append({
+                '@id': res['@id'],
+                'contributing_labs': contr_lab,
+                'lab': res['lab']['display_title']})
 
-    if to_patch:
+    if opf['to_patch'] or opf['problematic']:
         check.status = 'WARN'
-        check.summary = 'Supplementary files need patching of contributing labs'
-        check.description = '%s files %sneed patching' % (len(to_patch), from_text)
-        check.allow_action = True
+        check.summary = 'Supplementary files need attention'
+        check.description = '%s files %sneed patching' % (len(opf['to_patch']), from_text)
+        if opf['problematic']:
+            check.description += ' and %s files have problems with experiments or sets' % len(opf['problematic'])
+        if opf['to_patch']:
+            check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'All supplementary files have correct contributing labs'
         check.description = 'All files %sare good' % from_text
-    check.full_output = to_patch
+    check.brief_output = {'to_patch': len(opf['to_patch']), 'problematic': len(opf['problematic'])}
+    check.full_output = opf
     return check
 
 
@@ -1978,7 +1991,7 @@ def add_contributing_lab_opf(connection, **kwargs):
     '''
     action = ActionResult(connection, 'add_contributing_lab_opf')
     check_res = action.get_associated_check_result(kwargs)
-    files_to_patch = check_res['full_output']
+    files_to_patch = check_res['full_output']['to_patch']
     action_logs = {'patch_success': [], 'patch_failure': []}
     for a_file in files_to_patch:
         patch_body = {'contributing_labs': a_file['contributing_labs']}
