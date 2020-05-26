@@ -908,7 +908,7 @@ print(action_logs)
         )
         print(
             YELLOW + "No \033[4m" + missing_items + "\033[24m tracking items currently exist on this server.",
-            "\nRun the following command to fill:" + END_COLOR, "\033[2m", commands, "\033[22m")
+            "\nRun the following command to fill:", "\033[2m", commands, "\033[22m" + END_COLOR)
     else:
         print(
             GREEN + "Most recent tracking items are from",
