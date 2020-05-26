@@ -1610,5 +1610,17 @@
                 }
             }
         }
+    },
+    "check_opf_lab_different_than_experiment": {
+        "title": "Opf contributing lab",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
