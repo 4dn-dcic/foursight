@@ -1887,3 +1887,124 @@ def check_external_references_uri(connection, **kwargs):
     check.brief_output = name_counts
     check.full_output = items
     return check
+
+
+@check_function(days_back=2)
+def check_opf_lab_different_than_experiment(connection, **kwargs):
+    '''
+    Check if other processed files have lab (generating lab) that is different
+    than the lab of that generated the experiment. In this case, the
+    experimental lab needs to be added to the opf (contributing lab).
+    '''
+    check = CheckResult(connection, 'check_opf_lab_different_than_experiment')
+    check.action = add_contributing_lab_opf
+
+    # check only recently modified files, to reduce the number of items
+    days_back = kwargs.get('days_back')
+    try:
+        days_back = float(days_back)
+    except (ValueError, TypeError):
+        from_date_query = ''
+        from_text = ''
+    else:
+        date_now = datetime.datetime.now(datetime.timezone.utc)
+        date_diff = datetime.timedelta(days=days_back)
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d+%H:%M")
+        from_date_query = '&last_modified.date_modified.from=' + from_date
+        from_text = 'modified from %s ' % from_date
+
+    search = ('search/?type=FileProcessed' +
+              '&track_and_facet_info.experiment_bucket%21=No+value' +
+              '&track_and_facet_info.experiment_bucket%21=processed+file' +
+              '&field=experiment_sets&field=experiments' +
+              '&field=lab&field=contributing_labs' + from_date_query)
+    result = ff_utils.search_metadata(search, key=connection.ff_keys)
+
+    opf = {'to_patch': [], 'problematic': []}
+    exp_set_uuids = []  # Exp or ExpSet uuid list
+    for res in result:
+        if res.get('experiments'):
+            if len(res['experiments']) != 1:  # this should not happen
+                opf['problematic'].append({
+                    '@id': res['@id'],
+                    'experiments': [exp['uuid'] for exp in res['experiments']]})
+                continue
+            exp_or_set = res['experiments'][0]
+        elif res.get('experiment_sets'):
+            if len(res['experiment_sets']) != 1:  # this should not happen
+                opf['problematic'].append({
+                    '@id': res['@id'],
+                    'experiment_sets': [es['uuid'] for es in res['experiment_sets']]})
+                continue
+            exp_or_set = res['experiment_sets'][0]
+        else:  # this should not happen
+            opf['problematic'].append({'@id': res['@id']})
+            continue
+        res['exp_set_uuid'] = exp_or_set['uuid']
+        if res['exp_set_uuid'] not in exp_set_uuids:
+            exp_set_uuids.append(res['exp_set_uuid'])
+
+    # get lab of Exp/ExpSet
+    result_exp_set = ff_utils.get_es_metadata(exp_set_uuids, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
+    uuid_2_lab = {}  # map file uuid to Exp/Set lab
+    for item in result_exp_set:
+        uuid_2_lab[item['uuid']] = item['properties']['lab']
+
+    # evaluate contributing lab
+    for res in result:
+        if res['@id'] not in [pr['@id'] for pr in opf['problematic']]:
+            contr_lab = []
+            exp_set_lab = uuid_2_lab[res['exp_set_uuid']]
+            if exp_set_lab == res['lab']['uuid']:
+                continue
+            elif res.get('contributing_labs'):
+                contr_lab = [lab['uuid'] for lab in res['contributing_labs']]
+                if exp_set_lab in contr_lab:
+                    continue
+            contr_lab.append(exp_set_lab)
+            opf['to_patch'].append({
+                '@id': res['@id'],
+                'contributing_labs': contr_lab,
+                'lab': res['lab']['display_title']})
+
+    if opf['to_patch'] or opf['problematic']:
+        check.status = 'WARN'
+        check.summary = 'Supplementary files need attention'
+        check.description = '%s files %sneed patching' % (len(opf['to_patch']), from_text)
+        if opf['problematic']:
+            check.description += ' and %s files have problems with experiments or sets' % len(opf['problematic'])
+        if opf['to_patch']:
+            check.allow_action = True
+    else:
+        check.status = 'PASS'
+        check.summary = 'All supplementary files have correct contributing labs'
+        check.description = 'All files %sare good' % from_text
+    check.brief_output = {'to_patch': len(opf['to_patch']), 'problematic': len(opf['problematic'])}
+    check.full_output = opf
+    return check
+
+
+@action_function()
+def add_contributing_lab_opf(connection, **kwargs):
+    '''
+    Add contributing lab (the experimental lab that owns the experiment/set) to
+    the other processed files (supplementary) analyzed by a different lab.
+    '''
+    action = ActionResult(connection, 'add_contributing_lab_opf')
+    check_res = action.get_associated_check_result(kwargs)
+    files_to_patch = check_res['full_output']['to_patch']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    for a_file in files_to_patch:
+        patch_body = {'contributing_labs': a_file['contributing_labs']}
+        try:
+            ff_utils.patch_metadata(patch_body, a_file['@id'], key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({a_file['@id']: str(e)})
+        else:
+            action_logs['patch_success'].append(a_file['@id'])
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
