@@ -1898,7 +1898,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
     '''
     check = CheckResult(connection, 'check_opf_lab_different_than_experiment')
     check.action = add_contributing_lab_opf
-    
+
     # check only recently modified files, to reduce the number of items
     days_back = kwargs.get('days_back')
     try:
