@@ -395,7 +395,7 @@ class GoogleAPISyncer:
                     year_to_fill_from = today.year
                     while month_to_fill_from < 1:
                         month_to_fill_from = 12 + month_to_fill_from
-                        year_to_fill_from += -1
+                        year_to_fill_from -= 1
                     date_to_fill_from = date(year_to_fill_from, month_to_fill_from, 1)
             else:
                 if increment == 'daily':
@@ -416,6 +416,8 @@ class GoogleAPISyncer:
             if increment == 'daily':
                 end_date = today - timedelta(days=1)
 
+                print("Filling daily items from", date_to_fill_from, "to", end_date)
+
                 if date_to_fill_from > end_date:
                     return { 'created' : created_list, 'count' : counter }
 
@@ -429,7 +431,7 @@ class GoogleAPISyncer:
                     )
                     counter += 1
                     created_list.append(response['uuid'])
-                    print('Created ' + str(counter) + ' TrackingItems so far.')
+                    print('Created ' + str(counter) + ' TrackingItems so far.', date_to_fill_from)
                     date_to_fill_from += timedelta(days=1)
 
 
@@ -442,10 +444,12 @@ class GoogleAPISyncer:
                     end_year -= 1
                     end_month += 12
 
+                print("Filling monthly items from", date_to_fill_from, "to", str(end_year) + "-" + str(end_month))
+
                 if fill_year > end_year and fill_month > end_month:
                     return { 'created' : created_list, 'count' : counter }
 
-                while fill_year <= end_year and fill_month <= end_month:
+                while fill_year < end_year or (fill_year == end_year and fill_month <= end_month):
                     for_date_start_str = date(fill_year, fill_month, 1).isoformat()
                     for_date_end_str = date(fill_year, fill_month, monthrange(fill_year, fill_month)[1]).isoformat() # Last day of fill month
                     response = self.create_tracking_item(
@@ -456,7 +460,7 @@ class GoogleAPISyncer:
                     )
                     counter += 1
                     created_list.append(response['uuid'])
-                    print('Created ' + str(counter) + ' TrackingItems so far.')
+                    print('Created ' + str(counter) + ' TrackingItems so far.', str(fill_year) + "-" + str(fill_month))
                     fill_month += 1
                     if fill_month > 12:
                         fill_month -= 12
@@ -859,16 +863,21 @@ if __name__ == "__main__":
     import sys
     import os
     import argparse
-
-    if not sys.flags.interactive:
-        sys.exit("Exiting, not in interactive mode.\nRun interactively via `python3 -i google_utils.py`")
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    END_COLOR = "\033[0m"
 
     parser = argparse.ArgumentParser(description='Supply a fourfront key and key secret from your profile page.')
     parser.add_argument('key', metavar='access_key', type=str, help='Access Key, as obtained from 4DN user profile page.')
     parser.add_argument('secret', metavar='access_key_secret', type=str, help='Access Key Secret, as obtained from 4DN user profile page.')
     parser.add_argument('--server', type=str, default="http://localhost:8000", help='Server to connect to, including protocol and port.')
+    parser.add_argument('--command', type=str, help='Command to be executed (for use if not running interactively)')
 
     args = parser.parse_args()
+
+    if not sys.flags.interactive:
+        sys.exit(RED + "Exiting, not in interactive mode.\nRun interactively via `python3 -i google_utils.py` or supply a command.")
 
     ak = {
         "server": args.server,
@@ -877,12 +886,36 @@ if __name__ == "__main__":
     }
 
     google = GoogleAPISyncer(ak)
-    print("Checking last tracking item date on " + args.server + "...")
-    last_tracking_item_date = google.analytics.get_latest_tracking_item_date()
-    if not last_tracking_item_date:
-        print("No daily tracking items currently exist on this server.")
+    print(YELLOW + "Checking last tracking item date on " + args.server + "...\n")
+    last_tracking_item_date_daily = google.analytics.get_latest_tracking_item_date()
+    last_tracking_item_date_monthly = google.analytics.get_latest_tracking_item_date("monthly")
+    if not last_tracking_item_date_daily or not last_tracking_item_date_monthly:
+        commands = """
+
+action_logs = {}
+res_daily = google.analytics.fill_with_tracking_items('daily')
+action_logs['daily_created'] = res_daily.get('created', [])
+
+res_monthly = google.analytics.fill_with_tracking_items('monthly')
+action_logs['monthly_created'] = res_monthly.get('created', [])
+print(action_logs)
+        """
+        missing_items = (
+            "daily nor monthly"
+            if (not last_tracking_item_date_daily and not last_tracking_item_date_monthly)
+            else "daily" if not last_tracking_item_date_daily
+            else "monthly"
+        )
+        print(
+            YELLOW + "No \033[4m" + missing_items + "\033[24m tracking items currently exist on this server.",
+            "\nRun the following command to fill:" + END_COLOR, "\033[2m", commands, "\033[22m")
     else:
-        print("Most recent daily tracking item is from", last_tracking_item_date)
+        print(
+            GREEN + "Most recent tracking items are from",
+            last_tracking_item_date_daily, '(daily)',
+            last_tracking_item_date_monthly, '(monthly)',
+            END_COLOR
+        )
 
     # Examples of how to test next.
     # No unit tests are setup since data in Google Analytics will vary day-by-day.
