@@ -5,8 +5,10 @@ NOTICE: THIS FILE (and google client library dependency) IS TEMPORARY AND WILL B
 import inspect
 from datetime import (
     date,
+    datetime,
     timedelta
 )
+import pytz
 from types import FunctionType
 from calendar import monthrange
 from collections import OrderedDict
@@ -27,6 +29,7 @@ DEFAULT_GOOGLE_API_CONFIG = {
     ],
     "analytics_view_id" : '132680007',
     "analytics_page_size" : 10000,
+    "analytics_timezone" : "US/Eastern",                    # 4DN Analytics account is setup for EST time zone.
     "analytics_dimension_name_map" : {
         "currentFilters"    : 1,
         "name"              : 2,
@@ -149,9 +152,7 @@ class GoogleAPISyncer:
         https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
         '''
 
-
-        @staticmethod
-        def transform_report_result(raw_result, save_raw_values=False, date_increment="daily"):
+        def transform_report_result(self, raw_result, save_raw_values=False, date_increment="daily"):
             '''
             Transform raw responses (multi-dimensional array) from Google Analytics to a more usable
             list-of-dictionaries structure.
@@ -198,11 +199,13 @@ class GoogleAPISyncer:
                 TODO: Handle 'today' and maybe other date string options.
                 '''
 
+                tz = pytz.timezone(self.owner.extra_config.get("analytics_timezone", "US/Eastern"))
+                today = datetime.now(tz).date()
                 if date_requested == 'yesterday':
-                    return (date.today() - timedelta(days=1)).isoformat()
+                    return (today - timedelta(days=1)).isoformat()
                 if 'daysAgo' in date_requested:
                     days_ago = int(date_requested.replace('daysAgo', ''))
-                    return (date.today() - timedelta(days=days_ago)).isoformat()
+                    return (today - timedelta(days=days_ago)).isoformat()
                 return date_requested # Assume already in ISO format.
 
             parsed_reports = OrderedDict()
@@ -335,7 +338,10 @@ class GoogleAPISyncer:
             raw_result['report_key_names'] = report_key_names
             # This transforms raw_result["reports"] into more usable data structure for ES and aggregation
             #   e.g. list of JSON items instead of multi-dimensional table representation
-            return self.transform_report_result(raw_result, date_increment=kwargs.get('increment'))     # same as GoogleAPISyncer.AnalyticsAPI.transform_report_result(raw_result)
+            return self.transform_report_result(
+                raw_result,
+                date_increment=kwargs.get('increment')
+            )
 
 
 
@@ -381,7 +387,8 @@ class GoogleAPISyncer:
             '''
 
             last_tracking_item_date = self.get_latest_tracking_item_date(increment=increment)
-            today = date.today()
+            tz = pytz.timezone(self.owner.extra_config.get("analytics_timezone", "US/Eastern"))
+            today = datetime.now(tz).date()
 
             if last_tracking_item_date is None:
                 if increment == 'daily':
@@ -390,8 +397,8 @@ class GoogleAPISyncer:
                     last_tracking_item_date = today - timedelta(days=61)
                     date_to_fill_from = last_tracking_item_date + timedelta(days=1)
                 elif increment == 'monthly':
-                    # Fill up with last 6 months Google Analytics data, if no other TrackingItem(s) yet exist.
-                    month_to_fill_from = today.month - 6
+                    # Fill up with last 12 months Google Analytics data, if no other TrackingItem(s) yet exist.
+                    month_to_fill_from = today.month - 12
                     year_to_fill_from = today.year
                     while month_to_fill_from < 1:
                         month_to_fill_from = 12 + month_to_fill_from
@@ -891,14 +898,8 @@ if __name__ == "__main__":
     last_tracking_item_date_monthly = google.analytics.get_latest_tracking_item_date("monthly")
     if not last_tracking_item_date_daily or not last_tracking_item_date_monthly:
         commands = """
-
-action_logs = {}
-res_daily = google.analytics.fill_with_tracking_items('daily')
-action_logs['daily_created'] = res_daily.get('created', [])
-
-res_monthly = google.analytics.fill_with_tracking_items('monthly')
-action_logs['monthly_created'] = res_monthly.get('created', [])
-print(action_logs)
+    >>> google.analytics.fill_with_tracking_items('daily')
+    >>> google.analytics.fill_with_tracking_items('monthly')
         """
         missing_items = (
             "daily nor monthly"
@@ -908,7 +909,7 @@ print(action_logs)
         )
         print(
             YELLOW + "No \033[4m" + missing_items + "\033[24m tracking items currently exist on this server.",
-            "\nRun the following command to fill:", "\033[2m", commands, "\033[22m" + END_COLOR)
+            "\nRun the following to fill:", "\033[2m", commands, "\033[22m" + END_COLOR)
     else:
         print(
             GREEN + "Most recent tracking items are from",
@@ -917,27 +918,30 @@ print(action_logs)
             END_COLOR
         )
 
-    # Examples of how to test next.
-    # No unit tests are setup since data in Google Analytics will vary day-by-day.
-    # Instead, manually compare results of output vs data shown in analytics UI to assert.
+    nextmsg = '''
+\033[1mExamples of how to test.\033[0m
+No unit tests are setup since data in Google Analytics will vary day-by-day.
+Instead, \033[1mmanually compare results of output vs data shown in analytics UI\033[0m to assert.
+    >>> google.analytics.file_downloads_by_country()
+    <<< \x1b[3m{ ..., "reports" : { "file_downloads_by_country" : [ ..., {'ga:country': 'China', 'ga:metric2': 0, 'ga:metric1': 11877317, 'ga:calcMetric_PercentRangeQueries': 67, 'ga:productDetailViews': 1, 'ga:productListClicks': 0, 'ga:productListViews': 69}, ... ] }, ... }\x1b[23m
+    >>> google.analytics.file_downloads_by_filetype()
+    <<< \x1b[3m{ ... JSON object with report info ... }\x1b[23m
 
-    # >>> res_file_downloads1 = google.analytics.file_downloads_by_country()
-    # >>> res_file_downloads1
-    # >>> res_file_downloads2 = google.analytics.file_downloads_by_filetype()
-    # >>> res_file_downloads2
+\033[1mCheck to ensure data aligns with analytics\033[0m, e.g. -
+    >>> res_search1 = google.analytics.search_search_queries()
+    >>> res_search1["reports"]["search_search_queries"]
+    >>> res_facets1 = google.analytics.fields_faceted()
+    >>> res_facets1["reports"]["fields_faceted"]
 
-    # Check to ensure data aligns with analytics, e.g.
-    # >>> res_search1 = google.analytics.search_search_queries()
-    # >>> res_search1["reports"]["search_search_queries"]
-    # >>> res_facets1 = google.analytics.fields_faceted()
-    # >>> res_facets1["reports"]["fields_faceted"]
+\033[1mUltimately, the following should succeed on localhost\033[0m (if not filled up earlier) -
+    >>> google.analytics.fill_with_tracking_items("daily")
+    <<< Created 1 TrackingItems so far.
+    <<< Created 2 TrackingItems so far.
+    <<< ...
+    <<< Created 60 TrackingItems so far.
+    '''
 
-    # Ultimately, the following should succeed on localhost -
-    # >>> google.analytics.fill_with_tracking_items("daily")
-    #  Created 1 TrackingItems so far.
-    #  Created 2 TrackingItems so far.
-    #  ...
-    #  Created 60 TrackingItems so far.
+    print(nextmsg)
 
 
 
