@@ -20,8 +20,8 @@ def effectively_never():
 
 
 def end_of_day_on_weekdays():
-    """ Cron schedule that runs at 6pm EST on weekdays. Used for deployments. """
-    return Cron('0', '18', '*', '*', '1-5', '*')
+    """ Cron schedule that runs at 6pm EST (22:00 UTC) on weekdays. Used for deployments. """
+    return Cron('0', '22', '?', '*', 'MON-FRI', '*')
 
 # this dictionary defines the CRON schedules for the dev and prod foursight
 # stagger them to reduce the load on Fourfront. Times are UTC
