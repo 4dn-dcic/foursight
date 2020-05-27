@@ -8,9 +8,12 @@ from git import Repo
 from ..run_result import CheckResult, ActionResult
 from ..utils import check_function, action_function
 from dcicutils.deployment_utils import EBDeployer
+from dcicutils.beanstalk_utils import compute_ff_stg_env
 from dcicutils.env_utils import (
-    FF_ENV_INDEXER, CGAP_ENV_INDEXER, is_fourfront_env, is_cgap_env
+    FF_ENV_INDEXER, CGAP_ENV_INDEXER, is_fourfront_env, is_cgap_env,
+
 )
+from dcicutils.beanstalk_utils import compute_ff_prd_env
 from dcicutils.beanstalk_utils import beanstalk_info, is_indexing_finished
 
 
@@ -164,8 +167,8 @@ def deploy_application_to_beanstalk(connection, **kwargs):
     if application_version_name is None:  # if not specified, use branch+timestamp
         application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
 
-    if repo is not None:
-        repo_location = clone_repo_to_temporary_dir(repo)
+    if repo is not None:  # NOTE: if you specify this, assume a CGAP deployment
+        repo_location = clone_repo_to_temporary_dir(repo, name='cgap-portal')
     else:
         repo_location = clone_repo_to_temporary_dir()
 
@@ -191,3 +194,13 @@ def deploy_application_to_beanstalk(connection, **kwargs):
         cleanup_tempdir(repo_location)
 
     return check
+
+
+@check_function()
+def deploy_ff_staging(connection, **kwargs):
+    """ Deploys Fourfront master to whoever staging is.
+        Runs as part of the 'deployment_checks' schedule on data ONLY.
+    """
+    return deploy_application_to_beanstalk(connection,
+                                           env=compute_ff_stg_env(),
+                                           branch='master')

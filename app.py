@@ -19,6 +19,10 @@ def effectively_never():
     return Cron('0', '0', '31', '2', '?', '?')
 
 
+def end_of_day_on_weekdays():
+    """ Cron schedule that runs at 6pm EST on weekdays. Used for deployments. """
+    return Cron('0', '18', '*', '*', '1-5', '*')
+
 # this dictionary defines the CRON schedules for the dev and prod foursight
 # stagger them to reduce the load on Fourfront. Times are UTC
 # info: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
@@ -34,7 +38,8 @@ foursight_cron_by_schedule = {
         'morning_checks_2': Cron('15', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('0', '9', '?', '*', '2', '*'),
         'monthly_checks': Cron('0', '9', '1', '*', '?', '*'),
-        'manual_checks': effectively_never()
+        'manual_checks': effectively_never(),
+        'deployment_checks': end_of_day_on_weekdays()
     },
     'dev': {
         'ten_min_checks': Cron('5/10', '*', '*', '*', '?', '*'),
@@ -46,7 +51,8 @@ foursight_cron_by_schedule = {
         'morning_checks_2': Cron('45', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('30', '9', '?', '*', '2', '*'),
         'monthly_checks': Cron('30', '9', '1', '*', '?', '*'),
-        'manual_checks': effectively_never()
+        'manual_checks': effectively_never(),
+        'deployment_checks': end_of_day_on_weekdays()  # disabled, see schedule below
     }
 }
 
@@ -94,6 +100,13 @@ def monday_checks(event):
 @app.schedule(foursight_cron_by_schedule[STAGE]['monthly_checks'])
 def monthly_checks(event):
     queue_scheduled_checks('all', 'monthly_checks')
+
+
+@app.schedule(foursight_cron_by_schedule[STAGE]['deployment_checks'])
+def deployment_checks(event):
+    if STAGE == 'dev':
+        return  # do not schedule the deployment checks on dev
+    queue_scheduled_checks('all', 'deployment_checks')
 
 
 '''######### END SCHEDULED FXNS #########'''
