@@ -167,8 +167,8 @@ def deploy_application_to_beanstalk(connection, **kwargs):
     if application_version_name is None:  # if not specified, use branch+timestamp
         application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
 
-    if repo is not None:
-        repo_location = clone_repo_to_temporary_dir(repo)
+    if repo is not None:  # NOTE: if you specify this, assume a CGAP deployment
+        repo_location = clone_repo_to_temporary_dir(repo, name='cgap-portal')
     else:
         repo_location = clone_repo_to_temporary_dir()
 
