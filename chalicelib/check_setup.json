@@ -1598,6 +1598,19 @@
             }
         }
     },
+    "deploy_ff_staging": {
+        "title": "Deploy Fourfront master to staging.4dnucleome.org",
+        "group": "Deployment Checks",
+        "schedule": {
+            "deployment_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "check_opf_lab_different_than_experiment": {
         "title": "Opf contributing lab",
         "group": "Metadata checks",

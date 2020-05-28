@@ -7,8 +7,6 @@ from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
-import datetime
-import json
 
 
 STATUS_LEVEL = {
@@ -247,7 +245,7 @@ def workflow_properties(connection, **kwargs):
             step_inputs = step.get('inputs')
             for step_input in step_inputs:
                 if (step_input['meta'].get('type') in ['data file', 'reference file'] and not
-                    step_input['meta'].get('file_format')):
+                   step_input['meta'].get('file_format')):
                     issues.append('Missing meta.file_format property in Workflow Step `{}` Input `{}`'
                                   ''.format(step.get('name'), step_input.get('name')))
             input_names = [step_input.get('name') for step_input in step_inputs]
@@ -262,7 +260,7 @@ def workflow_properties(connection, **kwargs):
             step_outputs = step.get('outputs')
             for step_output in step_outputs:
                 if (step_output['meta'].get('type') in ['data file', 'reference file'] and not
-                    step_output['meta'].get('file_format')):
+                   step_output['meta'].get('file_format')):
                     issues.append('Missing meta.file_format property in Workflow Step `{}` Output `{}`'
                                   ''.format(step.get('name'), step_output.get('name')))
             output_names = [step_output.get('name') for step_output in step_outputs]
@@ -511,9 +509,9 @@ def check_opf_status_mismatch(connection, **kwargs):
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.get_es_metadata(list(set(files)),
-                                     sources=['links.quality_metric', 'object.status', 'uuid'],
-                                     key=connection.ff_keys)
+    resp = ff_utils.get_es_metadata(list(set(files)),
+                                    sources=['links.quality_metric', 'object.status', 'uuid'],
+                                    key=connection.ff_keys)
     opf_status_dict = {item['uuid']: item['object']['status'] for item in resp if item['uuid'] in files}
     opf_linked_dict = {
         item['uuid']: item.get('links', {}).get('quality_metric', []) for item in resp if item['uuid'] in files
@@ -592,8 +590,7 @@ def check_validation_errors(connection, **kwargs):
         check.summary = 'Validation errors found'
         check.description = ('{} items found with validation errors, comprising the following '
                              'item types: {}. \nFor search results see link below.'.format(
-                                 len(results), ', '.join(list(types))
-                            ))
+                                 len(results), ', '.join(list(types))))
         check.ff_link = connection.ff_server + search_url
     else:
         check.status = 'PASS'
