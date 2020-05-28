@@ -32,6 +32,8 @@ def try_to_describe_indexer_env(env):
 def clone_repo_to_temporary_dir(repo='https://github.com/4dn-dcic/fourfront.git', name='fourfront'):
     """ Clones the given repo (default fourfront) to a temporary directory whose
         absolute path is returned.
+        XXX: This code should be refactored into a contextmanager (probably in dcicutils).
+             See PR292 comments.
     """
     tempdir = tempfile.mkdtemp(prefix=name)
     Repo.clone_from(url=repo, to_path=tempdir)
@@ -163,6 +165,12 @@ def _deploy_application_to_beanstalk(connection, **kwargs):
     branch = kwargs.get('branch', 'master')  # by default deploy master
     application_version_name = kwargs.get('application_version_name', None)
     repo = kwargs.get('repo', None)
+
+    # error if we try to deploy prod
+    if env == compute_ff_prd_env():
+        check.status = 'ERROR'
+        check.summary = 'Tried to deploy production env %s from Foursight, aborting.' % env
+        return check
 
     if application_version_name is None:  # if not specified, use branch+timestamp
         application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
