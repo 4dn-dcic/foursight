@@ -32,6 +32,8 @@ def try_to_describe_indexer_env(env):
 def clone_repo_to_temporary_dir(repo='https://github.com/4dn-dcic/fourfront.git', name='fourfront'):
     """ Clones the given repo (default fourfront) to a temporary directory whose
         absolute path is returned.
+        XXX: This code should be refactored into a contextmanager (probably in dcicutils).
+             See PR292 comments.
     """
     tempdir = tempfile.mkdtemp(prefix=name)
     Repo.clone_from(url=repo, to_path=tempdir)
@@ -150,19 +152,25 @@ def provision_indexer_environment(connection, **kwargs):
     return check
 
 
-@check_function(env='fourfront-mastertest',
-                branch='master',
-                application_version_name=None, repo=None)
-def deploy_application_to_beanstalk(connection, **kwargs):
-    """ Deploys application to beanstalk under the given application_version name + a branch
+def _deploy_application_to_beanstalk(connection, **kwargs):
+    """ Creates and returns a CheckResult for 'deploy_application_to_beanstalk'.
 
-        NOTE: CGAP requires kwargs!
+        NOTE: this does NOT have the @check_function decorator because I'd like
+        to "call this check" in other checks. The decorator will effectively cast
+        the resulting check to a dictionary, breaking nested checks. This could be
+        fixed by refactoring "store_formatted_result". - Will 05/28/2020
     """
     check = CheckResult(connection, 'deploy_application_to_beanstalk')
     env = kwargs.get('env', 'fourfront-mastertest')  # by default
     branch = kwargs.get('branch', 'master')  # by default deploy master
     application_version_name = kwargs.get('application_version_name', None)
     repo = kwargs.get('repo', None)
+
+    # error if we try to deploy prod
+    if env == compute_ff_prd_env():
+        check.status = 'ERROR'
+        check.summary = 'Tried to deploy production env %s from Foursight, aborting.' % env
+        return check
 
     if application_version_name is None:  # if not specified, use branch+timestamp
         application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
@@ -196,11 +204,33 @@ def deploy_application_to_beanstalk(connection, **kwargs):
     return check
 
 
+@check_function(env='fourfront-mastertest',
+                branch='master',
+                application_version_name=None, repo=None)
+def deploy_application_to_beanstalk(connection, **kwargs):
+    """ Deploys application to beanstalk under the given application_version name + a branch
+        Uses the above helper method, returning the (decorated, thus stored) check directly.
+
+        NOTE: CGAP requires kwargs!
+    """
+    return _deploy_application_to_beanstalk(connection, **kwargs)
+
+
 @check_function()
 def deploy_ff_staging(connection, **kwargs):
     """ Deploys Fourfront master to whoever staging is.
         Runs as part of the 'deployment_checks' schedule on data ONLY.
     """
-    return deploy_application_to_beanstalk(connection,
-                                           env=compute_ff_stg_env(),
-                                           branch='master')
+    this_check = CheckResult(connection, 'deploy_ff_staging')
+    env_to_deploy = compute_ff_stg_env()
+    helper_check = _deploy_application_to_beanstalk(connection,
+                                                    env=env_to_deploy,
+                                                    branch='master')
+    if helper_check.status == 'PASS':
+        this_check.status = 'PASS'
+        this_check.summary = 'Successfully deployed Fourfront master to %s' % env_to_deploy
+    else:
+        this_check.status = 'ERROR'
+        this_check.summary = 'Error occurred during deployment, see full_output'
+        this_check.full_output = helper_check.summary  # should have error message
+    return this_check
