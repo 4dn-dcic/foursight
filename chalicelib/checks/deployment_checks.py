@@ -216,7 +216,7 @@ def deploy_ff_staging(connection, **kwargs):
     this_check = CheckResult(connection, 'deploy_ff_staging')
     env_to_deploy = compute_ff_stg_env()
     helper_check = _deploy_application_to_beanstalk(connection,
-                                                    env='fourfront-mastertest',
+                                                    env=env_to_deploy,
                                                     branch='master')
     if helper_check.status == 'PASS':
         this_check.status = 'PASS'
