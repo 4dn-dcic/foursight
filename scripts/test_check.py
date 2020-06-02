@@ -19,7 +19,7 @@ def setup_stage(stage):
             print('Bad stage')
             exit(1)
         else:
-            app.set_stage(args.stage)
+            app.set_stage(stage)
 
 
 def setup_env(env):
@@ -30,9 +30,9 @@ def setup_env(env):
             print('Bad env')
             exit(1)
         try:
-            connection = app.init_connection(args.env)
+            connection = app.init_connection(env)
         except:
-            print('Could not establish connection to env: %s' % args.env)
+            print('Could not establish connection to env: %s' % env)
             exit(1)
     return connection
 
