@@ -25,7 +25,7 @@ workflow_details = {
     },
     "fastqc": {
         "run_time": 50,
-        "accepted_versions": ["0.2.0", "0.2.7"]
+        "accepted_versions": ["v1", "v2"]
     },
     "bwa-mem": {
         "run_time": 50,
