@@ -36,8 +36,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "config": {"ebs_size": 10}
     },
         {
-        'app_name': 'fastqc-0-11-4-1',
-        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
+        'app_name': 'fastqc',
+        'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5'
     },
         {
         'app_name': 'pairsqc-single',

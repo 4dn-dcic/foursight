@@ -18,9 +18,14 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["0.0.4", "0.2.6"]
     },
+    # old workflow run naming, updated on workflows for old ones
     "fastqc-0-11-4-1": {
         "run_time": 50,
         "accepted_versions": ["0.2.0"]
+    },
+    "fastqc": {
+        "run_time": 50,
+        "accepted_versions": ["0.2.0", "0.2.7"]
     },
     "bwa-mem": {
         "run_time": 50,
