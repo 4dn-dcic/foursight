@@ -37,8 +37,13 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
         {
         'app_name': 'fastqc',
-        'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5'
-    },
+        'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5',
+        "config": {
+            "ebs_size": 10,
+            "instance_type": 't3.micro',
+            'EBS_optimized': True
+            }
+        },
         {
         'app_name': 'pairsqc-single',
         'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3',
