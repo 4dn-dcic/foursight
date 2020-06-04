@@ -232,7 +232,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'fastqc-0-11-4-1', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start)
     return check
 
 
@@ -257,8 +257,9 @@ def fastqc_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        wfr_setup = wfrset_utils.step_settings('fastqc', 'no_organism', attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'],
+                                        connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)

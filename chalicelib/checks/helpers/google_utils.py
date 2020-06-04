@@ -5,18 +5,17 @@ NOTICE: THIS FILE (and google client library dependency) IS TEMPORARY AND WILL B
 import inspect
 from datetime import (
     date,
+    datetime,
     timedelta
 )
+import pytz
 from types import FunctionType
 from calendar import monthrange
 from collections import OrderedDict
 from dcicutils.env_utils import FF_PROD_BUCKET_ENV
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
-from dcicutils import (
-    ff_utils,
-    s3_utils
-)
+from dcicutils import ff_utils, s3_utils
 
 
 
@@ -29,7 +28,20 @@ DEFAULT_GOOGLE_API_CONFIG = {
 
     ],
     "analytics_view_id" : '132680007',
-    "analytics_page_size" : 10000
+    "analytics_page_size" : 10000,
+    "analytics_timezone" : "US/Eastern",                    # 4DN Analytics account is setup for EST time zone.
+    "analytics_dimension_name_map" : {
+        "currentFilters"    : 1,
+        "name"              : 2,
+        "field"             : 3,
+        "term"              : 4,
+        "experimentType"    : 5,
+        "userGroups"        : 6
+    },
+    "analytics_metric_name_map" : {
+        "filesize"          : 1,
+        "downloads"         : 2
+    },
 }
 
 
@@ -140,9 +152,7 @@ class GoogleAPISyncer:
         https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
         '''
 
-
-        @staticmethod
-        def transform_report_result(raw_result, save_raw_values=False, date_increment="daily"):
+        def transform_report_result(self, raw_result, save_raw_values=False, date_increment="daily"):
             '''
             Transform raw responses (multi-dimensional array) from Google Analytics to a more usable
             list-of-dictionaries structure.
@@ -189,11 +199,13 @@ class GoogleAPISyncer:
                 TODO: Handle 'today' and maybe other date string options.
                 '''
 
+                tz = pytz.timezone(self.owner.extra_config.get("analytics_timezone", "US/Eastern"))
+                today = datetime.now(tz).date()
                 if date_requested == 'yesterday':
-                    return (date.today() - timedelta(days=1)).isoformat()
+                    return (today - timedelta(days=1)).isoformat()
                 if 'daysAgo' in date_requested:
                     days_ago = int(date_requested.replace('daysAgo', ''))
-                    return (date.today() - timedelta(days=days_ago)).isoformat()
+                    return (today - timedelta(days=days_ago)).isoformat()
                 return date_requested # Assume already in ISO format.
 
             parsed_reports = OrderedDict()
@@ -326,7 +338,10 @@ class GoogleAPISyncer:
             raw_result['report_key_names'] = report_key_names
             # This transforms raw_result["reports"] into more usable data structure for ES and aggregation
             #   e.g. list of JSON items instead of multi-dimensional table representation
-            return self.transform_report_result(raw_result, date_increment=kwargs.get('increment'))     # same as GoogleAPISyncer.AnalyticsAPI.transform_report_result(raw_result)
+            return self.transform_report_result(
+                raw_result,
+                date_increment=kwargs.get('increment')
+            )
 
 
 
@@ -342,7 +357,8 @@ class GoogleAPISyncer:
 
             search_results = ff_utils.search_metadata(
                 '/search/?type=TrackingItem&tracking_type=google_analytics&sort=-google_analytics.for_date&limit=1&google_analytics.date_increment=' + increment,
-                key=dict(self.owner.access_key, server=self.owner.server)
+                key=dict(self.owner.access_key, server=self.owner.server),
+                page_limit=1
             )
             if len(search_results) == 0:
                 return None
@@ -371,20 +387,22 @@ class GoogleAPISyncer:
             '''
 
             last_tracking_item_date = self.get_latest_tracking_item_date(increment=increment)
-            today = date.today()
+            tz = pytz.timezone(self.owner.extra_config.get("analytics_timezone", "US/Eastern"))
+            today = datetime.now(tz).date()
 
             if last_tracking_item_date is None:
                 if increment == 'daily':
                     # Fill up with last 60 days of Google Analytics data, if no other TrackingItem(s) yet exist.
+                    # TODO: Set this to be ~45 for dev environment & 120 (or more) for production.
                     last_tracking_item_date = today - timedelta(days=61)
                     date_to_fill_from = last_tracking_item_date + timedelta(days=1)
                 elif increment == 'monthly':
-                    # Fill up with last 6 months Google Analytics data, if no other TrackingItem(s) yet exist.
-                    month_to_fill_from = today.month - 6
+                    # Fill up with last 12 months Google Analytics data, if no other TrackingItem(s) yet exist.
+                    month_to_fill_from = today.month - 12
                     year_to_fill_from = today.year
                     while month_to_fill_from < 1:
                         month_to_fill_from = 12 + month_to_fill_from
-                        year_to_fill_from += -1
+                        year_to_fill_from -= 1
                     date_to_fill_from = date(year_to_fill_from, month_to_fill_from, 1)
             else:
                 if increment == 'daily':
@@ -405,6 +423,8 @@ class GoogleAPISyncer:
             if increment == 'daily':
                 end_date = today - timedelta(days=1)
 
+                print("Filling daily items from", date_to_fill_from, "to", end_date)
+
                 if date_to_fill_from > end_date:
                     return { 'created' : created_list, 'count' : counter }
 
@@ -418,7 +438,7 @@ class GoogleAPISyncer:
                     )
                     counter += 1
                     created_list.append(response['uuid'])
-                    print('Created ' + str(counter) + ' TrackingItems so far.')
+                    print('Created ' + str(counter) + ' TrackingItems so far.', date_to_fill_from)
                     date_to_fill_from += timedelta(days=1)
 
 
@@ -431,10 +451,12 @@ class GoogleAPISyncer:
                     end_year -= 1
                     end_month += 12
 
+                print("Filling monthly items from", date_to_fill_from, "to", str(end_year) + "-" + str(end_month))
+
                 if fill_year > end_year and fill_month > end_month:
                     return { 'created' : created_list, 'count' : counter }
 
-                while fill_year <= end_year and fill_month <= end_month:
+                while fill_year < end_year or (fill_year == end_year and fill_month <= end_month):
                     for_date_start_str = date(fill_year, fill_month, 1).isoformat()
                     for_date_end_str = date(fill_year, fill_month, monthrange(fill_year, fill_month)[1]).isoformat() # Last day of fill month
                     response = self.create_tracking_item(
@@ -445,7 +467,7 @@ class GoogleAPISyncer:
                     )
                     counter += 1
                     created_list.append(response['uuid'])
-                    print('Created ' + str(counter) + ' TrackingItems so far.')
+                    print('Created ' + str(counter) + ' TrackingItems so far.', str(fill_year) + "-" + str(fill_month))
                     fill_month += 1
                     if fill_month > 12:
                         fill_month -= 12
@@ -509,6 +531,11 @@ class GoogleAPISyncer:
 
 
 
+        ################################
+        ### Item Views & Impressions ###
+        ################################
+
+
         @report
         def views_by_file(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
@@ -516,7 +543,11 @@ class GoogleAPISyncer:
                 'metrics': [
                     { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
                     { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
-                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' }
+                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:uniquePurchases', 'formattingType' : 'INTEGER' }, # Total downloads + range queries
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("downloads", 2)), 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("filesize", 1)), 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:calcMetric_PercentRangeQueries', 'formattingType' : 'INTEGER' }
                 ],
                 'dimensions': [
                     { 'name': 'ga:productName' },
@@ -524,11 +555,18 @@ class GoogleAPISyncer:
                     { 'name': 'ga:productCategoryLevel2' },
                     { 'name': 'ga:productBrand' }
                 ],
-                "orderBys" : [{ 'fieldName' : 'ga:productDetailViews', 'sortOrder' : 'descending' }],
+                "orderBys" : [
+                    { 'fieldName' : 'ga:productDetailViews', 'sortOrder' : 'descending' },
+                    { 'fieldName': 'ga:uniquePurchases', 'sortOrder' : 'descending' }
+                ],
                 'dimensionFilterClauses' : [
                     {
                         "filters" : [
-                            { "dimensionName" : "ga:productCategoryLevel1", "expressions" : ["File"], "operator" : "EXACT" }
+                            {
+                                "dimensionName" : "ga:productCategoryLevel1",
+                                "expressions" : ["File"],
+                                "operator" : "EXACT"
+                            }
                         ]
                     }
                 ],
@@ -537,7 +575,6 @@ class GoogleAPISyncer:
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
-
 
 
         @report
@@ -568,7 +605,6 @@ class GoogleAPISyncer:
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
-
 
 
         @report(disabled=True)
@@ -613,6 +649,11 @@ class GoogleAPISyncer:
 
 
 
+        ################################
+        ####### Search Analytics #######
+        ################################
+
+
         @report(disabled=True)
         def search_search_queries(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
@@ -641,7 +682,6 @@ class GoogleAPISyncer:
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
-
 
 
         @report(disabled=True)
@@ -674,15 +714,14 @@ class GoogleAPISyncer:
             return report_request_json
 
 
-
         @report
         def fields_faceted(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
                 'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
                 'dimensions': [
                     #{ 'name': 'ga:eventLabel' }, # Too many distinct terms if we make it this granular.
-                    { 'name': 'ga:dimension3' }, # Field Name
-                    #{ 'name': 'ga:dimension4' }  # Term Name # # Too many distinct terms if we make it this granular.
+                    { 'name': 'ga:dimension' + str(self.owner.extra_config["analytics_dimension_name_map"].get("field", 3)) }, # Field Name
+                    #{ 'name': 'ga:dimension' + str(self.owner.extra_config["analytics_dimension_name_map"].get("term", 4)) }  # Term Name # # Too many distinct terms if we make it this granular.
                 ],
                 'metrics': [
                     { 'expression': 'ga:totalEvents', 'formattingType' : 'INTEGER' },
@@ -690,7 +729,7 @@ class GoogleAPISyncer:
                     { 'expression': 'ga:users', 'formattingType' : 'INTEGER' }
                 ],
                 "orderBys" : [{ 'fieldName' : 'ga:totalEvents', 'sortOrder' : 'descending' }],
-                'dimensionFilterClauses' : [
+                "dimensionFilterClauses" : [
                     {
                         "filters" : [
                             {
@@ -702,6 +741,91 @@ class GoogleAPISyncer:
                     }
                 ]
             }
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+
+
+        #################################
+        #### File Download Analytics ####
+        #################################
+
+        # N.B. Some file download metrics are bundled into `views_by_file`
+
+        def file_download_base_request_json(self, start_date='yesterday', end_date='yesterday'):
+            '''Helper func for DRYness'''
+            return {
+                "dateRanges" : [{ 'startDate' : start_date, 'endDate' : end_date }],
+                "metrics": [
+                    # Downloads
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("downloads", 2)), 'formattingType' : 'INTEGER' },
+                    # Filesize
+                    { 'expression': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("filesize", 1)), 'formattingType' : 'INTEGER' },
+                    # Range queries (we can't change calculated metric name in analytics after created so.. ya)
+                    { 'expression': 'ga:calcMetric_PercentRangeQueries', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productDetailViews', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListClicks', 'formattingType' : 'INTEGER' },
+                    { 'expression': 'ga:productListViews', 'formattingType' : 'INTEGER' },
+                ],
+                "dimensionFilterClauses" : [
+                    {
+                        "filters" : [
+                            {
+                                "dimensionName" : "ga:productCategoryLevel1",
+                                "expressions" : ["File"],
+                                "operator" : "EXACT",
+                                "caseSensitive" : True
+                            }
+                        ]
+                    }
+                ],
+                "orderBys" : [
+                    { 'fieldName': 'ga:metric' + str(self.owner.extra_config["analytics_metric_name_map"].get("downloads", 2)), 'sortOrder' : 'descending' },
+                    { 'fieldName': 'ga:calcMetric_PercentRangeQueries', 'sortOrder' : 'descending' },
+                    { 'fieldName': 'ga:productDetailViews', 'sortOrder' : 'descending' },
+                    { 'fieldName': 'ga:productListClicks', 'sortOrder' : 'descending' },
+                    { 'fieldName': 'ga:productListViews', 'sortOrder' : 'descending' }
+                ]
+            }
+
+        @report
+        def file_downloads_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
+            report_request_json = self.file_download_base_request_json(start_date, end_date)
+            report_request_json["dimensions"] = [ { 'name': 'ga:country' } ]
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+        @report
+        def file_downloads_by_filetype(self, start_date='yesterday', end_date='yesterday', execute=True):
+            report_request_json = self.file_download_base_request_json(start_date, end_date)
+            report_request_json["dimensions"] = [ { 'name': 'ga:productVariant' } ] # === 'filetype'
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+        @report
+        def file_downloads_by_experiment_type(self, start_date='yesterday', end_date='yesterday', execute=True):
+            report_request_json = self.file_download_base_request_json(start_date, end_date)
+            report_request_json["dimensions"] = [
+                { "name" : 'ga:dimension' + str(self.owner.extra_config["analytics_dimension_name_map"].get("experimentType", 5)) }
+            ]
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+        @report
+        def top_files_downloaded(self, start_date='yesterday', end_date='yesterday', execute=True):
+            '''Only gets top 100 results'''
+            report_request_json = self.file_download_base_request_json(start_date, end_date)
+            report_request_json["dimensions"] = [
+                { 'name': 'ga:productName' },
+                { 'name': 'ga:productSku' },
+                { 'name': 'ga:productCategoryLevel2' },
+                { 'name': 'ga:productBrand' }
+            ]
+            report_request_json["pageSize"] = 100
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
@@ -727,3 +851,97 @@ class GoogleAPISyncer:
         TODO: Implement
         '''
         pass
+
+
+
+
+######### CODE TO TEST THE ABOVE #########
+
+'''
+The following is code to test the above class(es).
+Run this file in interactive mode and continue on:
+
+> python3 -i google_utils.py
+
+'''
+
+
+if __name__ == "__main__":
+    import sys
+    import os
+    import argparse
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    END_COLOR = "\033[0m"
+
+    parser = argparse.ArgumentParser(description='Supply a fourfront key and key secret from your profile page.')
+    parser.add_argument('key', metavar='access_key', type=str, help='Access Key, as obtained from 4DN user profile page.')
+    parser.add_argument('secret', metavar='access_key_secret', type=str, help='Access Key Secret, as obtained from 4DN user profile page.')
+    parser.add_argument('--server', type=str, default="http://localhost:8000", help='Server to connect to, including protocol and port.')
+    parser.add_argument('--command', type=str, help='Command to be executed (for use if not running interactively)')
+
+    args = parser.parse_args()
+
+    if not sys.flags.interactive:
+        sys.exit(RED + "Exiting, not in interactive mode.\nRun interactively via `python3 -i google_utils.py` or supply a command.")
+
+    ak = {
+        "server": args.server,
+        "key": args.key,
+        "secret": args.secret
+    }
+
+    google = GoogleAPISyncer(ak)
+    print(YELLOW + "Checking last tracking item date on " + args.server + "...\n")
+    last_tracking_item_date_daily = google.analytics.get_latest_tracking_item_date()
+    last_tracking_item_date_monthly = google.analytics.get_latest_tracking_item_date("monthly")
+    if not last_tracking_item_date_daily or not last_tracking_item_date_monthly:
+        commands = """
+    >>> google.analytics.fill_with_tracking_items('daily')
+    >>> google.analytics.fill_with_tracking_items('monthly')
+        """
+        missing_items = (
+            "daily nor monthly"
+            if (not last_tracking_item_date_daily and not last_tracking_item_date_monthly)
+            else "daily" if not last_tracking_item_date_daily
+            else "monthly"
+        )
+        print(
+            YELLOW + "No \033[4m" + missing_items + "\033[24m tracking items currently exist on this server.",
+            "\nRun the following to fill:", "\033[2m", commands, "\033[22m" + END_COLOR)
+    else:
+        print(
+            GREEN + "Most recent tracking items are from",
+            last_tracking_item_date_daily, '(daily)',
+            last_tracking_item_date_monthly, '(monthly)',
+            END_COLOR
+        )
+
+    nextmsg = '''
+\033[1mExamples of how to test.\033[0m
+No unit tests are setup since data in Google Analytics will vary day-by-day.
+Instead, \033[1mmanually compare results of output vs data shown in analytics UI\033[0m to assert.
+    >>> google.analytics.file_downloads_by_country()
+    <<< \x1b[3m{ ..., "reports" : { "file_downloads_by_country" : [ ..., {'ga:country': 'China', 'ga:metric2': 0, 'ga:metric1': 11877317, 'ga:calcMetric_PercentRangeQueries': 67, 'ga:productDetailViews': 1, 'ga:productListClicks': 0, 'ga:productListViews': 69}, ... ] }, ... }\x1b[23m
+    >>> google.analytics.file_downloads_by_filetype()
+    <<< \x1b[3m{ ... JSON object with report info ... }\x1b[23m
+
+\033[1mCheck to ensure data aligns with analytics\033[0m, e.g. -
+    >>> res_search1 = google.analytics.search_search_queries()
+    >>> res_search1["reports"]["search_search_queries"]
+    >>> res_facets1 = google.analytics.fields_faceted()
+    >>> res_facets1["reports"]["fields_faceted"]
+
+\033[1mUltimately, the following should succeed on localhost\033[0m (if not filled up earlier) -
+    >>> google.analytics.fill_with_tracking_items("daily")
+    <<< Created 1 TrackingItems so far.
+    <<< Created 2 TrackingItems so far.
+    <<< ...
+    <<< Created 60 TrackingItems so far.
+    '''
+
+    print(nextmsg)
+
+
+
