@@ -26,7 +26,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     wf_dict = [
             {
                 'app_name': 'md5',
-                'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6'
+                'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
+                "config": {"ebs_size": 10}
             },
             {
                 'app_name': 'fastqc',

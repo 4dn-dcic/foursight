@@ -159,7 +159,7 @@ def md5runCGAP_start(connection, **kwargs):
         inp_f = {'input_file': a_file['@id']}
         wfr_setup = wfrset_cgap_utils.step_settings('md5', 'no_organism', attributions)
 
-        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
