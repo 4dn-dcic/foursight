@@ -18,6 +18,10 @@ workflow_details = {
         "run_time": 50,
         "accepted_versions": ["0.2.0"]
     },
+    "fastqc": {
+        "run_time": 50,
+        "accepted_versions": ["v1", "v2"]
+    },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
         "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
