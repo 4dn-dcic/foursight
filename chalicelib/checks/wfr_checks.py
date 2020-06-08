@@ -823,17 +823,10 @@ def capture_hic_status(connection, **kwargs):
     exp_type = 'Capture Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -1371,6 +1364,10 @@ def atac_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ATAC-seq'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
     return check
 
 
@@ -1411,6 +1408,10 @@ def chip_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ChIP-seq'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
     return check
 
 
