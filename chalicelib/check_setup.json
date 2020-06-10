@@ -1070,7 +1070,7 @@
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
@@ -1083,6 +1083,18 @@
             "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "bed2multivec_status" : {
+        "title": "c) Bed to multivec",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }

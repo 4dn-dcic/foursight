@@ -164,7 +164,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         },
         {
         "app_name": "bedGraphToBigWig",
-        "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
+        "workflow_uuid": "a083e05a-46b6-4ae7-aaa4-2abf59300ff7",
         "config": {'mem': 4, 'cpu': 2, "ebs_size": 10},
         "overwrite_input_extra": True
         },
