@@ -61,7 +61,7 @@ workflow_details = {
     },
     "bedGraphToBigWig": {
         "run_time": 24,
-        "accepted_versions": ["v4"]
+        "accepted_versions": ["v4", "v5"]
     },
     "bedtomultivec": {
         "run_time": 24,
