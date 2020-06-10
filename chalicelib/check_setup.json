@@ -1088,6 +1088,18 @@
             }
         }
     },
+    "bed2multivec_status" : {
+        "title": "c) Bed to multivec",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "in_situ_hic_status" : {
         "title": "d) in situ Hi-C",
         "group": "Pipeline checks",

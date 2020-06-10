@@ -418,11 +418,7 @@ def bg2bw_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
-    # disable while under construction
-    check.allow_action = False
-    check.summary = 'Check is under construction.'
-    check.description = 'Check is under construction.'
+    check = wfr_utils.check_runs_without_output(res_temp, check, 'bedGraphToBigWig', my_auth, start)
     return check
 
 
