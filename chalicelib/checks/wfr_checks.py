@@ -1972,6 +1972,8 @@ def fastq_first_line_start(connection, **kwargs):
 @check_function()
 def bam_re_status(connection, **kwargs):
     """Searches for fastq files that don't have bam_re"""
+    # AluI pattern seems to be problematic and disabled until it its fixed
+    # ChiA pet needs a new version of this check and disabled on this one
     start = datetime.utcnow()
     check = CheckResult(connection, 'bam_re_status')
     my_auth = connection.ff_keys
@@ -1988,7 +1990,7 @@ def bam_re_status(connection, **kwargs):
                  'Dilution+Hi-C',
                  'Capture+Hi-C',
                  'TCC',
-                 'in+situ+ChIA-PET',
+                 # 'in+situ+ChIA-PET',
                  'PLAC-seq']
     query = "/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed&status!=uploading"
     exp_type_key = '&track_and_facet_info.experiment_type='
@@ -2003,7 +2005,8 @@ def bam_re_status(connection, **kwargs):
         return check
     # check if they were processed with an acceptable enzyme
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
-    acceptable_enzymes = ["AluI", "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
+    acceptable_enzymes = [  # "AluI",
+                          "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
                           "MspI", "NcoI_MspI_BspHI"  # added patterns in action
                           ]
     # make a new list of files to work on
