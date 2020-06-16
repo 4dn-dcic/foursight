@@ -26,6 +26,7 @@ def md5run_status_extra_file(connection, **kwargs):
         return check
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
+             '&status!=archived&status!=archived to project'
              '&extra_files.status!=uploaded&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -63,7 +64,7 @@ def md5run_status(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    query = '/search/?status=uploading&status=upload failed'
+    query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
     # add file type
     f_type = kwargs.get('file_type')
     query += '&type=' + f_type
@@ -386,7 +387,8 @@ def bg2bw_status(connection, **kwargs):
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
              "&extra_files.file_format.display_title!=bw"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&status!=uploading&status!=to be uploaded by workflow"
+             "&status!=archived&status!=archived to project")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -487,7 +489,8 @@ def bed2beddb_status(connection, **kwargs):
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bed"
              "&extra_files.file_format.display_title!=beddb"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&status!=uploading&status!=to be uploaded by workflow"
+             "&status!=archived&status!=archived to project")
     query += "".join(["&file_type=" + i for i in accepted_types])
     # add date
     s_date = kwargs.get('start_date')
@@ -1508,7 +1511,8 @@ def bed2multivec_status(connection, **kwargs):
     # Build the query (find bed files without bed.multires.mv5 files)
     query = ("search/?type=FileProcessed&file_format.file_format=bed&file_type=chromatin states"
              "&extra_files.file_format.display_title!=bed.multires.mv5"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&status!=uploading&status!=to be uploaded by workflow"
+             "&status!=archived&status!=archived to project")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1640,7 +1644,8 @@ def rna_strandedness_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (RNA-seq experiments)
-    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&status=pre-release&status=released&status=released to project'
+    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
+             '&status=pre-release&status=released&status=released to project')
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -1888,7 +1893,8 @@ def fastq_first_line_status(connection, **kwargs):
     if skip:
         return check
 
-    query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq&file_first_line=No value&status=restricted'
+    query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'
+             '&type=FileFastq&file_first_line=No value&status=restricted')
 
     # The search
     print('About to query ES for files')
@@ -1992,7 +1998,8 @@ def bam_re_status(connection, **kwargs):
                  'TCC',
                  # 'in+situ+ChIA-PET',
                  'PLAC-seq']
-    query = "/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed&status!=uploading"
+    query = ("/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed"
+             "&status!=uploading&status!=to be uploaded by workflow")
     exp_type_key = '&track_and_facet_info.experiment_type='
     exp_type_filter = exp_type_key + exp_type_key.join(exp_types)
     exclude_processed = '&percent_clipped_sites_with_re_motif=No value'
