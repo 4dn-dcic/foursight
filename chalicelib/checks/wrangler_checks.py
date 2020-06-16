@@ -1844,7 +1844,7 @@ def add_suggested_enum_values(connection, **kwargs):
     return action
 
 
-@check_function(days_back=None)
+@check_function(days_back=30)
 def check_external_references_uri(connection, **kwargs):
     '''
     Check if external_references.uri is missing while external_references.ref
@@ -1852,7 +1852,7 @@ def check_external_references_uri(connection, **kwargs):
     '''
     check = CheckResult(connection, 'check_external_references_uri')
 
-    days_back = kwargs.get('days_back', None)
+    days_back = kwargs.get('days_back')
     try:
         days_back = float(days_back)
     except (ValueError, TypeError):
@@ -1889,7 +1889,7 @@ def check_external_references_uri(connection, **kwargs):
     return check
 
 
-@check_function(days_back=2)
+@check_function(days_back=30)
 def check_opf_lab_different_than_experiment(connection, **kwargs):
     '''
     Check if other processed files have lab (generating lab) that is different
