@@ -151,7 +151,16 @@ def biorxiv_is_now_published(connection, **kwargs):
     fndcnt = 0
     if kwargs.get('add_to_result'):
         b2p = [pair.strip().split(' ') for pair in kwargs.get('add_to_result').split(',')]
-        fulloutput['biorxivs2check'].update({b.strip(): [p.strip()] for b, p in b2p})
+        b2p = {b.strip(): p.strip() for b, p in b2p}
+        # if there was a manual mapping need to report info to transfer
+        for bid, pid in b2p.items():
+            b_meta = get_biorxiv_meta(bid, connection)
+            if isinstance(b_meta, str):
+                check.status = "FAIL"
+                check.description = "Problem retrieving metadata for input data - " + b_meta
+                return check
+            fulloutput['biorxivs2check'].setdefault(bid, {}).update({'new_pub_ids': [pid]})
+            fulloutput['biorxivs2check'][bid].setdefault('data2transfer', {}).update(get_transfer_fields(b_meta))
         fndcnt = len(b2p)
     search = 'search/?'
     if kwargs.get('uuid_list'):
@@ -242,7 +251,7 @@ def biorxiv_is_now_published(connection, **kwargs):
         if ids:
             # we have possible article(s) - populate check_result
             fndcnt += 1
-            fulloutput['biorxivs2check'][buuid] = ['PMID:' + id for id in ids]
+            fulloutput['biorxivs2check'].setdefault(buuid, {}).update({'new_pub_ids': ['PMID:' + id for id in ids]})
             # look for GEO datasets
             for id_ in ids:
                 result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
@@ -294,35 +303,20 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             continue
 
         pmid = pmids[0]
-        biorxiv = None
-        # get biorxiv info
-        try:
-            biorxiv = ff_utils.get_metadata(buuid, key=connection.ff_keys, add_on='frame=object')
-        except Exception as e:
-            error = 'Problem getting biorxiv - msg: ' + str(e)
-        else:
-            if not biorxiv:
-                error = 'Biorxiv not found!'
-        if error:
-            action_log[buuid] = error
+        # get biorxiv info - success will be a dict
+        biorxiv = get_biorxiv_meta(buuid, connection)
+        if isinstance(biorxiv, str):
+            action_log[buuid, biorxiv]
             continue
 
         # prepare a post/patch for transferring data
         existing_fields = {}
         fields_to_patch = {}
-        fields2transfer = [
-            'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
-            'exp_sets_used_in_pub', 'published_by'
-        ]
-        fields2flag = ['static_headers', 'static_content']
-        post_metadata = {f: biorxiv.get(f) for f in fields2transfer if biorxiv.get(f) is not None}
+        post_metadata = get_transfer_fields(biorxiv)
         post_metadata['ID'] = pmid
         post_metadata['status'] = 'current'
         if 'url' in biorxiv:
             post_metadata['aka'] = biorxiv.get('url')
-        flags = {f: biorxiv.get(f) for f in fields2flag if biorxiv.get(f) is not None}
-        if flags:
-            action_log[buuid] = 'Static content to check: ' + str(flags)
 
         # first try to post the pub
         pub_upd_res = None
@@ -464,6 +458,30 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     action.status = 'DONE'
     action.output = action_log
     return action
+
+
+# helper functions for biorxiv check and action
+def get_biorxiv_meta(biorxiv_id, connection):
+    ''' Attempts to get metadata for provided biorxiv id
+        returns the error string if fails
+    '''
+    try:
+        biorxiv = ff_utils.get_metadata(biorxiv_id, key=connection.ff_keys, add_on='frame=object')
+    except Exception as e:
+        return 'Problem getting biorxiv - msg: ' + str(e)
+    else:
+        if not biorxiv:
+            return 'Biorxiv not found!'
+    return biorxiv
+
+
+def get_transfer_fields(biorxiv_meta):
+    fields2transfer = [
+        'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
+        'exp_sets_used_in_pub', 'published_by', 'static_headers',
+        'static_content'
+    ]
+    return {f: biorxiv_meta.get(f) for f in fields2transfer if biorxiv_meta.get(f) is not None}
 
 
 @check_function()
