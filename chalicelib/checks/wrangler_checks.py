@@ -162,6 +162,10 @@ def biorxiv_is_now_published(connection, **kwargs):
         in the action - a parameter is provided to manually input a mapping between biorxiv (uuid)
         to journal article (PMID:ID) - to add that pairing to the result full_output. It will
         be acted on by the associated action format of input is uuid PMID:nnnnnn, uuid PMID:nnnnnn
+
+        NOTE: because the data to transfer from biorxiv to pub is not obtained from the check result
+        it is important to run the check (again) before executing the action in case something has
+        changed since the check was run
     '''
     check = CheckResult(connection, 'biorxiv_is_now_published')
     chkstatus = ''
@@ -301,7 +305,7 @@ def biorxiv_is_now_published(connection, **kwargs):
                     fulloutput['GEO datasets found']['PMID:' + id_] = geo_accs
 
     if fndcnt != 0:
-        chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
+        chkdesc = "Candidate Biorxivs to replace found\nNOTE: please re-run check directly prior to running action to ensure all metadata is up to date." + chkdesc
         if not chkstatus:
             chkstatus = 'WARN'
         check.allow_action = True
