@@ -60,6 +60,11 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v10", "v11", "v12", "v13"]
     },
+    # step 9
+    'workflow_granite-mpileupCounts': {
+        "run_time": 12,
+        "accepted_versions": ["v14"]
+    },
     # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
