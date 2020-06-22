@@ -356,7 +356,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {  # mpileupCounts
                 'app_name': 'workflow_granite-mpileupCounts',
                 'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
-                'parameters': {},
+                'parameters': {"nthreads": 15},
                 "config": {
                     "instance_type": "c5.4xlarge",
                     "ebs_size": "3.5x",

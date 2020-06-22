@@ -298,6 +298,7 @@ def cgap_status(connection, **kwargs):
     step5_name = 'workflow_sort-bam-check'
     step6_name = 'workflow_gatk-BaseRecalibrator'
     step7_name = 'workflow_gatk-ApplyBQSR-check'
+    step7a_name = 'workflow_granite-mpileupCounts'
     step8_name = 'workflow_gatk-HaplotypeCaller'
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
@@ -422,8 +423,18 @@ def cgap_status(connection, **kwargs):
             keep, step7_status, step7_output = cgap_utils.stepper(library, keep,
                                                                   'step7', a_sample['accession'], step6_output,
                                                                   s7_input_files,  step7_name, 'recalibrated_bam')
-        # RUN STEP 8
+        # RUN STEP 7a
         if step7_status != 'complete':
+            step7a_status = ""
+        else:
+            s7a_input_files = {'input_bam': step7_output,
+                               'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            keep, step7a_status, step7a_output = cgap_utils.stepper(library, keep,
+                                                                    'step7a', a_sample['accession'], step7_output,
+                                                                    s7a_input_files,  step7a_name, 'rck')
+        # RUN STEP 8
+        if step7a_status != 'complete':
             step8_status = ""
         else:
             s8_input_files = {'input_bam': step7_output,
@@ -446,7 +457,7 @@ def cgap_status(connection, **kwargs):
             final_status += ' completed'
             completed = [
                 a_sample['accession'],
-                {'processed_files': [step7_output, step8_output],
+                {'processed_files': [step7_output, step7a_output, step8_output],
                  'completed_processes': previous_tags + [pipeline_tag]}
                          ]
             print('COMPLETED', step8_output)
