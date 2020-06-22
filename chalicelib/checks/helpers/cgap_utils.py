@@ -185,7 +185,7 @@ def check_qcs_on_files(file_meta, all_qcs):
         if not qc_result.get('qc_list'):
             return
         for qc in qc_result['qc_list']:
-            qc_resp = [i for i in all_qcs if i['@id'] == qc['@id']][0]
+            qc_resp = [i for i in all_qcs if i['@id'] == qc['value']['@id']][0]
             failed_qcs = check_qc(file_meta['accession'], qc_resp, failed_qcs)
     else:
         failed_qcs = check_qc(file_meta['accession'], qc_result, failed_qcs)
