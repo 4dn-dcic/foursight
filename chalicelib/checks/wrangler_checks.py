@@ -163,7 +163,7 @@ def biorxiv_is_now_published(connection, **kwargs):
         to journal article (PMID:ID) - to add that pairing to the result full_output. It will
         be acted on by the associated action format of input is uuid PMID:nnnnnn, uuid PMID:nnnnnn
 
-        NOTE: because the data to transfer from biorxiv to pub is not obtained from the check result
+        NOTE: because the data to transfer from biorxiv to pub is obtained from the check result
         it is important to run the check (again) before executing the action in case something has
         changed since the check was run
     '''
