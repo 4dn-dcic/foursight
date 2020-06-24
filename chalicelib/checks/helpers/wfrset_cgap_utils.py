@@ -353,13 +353,14 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     }
                 }
             },
+            # part 1 - step 7a
             {  # mpileupCounts
                 'app_name': 'workflow_granite-mpileupCounts',
                 'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
                 'parameters': {"nthreads": 15},
                 "config": {
                     "instance_type": "c5.4xlarge",
-                    "ebs_size": "3.5x",
+                    "ebs_size": "4.5x",
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
