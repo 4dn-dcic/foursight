@@ -36,9 +36,14 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "config": {"ebs_size": 10}
     },
         {
-        'app_name': 'fastqc-0-11-4-1',
-        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
-    },
+        'app_name': 'fastqc',
+        'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5',
+        "config": {
+            "ebs_size": 10,
+            "instance_type": 't3.micro',
+            'EBS_optimized': True
+            }
+        },
         {
         'app_name': 'pairsqc-single',
         'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3',
@@ -159,7 +164,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         },
         {
         "app_name": "bedGraphToBigWig",
-        "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
+        "workflow_uuid": "a083e05a-46b6-4ae7-aaa4-2abf59300ff7",
         "config": {'mem': 4, 'cpu': 2, "ebs_size": 10},
         "overwrite_input_extra": True
         },

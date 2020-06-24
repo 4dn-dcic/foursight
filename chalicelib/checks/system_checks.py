@@ -107,7 +107,6 @@ def elastic_beanstalk_health(connection, **kwargs):
         )
         deploy_info = application_versions['ApplicationVersions'][0]
         inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['version_description'] = deploy_info['Description']
         inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
         inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
         inst_info['id'] = instance['InstanceId']
@@ -569,7 +568,7 @@ def snapshot_rds(connection, **kwargs):
     snap_time = datetime.datetime.strptime(kwargs['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%dT%H-%M-%S")
     snapshot_name = 'foursight-snapshot-%s-%s' % (rds_name, snap_time)
     res = beanstalk_utils.create_db_snapshot(rds_name, snapshot_name)
-    if res == 'Deleting':
+    if res == 'Deleting':  # XXX: How this^ function works should be changed - Will 6/2/2020
         check.status = 'FAIL'
         check.summary = check.description = 'Something went wrong during snaphot creation'
     else:

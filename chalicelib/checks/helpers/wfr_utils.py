@@ -18,9 +18,14 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["0.0.4", "0.2.6"]
     },
+    # old workflow run naming, updated on workflows for old ones
     "fastqc-0-11-4-1": {
         "run_time": 50,
         "accepted_versions": ["0.2.0"]
+    },
+    "fastqc": {
+        "run_time": 50,
+        "accepted_versions": ["v1", "v2"]
     },
     "bwa-mem": {
         "run_time": 50,
@@ -56,7 +61,7 @@ workflow_details = {
     },
     "bedGraphToBigWig": {
         "run_time": 24,
-        "accepted_versions": ["v4"]
+        "accepted_versions": ["v4", "v5"]
     },
     "bedtomultivec": {
         "run_time": 24,
@@ -271,13 +276,28 @@ mapper = {'human': 'GRCh38',
           'chicken': 'galGal5'}
 
 # color map states bed file
-states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+states_file_type = {
+    'SPIN_states_v1':
+        {
+            'color_mapper': '/files-reference/4DNFI27WSLAG/',
+            'num_states': 9
+            }
+        }
 
 
 def check_indexing(check, connection):
+    """Checks the indexing queue, if there are items in the queue,
+    Modifies the check, and returns it along with a flag that is set to True,
+    if no items, returns original checks, and flag False"""
     # wait for random time
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
+    # # TEMPORARILY DISABLE ALL PIPELINE RUNS
+    # check.status = 'PASS'  # maybe use warn?
+    # check.brief_output = ['Check Temporarily Disabled']
+    # check.summary = 'Check Temporarily Disabled'
+    # check.full_output = {}
+    # return check, True
     # check indexing queue
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
