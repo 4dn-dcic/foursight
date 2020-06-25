@@ -216,9 +216,9 @@ def deploy_application_to_beanstalk(connection, **kwargs):
     return _deploy_application_to_beanstalk(connection, **kwargs)
 
 
-@check_function()
-def deploy_env(connection, env_to_deploy, name, check, **kwargs):
-    """ For a given beanstalk environment, deploys, or returns an error.
+def deploy_env(connection, env_to_deploy, application_name, check, **kwargs):
+    """ For a given beanstalk environment, with a configured check json and given application name,
+        deploys the environment, or returns an error.
     """
     this_check = CheckResult(connection, check)
     helper_check = _deploy_application_to_beanstalk(connection,
@@ -226,7 +226,7 @@ def deploy_env(connection, env_to_deploy, name, check, **kwargs):
                                                     branch='master')
     if helper_check.status == 'PASS':
         this_check.status = 'PASS'
-        this_check.summary = 'Successfully deployed {0} master to {1}'.format(name, env_to_deploy)
+        this_check.summary = 'Successfully deployed {0} master to {1}'.format(application_name, env_to_deploy)
     else:
         this_check.status = 'ERROR'
         this_check.summary = 'Error occurred during deployment, see full_output'
