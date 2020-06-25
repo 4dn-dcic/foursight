@@ -13,7 +13,7 @@ from dcicutils.env_utils import (
     FF_ENV_INDEXER, CGAP_ENV_INDEXER, is_fourfront_env, is_cgap_env,
 
 )
-from dcicutils.beanstalk_utils import compute_ff_prd_env
+from dcicutils.beanstalk_utils import compute_cgap_prd_env, compute_ff_prd_env
 from dcicutils.beanstalk_utils import beanstalk_info, is_indexing_finished
 
 
@@ -217,20 +217,44 @@ def deploy_application_to_beanstalk(connection, **kwargs):
 
 
 @check_function()
-def deploy_ff_staging(connection, **kwargs):
-    """ Deploys Fourfront master to whoever staging is.
-        Runs as part of the 'deployment_checks' schedule on data ONLY.
+def deploy_env(connection, env_to_deploy, name, check, **kwargs):
+    """ For a given beanstalk environment, deploys, or returns an error.
     """
-    this_check = CheckResult(connection, 'deploy_ff_staging')
-    env_to_deploy = compute_ff_stg_env()
+    this_check = CheckResult(connection, check)
     helper_check = _deploy_application_to_beanstalk(connection,
                                                     env=env_to_deploy,
                                                     branch='master')
     if helper_check.status == 'PASS':
         this_check.status = 'PASS'
-        this_check.summary = 'Successfully deployed Fourfront master to %s' % env_to_deploy
+        this_check.summary = 'Successfully deployed {0} master to {1}'.format(name, env_to_deploy)
     else:
         this_check.status = 'ERROR'
         this_check.summary = 'Error occurred during deployment, see full_output'
         this_check.full_output = helper_check.summary  # should have error message
     return this_check
+
+
+@check_function()
+def deploy_ff_staging(connection, **kwargs):
+    """ Deploys Fourfront master to whoever staging is.
+        Runs as part of the 'deployment_checks' schedule on data ONLY.
+    """
+    return deploy_env(
+        connection,
+        env_to_deploy=compute_ff_stg_env(),
+        name="Fourfront",
+        check='deploy_ff_staging',
+        **kwargs)
+
+
+@check_function()
+def deploy_cgap_production(connection, **kwargs):
+    """ Deploys CGAP portal master to production environment.
+    Eventually, this ought to be deprecated in favor of a staging deploy.
+    """
+    return deploy_env(
+        connection,
+        env=compute_cgap_prd_env(),
+        name="CGAP Portal",
+        check='deploy_cgap_production',
+        **kwargs)
