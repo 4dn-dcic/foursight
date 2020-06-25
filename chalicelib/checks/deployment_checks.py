@@ -254,7 +254,7 @@ def deploy_cgap_production(connection, **kwargs):
     """
     return deploy_env(
         connection,
-        env=compute_cgap_prd_env(),
+        env_to_deploy=compute_cgap_prd_env(),
         application_name="CGAP Portal",
         check='deploy_cgap_production',
         **kwargs)
