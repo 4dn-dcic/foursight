@@ -242,7 +242,7 @@ def deploy_ff_staging(connection, **kwargs):
     return deploy_env(
         connection,
         env_to_deploy=compute_ff_stg_env(),
-        name="Fourfront",
+        application_name="Fourfront",
         check='deploy_ff_staging',
         **kwargs)
 
@@ -255,6 +255,6 @@ def deploy_cgap_production(connection, **kwargs):
     return deploy_env(
         connection,
         env=compute_cgap_prd_env(),
-        name="CGAP Portal",
+        application_name="CGAP Portal",
         check='deploy_cgap_production',
         **kwargs)
