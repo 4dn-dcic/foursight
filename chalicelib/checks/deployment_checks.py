@@ -223,7 +223,8 @@ def deploy_env(connection, env_to_deploy, application_name, check, **kwargs):
     this_check = CheckResult(connection, check)
     helper_check = _deploy_application_to_beanstalk(connection,
                                                     env=env_to_deploy,
-                                                    branch='master')
+                                                    branch='master',
+                                                    **kwargs)
     if helper_check.status == 'PASS':
         this_check.status = 'PASS'
         this_check.summary = 'Successfully deployed {0} master to {1}'.format(application_name, env_to_deploy)
