@@ -250,7 +250,7 @@ def deploy_ff_staging(connection, **kwargs):
 @check_function()
 def deploy_cgap_production(connection, **kwargs):
     """ Deploys CGAP portal master to production environment.
-    Eventually, this ought to be deprecated in favor of a staging deploy.
+        Eventually, this ought to be deprecated in favor of a staging deploy.
     """
     return deploy_env(
         connection,
