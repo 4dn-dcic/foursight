@@ -62,10 +62,10 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
         wfr_as_list.append(wfr_info['uuid'])
         if wfr_info.get('output_files'):
             for o in wfr_info['output_files']:
-                    if o.get('value'):
-                        wfr_as_list.append(o['value']['uuid'])
-                    if o.get('value_qc'):
-                        wfr_as_list.append(o['value_qc']['uuid'])
+                if o.get('value'):
+                    wfr_as_list.append(o['value']['uuid'])
+                if o.get('value_qc'):
+                    wfr_as_list.append(o['value_qc']['uuid'])
         if wfr_info.get('output_quality_metrics'):
             for qc in wfr_info['output_quality_metrics']:
                 if qc.get('value'):
@@ -119,6 +119,30 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     return action
 
 
+# helper functions for biorxiv check
+def get_biorxiv_meta(biorxiv_id, connection):
+    ''' Attempts to get metadata for provided biorxiv id
+        returns the error string if fails
+    '''
+    try:
+        biorxiv = ff_utils.get_metadata(biorxiv_id, key=connection.ff_keys, add_on='frame=object')
+    except Exception as e:
+        return 'Problem getting biorxiv - msg: ' + str(e)
+    else:
+        if not biorxiv:
+            return 'Biorxiv not found!'
+    return biorxiv
+
+
+def get_transfer_fields(biorxiv_meta):
+    fields2transfer = [
+        'lab', 'contributing_labs', 'award', 'categories', 'exp_sets_prod_in_pub',
+        'exp_sets_used_in_pub', 'published_by', 'static_headers',
+        'static_content'
+    ]
+    return {f: biorxiv_meta.get(f) for f in fields2transfer if biorxiv_meta.get(f) is not None}
+
+
 @check_function(uuid_list=None, false_positives=None, add_to_result=None)
 def biorxiv_is_now_published(connection, **kwargs):
     ''' To restrict the check to just certain biorxivs use a comma separated list
@@ -134,10 +158,14 @@ def biorxiv_is_now_published(connection, **kwargs):
 
         There are some examples of the title and author list being different enough so
         that the pubmid esearch query doesn't find the journal article.  In order to
-        allow the replacement, movement of all the relevant fields and adding static sections
+        allow the replacement, movement of all the relevant fields and adding replacement static sections
         in the action - a parameter is provided to manually input a mapping between biorxiv (uuid)
         to journal article (PMID:ID) - to add that pairing to the result full_output. It will
         be acted on by the associated action format of input is uuid PMID:nnnnnn, uuid PMID:nnnnnn
+
+        NOTE: because the data to transfer from biorxiv to pub is obtained from the check result
+        it is important to run the check (again) before executing the action in case something has
+        changed since the check was run
     '''
     check = CheckResult(connection, 'biorxiv_is_now_published')
     chkstatus = ''
@@ -151,7 +179,18 @@ def biorxiv_is_now_published(connection, **kwargs):
     fndcnt = 0
     if kwargs.get('add_to_result'):
         b2p = [pair.strip().split(' ') for pair in kwargs.get('add_to_result').split(',')]
-        fulloutput['biorxivs2check'].update({b.strip(): [p.strip()] for b, p in b2p})
+        b2p = {b.strip(): p.strip() for b, p in b2p}
+        # if there was a manual mapping need to report info to transfer
+        for bid, pid in b2p.items():
+            b_meta = get_biorxiv_meta(bid, connection)
+            if isinstance(b_meta, str):
+                check.status = "FAIL"
+                check.description = "Problem retrieving metadata for input data - " + b_meta
+                return check
+            fulloutput['biorxivs2check'].setdefault(bid, {}).update({'new_pub_ids': [pid]})
+            if b_meta.get('url'):
+                fulloutput['biorxivs2check'][bid].setdefault('blink', b_meta.get('url'))
+            fulloutput['biorxivs2check'][bid].setdefault('data2transfer', {}).update(get_transfer_fields(b_meta))
         fndcnt = len(b2p)
     search = 'search/?'
     if kwargs.get('uuid_list'):
@@ -242,7 +281,12 @@ def biorxiv_is_now_published(connection, **kwargs):
         if ids:
             # we have possible article(s) - populate check_result
             fndcnt += 1
-            fulloutput['biorxivs2check'][buuid] = ['PMID:' + id for id in ids]
+            fulloutput['biorxivs2check'].setdefault(buuid, {}).update({'new_pub_ids': ['PMID:' + id for id in ids]})
+            if bx.get('url'):
+                fulloutput['biorxivs2check'][buuid].setdefault('blink', bx.get('url'))
+            # here we don't want the embedded search view so get frame=object
+            bmeta = get_biorxiv_meta(buuid, connection)
+            fulloutput['biorxivs2check'][buuid].setdefault('data2transfer', {}).update(get_transfer_fields(bmeta))
             # look for GEO datasets
             for id_ in ids:
                 result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
@@ -261,7 +305,7 @@ def biorxiv_is_now_published(connection, **kwargs):
                     fulloutput['GEO datasets found']['PMID:' + id_] = geo_accs
 
     if fndcnt != 0:
-        chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
+        chkdesc = "Candidate Biorxivs to replace found\nNOTE: please re-run check directly prior to running action to ensure all metadata is up to date." + chkdesc
         if not chkstatus:
             chkstatus = 'WARN'
         check.allow_action = True
@@ -286,43 +330,23 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     biorxiv_check_result = action.get_associated_check_result(kwargs)
     check_output = biorxiv_check_result.get('full_output', {})
     to_replace = check_output.get('biorxivs2check', {})
-    for buuid, pmids in to_replace.items():
+    for buuid, transfer_info in to_replace.items():
         error = ''
-        if len(pmids) > 1:
+        pmids = transfer_info.get('new_pub_ids', [])
+        if len(pmids) != 1:
             pmstr = ', '.join(pmids)
-            action_log[buuid] = 'multiple pmids {} - manual intervention needed!'.format(pmstr)
+            action_log[buuid] = '0 or multiple pmids {} - manual intervention needed!\n\tNOTE: to transfer to a single pub you can enter the biorxiv uuid PMID in add_to_result'.format(pmstr)
             continue
 
         pmid = pmids[0]
-        biorxiv = None
-        # get biorxiv info
-        try:
-            biorxiv = ff_utils.get_metadata(buuid, key=connection.ff_keys, add_on='frame=object')
-        except Exception as e:
-            error = 'Problem getting biorxiv - msg: ' + str(e)
-        else:
-            if not biorxiv:
-                error = 'Biorxiv not found!'
-        if error:
-            action_log[buuid] = error
-            continue
-
         # prepare a post/patch for transferring data
         existing_fields = {}
         fields_to_patch = {}
-        fields2transfer = [
-            'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
-            'exp_sets_used_in_pub', 'published_by'
-        ]
-        fields2flag = ['static_headers', 'static_content']
-        post_metadata = {f: biorxiv.get(f) for f in fields2transfer if biorxiv.get(f) is not None}
+        post_metadata = transfer_info.get('data2transfer', {})
         post_metadata['ID'] = pmid
         post_metadata['status'] = 'current'
-        if 'url' in biorxiv:
-            post_metadata['aka'] = biorxiv.get('url')
-        flags = {f: biorxiv.get(f) for f in fields2flag if biorxiv.get(f) is not None}
-        if flags:
-            action_log[buuid] = 'Static content to check: ' + str(flags)
+        if 'blink' in transfer_info:
+            post_metadata['aka'] = transfer_info.get('blink')
 
         # first try to post the pub
         pub_upd_res = None
@@ -395,12 +419,12 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             action_log[buuid] = 'NEW PUB INFO NOT AVAILABLE'
             continue
 
-        header_alias = "static_header:replaced_biorxiv_{}_by_{}".format(biorxiv.get('uuid'), pmid.replace(':', '_'))
-        header_name = "static-header.replaced_item_{}".format(biorxiv.get('uuid'))
+        header_alias = "static_header:replaced_biorxiv_{}_by_{}".format(buuid, pmid.replace(':', '_'))
+        header_name = "static-header.replaced_item_{}".format(buuid)
         header_post = {
             "body": "This biorxiv set was replaced by [{0}]({2}{1}/).".format(pmid, pub.get('uuid'), connection.ff_server),
-            "award": biorxiv.get('award'),
-            "lab": biorxiv.get('lab'),
+            "award": post_metadata.get('award'),
+            "lab": post_metadata.get('lab'),
             "name": header_name,
             "section_type": "Item Page Header",
             "options": {"title_icon": "info", "default_open": True, "filetype": "md", "collapsible": False},
@@ -436,7 +460,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
         patch_json = {'status': 'replaced'}
         if huuid:  # need to see if other static content exists and add this one
-            existing_content = biorxiv.get('static_content', [])
+            existing_content = post_metadata.get('static_content', [])
             existing_content.append({'content': huuid, 'location': 'header'})
             patch_json['static_content'] = existing_content
         try:
