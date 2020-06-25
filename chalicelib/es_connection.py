@@ -174,7 +174,8 @@ class ESConnection(AbstractConnection):
                         {'term': {'_id': prefix + '/latest.json'}}
                     ],
                     'filter': {
-                        'term': {'name': prefix}
+                        # use MATCH so our 'prefix' is analyzed like the source field 'name', see mapping
+                        'match': {'name': prefix}
                     }
                 }
             }
