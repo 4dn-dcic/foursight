@@ -1610,6 +1610,19 @@
             }
         }
     },
+    "deploy_cgap_production": {
+        "title": "Deploy CGAP-portal master to the cgap production environment",
+        "group": "Deployment Checks",
+        "schedule": {
+            "deployment_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "deploy_ff_staging": {
         "title": "Deploy Fourfront master to staging.4dnucleome.org",
         "group": "Deployment Checks",
