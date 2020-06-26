@@ -227,7 +227,8 @@ def deploy_env(connection, env_to_deploy, application_name, check, **kwargs):
                                                     **kwargs)
     if helper_check.status == 'PASS':
         this_check.status = 'PASS'
-        this_check.summary = 'Successfully deployed {0} master to {1}'.format(application_name, env_to_deploy)
+        this_check.summary = ('Successfully deployed {what} master to {where}'
+                              .format(what=application_name, where=env_to_deploy))
     else:
         this_check.status = 'ERROR'
         this_check.summary = 'Error occurred during deployment, see full_output'
