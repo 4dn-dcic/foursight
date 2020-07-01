@@ -259,4 +259,5 @@ def deploy_cgap_production(connection, **kwargs):
         env_to_deploy=compute_cgap_prd_env(),
         application_name="CGAP Portal",
         check='deploy_cgap_production',
+        repo='https://github.com/dbmi-bgm/cgap-portal.git',
         **kwargs)
