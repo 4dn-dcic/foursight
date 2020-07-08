@@ -1821,7 +1821,9 @@ def patch_file_higlass_uid(connection, **kwargs):
         'patch_failure': {},
         'patch_success': {},
         'registration_failure': {},
-        'registration_success': 0
+        'registration_success': 0,
+        'beddb_copy_failure': {},
+        'beddb_copy_success': 0
     }
     # get latest results
     higlass_check = CheckResult(connection, 'files_not_registered_with_higlass')
@@ -1847,6 +1849,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     # Keep track of how long this task has lasted.
     start_time = time.time()
     time_expired = False
+
+    
 
     # Files to register is organized by filetype.
     to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
@@ -1894,6 +1898,25 @@ def patch_file_higlass_uid(connection, **kwargs):
                 err_msg = 'No filetype case specified for %s' % ftype
                 action_logs['registration_failure'][hit['accession']] = err_msg
                 continue
+
+            # Call the Flask server component on the Higlass server to copy beddb files
+            # from S3 to the local file system. Using mounted versions of these files is very slow. 
+            if payload['filetype'] == 'beddb':
+                copy_res = requests.post(
+                    higlass_server + ':8005/cp/' + payload["filepath"]
+                )
+
+                if copy_res.status_code == 200:
+                    # If copying has been successful, we point to the local file
+                    payload["filepath"] = "beddbs/" + payload["filepath"]
+                    action_logs['beddb_copy_success'] += 1
+                else:
+                    try:
+                        err_msg = copy_res.text
+                    except Exception:
+                        err_msg = copy_res.status_code
+                        action_logs['beddb_copy_failure'][hit['accession']] = err_msg
+
 
             # register with previous higlass_uid if already there
             # otherwise, specify our own new higlass_uid with slugid
