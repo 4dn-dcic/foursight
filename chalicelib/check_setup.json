@@ -1390,11 +1390,11 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "cgapwolf": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1602,6 +1602,19 @@
         "group": "Deployment Checks",
         "schedule": {
             "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "deploy_cgap_production": {
+        "title": "Deploy CGAP-portal master to the cgap production environment",
+        "group": "Deployment Checks",
+        "schedule": {
+            "deployment_checks": {
                 "data": {
                     "kwargs": {
                         "primary": true
