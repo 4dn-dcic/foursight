@@ -2014,7 +2014,7 @@ def bam_re_status(connection, **kwargs):
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = [  # "AluI",
                           "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
-                          "MspI", "NcoI_MspI_BspHI"  # added patterns in action
+                          "MspI", "NcoI_MspI_BspHI", "DdeI"  # added patterns in action
                           ]
     # make a new list of files to work on
     filtered_res = []
@@ -2054,10 +2054,12 @@ def bam_re_start(connection, **kwargs):
     bam_re_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     targets = []
     # these enzymes are not covered by workflow, but can be covered with these patterns
-    nz_patterns = {"MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
-                   "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
-                                                           "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
-                                                           "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}}}
+    nz_patterns = {
+        "DdeI": {"motif": {"regex": "CT.AT.AG"}},
+        "MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
+        "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
+                                                "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
+                                                "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}}}
     if kwargs.get('start_missing_run'):
         targets.extend(bam_re_check_result.get('files_without_run', []))
     if kwargs.get('start_missing_meta'):
