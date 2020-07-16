@@ -349,6 +349,7 @@ def check_help_page_urls(connection, **kwargs):
                 # test only link part of match (not text part, even if it looks like a link)
                 idx = link.index(']')
                 url = link[link.index('(', idx)+1:-1]
+                urls.append(url)
                 # remove these from body so body can be checked for other types of links
                 body = body[:body.index(link)] + body[body.index(link)+len(link):]
         # looks for links starting with http (full) or / (relative) inside parentheses or brackets
