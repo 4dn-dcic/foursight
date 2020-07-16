@@ -392,19 +392,12 @@ def check_search_urls(connection, **kwargs):
     problematic_sections = {}
     for result in results:
         body = result.get('body', '')
-        urls = re.findall(r'[\(|\[|=]["]*(?:[^\s\)\]]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]]+|/)(?:browse|search)/[^\s\)\]]+[\)|\]|"]', body)
+        # search links for search or browse pages, either explicit or relative
+        urls = re.findall(r'[\(|\[|=]["]*(?:[^\s\)\]]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]]+|/)((?:browse|search)/\?[^\s\)\]]+)[\)|\]|"]', body)
         if urls:
             for url in urls:
-                if re.search('browse', url):
-                    query = '/browse' + url.partition('browse')[2].rstrip('])"')
-                elif re.search('search', url):
-                    query = '/search' + url.partition('search')[2].rstrip('])"')
-                if re.search('limit=', query):  # remove limit if present
-                    split_left = query.partition('limit=')
-                    split_right = split_left[2].partition('&')
-                    query = split_left[0] + split_right[1] + split_right[2]
-
-                q_results = ff_utils.search_metadata(query + '&limit=1&field=@id', key=connection.ff_keys)
+                url = re.sub(r'&limit=[^&]*|limit=[^&]*&?', '', url)  # remove limit if present
+                q_results = ff_utils.search_metadata(url + '&limit=1&field=@id', key=connection.ff_keys)
                 if len(q_results) == 0:
                     problematic_sections[result['@id']] = problematic_sections.get(result['@id'], [])
                     problematic_sections[result['@id']].append(url)
