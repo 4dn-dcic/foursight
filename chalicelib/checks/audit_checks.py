@@ -344,15 +344,16 @@ def check_help_page_urls(connection, **kwargs):
         urls = []
         if result.get('options', {}).get('filetype') == 'md':
             # look for markdown links - e.g. [text](link)
-            links = re.findall('\[[^\]]+\]\([^\)]+\)', body)
+            links = re.findall(r'\[[^\]]+\]\([^\)]+\)', body)
             for link in links:
                 # test only link part of match (not text part, even if it looks like a link)
                 idx = link.index(']')
                 url = link[link.index('(', idx)+1:-1]
-                # remove these from body so body can be checked for other types of links
+                urls.append(url)
+                # remove link from body so body can be checked for other types of links
                 body = body[:body.index(link)] + body[body.index(link)+len(link):]
         # looks for links starting with http (full) or / (relative) inside parentheses or brackets
-        urls += re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', body)
+        urls += re.findall(r'[\(|\[|=]["]*(?:http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', body)
         for url in urls:
             if url.startswith('mailto'):
                 continue
