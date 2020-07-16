@@ -379,6 +379,49 @@ def check_help_page_urls(connection, **kwargs):
     return check
 
 
+@check_function()
+def check_search_urls(connection, **kwargs):
+    '''Check the URLs in static sections that link to a search or browse page.
+    Give a warning if the number of results is 0.
+    '''
+    check = CheckResult(connection, 'check_search_urls')
+    search = ('search/?type=StaticSection' +
+              '&status%21=deleted&status%21=draft' +
+              '&field=body')
+    results = ff_utils.search_metadata(search, key=connection.ff_keys)
+    problematic_sections = {}
+    for result in results:
+        body = result.get('body', '')
+        urls = re.findall(r'[\(|\[|=]["]*(?:[^\s\)\]]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]]+|/)(?:browse|search)/[^\s\)\]]+[\)|\]|"]', body)
+        if urls:
+            for url in urls:
+                if re.search('browse', url):
+                    query = '/browse' + url.partition('browse')[2].rstrip('])"')
+                elif re.search('search', url):
+                    query = '/search' + url.partition('search')[2].rstrip('])"')
+                if re.search('limit=', query):  # remove limit if present
+                    split_left = query.partition('limit=')
+                    split_right = split_left[2].partition('&')
+                    query = split_left[0] + split_right[1] + split_right[2]
+
+                q_results = ff_utils.search_metadata(query + '&limit=1&field=@id', key=connection.ff_keys)
+                if len(q_results) == 0:
+                    problematic_sections[result['@id']] = problematic_sections.get(result['@id'], [])
+                    problematic_sections[result['@id']].append(url)
+
+    if problematic_sections:
+        check.status = 'WARN'
+        check.summary = 'Empty search links found'
+        check.description = ('{} static sections currently have empty search links.'
+                             ''.format(len(problematic_sections.keys())))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No empty search links found'
+        check.description = check.summary
+    check.full_output = problematic_sections
+    return check
+
+
 @check_function(id_list=None)
 def check_status_mismatch(connection, **kwargs):
     check = CheckResult(connection, 'check_status_mismatch')
