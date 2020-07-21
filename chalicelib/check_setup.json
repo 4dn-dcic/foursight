@@ -72,7 +72,8 @@
     "experiment_set_reporting_data": {
         "title": "Release updates data collection",
         "group": "Metadata checks",
-        "schedule": {}
+        "schedule": {},
+        "display": ["data"]
     },
     "data_release_updates": {
         "title": "Data release updates",
