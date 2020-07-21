@@ -72,14 +72,7 @@
     "experiment_set_reporting_data": {
         "title": "Release updates data collection",
         "group": "Metadata checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
+        "schedule": {}
     },
     "data_release_updates": {
         "title": "Data release updates",
