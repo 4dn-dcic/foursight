@@ -399,7 +399,7 @@ def check_search_urls(connection, **kwargs):
                 url = re.sub(r'&limit=[^&]*|limit=[^&]*&?', '', url)  # remove limit if present
                 q_results = ff_utils.search_metadata(url + '&limit=1&field=@id', key=connection.ff_keys)
                 if len(q_results) == 0:
-                    problematic_sections[result['@id']] = problematic_sections.get(result['@id'], [])
+                    problematic_sections.setdefault(result['@id'], [])
                     problematic_sections[result['@id']].append(url)
 
     if problematic_sections:
