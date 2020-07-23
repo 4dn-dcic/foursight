@@ -335,7 +335,7 @@ def check_help_page_urls(connection, **kwargs):
     check = CheckResult(connection, 'check_help_page_urls')
 
     server = connection.ff_keys['server']
-    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body&field=options',
+    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&q=resources&status!=draft&field=body&field=options',
                                        key=connection.ff_keys)
     sections_w_broken_links = {}
     for result in results:
@@ -349,6 +349,7 @@ def check_help_page_urls(connection, **kwargs):
                 # test only link part of match (not text part, even if it looks like a link)
                 idx = link.index(']')
                 url = link[link.index('(', idx)+1:-1]
+                urls.append(url)
                 # remove these from body so body can be checked for other types of links
                 body = body[:body.index(link)] + body[body.index(link)+len(link):]
         # looks for links starting with http (full) or / (relative) inside parentheses or brackets
@@ -375,6 +376,42 @@ def check_help_page_urls(connection, **kwargs):
         check.summary = 'No broken links found'
         check.description = check.summary
     check.full_output = sections_w_broken_links
+    return check
+
+
+@check_function()
+def check_search_urls(connection, **kwargs):
+    '''Check the URLs in static sections that link to a search or browse page.
+    Give a warning if the number of results is 0.
+    '''
+    check = CheckResult(connection, 'check_search_urls')
+    search = ('search/?type=StaticSection' +
+              '&status%21=deleted&status%21=draft' +
+              '&field=body')
+    results = ff_utils.search_metadata(search, key=connection.ff_keys)
+    problematic_sections = {}
+    for result in results:
+        body = result.get('body', '')
+        # search links for search or browse pages, either explicit or relative
+        urls = re.findall(r'[\(|\[|=]["]*(?:[^\s\)\]]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]]+|/)((?:browse|search)/\?[^\s\)\]]+)[\)|\]|"]', body)
+        if urls:
+            for url in urls:
+                url = re.sub(r'&limit=[^&]*|limit=[^&]*&?', '', url)  # remove limit if present
+                q_results = ff_utils.search_metadata(url + '&limit=1&field=@id', key=connection.ff_keys)
+                if len(q_results) == 0:
+                    problematic_sections.setdefault(result['@id'], [])
+                    problematic_sections[result['@id']].append(url)
+
+    if problematic_sections:
+        check.status = 'WARN'
+        check.summary = 'Empty search links found'
+        check.description = ('{} static sections currently have empty search links.'
+                             ''.format(len(problematic_sections.keys())))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No empty search links found'
+        check.description = check.summary
+    check.full_output = problematic_sections
     return check
 
 
