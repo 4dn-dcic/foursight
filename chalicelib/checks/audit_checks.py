@@ -335,7 +335,7 @@ def check_help_page_urls(connection, **kwargs):
     check = CheckResult(connection, 'check_help_page_urls')
 
     server = connection.ff_keys['server']
-    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body&field=options',
+    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&q=resources&status!=draft&field=body&field=options',
                                        key=connection.ff_keys)
     sections_w_broken_links = {}
     for result in results:
