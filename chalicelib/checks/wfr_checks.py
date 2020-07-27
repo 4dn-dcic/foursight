@@ -2014,7 +2014,7 @@ def bam_re_status(connection, **kwargs):
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = [  # "AluI",
                           "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
-                          "MspI", "NcoI_MspI_BspHI", "DdeI"  # added patterns in action
+                          "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII"  # added patterns in action
                           ]
     # make a new list of files to work on
     filtered_res = []
@@ -2055,6 +2055,7 @@ def bam_re_start(connection, **kwargs):
     targets = []
     # these enzymes are not covered by workflow, but can be covered with these patterns
     nz_patterns = {
+        "DdeI and DpnII": {"motif": {"regex": "CT.AT.AG|CT.AGATC|GATCT.AG|GATCGATC"}},
         "DdeI": {"motif": {"regex": "CT.AT.AG"}},
         "MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
         "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
