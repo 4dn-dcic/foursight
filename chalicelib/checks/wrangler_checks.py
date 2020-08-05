@@ -2032,3 +2032,92 @@ def add_contributing_lab_opf(connection, **kwargs):
         action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def grouped_with_file_relation_consistency(connection, **kwargs):
+    ''' Check if "grouped with" file relationships are reciprocal and complete.
+        While other types of file relationships are automatically updated on
+        the related file, "grouped with" ones need to be explicitly (manually)
+        patched on the related file. This check ensures that there are no
+        related files that lack the reciprocal relationship, or that lack some
+        of the group relationships (for groups larger than 2 files).
+    '''
+    check = CheckResult(connection, 'grouped_with_file_relation_consistency')
+    check.action = 'add_grouped_with_file_relation'
+    search = 'search/?type=File&related_files.relationship_type=grouped+with&field=related_files'
+    files = ff_utils.search_metadata(search, key=connection.ff_keys, is_generator=True)
+
+    file2all = {}  # map all existing relations
+    file2grp = {}  # map "group with" existing relations
+    for f in files:
+        for rel in f['related_files']:
+            rel_type = rel['relationship_type']
+            rel_file = rel['file']['@id']
+            file2all.setdefault(f['@id'], []).append(
+                {"relationship_type": rel_type, "file": rel_file})
+            if rel_type == "grouped with":
+                file2grp.setdefault(f['@id'], []).append(rel_file)
+
+    # list groups of related items
+    groups = []
+    newgroups = [set(rel).union({file}) for file, rel in file2grp.items()]
+
+    # merge intersecting groups until there is any
+    while len(groups) != len(newgroups):
+        groups, newgroups = newgroups, []
+        for a_group in groups:
+            for each_group in newgroups:
+                if not a_group.isdisjoint(each_group):
+                    each_group.update(a_group)
+                    break
+            else:
+                newgroups.append(a_group)
+
+    # find missing relations
+    missing = {}
+    for a_group in newgroups:
+        pairs = [(a, b) for a in a_group for b in a_group if a != b]
+        for (a_file, related) in pairs:
+            if related not in file2grp.get(a_file, []):
+                missing.setdefault(a_file, []).append(related)
+
+    if missing:
+        # add existing relations to patch related_files
+        to_patch = {}
+        for f, r in missing.items():
+            to_patch[f] = file2all.get(f, [])
+            to_patch[f].extend([{"relationship_type": "grouped with", "file": rel_f} for rel_f in r])
+        check.brief_output = missing
+        check.full_output = to_patch
+        check.status = 'WARN'
+        check.summary = 'File relationships are missing'
+        check.description = "{} files are missing 'grouped with' relationships".format(len(missing))
+        check.allow_action = True
+        check.action_message = "Will attempt to patch {} items with the missing 'grouped with' relations".format(len(to_patch))
+    else:
+        check.status = 'PASS'
+        check.summary = check.description = "All 'grouped with' file relationships are consistent"
+    return check
+
+
+@action_function()
+def add_grouped_with_file_relation(connection, **kwargs):
+    action = ActionResult(connection, 'add_grouped_with_file_relation')
+    check_res = action.get_associated_check_result(kwargs)
+    files_to_patch = check_res['full_output']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    for a_file, related_list in files_to_patch.items():
+        patch_body = {"related_files": related_list}
+        try:
+            ff_utils.patch_metadata(patch_body, a_file, key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({a_file: str(e)})
+        else:
+            action_logs['patch_success'].append(a_file)
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
