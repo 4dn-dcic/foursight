@@ -521,6 +521,10 @@ def process_view_result(connection, res, is_admin):
                 # not yet run, display an icon status to signify this
                 res['assc_action_status'] = 'ready'
 
+            # This used to try to get the latest result and only populate 'latest_action' if one exists.
+            # Doing so makes the main page take 2-3x as long to load, so we won't be doing that anymore.
+            res['action_history'] = res.get('action')  # = action name
+
         else:
             del res['action']
     return res
