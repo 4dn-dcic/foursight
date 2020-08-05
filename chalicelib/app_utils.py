@@ -9,6 +9,7 @@ import datetime
 import ast
 import copy
 import requests
+import sys
 from itertools import chain
 from dateutil import tz
 from base64 import b64decode
@@ -47,11 +48,14 @@ jin_env = Environment(
 )
 
 
-def init_environments(env='all'):
+def init_environments(env='all', envs=None):
     """
     Generate environment information from the foursight-envs bucket in s3.
     Returns a dictionary keyed by environment name with value of a sub-dict
     with the fields needed to initiate a connection.
+
+    :param env: allows you to specify a single env to be initialized
+    :param envs: allows you to specify multiple envs to be initialized
     """
     stage = get_stage_info()['stage']
     s3_connection = S3Connection('foursight-envs')
@@ -61,7 +65,9 @@ def init_environments(env='all'):
         if env in env_keys:
             env_keys = [env]
         else:
-            return {} # provided env is not in s3
+            return {}  # provided env is not in s3
+    elif envs is not None:
+        env_keys = envs
     for env_key in env_keys:
         env_res = s3_connection.get_object(env_key)
         # check that the keys we need are in the object
@@ -76,14 +82,14 @@ def init_environments(env='all'):
     return environments
 
 
-def init_connection(environ):
+def init_connection(environ, _environments=None):
     """
     Initialize the fourfront/s3 connection using the FSConnection object
     and the given environment.
     Returns an FSConnection object or raises an error.
     """
     error_res = {}
-    environments = init_environments(environ)
+    environments = init_environments(environ) if _environments is None else _environments
     # if still not there, return an error
     if environ not in environments:
         error_res = {
@@ -231,7 +237,10 @@ def query_params_to_literals(params):
 
 
 def trim_output(output, max_size=100000):
-    """
+    """ Uses sys.getsizeof instead of encoding as JSON to determine if the output size is too large.
+
+    Old docstring below:
+
     AWS lambda has a maximum body response size of 6MB. Since results are currently delivered entirely
     in the body of the response, let's limit the size of the 'full_output', 'brief_output', and
     'admin_output' fields to 100 KB (see if this is a reasonable amount).
@@ -240,11 +249,14 @@ def trim_output(output, max_size=100000):
 
     Takes in the non-json formatted version of the fields. For now, just use this for /view/.
     """
-    formatted = json.dumps(output, indent=4)
-    if len(formatted) > max_size:
-        return ''.join([formatted[:max_size], '\n\n... Output truncated ...'])
-    else:
-        return formatted
+    # formatted = json.dumps(output, indent=4)
+    # if len(formatted) > max_size:
+    #     return ''.join([formatted[:max_size], '\n\n... Output truncated ...'])
+    # else:
+    #     return formatted
+    size = sys.getsizeof(output)
+    if size > max_size:
+        return 'Output too large to provide on main page - see check result directly'
 
 
 ##### ROUTE RUNNING FUNCTIONS #####
@@ -326,13 +338,14 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     """
     html_resp = Response('Foursight viewing suite')
     html_resp.headers = {'Content-Type': 'text/html'}
-    environments = init_environments()
+    requested_envs = [e.strip() for e in environ.split(',')]
+    environments = init_environments(envs=requested_envs)  # cached at start of page load
     total_envs = []
     servers = []
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
-            connection = init_connection(this_environ)
+            connection = init_connection(this_environ, _environments=environments)
         except Exception:
             connection = None
         if connection:
@@ -490,7 +503,6 @@ def process_view_result(connection, res, is_admin):
     # if this check has already run an action, display that. Otherwise, allow
     # action to be run.
     # For now also get the latest result for the checks action
-    # TODO: replace latest_action with action history
     if res.get('action'):
         action = ActionResult(connection, res.get('action'))
         if action:
