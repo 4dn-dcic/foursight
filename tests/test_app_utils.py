@@ -171,11 +171,10 @@ class TestAppUtils():
     def test_trim_output(self):
         short_output = {'some_field': 'some_value'}
         trimmed_short = app_utils.trim_output(short_output)
-        assert (trimmed_short == json.dumps(short_output, indent=4))
+        assert (trimmed_short == {'some_field': 'some_value'})
         long_output = {'some_field': 'some_value ' * 100000}
         trimmed_long = app_utils.trim_output(long_output)
-        assert (trimmed_long != json.dumps(long_output, indent=4))
-        assert (trimmed_long.endswith('\n\n... Output truncated ...'))
+        assert trimmed_long == 'Output too large to provide on main page - see check result directly'
 
     def test_query_params_to_literals(self):
         test_params = {
