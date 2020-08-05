@@ -174,7 +174,7 @@ class TestAppUtils():
         assert (trimmed_short == {'some_field': 'some_value'})
         long_output = {'some_field': 'some_value ' * 100000}
         trimmed_long = app_utils.trim_output(long_output)
-        assert trimmed_long == 'Output too large to provide on main page - see check result directly'
+        assert trimmed_long == app_utils.TRIM_ERR_OUTPUT
 
     def test_query_params_to_literals(self):
         test_params = {

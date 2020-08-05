@@ -259,6 +259,9 @@ def get_size(obj, seen=None):
     return size
 
 
+TRIM_ERR_OUTPUT = 'Output too large to provide on main page - see check result directly'
+
+
 def trim_output(output, max_size=100000):
     """ Uses the helper above with sys.getsizeof to determine the output size and remove it if it is too large.
         Instead of encoding as JSON as that is very slow.
@@ -280,7 +283,7 @@ def trim_output(output, max_size=100000):
     #     return formatted
     size = get_size(output)
     if size > max_size:
-        return 'Output too large to provide on main page - see check result directly'
+        return TRIM_ERR_OUTPUT
     return output
 
 
