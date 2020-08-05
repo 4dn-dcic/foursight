@@ -257,6 +257,7 @@ def trim_output(output, max_size=100000):
     size = sys.getsizeof(output)
     if size > max_size:
         return 'Output too large to provide on main page - see check result directly'
+    return output
 
 
 ##### ROUTE RUNNING FUNCTIONS #####
