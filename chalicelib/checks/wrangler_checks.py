@@ -2094,7 +2094,8 @@ def grouped_with_file_relation_consistency(connection, **kwargs):
         check.summary = 'File relationships are missing'
         check.description = "{} files are missing 'grouped with' relationships".format(len(missing))
         check.allow_action = True
-        check.action_message = "Will attempt to patch {} items with the missing 'grouped with' relations".format(len(to_patch))
+        check.action_message = ("DO NOT RUN if relations need to be removed! "
+            "This action will attempt to patch {} items with the missing 'grouped with' relations".format(len(to_patch)))
     else:
         check.status = 'PASS'
         check.summary = check.description = "All 'grouped with' file relationships are consistent"
