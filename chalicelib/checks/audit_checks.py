@@ -7,7 +7,6 @@ from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
-import time
 
 
 STATUS_LEVEL = {
