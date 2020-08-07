@@ -460,8 +460,8 @@
         "title": "Static Section URL check",
         "group": "Audit checks",
         "schedule": {
-            "morning_checks": {
-                "all_4dn": {
+            "early_morning_checks": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
