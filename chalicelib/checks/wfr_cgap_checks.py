@@ -284,12 +284,12 @@ def cgap_status(connection, **kwargs):
         check.full_output = {}
         return check
 
-    query_base = '/search/?type=Sample&files.display_title%21=No+value'
-    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partI_version])
+    query_base = '/search/?type=Case&sample.files.display_title%21=No+value'
+    version_filter = "".join(["&sample.completed_processes!=" + i for i in cgap_partI_version])
     q = query_base + version_filter
 
-    all_samples = ff_utils.search_metadata(q, my_auth)
-    print(len(all_samples))
+    all_cases = ff_utils.search_metadata(q, my_auth)
+    print(len(all_cases))
 
     step1_name = 'workflow_bwa-mem_no_unzip-check'
     step2_name = 'workflow_add-readgroups-check'
@@ -298,12 +298,12 @@ def cgap_status(connection, **kwargs):
     step5_name = 'workflow_sort-bam-check'
     step6_name = 'workflow_gatk-BaseRecalibrator'
     step7_name = 'workflow_gatk-ApplyBQSR-check'
-    step7a_name = 'workflow_granite-mpileupCounts'
-    step8_name = 'workflow_gatk-HaplotypeCaller'
+    step8_name = 'workflow_granite-mpileupCounts'
+    step9_name = 'workflow_gatk-HaplotypeCaller'
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
-    for a_sample in all_samples:
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
+    for a_case in all_cases:
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_case['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['previous_version',
@@ -311,8 +311,9 @@ def cgap_status(connection, **kwargs):
                                                                          'biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])
+        a_sample = [i for i in all_items['sample'] if i['uuid'] == a_case['sample']['uuid']][0]
         now = datetime.utcnow()
-        print(a_sample['accession'], (now-start).seconds, len(all_uuids))
+        print(a_case['accession'], a_sample['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
         # collect similar types of items under library
@@ -329,7 +330,7 @@ def cgap_status(connection, **kwargs):
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
-            final_status = a_sample['accession'] + ' error, workflow versions'
+            final_status = a_case['accession'] + ' error, workflow versions'
             check.brief_output.extend(wf_errs)
             check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
             break
@@ -352,6 +353,11 @@ def cgap_status(connection, **kwargs):
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
         s3_input_bams = []
         stop_level_2 = False
+
+        # check if we need to run mpileupCounts
+        # is this sample meant for part 3 (if sample_processing is set to WGS-Joint Calling, skip it)
+
+
         for pair in sample_raw_files:
             # RUN STEP 1
             s1_input_files = {'fastq_R1': pair[0], 'fastq_R2': pair[1], 'reference': refs['bwa_ref']}
@@ -423,18 +429,8 @@ def cgap_status(connection, **kwargs):
             keep, step7_status, step7_output = cgap_utils.stepper(library, keep,
                                                                   'step7', a_sample['accession'], step6_output,
                                                                   s7_input_files,  step7_name, 'recalibrated_bam')
-        # RUN STEP 7a
-        if step7_status != 'complete':
-            step7a_status = ""
-        else:
-            s7a_input_files = {'input_bam': step7_output,
-                               'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-            keep, step7a_status, step7a_output = cgap_utils.stepper(library, keep,
-                                                                    'step7a', a_sample['accession'], step7_output,
-                                                                    s7a_input_files,  step7a_name, 'rck')
         # RUN STEP 8
-        if step7a_status != 'complete':
+        if step7_status != 'complete':
             step8_status = ""
         else:
             s8_input_files = {'input_bam': step7_output,
@@ -442,7 +438,23 @@ def cgap_status(connection, **kwargs):
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
             keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
                                                                   'step8', a_sample['accession'], step7_output,
-                                                                  s8_input_files,  step8_name, 'gvcf')
+                                                                  s8_input_files,  step8_name, 'rck')
+        # RUN STEP 9 # run together with step8
+        if step7_status != 'complete':
+            step9_status = ""
+        else:
+            s9_input_files = {'input_bam': step7_output,
+                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            keep, step9_status, step9_output = cgap_utils.stepper(library, keep,
+                                                                  'step9', a_sample['accession'], step7_output,
+                                                                  s9_input_files,  step9_name, 'gvcf')
+
+        # are all runs done
+        all_runs_completed = False
+        if step8_status == 'complete' and step9_status == 'complete':
+            all_runs_completed = True
+
         final_status = a_sample['accession']
         completed = []
         pipeline_tag = cgap_partI_version[-1]
@@ -453,14 +465,14 @@ def cgap_status(connection, **kwargs):
         running = keep['running']
         problematic_run = keep['problematic_run']
 
-        if step8_status == 'complete':
+        if all_runs_completed:
             final_status += ' completed'
             completed = [
                 a_sample['accession'],
-                {'processed_files': [step7_output, step7a_output, step8_output],
+                {'processed_files': [step7_output, step8_output, step9_output],
                  'completed_processes': previous_tags + [pipeline_tag]}
                          ]
-            print('COMPLETED', step8_output)
+            print('COMPLETED', step9_output)
         else:
             if missing_run:
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
