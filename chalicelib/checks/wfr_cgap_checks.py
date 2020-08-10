@@ -797,7 +797,7 @@ def cgapS3_status(connection, **kwargs):
         check.full_output = {}
         return check
 
-    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
+    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value&completed_processes!=No value&processed_files.uuid!=No value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partIII_version])
     q = query_base + version_filter
     print(q)
@@ -852,27 +852,32 @@ def cgapS3_status(connection, **kwargs):
             check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
             break
 
-        # if there are multiple samples merge them
-        # if not skip step 1
+        # only run for trios
+        # # TODO: also look for analysis type
         input_samples = an_msa['samples']
-        input_vcfs = []
-        # check all samples and collect input files
-        samples_ready = True
-        for a_sample in input_samples:
-            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
-            comp_tags = sample_resp.get('completed_processes', [])
-            # did sample complete upstream processing
-            if not set(comp_tags) & set(cgap_partI_version):
-                samples_ready = False
-                break
-            vcf = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('gvcf.gz')][0]['@id']
-            input_vcfs.append(vcf)
+        if len(input_samples) != 3:
+            final_status = an_msa['@id'] + ' is not trio'
+            check.brief_output.extend(wf_errs)
+            check.full_output['problematic_runs'].append({an_msa['@id']: 'is not trio'})
+            break
 
-        if not samples_ready:
-            final_status = an_msa['@id'] + ' waiting for upstream part'
+        # Setup for step 1a
+        input_rcks = []
+        # check all samples and collect input files
+        for a_sample in input_samples:
+            rck = ''
+            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
+            try:
+                rck = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')][0]['@id']
+            except:
+                continue
+            input_rcks.append(rck)
+
+        if len(input_rcks) != len(input_samples):
+            final_status = an_msa['@id'] + ' missing rck files on samples'
             print(final_status)
             check.brief_output.append(final_status)
-            check.full_output['skipped'].append({an_msa['@id']: 'missing upstream part'})
+            check.full_output['skipped'].append({an_msa['@id']: 'missing rck files on samples'})
             continue
 
         # if multiple sample, merge vcfs, if not skip it
