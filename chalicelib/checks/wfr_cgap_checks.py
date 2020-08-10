@@ -356,7 +356,15 @@ def cgap_status(connection, **kwargs):
 
         # check if we need to run mpileupCounts
         # is this sample meant for part 3 (if sample_processing is set to WGS-Joint Calling, skip it)
-
+        will_go_to_part_3 = False
+        exclude_for_mpilup = ['WGS', 'WGS-Joint Calling']
+        analysis_type = a_case.get('sample_processing', {}).get('analysis_type', '')
+        if not analysis_type:
+            pass
+        elif analysis_type in exclude_for_mpilup:
+            pass
+        else:
+            will_go_to_part_3 = True
 
         for pair in sample_raw_files:
             # RUN STEP 1
@@ -429,16 +437,21 @@ def cgap_status(connection, **kwargs):
             keep, step7_status, step7_output = cgap_utils.stepper(library, keep,
                                                                   'step7', a_sample['accession'], step6_output,
                                                                   s7_input_files,  step7_name, 'recalibrated_bam')
-        # RUN STEP 8
-        if step7_status != 'complete':
-            step8_status = ""
+        # RUN STEP 8 - only run if will_go_to_part_3 is True
+        if will_go_to_part_3:
+            if step7_status != 'complete':
+                step8_status = ""
+            else:
+                s8_input_files = {'input_bam': step7_output,
+                                  'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
+                                  'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+                keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
+                                                                      'step8', a_sample['accession'], step7_output,
+                                                                      s8_input_files,  step8_name, 'rck')
         else:
-            s8_input_files = {'input_bam': step7_output,
-                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-            keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
-                                                                  'step8', a_sample['accession'], step7_output,
-                                                                  s8_input_files,  step8_name, 'rck')
+            step8_status = 'complete'
+            step8_output = ''
+
         # RUN STEP 9 # run together with step8
         if step7_status != 'complete':
             step9_status = ""
@@ -469,9 +482,11 @@ def cgap_status(connection, **kwargs):
             final_status += ' completed'
             completed = [
                 a_sample['accession'],
-                {'processed_files': [step7_output, step8_output, step9_output],
+                {'processed_files': [step7_output, step9_output],
                  'completed_processes': previous_tags + [pipeline_tag]}
                          ]
+            if will_go_to_part_3:
+                completed[1]['processed_files'].append(step8_output)
             print('COMPLETED', step9_output)
         else:
             if missing_run:
