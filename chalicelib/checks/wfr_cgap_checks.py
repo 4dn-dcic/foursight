@@ -358,7 +358,7 @@ def cgap_status(connection, **kwargs):
         # check if we need to run mpileupCounts
         # is this sample meant for part 3 (if sample_processing is set to WGS-Joint Calling, skip it)
         will_go_to_part_3 = False
-        exclude_for_mpilup = ['WGS', 'WGS-Joint Calling']
+        exclude_for_mpilup = ['WGS', 'WGS-Upstream only']
         analysis_type = a_case.get('sample_processing', {}).get('analysis_type', '')
         if not analysis_type:
             pass
@@ -798,8 +798,10 @@ def cgapS3_status(connection, **kwargs):
         return check
 
     query_base = '/search/?type=SampleProcessing&samples.uuid!=No value&completed_processes!=No value&processed_files.uuid!=No value'
+    accepted_analysis_types = ['WGS-Trio', 'WGS', 'WGS-Group']
+    analysis_type_filter = "".join(["&analysis_type=" + i for i in accepted_analysis_types])
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partIII_version])
-    q = query_base + version_filter
+    q = query_base + analysis_type_filter + version_filter
     print(q)
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
@@ -812,11 +814,8 @@ def cgapS3_status(connection, **kwargs):
     step3_name = 'workflow_granite-novoCaller-rck-check'
     step4_name = 'workflow_granite-comHet-check'
     step5_name = 'workflow_mutanno-annot-check'
-    # step3_name = 'workflow_gatk-VQSR-check'
-
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
-
     # iterate over msa
     print(len(res))
     for an_msa in res:
@@ -853,27 +852,61 @@ def cgapS3_status(connection, **kwargs):
             break
 
         # only run for trios
-        # # TODO: also look for analysis type
-        input_samples = an_msa['samples']
-        if len(input_samples) != 3:
-            final_status = an_msa['@id'] + ' is not trio'
-            check.brief_output.extend(wf_errs)
-            check.full_output['problematic_runs'].append({an_msa['@id']: 'is not trio'})
-            break
+        all_samples = an_msa['samples']
+        # if there are multiple families, this part will need changes
+        families = an_msa['families']
+        if len(families) > 1:
+            final_status = an_msa['@id'] + ' error, multiple families'
+            check.brief_output.extend(final_status)
+            check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
+            continue
+        samples_pedigree = an_msa['samples_pedigree']
+        # Define run Mode: Trio or Proband only
+        # order samples by father/mother/proband
+        run_mode = ""
+        input_samples = []
+        input_sample_ids = []
+        # trio analysis
+        if len(all_samples) > 2:
+            for member in ['father', 'mother', 'proband']:
+                sample_info = [i for i in samples_pedigree if i.get('relationship') == member]
+                if not sample_info:
+                    break
+                input_samples.append(sample_info[0]['sample_accession'])
+                input_sample_ids.append(sample_info[0]['sample_name'])
+            if len(input_samples) != 3:
+                final_status = an_msa['@id'] + ' does not have mother father proband info'
+                check.brief_output.extend(final_status)
+                check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
+                continue
+            run_mode = 'trio'
+        # if there are only 2 or less members, go for proband only
+        else:
+            sample_info = [i for i in samples_pedigree if i.get('relationship') == 'proband']
+            if not sample_info:
+                final_status = an_msa['@id'] + ' does not have proband info'
+                check.brief_output.extend(final_status)
+                check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
+                continue
+            input_samples.append(sample_info[0]['sample_accession'])
+            input_sample_ids.append(sample_info[0]['sample_name'])
+            run_mode = 'proband_only'
 
         # Setup for step 1a
         input_rcks = []
+        input_vcf = []
         # check all samples and collect input files
         for a_sample in input_samples:
             rck = ''
-            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
-            try:
-                rck = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')][0]['@id']
-            except:
-                continue
-            input_rcks.append(rck)
+            sample_resp = [i for i in all_items['sample'] if i['accession'] == a_sample['uuid']][0]
+            rck = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')]
+            raw_vcf = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('vcf.gz')]
+            if rck:
+                input_rcks.apend(rck[0])
+            if raw_vcf:
+                input_vcf.append(raw_vcf[0])
 
-        if len(input_rcks) != len(input_samples):
+        if len(input_rcks) != len(input_samples) and run_mode == 'trio':
             final_status = an_msa['@id'] + ' missing rck files on samples'
             print(final_status)
             check.brief_output.append(final_status)
@@ -882,20 +915,11 @@ def cgapS3_status(connection, **kwargs):
 
         # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
-            s1_input_files = {'input_gvcfs': input_vcfs,
-                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
-                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-            # benchmarking
-            if len(input_samples) < 4:
-                ebs_size = '10x'
-            else:
-                ebs_size = str(10 + len(input_samples) - 3) + 'x'
-            update_pars = {"config": {"ebs_size": ebs_size}}
-            s1_tag = an_msa['@id'] + '_S2run1' + input_vcfs[0].split('/')[2]
+            s1a_input_files = {' ': input_rcks}
+            s1a_tag = an_msa['@id'] + '_Part3step1a'
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'step1', s1_tag, input_vcfs,
-                                                                  s1_input_files,  step1_name, 'combined_gvcf',
-                                                                  additional_input=update_pars)
+                                                                  'step1a', s1a_tag, input_rcks,
+                                                                  s1a_input_files,  step1a_name, 'rck_tar')
         else:
             step1_status = 'complete'
             step1_output = input_vcfs[0]
