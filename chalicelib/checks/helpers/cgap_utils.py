@@ -55,6 +55,10 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
+    "workflow_granite-mpileupCounts": {
+        "run_time": 12,
+        "accepted_versions": ["v13", "v14"]
+    },
     # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
@@ -92,33 +96,30 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v13"]
     },
-    "workflow_mutanno-micro-annot-check": {
-        "run_time": 12,
-        "accepted_versions": ["v13"]
-    },
-    "workflow_granite-whiteList-check": {
-        "run_time": 12,
-        "accepted_versions": ["v13"]
-    },
-    "workflow_granite-blackList-check": {
-        "run_time": 12,
-        "accepted_versions": ["v13"]
-    },
-    "workflow_granite-novoCaller-rck-check": {
-        "run_time": 12,
-        "accepted_versions": ["v13"]
-    },
-    "workflow_mutanno-annot-check": {
-        "run_time": 12,
-        "accepted_versions": ["v13"]
-    },
-    "workflow_granite-mpileupCounts": {
-        "run_time": 12,
-        "accepted_versions": ["v13"]
-    },
+    # Part III
     "workflow_granite-rckTar": {
         "run_time": 12,
         "accepted_versions": ["v13"]
+    },
+    "workflow_mutanno-micro-annot-check": {
+        "run_time": 12,
+        "accepted_versions": ["v13", "v14"]
+    },
+    "workflow_granite-filtering-check": {
+        "run_time": 12,
+        "accepted_versions": ['v14']
+    },
+    "workflow_granite-novoCaller-rck-check": {
+        "run_time": 12,
+        "accepted_versions": ["v13", 'v14']
+    },
+    "workflow_granite-comHet-check": {
+        "run_time": 12,
+        "accepted_versions": ["v15"]
+    },
+    "workflow_mutanno-annot-check": {
+        "run_time": 12,
+        "accepted_versions": ["v13", "v14"]
     }
 }
 

@@ -216,10 +216,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap upstream pipeline'}
                         }
             },
-            # part 1 - step 8   (only run for proband for samples that will go to part3)
+            # part 1 - step 8   (only run for samples that will go to part3)
             {  # mpileupCounts
                 'app_name': 'workflow_granite-mpileupCounts',
-                'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
+                'workflow_uuid': '6e89bc5d-b4a0-4954-9c3f-361477d5f537',
                 'parameters': {"nthreads": 15},
                 "config": {
                     "instance_type": "c5.4xlarge",
@@ -231,24 +231,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'genome_assembly': genome,
                         'file_type': 'read counts (rck)',
                         'description': 'read counts (rck) file'
-                    }
-                }
-            },
-            # part 1 - step 8b  (only run for proband for samples that will go to part3)
-            {  # rckTar
-                'app_name': 'workflow_granite-rckTar',
-                'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
-                'parameters': {},
-                "config": {
-                    "instance_type": "c5.xlarge",
-                    "ebs_size": "2.5x",
-                    "EBS_optimized": True
-                },
-                'custom_pf_fields': {
-                    'rck_tar': {
-                        'genome_assembly': genome,
-                        'file_type': 'tarred read counts (rck)',
-                        'description': 'tarred read counts (rck) file'
                     }
                 }
             },
@@ -309,10 +291,28 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             # (  _ \ / _\ (  _ \(_  _)  (  )(  )(  )
             #  ) __//    \ )   /  )(     )(  )(  )(
             # (__)  \_/\_/(__\_) (__)   (__)(__)(__)
-            {  # micro-annotation
-                'app_name': 'workflow_mutanno-micro-annot-check',
-                'workflow_uuid': '04caaa82-6a32-46d3-b52c-c1017cc0490a',
+            # part 1 - step 8b  (only run for proband for samples that will go to part3)
+            {  # rckTar
+                'app_name': 'workflow_granite-rckTar',
+                'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
                 'parameters': {},
+                "config": {
+                    "instance_type": "c5.xlarge",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'rck_tar': {
+                        'genome_assembly': genome,
+                        'file_type': 'tarred read counts (rck)',
+                        'description': 'tarred read counts (rck) file'
+                    }
+                }
+            },
+            {  # Step1b micro-annotation
+                'app_name': 'workflow_mutanno-micro-annot-check',
+                'workflow_uuid': 'de9c4579-30e2-432c-80e3-7f324d3d7dcb',
+                'parameters': {"nthreads": 70},
                 "config": {
                     "instance_type": "c5n.18xlarge",
                     "ebs_size": "3x",
@@ -326,46 +326,26 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     }
                 }
             },
-            {  # whitelist
-                'app_name': 'workflow_granite-whiteList-check',
-                'workflow_uuid': 'ce7f9e0b-a0d1-4119-bd66-373ccfcabac7',
+            {  # Step2 - filtering
+                'app_name': 'workflow_granite-filtering-check',
+                'workflow_uuid': 'cb85683c-54a6-44e8-820c-1800aec9fdcd',
                 'parameters': {},
                 "config": {
-                    "instance_type": "c5.large",
-                    "ebs_size": "2x",
+                    "instance_type": "t3.medium",
+                    "ebs_size": "4x",
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
-                    'whiteList_vcf': {
+                    'merged_vcf': {
                         'genome_assembly': genome,
                         'file_type': 'intermediate file',
                         'description': 'Intermediate VCF file'
                     }
                 }
             },
-            {  # blacklist
-                'app_name': 'workflow_granite-blackList-check',
-                'workflow_uuid': 'c258d1ec-397d-4b0a-a0be-7c8211d65e6a',
-                'parameters': {
-                    "aftag": "gnomADgenome",
-                    "afthr": 0.01
-                },
-                "config": {
-                    "instance_type": "t3.small",
-                    "ebs_size": "1.2x",
-                    "EBS_optimized": True
-                },
-                'custom_pf_fields': {
-                    'blackList_vcf': {
-                        'genome_assembly': genome,
-                        'file_type': 'intermediate file',
-                        'description': 'Intermediate VCF file'
-                    }
-                 }
-            },
-            {  # novocaller
+            {  # Step3 - novocaller
                 'app_name': 'workflow_granite-novoCaller-rck-check',
-                'workflow_uuid': '35daf195-4fc5-4e2a-ada3-7a0cce08a7e4',
+                'workflow_uuid': 'f38b91fb-7e0c-44e0-a871-a91a58227b34',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5.xlarge",
@@ -380,9 +360,26 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     }
                 }
             },
-            {  # full annotation
+            {  # Step4 - compHet
+                'app_name': 'workflow_granite-comHet-check',
+                'workflow_uuid': '9e43a0ef-be16-43f1-a789-b76261ee95a3',
+                'parameters': {},
+                "config": {
+                    "instance_type": "t3.small",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'comHet_vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate VCF file'
+                    }
+                }
+            },
+            {  # Step5 - full annotation
                 'app_name': 'workflow_mutanno-annot-check',
-                'workflow_uuid': '883b7846-8c62-4f5a-a691-c84706420b93',
+                'workflow_uuid': '62f16824-4d4b-43fb-9f2f-3bb5b328431a',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5.large",

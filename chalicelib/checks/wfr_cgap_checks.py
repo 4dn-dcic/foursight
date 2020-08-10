@@ -10,7 +10,8 @@ lambda_limit = cgap_utils.lambda_limit
 
 # list of acceptible version
 cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13']
-cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13']
+cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13', 'WGS_PartII_V15']
+cgap_partIII_version = ['WGS_PartIII_V15']
 
 
 @check_function(file_type='File', start_date=None)
@@ -763,6 +764,225 @@ def cgapS2_start(connection, **kwargs):
         missing_runs = cgapS2_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = cgapS2_check_result.get('completed_runs')
+    action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    return action
+
+
+@check_function(start_date=None)
+def cgapS3_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'cgapS3_status')
+    my_auth = connection.ff_keys
+    check.action = "cgapS3_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
+    version_filter = "".join(["&completed_processes!=" + i for i in cgap_partIII_version])
+    q = query_base + version_filter
+    print(q)
+    res = ff_utils.search_metadata(q, my_auth)
+    # check if anything in scope
+    if not res:
+        return check
+    # list step names
+    step1a_name = 'workflow_granite-rckTar'
+    step1b_name = 'workflow_mutanno-micro-annot-check'
+    step2_name = 'workflow_granite-filtering-check'
+    step3_name = 'workflow_granite-novoCaller-rck-check'
+    step4_name = 'workflow_granite-comHet-check'
+    step5_name = 'workflow_mutanno-annot-check'
+    # step3_name = 'workflow_gatk-VQSR-check'
+
+    # collect all wf for wf version check
+    all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
+
+    # iterate over msa
+    print(len(res))
+    for an_msa in res:
+        all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
+                                                           store_frame='embedded',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['previous_version',
+                                                                         'experiment_relation',
+                                                                         'biosample_relation',
+                                                                         'references',
+                                                                         'reference_pubs'])
+        now = datetime.utcnow()
+        print(an_msa['@id'], (now-start).seconds, len(all_uuids))
+        if (now-start).seconds > lambda_limit:
+            break
+
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
+        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
+        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+        keep = {'missing_run': [], 'running': [], 'problematic_run': []}
+
+        # check for workflow version problems
+        all_collected_wfs = all_items.get('workflow')
+        all_app_names = [i['app_name'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
+        wf_errs = cgap_utils.check_workflow_version(all_wfs)
+        # if there are problems kill the loop, and report the error
+        if wf_errs:
+            final_status = an_msa['@id'] + ' error, workflow versions'
+            check.brief_output.extend(wf_errs)
+            check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
+            break
+
+        # if there are multiple samples merge them
+        # if not skip step 1
+        input_samples = an_msa['samples']
+        input_vcfs = []
+        # check all samples and collect input files
+        samples_ready = True
+        for a_sample in input_samples:
+            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
+            comp_tags = sample_resp.get('completed_processes', [])
+            # did sample complete upstream processing
+            if not set(comp_tags) & set(cgap_partI_version):
+                samples_ready = False
+                break
+            vcf = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('gvcf.gz')][0]['@id']
+            input_vcfs.append(vcf)
+
+        if not samples_ready:
+            final_status = an_msa['@id'] + ' waiting for upstream part'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({an_msa['@id']: 'missing upstream part'})
+            continue
+
+        # if multiple sample, merge vcfs, if not skip it
+        if len(input_samples) > 1:
+            s1_input_files = {'input_gvcfs': input_vcfs,
+                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
+                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+            # benchmarking
+            if len(input_samples) < 4:
+                ebs_size = '10x'
+            else:
+                ebs_size = str(10 + len(input_samples) - 3) + 'x'
+            update_pars = {"config": {"ebs_size": ebs_size}}
+            s1_tag = an_msa['@id'] + '_S2run1' + input_vcfs[0].split('/')[2]
+            keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
+                                                                  'step1', s1_tag, input_vcfs,
+                                                                  s1_input_files,  step1_name, 'combined_gvcf',
+                                                                  additional_input=update_pars)
+        else:
+            step1_status = 'complete'
+            step1_output = input_vcfs[0]
+
+        if step1_status != 'complete':
+            step2_status = ""
+        else:
+            # run step2
+            s2_input_files = {'input_gvcf': step1_output,
+                              "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
+                              "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0",
+                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980'}
+            s2_tag = an_msa['@id'] + '_S2run2' + step1_output.split('/')[2]
+            keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
+                                                                  'step2', s2_tag, step1_output,
+                                                                  s2_input_files,  step2_name, 'vcf')
+
+        final_status = an_msa['@id']
+        completed = []
+        pipeline_tag = cgap_partII_version[-1]
+        previous_tags = an_msa.get('completed_processes', [])
+
+        # unpack results
+        missing_run = keep['missing_run']
+        running = keep['running']
+        problematic_run = keep['problematic_run']
+
+        if step2_status == 'complete':
+            final_status += ' completed'
+            # existing_pf = [i['@id'] for i in an_msa['processed_files']]
+            completed = [
+                an_msa['@id'],
+                {'processed_files': [step2_output],
+                 'completed_processes': previous_tags + [pipeline_tag, ]}]
+            print('COMPLETED', step2_output)
+        else:
+            if missing_run:
+                final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
+            if running:
+                final_status += ' |Running: ' + " ".join([i[0] for i in running])
+
+        # add dictionaries to main ones
+        set_acc = an_msa['@id']
+        check.brief_output.append(final_status)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if completed:
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+
+    # complete check values
+    check.summary = ""
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['skipped']:
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def cgapS3_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'cgapS3_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    cgapS3_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = cgapS3_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = cgapS3_check_result.get('completed_runs')
     action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
 
