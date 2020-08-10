@@ -229,6 +229,9 @@ def stepper(library, keep,
             qc_errors.extend(errors)
         name_tag = new_step_input_file.split('/')[2]
     # if there are qc errors, return with qc qc_errors
+    # TEMP PIECE FOR V13 PART I - don't check qc on step4
+    if step_tag == 'step4':
+        qc_errors = []
     if qc_errors:
         problematic_run.append([step_tag + ' input file qc error', qc_errors])
         step_status = "no complete run, qc error"

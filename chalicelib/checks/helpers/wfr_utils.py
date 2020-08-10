@@ -234,7 +234,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'NcoI': '/files-reference/4DNFI3HVU2OD/',
                    'MspI': '/files-reference/4DNFI2JHR3OI/',
                    'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/',
-                   'AluI': '/files-reference/4DNFIN4DB5O8/'
+                   'AluI': '/files-reference/4DNFIN4DB5O8/',
+                   'DdeI': '/files-reference/4DNFI4YGL4RE/',
+                   'DdeI and DpnII': '/files-reference/4DNFIS1FCRRK/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
@@ -267,6 +269,8 @@ re_nz_sizes = {"HindIII": "6",
                "NcoI": "6",
                "MspI": "4",
                "BspHI": "6",
+               "DdeI and DpnII": "4",
+               "DdeI": "4",
                "NcoI_MspI_BspHI": "4"  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
                }
 
