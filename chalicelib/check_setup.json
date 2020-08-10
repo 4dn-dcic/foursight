@@ -1653,5 +1653,17 @@
                 }
             }
         }
+    },
+    "grouped_with_file_relation_consistency": {
+        "title": "File relation 'grouped with'",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
