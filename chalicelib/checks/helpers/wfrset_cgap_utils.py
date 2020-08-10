@@ -378,7 +378,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # Step5 - full annotation
                 'app_name': 'workflow_mutanno-annot-check',
-                'workflow_uuid': '62f16824-4d4b-43fb-9f2f-3bb5b328431a',
+                'workflow_uuid': 'f3b91cd6-9f17-45c4-b041-4b6a73987e65',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5.large",
