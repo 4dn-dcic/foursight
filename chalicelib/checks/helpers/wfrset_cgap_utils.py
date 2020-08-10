@@ -38,6 +38,63 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     'EBS_optimized': True
                     }
             },
+            {  # cram to fastq converter
+                'app_name': 'workflow_cram2fastq',
+                'workflow_uuid': '7bbf3487-a1fc-4073-952a-d5771973e875',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.4xlarge",
+                    "ebs_size": "30x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'fastq1': {
+                        'genome_assembly': genome,
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:1'},
+                    'fastq2': {
+                        'genome_assembly': genome,
+                        'file_type': 'reads',
+                        'description': 'Fastq files produced from CRAM files - paired end:2'}
+                        }
+            },
+            {  # cram to bam converter
+                'app_name': 'workflow_cram2bam-check',
+                'workflow_uuid': '2a086f2b-7be4-4708-9516-1b39639292bf',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.2xlarge",
+                    "ebs_size": "4.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'converted_bam': {
+                        'genome_assembly': genome,
+                        'file_type': 'alignments',
+                        'description': 'BAM file converted from CRAM file'
+                    }
+                }
+            },
+            # http://patorjk.com/software/taag/#p=display&v=1&f=Graceful&t=QC
+            #   __    ___
+            #  /  \  / __)
+            # (  O )( (__
+            #  \__\) \___)
+            {
+               "app_name": "workflow_qcboard-bam",
+               "parameters": {},
+               "workflow_uuid": "ad8716a3-b6e8-4021-bbc6-b0cefc9c4dd8",
+               "config": {
+                 "instance_type": "t3.medium",
+                 "ebs_size": "1.3x",
+                 "EBS_optimized": True
+               }
+            },
+            #  ____   __   ____  ____    __
+            # (  _ \ / _\ (  _ \(_  _)  (  )
+            #  ) __//    \ )   /  )(     )(
+            # (__)  \_/\_/(__\_) (__)   (__)
+            # step1
             {
                 'app_name': 'workflow_bwa-mem_no_unzip-check',
                 'workflow_uuid': '9e094699-561b-4396-8d6a-ffc45f98c5e1',
@@ -55,6 +112,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'Intermediate alignment file'}
                         }
             },
+            # step2
             {
                 'app_name': 'workflow_add-readgroups-check',
                 'workflow_uuid': '6ea6bf43-76c2-4616-8dd6-dd60d72a2bf2',
@@ -72,6 +130,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'Intermediate alignment file'}
                         }
             },
+            # step3
             {
                 'app_name': 'workflow_merge-bam-check',
                 'workflow_uuid': '4853a03a-8c0c-4624-a45d-c5206a72907b',
@@ -157,19 +216,43 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap upstream pipeline'}
                         }
             },
-            # obsolete old step 8
-            # {
-            #     'app_name': 'workflow_index-sorted-bam',
-            #     'workflow_uuid': '502e4846-a4ab-4da1-a5a3-d835442004a3',
-            #     'parameters': {},
-            #     "config": {
-            #         "instance_type": "t3.small",
-            #         "ebs_size": "1.2x",
-            #         "EBS_optimized": True,
-            #         "behavior_on_capacity_limit": "wait_and_retry"
-            #     }
-            # },
-            # step 8
+            # part 1 - step 8   (only run for proband for samples that will go to part3)
+            {  # mpileupCounts
+                'app_name': 'workflow_granite-mpileupCounts',
+                'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
+                'parameters': {"nthreads": 15},
+                "config": {
+                    "instance_type": "c5.4xlarge",
+                    "ebs_size": "4.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'rck': {
+                        'genome_assembly': genome,
+                        'file_type': 'read counts (rck)',
+                        'description': 'read counts (rck) file'
+                    }
+                }
+            },
+            # part 1 - step 8b  (only run for proband for samples that will go to part3)
+            {  # rckTar
+                'app_name': 'workflow_granite-rckTar',
+                'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5.xlarge",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'rck_tar': {
+                        'genome_assembly': genome,
+                        'file_type': 'tarred read counts (rck)',
+                        'description': 'tarred read counts (rck) file'
+                    }
+                }
+            },
+            # step 9
             {
                 'app_name': 'workflow_gatk-HaplotypeCaller',
                 'workflow_uuid': '7fd67e19-3425-45f8-8149-c7cac4278fdb',
@@ -186,6 +269,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap upstream pipeline'}
                         }
             },
+            #  ____   __   ____  ____    __  __
+            # (  _ \ / _\ (  _ \(_  _)  (  )(  )
+            #  ) __//    \ )   /  )(     )(  )(
+            # (__)  \_/\_/(__\_) (__)   (__)(__)
             # Multi sample analysis
             {
                 'app_name': 'workflow_gatk-CombineGVCFs',
@@ -218,53 +305,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap downstream pipeline'}
                         }
             },
-            {
-               "app_name": "workflow_qcboard-bam",
-               "parameters": {},
-               "workflow_uuid": "ad8716a3-b6e8-4021-bbc6-b0cefc9c4dd8",
-               "config": {
-                 "instance_type": "t3.medium",
-                 "ebs_size": "1.3x",
-                 "EBS_optimized": True
-               }
-            },
-            {  # cram to fastq converter
-                'app_name': 'workflow_cram2fastq',
-                'workflow_uuid': '7bbf3487-a1fc-4073-952a-d5771973e875',
-                'parameters': {},
-                "config": {
-                    "instance_type": "c5.4xlarge",
-                    "ebs_size": "30x",
-                    "EBS_optimized": True
-                },
-                'custom_pf_fields': {
-                    'fastq1': {
-                        'genome_assembly': genome,
-                        'file_type': 'reads',
-                        'description': 'Fastq files produced from CRAM files - paired end:1'},
-                    'fastq2': {
-                        'genome_assembly': genome,
-                        'file_type': 'reads',
-                        'description': 'Fastq files produced from CRAM files - paired end:2'}
-                        }
-            },
-            {  # cram to bam converter
-                'app_name': 'workflow_cram2bam-check',
-                'workflow_uuid': '2a086f2b-7be4-4708-9516-1b39639292bf',
-                'parameters': {},
-                "config": {
-                    "instance_type": "c5.2xlarge",
-                    "ebs_size": "4.5x",
-                    "EBS_optimized": True
-                },
-                'custom_pf_fields': {
-                    'converted_bam': {
-                        'genome_assembly': genome,
-                        'file_type': 'alignments',
-                        'description': 'BAM file converted from CRAM file'
-                    }
-                }
-            },
+            #  ____   __   ____  ____    __  __  __
+            # (  _ \ / _\ (  _ \(_  _)  (  )(  )(  )
+            #  ) __//    \ )   /  )(     )(  )(  )(
+            # (__)  \_/\_/(__\_) (__)   (__)(__)(__)
             {  # micro-annotation
                 'app_name': 'workflow_mutanno-micro-annot-check',
                 'workflow_uuid': '04caaa82-6a32-46d3-b52c-c1017cc0490a',
@@ -350,40 +394,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'genome_assembly': genome,
                         'file_type': 'full-annotated VCF',
                         'description': 'full-annotated VCF file'
-                    }
-                }
-            },
-            {  # mpileupCounts
-                'app_name': 'workflow_granite-mpileupCounts',
-                'workflow_uuid': 'e5c178cf-4b5c-488b-b4cc-08273d11697d',
-                'parameters': {},
-                "config": {
-                    "instance_type": "c5.4xlarge",
-                    "ebs_size": "3.5x",
-                    "EBS_optimized": True
-                },
-                'custom_pf_fields': {
-                    'rck': {
-                        'genome_assembly': genome,
-                        'file_type': 'read counts (rck)',
-                        'description': 'read counts (rck) file'
-                    }
-                }
-            },
-            {  # rckTar
-                'app_name': 'workflow_granite-rckTar',
-                'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
-                'parameters': {},
-                "config": {
-                    "instance_type": "c5.xlarge",
-                    "ebs_size": "2.5x",
-                    "EBS_optimized": True
-                },
-                'custom_pf_fields': {
-                    'rck_tar': {
-                        'genome_assembly': genome,
-                        'file_type': 'tarred read counts (rck)',
-                        'description': 'tarred read counts (rck) file'
                     }
                 }
             },
