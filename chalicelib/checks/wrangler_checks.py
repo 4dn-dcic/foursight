@@ -2063,7 +2063,9 @@ def grouped_with_file_relation_consistency(connection, **kwargs):
     groups = []
     newgroups = [set(rel).union({file}) for file, rel in file2grp.items()]
 
-    # merge intersecting groups until there is any
+    # Check if any pair of groups in the list has a common file (intersection).
+    # In that case, they are parts of the same group: merge them.
+    # Repeat until all groups are disjoint (not intersecting).
     while len(groups) != len(newgroups):
         groups, newgroups = newgroups, []
         for a_group in groups:
@@ -2095,7 +2097,7 @@ def grouped_with_file_relation_consistency(connection, **kwargs):
         check.description = "{} files are missing 'grouped with' relationships".format(len(missing))
         check.allow_action = True
         check.action_message = ("DO NOT RUN if relations need to be removed! "
-            "This action will attempt to patch {} items with the missing 'grouped with' relations".format(len(to_patch)))
+            "This action will attempt to patch {} items by adding the missing 'grouped with' relations".format(len(to_patch)))
     else:
         check.status = 'PASS'
         check.summary = check.description = "All 'grouped with' file relationships are consistent"
