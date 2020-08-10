@@ -291,8 +291,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             # (  _ \ / _\ (  _ \(_  _)  (  )(  )(  )
             #  ) __//    \ )   /  )(     )(  )(  )(
             # (__)  \_/\_/(__\_) (__)   (__)(__)(__)
-            # part 1 - step 8b  (only run for proband for samples that will go to part3)
-            {  # rckTar
+            {  # step1a rckTar
                 'app_name': 'workflow_granite-rckTar',
                 'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
                 'parameters': {},
@@ -389,8 +388,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'custom_pf_fields': {
                     'annotated_vcf': {
                         'genome_assembly': genome,
-                        'file_type': 'full-annotated VCF',
-                        'description': 'full-annotated VCF file'
+                        'file_type': 'full annotated VCF',
+                        'description': 'full annotated VCF file'
                     }
                 }
             },
