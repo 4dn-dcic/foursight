@@ -10,7 +10,7 @@ lambda_limit = cgap_utils.lambda_limit
 
 # list of acceptible version
 cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13']
-cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13', 'WGS_PartII_V15']
+cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13']
 cgap_partIII_version = ['WGS_PartIII_V15']
 
 
@@ -898,20 +898,26 @@ def cgapS3_status(connection, **kwargs):
         # check all samples and collect input files
         for a_sample in input_samples:
             rck = ''
-            sample_resp = [i for i in all_items['sample'] if i['accession'] == a_sample['uuid']][0]
+            sample_resp = [i for i in all_items['sample'] if i['uuid'] == a_sample['uuid']][0]
             rck = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')]
             raw_vcf = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('vcf.gz')]
             if rck:
                 input_rcks.apend(rck[0])
             if raw_vcf:
                 input_vcf.append(raw_vcf[0])
-
+        # older processings might be missing rck files, a precaution
         if len(input_rcks) != len(input_samples) and run_mode == 'trio':
             final_status = an_msa['@id'] + ' missing rck files on samples'
             print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({an_msa['@id']: 'missing rck files on samples'})
             continue
+
+        # assert all samples carry the same
+
+
+
+
 
         # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
