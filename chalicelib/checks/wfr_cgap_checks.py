@@ -959,7 +959,6 @@ def cgapS3_status(connection, **kwargs):
             s1b_input_files = {'input_vcf': input_vcf,
                                'mti': "1408ceb9-7ae3-4002-aed7-c9a301014de2",
                                'regions': "1c07a3aa-e2a3-498c-b838-15991c4a2f28"}
-            print(s1b_input_files)
             s1b_tag = an_msa['@id'] + '_Part3step1b'
             keep, step1b_status, step1b_output = cgap_utils.stepper(library, keep,
                                                                     'step1b', s1b_tag, input_vcf,
