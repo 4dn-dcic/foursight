@@ -120,7 +120,11 @@ workflow_details = {
     "workflow_mutanno-annot-check": {
         "run_time": 12,
         "accepted_versions": ["v13", "v14"]
-    }
+    },
+    "bamsnap": {
+        "run_time": 12,
+        "accepted_versions": ["v14", "v15"]
+    },
 }
 
 

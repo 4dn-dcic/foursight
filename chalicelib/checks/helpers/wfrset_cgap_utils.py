@@ -328,7 +328,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {  # Step2 - filtering
                 'app_name': 'workflow_granite-filtering-check',
                 'workflow_uuid': 'cb85683c-54a6-44e8-820c-1800aec9fdcd',
-                'parameters': {},
+                'parameters': {"aftag": "gnomADgenome", "afthr": 0.01},
                 "config": {
                     "instance_type": "t3.medium",
                     "ebs_size": "6x",
@@ -379,7 +379,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             {  # Step5 - full annotation
                 'app_name': 'workflow_mutanno-annot-check',
                 'workflow_uuid': 'f3b91cd6-9f17-45c4-b041-4b6a73987e65',
-                'parameters': {},
+                'parameters': {"nthreads": 1},
                 "config": {
                     "instance_type": "c5.large",
                     "ebs_size": "1.2x",
@@ -391,6 +391,16 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'file_type': 'full annotated VCF',
                         'description': 'full annotated VCF file'
                     }
+                }
+            },
+            {  # Step 6 = bamsnap
+                'app_name': 'bamsnap',
+                'workflow_uuid': 'a4016214-e4ce-4a34-93a1-c0751bbd1d37',
+                'parameters': {"nproc": 16},
+                "config": {
+                    "instance_type": "c5.4xlarge",
+                    "ebs_size": 10,
+                    "EBS_optimized": True
                 }
             },
             {  # temp
