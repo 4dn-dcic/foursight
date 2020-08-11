@@ -1027,20 +1027,21 @@ def cgapS3_status(connection, **kwargs):
         completed = []
         pipeline_tag = cgap_partIII_version[-1]
         previous_tags = an_msa.get('completed_processes', [])
+        previous_files = [i['@id'] for i in an_msa['processed_files']]
 
         # unpack results
         missing_run = keep['missing_run']
         running = keep['running']
         problematic_run = keep['problematic_run']
 
-        if step2_status == 'complete':
+        if step6_status == 'complete':
             final_status += ' completed'
             # existing_pf = [i['@id'] for i in an_msa['processed_files']]
             completed = [
                 an_msa['@id'],
-                {'processed_files': [step2_output],
+                {'processed_files': previous_files + [step1b_output, step5_output],
                  'completed_processes': previous_tags + [pipeline_tag, ]}]
-            print('COMPLETED', step2_output)
+            print('COMPLETED', step5_output)
         else:
             if missing_run:
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
