@@ -28,7 +28,7 @@ workflow_details = {
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
@@ -57,7 +57,7 @@ workflow_details = {
     },
     "workflow_granite-mpileupCounts": {
         "run_time": 12,
-        "accepted_versions": ["v13", "v14"]
+        "accepted_versions": ["v14", "v15"]
     },
     # new step 8
     'workflow_gatk-HaplotypeCaller': {
@@ -99,15 +99,15 @@ workflow_details = {
     # Part III
     "workflow_granite-rckTar": {
         "run_time": 12,
-        "accepted_versions": ["v13"]
+        "accepted_versions": ["v13", "v14"]
     },
     "workflow_mutanno-micro-annot-check": {
         "run_time": 12,
-        "accepted_versions": ["v13", "v14"]
+        "accepted_versions": ["v15"]
     },
     "workflow_granite-filtering-check": {
         "run_time": 12,
-        "accepted_versions": ['v14']
+        "accepted_versions": ['v14', 'v15']
     },
     "workflow_granite-novoCaller-rck-check": {
         "run_time": 12,
@@ -119,7 +119,7 @@ workflow_details = {
     },
     "workflow_mutanno-annot-check": {
         "run_time": 12,
-        "accepted_versions": ["v13", "v14"]
+        "accepted_versions": ["v15"]
     },
     "bamsnap": {
         "run_time": 12,
