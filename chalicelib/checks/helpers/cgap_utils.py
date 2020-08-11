@@ -103,7 +103,7 @@ workflow_details = {
     },
     "workflow_mutanno-micro-annot-check": {
         "run_time": 12,
-        "accepted_versions": ["v15"]
+        "accepted_versions": ["v14", "v15"]
     },
     "workflow_granite-filtering-check": {
         "run_time": 12,
