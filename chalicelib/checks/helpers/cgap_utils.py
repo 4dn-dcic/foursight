@@ -24,7 +24,7 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
@@ -32,23 +32,23 @@ workflow_details = {
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_picard-MarkDuplicates-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_sort-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_gatk-ApplyBQSR-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
     },
     # defunct step 8
     "workflow_index-sorted-bam": {
@@ -62,27 +62,27 @@ workflow_details = {
     # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15"]
     },
     # step 9
     'workflow_granite-mpileupCounts': {
         "run_time": 12,
-        "accepted_versions": ["v14"]
+        "accepted_versions": ["v14", "v15"]
     },
     # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15"]
     },
     # part II step 2
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15"]
     },
     # part III step 3
     'workflow_gatk-VQSR-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_qcboard-bam": {
         "run_time": 12,
@@ -90,11 +90,11 @@ workflow_details = {
     },
     "workflow_cram2fastq": {
         "run_time": 12,
-        "accepted_versions": ["v12", "v13"]
+        "accepted_versions": ["v12", "v13", "v15"]
     },
     "workflow_cram2bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v13"]
+        "accepted_versions": ["v13", "v15"]
     },
     # Part III
     "workflow_granite-rckTar": {
