@@ -99,7 +99,7 @@ workflow_details = {
     # Part III
     "workflow_granite-rckTar": {
         "run_time": 12,
-        "accepted_versions": ["v13", "v14"]
+        "accepted_versions": ["v13", "v14", "v15"]
     },
     "workflow_mutanno-micro-annot-check": {
         "run_time": 12,
@@ -111,7 +111,7 @@ workflow_details = {
     },
     "workflow_granite-novoCaller-rck-check": {
         "run_time": 12,
-        "accepted_versions": ["v13", 'v14']
+        "accepted_versions": ["v13", 'v14', 'v15']
     },
     "workflow_granite-comHet-check": {
         "run_time": 12,

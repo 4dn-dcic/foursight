@@ -1017,7 +1017,7 @@ def cgapS3_status(connection, **kwargs):
                               'input_vcf': step5_output,
                               'ref': 'GAPFIXRDPDK5'}
             s6_tag = an_msa['@id'] + '_Part3step6'
-            update_pars = {"parameters": {"title": proband_first_sample_list}}
+            update_pars = {"parameters": {"titles": input_titles}}
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   'step6', s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',
