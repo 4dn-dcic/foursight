@@ -802,7 +802,7 @@ def cgapS3_status(connection, **kwargs):
     analysis_type_filter = "".join(["&analysis_type=" + i for i in accepted_analysis_types])
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partIII_version])
     q = query_base + analysis_type_filter + version_filter
-    print(q)
+    # print(q)
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
@@ -897,16 +897,15 @@ def cgapS3_status(connection, **kwargs):
         input_titles = []  # used by bamsnap
         # check all samples and collect input files
         for a_sample in input_samples:
-            print(a_sample)
             rck = ''
             sample_resp = [i for i in all_items['sample'] if i['accession'] == a_sample][0]
             sample_id = sample_resp.get('bam_sample_id')
             if sample_id:
                 sample_ids.append(sample_id)
-            rck = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')]
+            rck = [i['@id'] for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')]
             if rck:
-                input_rcks.apend(rck[0])
-            bam = [i for i in sample_resp['processed_files'] if i['display_title'].endswith('bam')]
+                input_rcks.append(rck[0])
+            bam = [i['@id'] for i in sample_resp['processed_files'] if i['display_title'].endswith('bam')]
             if bam:
                 input_bams.append(bam)
         # older processings might be missing rck files, a precaution
@@ -934,7 +933,7 @@ def cgapS3_status(connection, **kwargs):
             proband_title = '{} (Proband)'.format(sample_ids[2])
             input_titles = [father_title, mother_title, proband_title]
 
-        if len(an_msa.get('procesed_files', [])) != 1:
+        if len(an_msa.get('processed_files', [])) != 1:
             final_status = an_msa['@id'] + 'single processed_files was expected'
             print(final_status)
             check.brief_output.append(final_status)
@@ -943,7 +942,11 @@ def cgapS3_status(connection, **kwargs):
 
         # if trio, run rck_tar
         if run_mode == 'trio':
-            s1a_input_files = {'input_rcks': input_rcks}
+            new_names = [i + '.rck.gz' for i in sample_ids]  # proband last
+            s1a_input_files = {'input_rcks': input_rcks,  # proband last
+                               'additional_file_parameters': {
+                                   'input_rcks': {"rename": new_names}
+                               }}
             s1a_tag = an_msa['@id'] + '_Part3step1a'
             keep, step1a_status, step1a_output = cgap_utils.stepper(library, keep,
                                                                     'step1a', s1a_tag, input_rcks,
@@ -958,7 +961,9 @@ def cgapS3_status(connection, **kwargs):
             input_vcf = an_msa['processed_files'][0]['@id']
             s1b_input_files = {'input_vcf': input_vcf,
                                'mti': "1408ceb9-7ae3-4002-aed7-c9a301014de2",
-                               'regions': "1c07a3aa-e2a3-498c-b838-15991c4a2f28"}
+                               'regions': "1c07a3aa-e2a3-498c-b838-15991c4a2f28",
+                               'additional_file_parameters': {'mti': {"mount": True}}
+                               }
             s1b_tag = an_msa['@id'] + '_Part3step1b'
             keep, step1b_status, step1b_output = cgap_utils.stepper(library, keep,
                                                                     'step1b', s1b_tag, input_vcf,
@@ -968,7 +973,9 @@ def cgapS3_status(connection, **kwargs):
             step2_status = ""
         else:
             s2_input_files = {"input_vcf": step1b_output,
-                              "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519"}
+                              "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
+                              'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
+                              }
             s2_tag = an_msa['@id'] + '_Part3step2'
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1b_output,
@@ -979,7 +986,12 @@ def cgapS3_status(connection, **kwargs):
         else:
             s3_input_files = {'input_vcf': step2_output,
                               'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
-                              'trio': step1a_output}
+                              'trio': step1a_output,
+                              'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
+                                                             'unrelated': {"mount": True},
+                                                             'trio': {"mount": True},
+                                                             }
+                              }
             s3_tag = an_msa['@id'] + '_Part3step3'
             keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
                                                                   'step3', s3_tag, step2_output,
@@ -988,8 +1000,10 @@ def cgapS3_status(connection, **kwargs):
         if step3_status != 'complete':
             step4_status = ""
         else:
-            s4_input_files = {"input_vcf": step3_output}
-            proband_first_sample_list = list(reversed(sample_ids))
+            s4_input_files = {"input_vcf": step3_output,
+                              'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
+                              }
+            proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"trio": proband_first_sample_list}}
             s4_tag = an_msa['@id'] + '_Part3step4'
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
@@ -1003,7 +1017,9 @@ def cgapS3_status(connection, **kwargs):
             s5_input_files = {'input_vcf': step4_output,
                               'mti': 'GAPFIL98NJ2K',
                               'chainfile': 'GAPFIYPTSAU8',
-                              'regions': 'GAPFIBGEOI72'}
+                              'regions': 'GAPFIBGEOI72',
+                              'additional_file_parameters': {'mti': {"mount": True}}
+                              }
             s5_tag = an_msa['@id'] + '_Part3step5'
             keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
                                                                   'step5', s5_tag, step4_output,
@@ -1014,9 +1030,14 @@ def cgapS3_status(connection, **kwargs):
         else:
             s6_input_files = {'input_bams': input_bams,
                               'input_vcf': step5_output,
-                              'ref': 'GAPFIXRDPDK5'}
+                              'ref': 'GAPFIXRDPDK5',
+                              'additional_file_parameters': {'input_vcf': {"mount": True},
+                                                             'input_bams': {"mount": True},
+                                                             'ref': {"mount": True}
+                                                             }
+                              }
             s6_tag = an_msa['@id'] + '_Part3step6'
-            update_pars = {"parameters": {"titles": input_titles}}
+            update_pars = {"parameters": {"titles": input_titles}}  # proband last
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   'step6', s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',

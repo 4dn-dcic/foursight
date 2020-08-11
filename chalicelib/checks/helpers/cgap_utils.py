@@ -378,7 +378,7 @@ def get_attribution(file_json):
     return attributions
 
 
-def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
+def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename=[]):
     """Takes file id, and creates info dict for tibanna"""
     my_s3_util = s3Utils(env=env)
     raw_bucket = my_s3_util.raw_file_bucket
@@ -412,6 +412,8 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         template['bucket_name'] = buckets[0]
         if rename:
             template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        if additional_parameters:
+            template.update(additional_parameters)
 
     # if obj_id is a string
     else:
@@ -426,6 +428,9 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         template['bucket_name'] = my_bucket
         if rename:
             template['rename'] = template['object_key'].replace(change_from, change_to)
+        if additional_parameters:
+            template.update(additional_parameters)
+    print(template)
     return template
 
 
@@ -439,20 +444,12 @@ def start_missing_run(run_info, auth, env):
     inputs = run_info[2]
     name_tag = run_info[3]
     # find file to use for attribution
-    # if there is a single input, use that one
-    if len(inputs) == 1:
-        for i in inputs:
-            attr_file = inputs[i]
+    for attr_key in attr_keys:
+        if attr_key in inputs:
+            attr_file = inputs[attr_key]
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
             break
-    else:
-        for attr_key in attr_keys:
-            if attr_key in inputs:
-                attr_file = inputs[attr_key]
-                if isinstance(attr_file, list):
-                    attr_file = attr_file[0]
-                break
     # use pony_dev
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
@@ -460,10 +457,15 @@ def start_missing_run(run_info, auth, env):
     return url
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env):
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
     all_inputs = []
+    # input_files container
+    input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
+    # additional input file parameters
+    input_file_parameters = input_files_and_params.get('additional_file_parameters', {})
     for arg, files in input_files.items():
-        inp = extract_file_info(files, arg, auth, env)
+        additional_params = input_file_parameters.get(arg, {})
+        inp = extract_file_info(files, arg, additional_params, auth, env)
         all_inputs.append(inp)
     # tweak to get bg2bw working
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
@@ -479,7 +481,7 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "run_id": run_name}
     # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
     input_json['step_function_name'] = 'tibanna_zebra'
-    # input_json['public_postrun_json'] = True
+    input_json['public_postrun_json'] = True
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
