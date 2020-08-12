@@ -1396,7 +1396,7 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "cgapwolf": {
@@ -1412,7 +1412,23 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
                     "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgapS3_status" : {
+        "title": "d) CGAP pipeline Part III",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 },
                 "cgapwolf": {
