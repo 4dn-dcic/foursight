@@ -24,11 +24,11 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
