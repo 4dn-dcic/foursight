@@ -440,7 +440,6 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
             template['rename'] = template['object_key'].replace(change_from, change_to)
         if additional_parameters:
             template.update(additional_parameters)
-    print(template)
     return template
 
 
