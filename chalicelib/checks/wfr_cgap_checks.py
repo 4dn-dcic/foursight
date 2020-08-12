@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from ..utils import (
     check_function,
@@ -301,6 +302,7 @@ def cgap_status(connection, **kwargs):
     step7_name = 'workflow_gatk-ApplyBQSR-check'
     step8_name = 'workflow_granite-mpileupCounts'
     step9_name = 'workflow_gatk-HaplotypeCaller'
+    step10_name = 'cgap-bamqc'
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
     for a_case in all_cases:
@@ -313,6 +315,13 @@ def cgap_status(connection, **kwargs):
                                                                          'references',
                                                                          'reference_pubs'])
         a_sample = [i for i in all_items['sample'] if i['uuid'] == a_case['sample']['uuid']][0]
+        bam_sample_id = a_sample.get('bam_sample_id')
+        if not bam_sample_id:
+            final_status = a_case['accession'] + "-" + a_sample['accession'] + ' missing bam_sample_id'
+            check.brief_output.extend(final_status)
+            check.full_output['problematic_runs'].append({a_sample['accession']: final_status})
+            break
+
         now = datetime.utcnow()
         print(a_case['accession'], a_sample['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
@@ -381,7 +390,7 @@ def cgap_status(connection, **kwargs):
             else:
                 s2_input_files = {'input_bam': step1_output}
                 s2_tag = a_sample['accession'] + '_' + step1_output.split('/')[2]
-                add_par = {"parameters": {"sample_name": a_sample['aliases'][0].split(':')[1]}}
+                add_par = {"parameters": {"sample_name": bam_sample_id}}
                 keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                       'step2', s2_tag, step1_output,
                                                                       s2_input_files,  step2_name, 'bam_w_readgroups',
@@ -464,9 +473,23 @@ def cgap_status(connection, **kwargs):
                                                                   'step9', a_sample['accession'], step7_output,
                                                                   s9_input_files,  step9_name, 'gvcf')
 
+        # step10 bamqc
+        # RUN STEP 10 # run together with step9 and 8
+        if step7_status != 'complete':
+            step10_status = ""
+        else:
+            s10_input_files = {'input_bam': step7_output,
+                               'additional_file_parameters': {'input_bam': {"mount": True}}
+                               }
+            update_pars = {"parameters": {'sample': bam_sample_id}}
+            keep, step10_status, step10_output = cgap_utils.stepper(library, keep,
+                                                                    'step10', a_sample['accession'], step7_output,
+                                                                    s10_input_files,  step10_name, '',
+                                                                    additional_input=update_pars)
+
         # are all runs done
         all_runs_completed = False
-        if step8_status == 'complete' and step9_status == 'complete':
+        if step8_status == 'complete' and step9_status == 'complete' and step10_status == 'complete':
             all_runs_completed = True
 
         final_status = a_sample['accession']
@@ -810,10 +833,12 @@ def cgapS3_status(connection, **kwargs):
     # list step names
     step1a_name = 'workflow_granite-rckTar'
     step1b_name = 'workflow_mutanno-micro-annot-check'
+    step1c_name = 'workflow_granite-qcVCF'
     step2_name = 'workflow_granite-filtering-check'
     step3_name = 'workflow_granite-novoCaller-rck-check'
     step4_name = 'workflow_granite-comHet-check'
     step5_name = 'workflow_mutanno-annot-check'
+    step5a_name = 'workflow_granite-qcVCF'
     step6_name = 'bamsnap'
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
@@ -866,12 +891,20 @@ def cgapS3_status(connection, **kwargs):
         # order samples by father/mother/proband
         run_mode = ""
         input_samples = []
+        qc_pedigree = []  # used by vcfqc
         # trio analysis
         if len(all_samples) > 2:
             for member in ['father', 'mother', 'proband']:
                 sample_info = [i for i in samples_pedigree if i.get('relationship') == member]
                 if not sample_info:
                     break
+                member_qc_pedigree = {
+                    'gender': sample_info[0].get('sex', ''),
+                    'individual': sample_info[0].get('individual', ''),
+                    'parents': sample_info[0].get('parents', []),
+                    'sample_name': sample_info[0].get('sample_name', '')
+                    }
+                qc_pedigree.append(member_qc_pedigree)
                 input_samples.append(sample_info[0]['sample_accession'])
             if len(input_samples) != 3:
                 final_status = an_msa['@id'] + ' does not have mother father proband info'
@@ -958,6 +991,7 @@ def cgapS3_status(connection, **kwargs):
         if step1a_status != 'complete':
             step1b_status = ""
         else:
+            # step1b micro annotation
             input_vcf = an_msa['processed_files'][0]['@id']
             s1b_input_files = {'input_vcf': input_vcf,
                                'mti': "1408ceb9-7ae3-4002-aed7-c9a301014de2",
@@ -970,6 +1004,24 @@ def cgapS3_status(connection, **kwargs):
                                                                     s1b_input_files,  step1b_name, 'annotated_vcf')
 
         if step1b_status != 'complete':
+            step1c_status = ""
+        else:
+            # step 1c vcfqc
+            s1c_input_files = {"input_vcf": step1b_output,
+                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
+                               }
+            str_qc_pedigree = str(json.dumps(qc_pedigree))
+            proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
+            update_pars = {"parameters": {"samples": proband_first_sample_list,
+                                          "pedigree": str_qc_pedigree}}
+            print(update_pars)
+            s1c_tag = an_msa['@id'] + '_Part3step1c'
+            keep, step1c_status, step1c_output = cgap_utils.stepper(library, keep,
+                                                                    'step1c', s1c_tag, step1b_output,
+                                                                    s1c_input_files,  step1c_name, '',
+                                                                    additional_input=update_pars)
+
+        if step1c_status != 'complete':
             step2_status = ""
         else:
             s2_input_files = {"input_vcf": step1b_output,
@@ -1026,6 +1078,24 @@ def cgapS3_status(connection, **kwargs):
                                                                   s5_input_files,  step5_name, 'annotated_vcf')
 
         if step5_status != 'complete':
+            step5a_status = ""
+        else:
+            # step 1c vcfqc
+            s5a_input_files = {"input_vcf": step5_output,
+                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
+                               }
+            str_qc_pedigree = str(json.dumps(qc_pedigree))
+            proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
+            update_pars = {"parameters": {"samples": proband_first_sample_list,
+                                          "pedigree": str_qc_pedigree},
+                           "custom_qc_fields": {}}
+            s5a_tag = an_msa['@id'] + '_Part3step5a'
+            keep, step5a_status, step5a_output = cgap_utils.stepper(library, keep,
+                                                                    'step5a', s5a_tag, step5_output,
+                                                                    s5a_input_files,  step5a_name, '',
+                                                                    additional_input=update_pars)
+
+        if step5a_status != 'complete':
             step6_status = ""
         else:
             s6_input_files = {'input_bams': input_bams,
@@ -1363,90 +1433,4 @@ def cram_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = cram_check_result.get('completed_runs')
     action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
-    return action
-
-
-@check_function()
-def bam_qc_CGAP_status(connection, **kwargs):
-    """Searches for bam files that don't have bam_qc_CGAP
-    Keyword arguments:
-    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead (default=24 hours)
-    """
-    start = datetime.utcnow()
-    check = CheckResult(connection, 'bam_qc_CGAP_status')
-    my_auth = connection.ff_keys
-    check.action = "bam_qc_CGAP_start"
-    check.brief_output = []
-    check.full_output = {}
-    check.status = 'PASS'
-
-    # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
-        return check
-
-    # Build the query (skip to be uploaded by workflow)
-    query = ("/search/?file_type=alignments&type=FileProcessed"
-             "&workflow_run_outputs.workflow.title=Run+gatk+ApplyBQSR+plus+output+integrity-check")
-
-    results = ff_utils.search_metadata(query, key=my_auth)
-    # List of bam files
-    bam_list = []
-    for a_sample in results:
-        for a_file in a_sample['processed_files']:
-            bam_uuid = a_file['uuid']
-            bam_list.append(bam_uuid)
-
-    res = []
-    # check if the qc_metric is in the file
-    for a_file in bam_list:
-        results = ff_utils.get_metadata(a_file, key=my_auth)
-        qc_metric = cgap_utils.is_there_my_qc_metric(results, 'QualityMetricWgsBamqc', my_auth)
-        if not qc_metric:
-            res.append(results)
-
-    if not res:
-        check.summary = 'All Good!'
-        return check
-
-    check = cgap_utils.check_runs_without_output(res, check, 'cgap-bamqc', my_auth, start)
-    return check
-
-
-@action_function(start_missing_run=True, start_missing_meta=True)
-def bam_qc_CGAP_start(connection, **kwargs):
-    """Start bam_qc_CGAP runs by sending compiled input_json to run_workflow endpoint"""
-    start = datetime.utcnow()
-    action = ActionResult(connection, 'bam_qc_CGAP_start')
-    action_logs = {'runs_started': [], 'runs_failed': []}
-    my_auth = connection.ff_keys
-    bam_qc_CGAP_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
-    targets = []
-    if kwargs.get('start_missing_run'):
-        targets.extend(bam_qc_CGAP_check_result.get('files_without_run', []))
-    if kwargs.get('start_missing_meta'):
-        targets.extend(bam_qc_CGAP_check_result.get('files_without_changes', []))
-    for a_target in targets:
-        now = datetime.utcnow()
-        if (now-start).seconds > lambda_limit:
-            action.description = 'Did not complete action due to time limitations'
-            break
-        a_file = ff_utils.get_metadata(a_target, key=my_auth)
-        attributions = cgap_utils.get_attribution(a_file)
-        inp_f = {'input_files': a_file['@id']}
-        wfr_setup = wfrset_cgap_utils.step_settings('cgap-bamqc', 'no_organism', attributions)
-        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
-        # aws run url
-        if url.startswith('http'):
-            action_logs['runs_started'].append(url)
-        else:
-            action_logs['runs_failed'].append([a_target, url])
-    action.output = action_logs
-    action.status = 'DONE'
     return action

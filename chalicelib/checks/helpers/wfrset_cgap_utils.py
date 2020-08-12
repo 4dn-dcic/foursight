@@ -251,6 +251,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap upstream pipeline'}
                         }
             },
+            {  # step 10 bamqc
+                'app_name': 'cgap-bamqc',
+                'workflow_uuid': 'd6651132-ab7c-40c0-886f-94f88ef6bdce',
+                'parameters': {},
+                "config": {
+                    "instance_type": "c5n.2xlarge",
+                    "ebs_size": "2.5x",
+                    "EBS_optimized": True,
+                    "behavior_on_capacity_limit": "wait_and_retry"
+                }
+            },
             #  ____   __   ____  ____    __  __
             # (  _ \ / _\ (  _ \(_  _)  (  )(  )
             #  ) __//    \ )   /  )(     )(  )(
@@ -400,6 +411,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "config": {
                     "instance_type": "c5.4xlarge",
                     "ebs_size": 10,
+                    "EBS_optimized": True
+                }
+            },
+            {  # VCFQC used in Step3
+                'app_name': 'workflow_granite-qcVCF',
+                'workflow_uuid': '33a85705-b757-49e0-aaef-d786695d6d03',
+                'parameters': {"trio_errors": True,
+                               "het_hom": True,
+                               "ti_tv": True},
+                "config": {
+                    "instance_type": "t3.small",
+                    "ebs_size": "1.5x",
                     "EBS_optimized": True
                 }
             },

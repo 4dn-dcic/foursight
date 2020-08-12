@@ -69,6 +69,12 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v14", "v15"]
     },
+    # step 10
+    'cgap-bamqc': {
+        "run_time": 12,
+        "accepted_versions": ["v2"]
+    },
+    # # PART II
     # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
@@ -125,6 +131,10 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v14", "v15"]
     },
+    "workflow_granite-qcVCF": {
+        "run_time": 12,
+        "accepted_versions": ["v2"]
+    }
 }
 
 
