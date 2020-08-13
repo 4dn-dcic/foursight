@@ -1090,7 +1090,7 @@ def cgapS3_status(connection, **kwargs):
             proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"samples": proband_first_sample_list,
                                           "pedigree": str_qc_pedigree},
-                           "custom_qc_fields": {}}
+                           "custom_qc_fields": {"filtering_condition": "((Exonic and splice variants OR spliceAI>0.2) AND (gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR (Clinvar Pathogenic/Likely Pathogenic or Conflicting Submissions)"}}
             s5a_tag = an_msa['@id'] + '_Part3step5a'
             keep, step5a_status, step5a_output = cgap_utils.stepper(library, keep,
                                                                     'step5a', s5a_tag, step5_output,
