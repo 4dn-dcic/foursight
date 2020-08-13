@@ -158,10 +158,11 @@ def md5runCGAP_start(connection, **kwargs):
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = cgap_utils.get_attribution(a_file)
-        inp_f = {'input_file': a_file['@id']}
+        inp_f = {'input_file': a_file['@id'],
+                 'additional_file_parameters': {'input_file': {'mount': True}}}
         wfr_setup = wfrset_cgap_utils.step_settings('md5', 'no_organism', attributions)
 
-        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -245,9 +246,10 @@ def fastqcCGAP_start(connection, **kwargs):
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = cgap_utils.get_attribution(a_file)
-        inp_f = {'input_fastq': a_file['@id']}
+        inp_f = {'input_fastq': a_file['@id'],
+                 'additional_file_parameters': {'input_fastq': {'mount': True}}}
         wfr_setup = wfrset_cgap_utils.step_settings('fastqc', 'no_organism', attributions)
-        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = cgap_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
