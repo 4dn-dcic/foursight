@@ -487,7 +487,7 @@ def cgap_status(connection, **kwargs):
             keep, step10_status, step10_output = cgap_utils.stepper(library, keep,
                                                                     'step10', a_sample['accession'], step7_output,
                                                                     s10_input_files,  step10_name, '',
-                                                                    additional_input=update_pars)
+                                                                    additional_input=update_pars, no_output=True)
 
         # are all runs done
         all_runs_completed = False
@@ -1021,7 +1021,7 @@ def cgapS3_status(connection, **kwargs):
             keep, step1c_status, step1c_output = cgap_utils.stepper(library, keep,
                                                                     'step1c', s1c_tag, step1b_output,
                                                                     s1c_input_files,  step1c_name, '',
-                                                                    additional_input=update_pars)
+                                                                    additional_input=update_pars, no_output=True)
 
         if step1c_status != 'complete':
             step2_status = ""
@@ -1090,12 +1090,16 @@ def cgapS3_status(connection, **kwargs):
             proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"samples": proband_first_sample_list,
                                           "pedigree": str_qc_pedigree},
-                           "custom_qc_fields": {"filtering_condition": "((Exonic and splice variants OR spliceAI>0.2) AND (gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR (Clinvar Pathogenic/Likely Pathogenic or Conflicting Submissions)"}}
+                           "custom_qc_fields": {"filtering_condition": ("((Exonic and splice variants OR spliceAI>0.2) AND "
+                                                                        "(gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR "
+                                                                        "(Clinvar Pathogenic/Likely Pathogenic or Conflicting Submissions)")
+                                                }
+                           }
             s5a_tag = an_msa['@id'] + '_Part3step5a'
             keep, step5a_status, step5a_output = cgap_utils.stepper(library, keep,
                                                                     'step5a', s5a_tag, step5_output,
                                                                     s5a_input_files,  step5a_name, '',
-                                                                    additional_input=update_pars)
+                                                                    additional_input=update_pars, no_output=True)
 
         if step5a_status != 'complete':
             step6_status = ""
@@ -1113,7 +1117,7 @@ def cgapS3_status(connection, **kwargs):
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   'step6', s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',
-                                                                  additional_input=update_pars)
+                                                                  additional_input=update_pars, no_output=True)
 
         final_status = an_msa['@id']
         completed = []
