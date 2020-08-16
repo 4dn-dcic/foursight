@@ -942,7 +942,7 @@ def cgapS3_status(connection, **kwargs):
                 input_rcks.append(rck[0])
             bam = [i['@id'] for i in sample_resp['processed_files'] if i['display_title'].endswith('bam')]
             if bam:
-                input_bams.append(bam)
+                input_bams.append(bam[0])
         # older processings might be missing rck files, a precaution
         if len(input_rcks) != len(input_samples) and run_mode == 'trio':
             final_status = an_msa['@id'] + ' missing rck files on samples'
