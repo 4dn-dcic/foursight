@@ -1199,6 +1199,78 @@ def cgapS3_start(connection, **kwargs):
     return action
 
 
+@check_function(start_date=None, file_accessions="")
+def ingest_vcf_status(connection, **kwargs):
+    """Searches for fastq files that don't have ingest_vcf
+    Keyword arguments:
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    file_accession -- run check with given files instead of the default query
+                      expects comma/space separated accessions
+    """
+    check = CheckResult(connection, 'ingest_vcf_status')
+    my_auth = connection.ff_keys
+    check.action = "ingest_vcf_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    check.allow_action = False
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    # Build the query (skip to be uploaded by workflow)
+    query = ("/search/?file_type=full+annotated+VCF&type=FileProcessed"
+             "&file_ingestion_status=No value&file_ingestion_status=N/A"
+             "status!=uploading&status!=to be uploaded by workflow&status!=upload failed")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add accessions
+    file_accessions = kwargs.get('file_accessions')
+    if s_date:
+        file_accessions = file_accessions.replace(' ', ',')
+        accessions = [i.strip() for i in file_accessions.split(',') if i]
+        for an_acc in accessions:
+            query += '&accession={}'.format(an_acc)
+    # The search
+    results = ff_utils.search_metadata(query, key=my_auth)
+    if not results:
+        check.summary = 'All Good!'
+        return check
+    msg = '{} files will be added to the ingestion_queue'.format(str(len(results)))
+    files = [i['uuid'] for i in results]
+    check.status = 'WARN'  # maybe use warn?
+    check.brief_output = [msg, ]
+    check.summary = msg
+    check.full_output = {'files': files,
+                         'accessions': [i['accession'] for i in results]}
+    check.allow_action = True
+    return check
+
+
+@action_function()
+def ingest_vcf_start(connection, **kwargs):
+    """Start ingest_vcf runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'ingest_vcf_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    ingest_vcf_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = ingest_vcf_check_result['files']
+    post_body = {"uuids": targets}
+    action_logs = ff_utils.post_metadata(post_body, "/queue_ingestion", my_auth)
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
 @check_function()
 def bamqcCGAP_status(connection, **kwargs):
     """Searches for bam files that don't have bamqcCGAP
