@@ -1250,7 +1250,8 @@ def ingest_vcf_status(connection, **kwargs):
     check.status = 'WARN'  # maybe use warn?
     check.brief_output = [msg, ]
     check.summary = msg
-    check.full_output = {'files': files}
+    check.full_output = {'files': files,
+                         'accessions': [i['accession'] for i in results]}
     check.allow_action = True
     return check
 
