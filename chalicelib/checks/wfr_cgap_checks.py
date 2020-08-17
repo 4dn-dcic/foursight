@@ -1020,7 +1020,10 @@ def cgapS3_status(connection, **kwargs):
             str_qc_pedigree = str(json.dumps(qc_pedigree))
             proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"samples": proband_first_sample_list,
-                                          "pedigree": str_qc_pedigree}}
+                                          "pedigree": str_qc_pedigree,
+                                          "trio_errors": True,
+                                          "het_hom": True,
+                                          "ti_tv": True}}
             print(update_pars)
             s1c_tag = an_msa['@id'] + '_Part3step1c'
             keep, step1c_status, step1c_output = cgap_utils.stepper(library, keep,
@@ -1094,7 +1097,10 @@ def cgapS3_status(connection, **kwargs):
             str_qc_pedigree = str(json.dumps(qc_pedigree))
             proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"samples": proband_first_sample_list,
-                                          "pedigree": str_qc_pedigree},
+                                          "pedigree": str_qc_pedigree,
+                                          "trio_errors": True,
+                                          "het_hom": False,
+                                          "ti_tv": False},
                            "custom_qc_fields": {"filtering_condition": ("((Exonic and splice variants OR spliceAI>0.2) AND "
                                                                         "(gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR "
                                                                         "(Clinvar Pathogenic/Likely Pathogenic or Conflicting Submissions)")
