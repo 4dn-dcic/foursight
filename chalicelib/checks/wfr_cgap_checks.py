@@ -295,6 +295,10 @@ def cgap_status(connection, **kwargs):
     all_cases = ff_utils.search_metadata(q, my_auth)
     print(len(all_cases))
 
+    if not all_cases:
+        check.summary = 'All Good!'
+        return check
+
     step1_name = 'workflow_bwa-mem_no_unzip-check'
     step2_name = 'workflow_add-readgroups-check'
     step3_name = 'workflow_merge-bam-check'
@@ -610,10 +614,10 @@ def cgapS2_status(connection, **kwargs):
     query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
     q = query_base + version_filter
-    print(q)
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
+        check.summary = 'All Good!'
         return check
     # list step names
     step1_name = 'workflow_gatk-CombineGVCFs'
@@ -831,6 +835,7 @@ def cgapS3_status(connection, **kwargs):
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
+        check.summary = 'All Good!'
         return check
     # list step names
     step1a_name = 'workflow_granite-rckTar'
@@ -1386,6 +1391,10 @@ def cram_status(connection, **kwargs):
     q = '/search/?type=Sample&files.display_title=No+value&cram_files.display_title%21=No+value'
     all_samples = ff_utils.search_metadata(q, my_auth)
     print(len(all_samples))
+
+    if not all_samples:
+        check.summary = 'All Good!'
+        return check
 
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
