@@ -138,6 +138,10 @@ workflow_details = {
     'merge-fastq': {
         "run_time": 200,
         "accepted_versions": ['v1']
+    },
+    'insulation-scores-and-boundaries-caller': {
+            "run_time": 200,
+            "accepted_versions": ['dev']
     }
 }
 
@@ -201,6 +205,10 @@ accepted_versions = {
     'TRIP': ['']
     }
 
+# Accepted versions for feature calling pipelines
+feature_calling_accepted_versions = {
+    'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"]
+}
 # Reference Files
 bwa_index = {"human": "4DNFIZQZ39L9",
              "mouse": "4DNFI823LSI8",
@@ -615,6 +623,37 @@ def build_exp_type_query(exp_type, kwargs):
     # for some cases we don't have a defined complete processing tag
     if versions:
         pre_query += "".join(["&completed_processes!=" + i for i in versions])
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        pre_query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        pre_query += '&lab.display_title=' + lab
+    return pre_query
+
+
+def build_feature_calling_query(exp_types, feature, kwargs):
+    assert feature in feature_calling_accepted_versions
+
+    for exp_type in exp_types:
+        assert exp_type in accepted_versions
+
+    statuses = ['pre-release', 'released', 'released to project']
+    versions = [i for i in accepted_versions[exp_type]]
+    feature_calling_versions = feature_calling_accepted_versions[feature]
+    # Build the query
+    pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
+    pre_query += "".join(["&experiments_in_set.experiment_type=" + i for i in exp_types])
+    pre_query += "".join(["&status=" + i for i in statuses])
+    # for some cases we don't have a defined complete processing tag
+    if versions:
+        pre_query += "".join(["&completed_processes=" + i for i in versions])
+
+    if feature_calling_versions:
+        pre_query += "".join(["&completed_processes!=" + i for i in feature_calling_versions])
+
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1700,4 +1739,34 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
     if check.full_output['problematic_runs']:
         check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
+    return check
+
+
+def check_insulation_and_boundaries(res, reads_cutoff, my_auth, tag, check, start, lambda_limit):
+    targets = []
+    reads_check = False  # check if the number of reads is greater than the cutoff
+    # check pairs file
+    for pfile in res['processed_files']:
+        if pfile['format'] == 'pairs':
+            for qc in pfile['quality_metric_summary']:
+                if qc['title'] == 'Total filtered reads':
+                    if qc['value'] >= reads_cutoff:
+                        reads_check = True
+
+    if reads_check:
+        file_info = {}
+        # check the mcool file
+        for pfile in res['processed_files']:
+            if pfile['format'] == 'mcool':
+                file_info['file'] = pfile['accession']
+
+        # check enzyme
+        enzyme = res['experiments_in_set'][0]['digestion_enzyme']['name']
+        enz_cutter = re_nz_sizes[enzyme]
+        file_info['re_enzyme_type'] = enz_cutter
+        targets.append(file_info)
+
+    if targets:
+        print('statuses')
+
     return check

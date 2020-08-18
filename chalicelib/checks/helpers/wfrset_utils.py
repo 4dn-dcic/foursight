@@ -165,7 +165,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bedGraphToBigWig",
         "workflow_uuid": "a083e05a-46b6-4ae7-aaa4-2abf59300ff7",
-        "config": {'mem': 4, 'cpu': 2, "ebs_size": 10},
+        "config": {'mem': 4, 'cpu': 2, "ebs_size": 30},
         "overwrite_input_extra": True
         },
         {"app_name": "encode-chipseq",
@@ -213,14 +213,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             }
         },
         {
-        "app_name": "insulator-score-caller",
+        "app_name": "insulator-scores-and-boundaries-caller",
         "workflow_uuid": "54a46fe7-cec2-4bfb-ab5f-470320f69fb0",
-        "parameters": {"binsize": -1, "windowsize": 100000, "cutoff": 2},
+        "parameters": {"binsize": -1},
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,
                 'file_type': 'insulation score-diamond',
-                'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
+                'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'},
+            'bedfile': {
+                'genome_assembly': genome,
+                'file_type': 'boundaries',
+                'description': ''}
             }
         },
         {
