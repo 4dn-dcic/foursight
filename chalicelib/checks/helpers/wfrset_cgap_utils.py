@@ -278,7 +278,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'custom_pf_fields': {
                     'combined_gvcf': {
                         'genome_assembly': genome,
-                        'file_type': 'combined VCF',
+                        'file_type': 'combined gVCF',
                         'description': 'processed output from cgap downstream pipeline'}
                         }
             },
@@ -414,7 +414,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                     "EBS_optimized": True
                 }
             },
-            {  # VCFQC used in Step3
+            {  # VCFQC used in Part III
                 'app_name': 'workflow_granite-qcVCF',
                 'workflow_uuid': '33a85705-b757-49e0-aaef-d786695d6d03',
                 'parameters': {"trio_errors": True,

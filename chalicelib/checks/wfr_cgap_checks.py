@@ -11,7 +11,7 @@ lambda_limit = cgap_utils.lambda_limit
 
 # list of acceptible version
 cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13', 'WGS_partI_V15']
-cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13', 'WGS_partI_V15']
+cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13', 'WGS_partII_V15']
 cgap_partIII_version = ['WGS_PartIII_V15']
 
 
@@ -294,6 +294,10 @@ def cgap_status(connection, **kwargs):
 
     all_cases = ff_utils.search_metadata(q, my_auth)
     print(len(all_cases))
+
+    if not all_cases:
+        check.summary = 'All Good!'
+        return check
 
     step1_name = 'workflow_bwa-mem_no_unzip-check'
     step2_name = 'workflow_add-readgroups-check'
@@ -610,10 +614,10 @@ def cgapS2_status(connection, **kwargs):
     query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
     q = query_base + version_filter
-    print(q)
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
+        check.summary = 'All Good!'
         return check
     # list step names
     step1_name = 'workflow_gatk-CombineGVCFs'
@@ -831,6 +835,7 @@ def cgapS3_status(connection, **kwargs):
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
+        check.summary = 'All Good!'
         return check
     # list step names
     step1a_name = 'workflow_granite-rckTar'
@@ -1015,7 +1020,10 @@ def cgapS3_status(connection, **kwargs):
             str_qc_pedigree = str(json.dumps(qc_pedigree))
             proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"samples": proband_first_sample_list,
-                                          "pedigree": str_qc_pedigree}}
+                                          "pedigree": str_qc_pedigree,
+                                          "trio_errors": True,
+                                          "het_hom": True,
+                                          "ti_tv": True}}
             print(update_pars)
             s1c_tag = an_msa['@id'] + '_Part3step1c'
             keep, step1c_status, step1c_output = cgap_utils.stepper(library, keep,
@@ -1089,7 +1097,10 @@ def cgapS3_status(connection, **kwargs):
             str_qc_pedigree = str(json.dumps(qc_pedigree))
             proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"samples": proband_first_sample_list,
-                                          "pedigree": str_qc_pedigree},
+                                          "pedigree": str_qc_pedigree,
+                                          "trio_errors": True,
+                                          "het_hom": False,
+                                          "ti_tv": False},
                            "custom_qc_fields": {"filtering_condition": ("((Exonic and splice variants OR spliceAI>0.2) AND "
                                                                         "(gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR "
                                                                         "(Clinvar Pathogenic/Likely Pathogenic or Conflicting Submissions)")
@@ -1386,6 +1397,10 @@ def cram_status(connection, **kwargs):
     q = '/search/?type=Sample&files.display_title=No+value&cram_files.display_title%21=No+value'
     all_samples = ff_utils.search_metadata(q, my_auth)
     print(len(all_samples))
+
+    if not all_samples:
+        check.summary = 'All Good!'
+        return check
 
     for a_sample in all_samples:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_sample['uuid']], my_auth,
