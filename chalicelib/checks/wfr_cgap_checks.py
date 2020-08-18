@@ -1103,7 +1103,7 @@ def cgapS3_status(connection, **kwargs):
                                           "ti_tv": False},
                            "custom_qc_fields": {"filtering_condition": ("((Exonic and splice variants OR spliceAI>0.2) AND "
                                                                         "(gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR "
-                                                                        "(Clinvar Pathogenic/Likely Pathogenic or Conflicting Submissions)")
+                                                                        "(Clinvar Pathogenic/Likely Pathogenic, Conflicting Interpretation or Risk Factor)")
                                                 }
                            }
             s5a_tag = an_msa['@id'] + '_Part3step5a'
