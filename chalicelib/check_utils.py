@@ -61,7 +61,7 @@ def get_checks_within_schedule(schedule_name):
     """
     checks_in_schedule = []
     for check_name, detail in CHECK_SETUP.items():
-        if not schedule_name in detail['schedule']:
+        if schedule_name not in detail['schedule']:
             continue
         checks_in_schedule.append(check_name)
     return checks_in_schedule

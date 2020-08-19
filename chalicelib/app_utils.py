@@ -518,12 +518,12 @@ def process_view_result(connection, res, is_admin):
     proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time())])
     res['local_time'] = proc_ts
     if res.get('brief_output'):
-        res['brief_output'] = trim_output(res['brief_output'])
+        res['brief_output'] = json.dumps(trim_output(res['brief_output']), indent=2)
     if res.get('full_output'):
-        res['full_output'] = trim_output(res['full_output'])
+        res['full_output'] = json.dumps(trim_output(res['full_output']), indent=2)
     # only return admin_output if an admin is logged in
     if res.get('admin_output') and is_admin:
-        res['admin_output'] = trim_output(res['admin_output'])
+        res['admin_output'] = json.dumps(trim_output(res['admin_output']), indent=2)
     else:
         res['admin_output'] = None
 

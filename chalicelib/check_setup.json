@@ -1400,7 +1400,7 @@
                     "dependencies": []
                 },
                 "cgapwolf": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
@@ -1416,7 +1416,39 @@
                     "dependencies": []
                 },
                 "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgapS3_status" : {
+        "title": "d) CGAP pipeline Part III",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "ingest_vcf_status" : {
+        "title": "d) CGAP trigger VCF ingestion",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
@@ -1644,6 +1676,18 @@
     },
     "check_opf_lab_different_than_experiment": {
         "title": "Opf contributing lab",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "grouped_with_file_relation_consistency": {
+        "title": "File relation 'grouped with'",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
