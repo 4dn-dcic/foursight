@@ -1686,5 +1686,31 @@
                 }
             }
         }
+    },
+    "wipe_cgap_build_indices": {
+        "title": "Wipe CGAP build indices",
+        "group": "System Checks",
+        "schedule": {
+             "morning_checks": {
+                "cgap": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+     "wipe_ff_build_indices": {
+        "title": "Wipe FF build indices",
+        "group": "System Checks",
+        "schedule": {
+             "morning_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
     }
 }
