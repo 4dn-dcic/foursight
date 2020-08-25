@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    action_function,
     basestring
 )
-from ..run_result import CheckResult, ActionResult
+from ..run_result import CheckResult
 from dcicutils import (
     ff_utils,
     es_utils,
@@ -13,27 +12,10 @@ from dcicutils import (
 )
 
 import requests
-import sys
 import json
 import datetime
 import boto3
 import time
-
-
-@check_function()
-def wipe_build_indices(connection, **kwargs):
-    """ Wipes all indices on the FF-Build ES env """
-    check = CheckResult(connection, 'wipe_build_indices')
-    check.status = 'PASS'
-    check.summary = check.description = 'Wiped all test indices'
-    BUILD_ES = 'search-fourfront-builds-uhevxdzfcv7mkm5pj5svcri3aq.us-east-1.es.amazonaws.com:80'
-    client = es_utils.create_es_client(BUILD_ES, True)
-    full_output = client.indices.delete(index='*')
-    if full_output['acknowledged'] != True:
-        check.status = 'FAIL'
-        check.summary = check.description = 'Failed to wipe all test indices, see full output'
-    check.full_output = full_output
-    return check
 
 
 @check_function()

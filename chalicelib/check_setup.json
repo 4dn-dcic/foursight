@@ -1522,17 +1522,6 @@
             }
         }
     },
-    "wipe_build_indices" : {
-        "title": "Wipe Build Indicies",
-        "group": "System checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true}
-                }
-            }
-        }
-    },
     "check_for_strandedness_consistency": {
         "title": "RNA-seq experiments without strandedness verification",
         "group": "Metadata checks",
