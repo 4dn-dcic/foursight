@@ -3,7 +3,7 @@ from ..utils import (
     check_function,
     basestring
 )
-from ..run_result import CheckResult,
+from ..run_result import CheckResult
 from dcicutils import (
     ff_utils,
     es_utils,
