@@ -928,8 +928,16 @@ def cgapS3_status(connection, **kwargs):
                 check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
                 continue
             input_samples.append(sample_info[0]['sample_accession'])
+            member_qc_pedigree = {
+                'gender': sample_info[0].get('sex', ''),
+                'individual': sample_info[0].get('individual', ''),
+                'parents': sample_info[0].get('parents', []),
+                'sample_name': sample_info[0].get('sample_name', '')
+                }
+            qc_pedigree.append(member_qc_pedigree)
             run_mode = 'proband_only'
         print(run_mode)
+        print(qc_pedigree)
         # Setup for step 1a
         input_rcks = []
         sample_ids = []  # used by comHet
@@ -1660,6 +1668,13 @@ def cgapS3_er_status(connection, **kwargs):
                 check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
                 continue
             input_samples.append(sample_info[0]['sample_accession'])
+            member_qc_pedigree = {
+                'gender': sample_info[0].get('sex', ''),
+                'individual': sample_info[0].get('individual', ''),
+                'parents': sample_info[0].get('parents', []),
+                'sample_name': sample_info[0].get('sample_name', '')
+                }
+            qc_pedigree.append(member_qc_pedigree)
             run_mode = 'proband_only'
         print(run_mode)
         # Setup for step 1a
