@@ -38,7 +38,7 @@ def wipe_build_indices(connection, es_url):
     full_output = []
     for i in range(1, 10):  # delete all number prefixed indices 0-9
         full_output.append(client.indices.delete(index=str(i) + '*'))
-    if any(output['acknowledged'] != True for output in full_output):
+    if any(output['acknowledged'] is not True for output in full_output):
         check.status = 'FAIL'
         check.summary = check.description = 'Failed to wipe all test indices, see full output'
     check.full_output = full_output
@@ -46,13 +46,13 @@ def wipe_build_indices(connection, es_url):
 
 
 @check_function()
-def wipe_cgap_build_indices(connection):
+def wipe_cgap_build_indices(connection, **kwargs):
     """ Wipes build indices for CGAP (on cgap-testing) """
     return wipe_build_indices(connection, CGAP_TEST_CLUSTER)
 
 
 @check_function()
-def wipe_ff_build_indices(connection):
+def wipe_ff_build_indices(connection, **kwargs):
     """ Wipes build (number prefixed) indices (on fourfront-testing) """
     return wipe_build_indices(connection, FF_TEST_CLUSTER)
 

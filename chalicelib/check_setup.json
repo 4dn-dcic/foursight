@@ -1689,7 +1689,7 @@
     },
     "wipe_cgap_build_indices": {
         "title": "Wipe CGAP build indices",
-        "group": "System Checks",
+        "group": "System checks",
         "schedule": {
              "morning_checks": {
                 "cgap": {
@@ -1702,7 +1702,7 @@
     },
      "wipe_ff_build_indices": {
         "title": "Wipe FF build indices",
-        "group": "System Checks",
+        "group": "System checks",
         "schedule": {
              "morning_checks": {
                 "data": {
