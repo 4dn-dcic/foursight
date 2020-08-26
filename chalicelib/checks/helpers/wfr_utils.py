@@ -399,6 +399,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # get default run out time
     if not run:
         run = workflow_details[wfr_name]['run_time']
+
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
     run_status = 'did not run'
@@ -1230,7 +1231,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
-              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files"}
+              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
+              'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1301,7 +1303,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 def start_missing_run(run_info, auth, env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
-                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles']
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]

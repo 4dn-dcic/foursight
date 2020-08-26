@@ -2115,7 +2115,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
     exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C', 'DNase Hi-C']  # check naming of the expSets
     feature = 'insulation_scores_and_boundaries'
     # minimum number of reads in the mcool file
-    reads_cutoff = 100000
+    reads_cutoff = 100000000
     # completion tag
     tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
     # check indexing queue
@@ -2126,10 +2126,9 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
 
     # Build the first query, experiments that have run the hic pipeline. add date and lab if available
     query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
-    print(query)
     # if total reads field in available
-    #query = query + '&experiments_in_set.processed_files.file_fortmat=pairs'
-    #query = query + f'&experiments_in_set.processed_files.quality_metric.Total reads >={reads_cutoff}'
+    query += '&processed_files.file_format.display_title=pairs'
+    query += f'&processed_files.quality_metric.Total reads.from={reads_cutoff}'
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -2138,66 +2137,64 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    # Select the mcool files that have more than the minimum number of reads
-    targets = []
     for a_res in res:
-        reads_check = False  # check if the number of reads is greater than the cutoff
-        # check pairs file
+        running = []
+        completed = {'patch_opf': [], 'add_tag': []}
+        missing_run = []
+        problematic_run = []
         for pfile in a_res['processed_files']:
-            if pfile['file_format']['display_title'] == 'pairs':
-                for qc in pfile['quality_metric_summary']:
-                    if qc['title'] == 'Filtered Reads':
-                        if int(qc['value']) >= reads_cutoff:
-                            reads_check = True
-        if reads_check:
-            targets.append(a_res)
-
-    if not targets:
-        check.summary = 'All Good!'
-        return check
-
-    running = []
-    missing_run = []
-    completed = {}
-
-    for a_target in targets:
-        for pfile in a_target['processed_files']:
             if pfile['file_format']['display_title'] == 'mcool':
-                insu_and_boun_report = wfr_utils.get_wfr_out(pfile, "insulation-scores-and-boundaries-caller", key=my_auth, md_qc=True)
+                file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
 
         if insu_and_boun_report['status'] == 'running':
             running.append(pfile['accession'])
+        elif insu_and_boun_report['status'].startswith("no complete run, too many"):
+            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif insu_and_boun_report['status'] != 'complete':
-            missing_run.append(pfile['accession'])
+            enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
+            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+            re_enz_size = wfr_utils.re_nz_sizes[enz]
+            if int(re_enz_size) == 4:
+                binsize = 5000
+            if int(re_enz_size) == 6:
+                binsize = 10000
+            overwrite = {'parameters': {"binsize": binsize}}
+            inp_f = {'mcoolfile': pfile['accession']}
+            missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
+                                inp_f, a_res['accession']])
         else:
             patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
-            completed['patch_opf'] = [a_target['accession'], patch_data]
-            completed['add_tag'] = [a_target['accession'], tag]
+            completed['patch_opf'].append([a_res['accession'], patch_data])
+            completed['add_tag'] = [a_res['accession'], tag]
 
-    if running:
-        check.summary = 'Some files are running insulation_scores_and_boundaries run'
-        msg = str(len(running)) + ' files are still running insulation_scores_and_boundaries run.'
-        check.brief_output.append(msg)
-        check.full_output['running_runs'] = running
-    if missing_run:
-        check.summary = 'Some files are missing insulation_scores_and_boundaries run'
-        msg = str(len(missing_run)) + ' file(s) lack a successful insulation_scores_and_boundaries run'
-        check.brief_output.append(msg)
-        check.full_output['needs_runs'] = missing_run
+        if running:
+            check.full_output['running_runs'].append({a_res['accession']: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({a_res['accession']: missing_run})
+        if completed.get('add_tag'):
+            assert not running
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
         check.allow_action = True
         check.status = 'WARN'
-    if completed:
-        check.summary = 'Some files are missing the completed tag'
-        msg = str(len(missing_run)) + ' file(s) lack the completed tag'
-        check.brief_output.append(msg)
-        check.full_output['completed_runs'] = completed
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
         check.allow_action = True
+        check.status = 'WARN'
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
 
     return check
 
 
-@action_function(start_missing_run=True, start_missing_meta=True)
+@action_function(start_runs=True, patch_completed=True)
 def insulation_scores_and_boundaries_start(connection, **kwargs):
     """Start template runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
@@ -2212,7 +2209,7 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='insulation_scores_and_boundaries')
     return action
 
 ###################################
