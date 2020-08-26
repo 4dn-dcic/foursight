@@ -1438,6 +1438,18 @@
             }
         }
     },
+    "cgapS3_er_status" : {
+        "title": "d) CGAP pipeline Part III er",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgapwolf": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "ingest_vcf_status" : {
         "title": "d) CGAP trigger VCF ingestion",
         "group": "Pipeline checks",
