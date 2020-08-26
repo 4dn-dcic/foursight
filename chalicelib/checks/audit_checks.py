@@ -333,11 +333,19 @@ def page_children_routes(connection, **kwargs):
 @check_function()
 def check_help_page_urls(connection, **kwargs):
     check = CheckResult(connection, 'check_help_page_urls')
-
     server = connection.ff_keys['server']
-    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&q=resources&status!=draft&field=body&field=options',
-                                       key=connection.ff_keys)
+    help_results = ff_utils.search_metadata(
+        'search/?type=StaticSection&q=help&status=released&field=body&field=options',
+        key=connection.ff_keys
+    )
+    resource_results = ff_utils.search_metadata(
+        'search/?type=StaticSection&q=resources&status=released&field=body&field=options',
+        key=connection.ff_keys
+    )
+    results = help_results
+    results = results + [item for item in resource_results if item['@id'] not in [res['@id'] for res in results]]
     sections_w_broken_links = {}
+    timeouts = {}
     for result in results:
         broken_links = []
         body = result.get('body', '')
@@ -361,9 +369,20 @@ def check_help_page_urls(connection, **kwargs):
                 url = result['@id'] + url
             if url.startswith('/'):  # fill in appropriate url for relative link
                 url = server + url
-            request = requests.get(url)
-            if request.status_code not in [200, 412]:
-                broken_links.append((url, request.status_code))
+            if url.startswith(server.rstrip('/') + '/search/') or url.startswith(server.rstrip('/') + '/browse/'):
+                continue
+            try:
+                request = requests.get(url.replace('&amp;', '&'), timeout=2)
+                if request.status_code not in [200, 412]:
+                    broken_links.append((url, request.status_code))
+                elif request.status_code == 504:
+                    timeouts.setdefault(result['@id'], [])
+                    timeouts[result['@id']].append(url)
+            except requests.exceptions.Timeout:
+                timeouts.setdefault(result['@id'], [])
+                timeouts[result['@id']].append(url)
+            except requests.exceptions.SSLError:
+                continue
         if broken_links:
             sections_w_broken_links[result['@id']] = broken_links
     if sections_w_broken_links:
@@ -375,7 +394,10 @@ def check_help_page_urls(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No broken links found'
         check.description = check.summary
-    check.full_output = sections_w_broken_links
+    check.full_output = {
+        'broken links': sections_w_broken_links,
+        'timed out requests': timeouts
+    }
     return check
 
 

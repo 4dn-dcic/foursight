@@ -460,8 +460,8 @@
         "title": "Static Section URL check",
         "group": "Audit checks",
         "schedule": {
-            "morning_checks": {
-                "all_4dn": {
+            "early_morning_checks": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1438,6 +1438,18 @@
             }
         }
     },
+    "cgapS3_er_status" : {
+        "title": "d) CGAP pipeline Part III er",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgapwolf": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "ingest_vcf_status" : {
         "title": "d) CGAP trigger VCF ingestion",
         "group": "Pipeline checks",
@@ -1518,17 +1530,6 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
-                }
-            }
-        }
-    },
-    "wipe_build_indices" : {
-        "title": "Wipe Build Indicies",
-        "group": "System checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true}
                 }
             }
         }
@@ -1694,6 +1695,32 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                }
+            }
+        }
+    },
+    "wipe_cgap_build_indices": {
+        "title": "Wipe CGAP build indices",
+        "group": "System Checks",
+        "schedule": {
+             "morning_checks": {
+                "cgap": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+     "wipe_ff_build_indices": {
+        "title": "Wipe FF build indices",
+        "group": "System Checks",
+        "schedule": {
+             "morning_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
                 }
             }
         }

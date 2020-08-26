@@ -1,10 +1,9 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    action_function,
     basestring
 )
-from ..run_result import CheckResult, ActionResult
+from ..run_result import CheckResult
 from dcicutils import (
     ff_utils,
     es_utils,
@@ -13,27 +12,49 @@ from dcicutils import (
 )
 
 import requests
-import sys
 import json
 import datetime
 import boto3
 import time
 
 
-@check_function()
-def wipe_build_indices(connection, **kwargs):
-    """ Wipes all indices on the FF-Build ES env """
+# XXX: put into utils?
+CGAP_TEST_CLUSTER = 'search-cgap-testing-ud3ggpjj7x6vclx62nmzymyzfi.us-east-1.es.amazonaws.com:80'
+FF_TEST_CLUSTER = 'search-fourfront-testing-hjozudm7pq5wwlssx2pjlsyz7y.us-east-1.es.amazonaws.com:80'
+TEST_ES_CLUSTERS = [
+    CGAP_TEST_CLUSTER,
+    FF_TEST_CLUSTER
+]
+
+
+def wipe_build_indices(connection, es_url):
+    """ Wipes all number-prefixed indices on the given es_url. Be careful not to run while
+        builds are running as this will cause them to fail.
+    """
     check = CheckResult(connection, 'wipe_build_indices')
     check.status = 'PASS'
-    check.summary = check.description = 'Wiped all test indices'
-    BUILD_ES = 'search-fourfront-builds-uhevxdzfcv7mkm5pj5svcri3aq.us-east-1.es.amazonaws.com:80'
-    client = es_utils.create_es_client(BUILD_ES, True)
-    full_output = client.indices.delete(index='*')
-    if full_output['acknowledged'] != True:
+    check.summary = check.description = 'Wiped all test indices on url: %s' % es_url
+    client = es_utils.create_es_client(es_url, True)
+    full_output = []
+    for i in range(1, 10):  # delete all number prefixed indices 0-9
+        full_output.append(client.indices.delete(index=str(i) + '*'))
+    if any(output['acknowledged'] != True for output in full_output):
         check.status = 'FAIL'
         check.summary = check.description = 'Failed to wipe all test indices, see full output'
     check.full_output = full_output
     return check
+
+
+@check_function()
+def wipe_cgap_build_indices(connection):
+    """ Wipes build indices for CGAP (on cgap-testing) """
+    return wipe_build_indices(connection, CGAP_TEST_CLUSTER)
+
+
+@check_function()
+def wipe_ff_build_indices(connection):
+    """ Wipes build (number prefixed) indices (on fourfront-testing) """
+    return wipe_build_indices(connection, FF_TEST_CLUSTER)
 
 
 @check_function()
