@@ -1054,18 +1054,23 @@ def cgapS3_status(connection, **kwargs):
         if step2_status != 'complete':
             step3_status = ""
         else:
-            s3_input_files = {'input_vcf': step2_output,
-                              'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
-                              'trio': step1a_output,
-                              'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
-                                                             'unrelated': {"mount": True},
-                                                             'trio': {"mount": True},
-                                                             }
-                              }
-            s3_tag = an_msa['@id'] + '_Part3step3'
-            keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
-                                                                  'step3', s3_tag, step2_output,
-                                                                  s3_input_files,  step3_name, 'novoCaller_vcf')
+            if run_mode == 'trio':
+                s3_input_files = {'input_vcf': step2_output,
+                                  'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
+                                  'trio': step1a_output,
+                                  'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
+                                                                 'unrelated': {"mount": True},
+                                                                 'trio': {"mount": True},
+                                                                 }
+                                  }
+                s3_tag = an_msa['@id'] + '_Part3step3'
+                keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
+                                                                      'step3', s3_tag, step2_output,
+                                                                      s3_input_files,  step3_name, 'novoCaller_vcf')
+            else:
+                # if proband only pass step2 output to next one
+                step3_status = 'complete'
+                step3_output = step2_output
 
         if step3_status != 'complete':
             step4_status = ""
@@ -1793,18 +1798,23 @@ def cgapS3_er_status(connection, **kwargs):
         if step2_status != 'complete':
             step3_status = ""
         else:
-            s3_input_files = {'input_vcf': step2_output,
-                              'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
-                              'trio': step1a_output,
-                              'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
-                                                             'unrelated': {"mount": True},
-                                                             'trio': {"mount": True},
-                                                             }
-                              }
-            s3_tag = an_msa['@id'] + '_Part3step3'
-            keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
-                                                                  'step3', s3_tag, step2_output,
-                                                                  s3_input_files,  step3_name, 'novoCaller_vcf')
+            if run_mode == 'trio':
+                s3_input_files = {'input_vcf': step2_output,
+                                  'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
+                                  'trio': step1a_output,
+                                  'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
+                                                                 'unrelated': {"mount": True},
+                                                                 'trio': {"mount": True},
+                                                                 }
+                                  }
+                s3_tag = an_msa['@id'] + '_Part3step3'
+                keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
+                                                                      'step3', s3_tag, step2_output,
+                                                                      s3_input_files,  step3_name, 'novoCaller_vcf')
+            else:
+                # if proband only pass step2 output to next one
+                step3_status = 'complete'
+                step3_output = step2_output
 
         if step3_status != 'complete':
             step4_status = ""
