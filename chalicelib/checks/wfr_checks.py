@@ -2095,14 +2095,8 @@ def bam_re_start(connection, **kwargs):
 
 @check_function()
 def insulation_scores_and_boundaries_status(connection, **kwargs):
+    """Calls insulation scores and boundaries on mcool files produced by the Hi-C pipeline"""
 
-    """
-    Keyword arguments:
-    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
-    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead
-    """
-    start = datetime.utcnow()
     check = CheckResult(connection, 'insulation_scores_and_boundaries_status')
     my_auth = connection.ff_keys
     check.action = "insulation_scores_and_boundaries_start"
@@ -2112,9 +2106,9 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
     check.full_output = {'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C', 'DNase Hi-C']  # check naming of the expSets
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
     feature = 'insulation_scores_and_boundaries'
-    # minimum number of reads in the mcool file
+    # minimum number of reads in the mcool file (100M)
     reads_cutoff = 100000000
     # completion tag
     tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
@@ -2126,7 +2120,8 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
 
     # Build the first query, experiments that have run the hic pipeline. add date and lab if available
     query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
-    # if total reads field in available
+
+    # filter expSets by the total number of reads in the mcoolfile (found in the combined-pairs file qc)
     query += '&processed_files.file_format.display_title=pairs'
     query += f'&processed_files.quality_metric.Total reads.from={reads_cutoff}'
 
@@ -2155,9 +2150,9 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
             enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
             organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
             re_enz_size = wfr_utils.re_nz_sizes[enz]
-            if int(re_enz_size) == 4:
+            if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
                 binsize = 5000
-            if int(re_enz_size) == 6:
+            if int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
                 binsize = 10000
             overwrite = {'parameters': {"binsize": binsize}}
             inp_f = {'mcoolfile': pfile['accession']}

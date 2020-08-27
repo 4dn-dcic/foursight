@@ -216,16 +216,15 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "insulation-scores-and-boundaries-caller",
         "workflow_uuid": "dc9efc2d-baa5-4304-b72b-14610d8d5fc4",
         "parameters": {"binsize": -1, "windowsize": 100000},
-        'config': {'mem': 4, 'cpu': 1, 'ebs_size': 30, 'EBS_optimized': 'false'},
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,
                 'file_type': 'insulation score-diamond',
-                'description': 'Diamond insulation scores from Hi-C contact matrices'},
+                'description': 'Diamond insulation scores calls on Hi-C contact matrices'},
             'bedfile': {
                 'genome_assembly': genome,
                 'file_type': 'boundaries',
-                'description': 'Boundaries calls from Hi-C contact matrices'}
+                'description': 'Boundaries calls on Hi-C contact matrices'}
             }
         },
         {

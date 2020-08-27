@@ -1742,33 +1742,3 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
     return check
-
-
-def check_insulation_and_boundaries(res, reads_cutoff, my_auth, tag, check, start, lambda_limit):
-    targets = []
-    reads_check = False  # check if the number of reads is greater than the cutoff
-    # check pairs file
-    for pfile in res['processed_files']:
-        if pfile['format'] == 'pairs':
-            for qc in pfile['quality_metric_summary']:
-                if qc['title'] == 'Total filtered reads':
-                    if qc['value'] >= reads_cutoff:
-                        reads_check = True
-
-    if reads_check:
-        file_info = {}
-        # check the mcool file
-        for pfile in res['processed_files']:
-            if pfile['format'] == 'mcool':
-                file_info['file'] = pfile['accession']
-
-        # check enzyme
-        enzyme = res['experiments_in_set'][0]['digestion_enzyme']['name']
-        enz_cutter = re_nz_sizes[enzyme]
-        file_info['re_enzyme_type'] = enz_cutter
-        targets.append(file_info)
-
-    if targets:
-        print('statuses')
-
-    return check
