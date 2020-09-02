@@ -24,6 +24,7 @@ TEST_ES_CLUSTERS = [
     CGAP_TEST_CLUSTER,
     FF_TEST_CLUSTER
 ]
+DELETE_REQUEST_TIMEOUT = 30  # wildcard delete could take time, default is 10
 
 
 def wipe_build_indices(connection, es_url):
@@ -37,7 +38,8 @@ def wipe_build_indices(connection, es_url):
     full_output = []
     for i in range(1, 10):  # delete all number prefixed indices 0-9
         try:
-            resp = client.indices.delete(index=str(i) + '*')
+            resp = client.indices.delete(index=str(i) + '*',
+                                         request_timeout=DELETE_REQUEST_TIMEOUT)
         except Exception as e:
             full_output.append({'acknowledged': True, 'error': str(e)})
         else:
