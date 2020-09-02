@@ -10,9 +10,9 @@ from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
 # list of acceptible version
-cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13', 'WGS_partI_V15']
-cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13', 'WGS_partII_V15']
-cgap_partIII_version = ['WGS_PartIII_V15']
+cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13', 'WGS_partI_V15', 'WGS_partI_V16']
+cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13', 'WGS_partII_V15', 'WGS_partII_V16']
+cgap_partIII_version = ['WGS_PartIII_V16']
 
 
 @check_function(file_type='File', start_date=None)
@@ -1009,8 +1009,8 @@ def cgapS3_status(connection, **kwargs):
             # step1b micro annotation
             input_vcf = an_msa['processed_files'][0]['@id']
             s1b_input_files = {'input_vcf': input_vcf,
-                               'mti': "1408ceb9-7ae3-4002-aed7-c9a301014de2",
-                               'regions': "1c07a3aa-e2a3-498c-b838-15991c4a2f28",
+                               'mti': "GAPFIFJM2A8Z",
+                               'regions': "GAPFIBGEOI72",
                                'additional_file_parameters': {'mti': {"mount": True}}
                                }
             s1b_tag = an_msa['@id'] + '_Part3step1b'
@@ -1056,10 +1056,10 @@ def cgapS3_status(connection, **kwargs):
         else:
             if run_mode == 'trio':
                 s3_input_files = {'input_vcf': step2_output,
-                                  'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
+                                  # 'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
                                   'trio': step1a_output,
                                   'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
-                                                                 'unrelated': {"mount": True},
+                                                                 # 'unrelated': {"mount": True},
                                                                  'trio': {"mount": True},
                                                                  }
                                   }
@@ -1753,8 +1753,8 @@ def cgapS3_er_status(connection, **kwargs):
             # step1b micro annotation
             input_vcf = an_msa['processed_files'][0]['@id']
             s1b_input_files = {'input_vcf': input_vcf,
-                               'mti': "1408ceb9-7ae3-4002-aed7-c9a301014de2",
-                               'regions': "1c07a3aa-e2a3-498c-b838-15991c4a2f28",
+                               'mti': "GAPFIFJM2A8Z",
+                               'regions': "GAPFIBGEOI72",
                                'additional_file_parameters': {'mti': {"mount": True}}
                                }
             s1b_tag = an_msa['@id'] + '_Part3step1b'
