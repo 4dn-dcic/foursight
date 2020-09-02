@@ -141,7 +141,7 @@ workflow_details = {
     },
     'insulation-scores-and-boundaries-caller': {
             "run_time": 200,
-            "accepted_versions": ['dev']
+            "accepted_versions": ['v1']
     }
 }
 
