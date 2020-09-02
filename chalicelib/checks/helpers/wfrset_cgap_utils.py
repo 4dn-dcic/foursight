@@ -321,7 +321,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # Step1b micro-annotation
                 'app_name': 'workflow_mutanno-micro-annot-check',
-                'workflow_uuid': 'de9c4579-30e2-432c-80e3-7f324d3d7dcb',
+                'workflow_uuid': '087325b4-f098-4a43-a190-81a878039de2',
                 'parameters': {"nthreads": 70},
                 "config": {
                     "instance_type": "c5n.18xlarge",
@@ -389,7 +389,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # Step5 - full annotation
                 'app_name': 'workflow_mutanno-annot-check',
-                'workflow_uuid': 'f3b91cd6-9f17-45c4-b041-4b6a73987e65',
+                'workflow_uuid': '26769afe-3d0f-4494-8a67-9acc8de71b73',
                 'parameters': {"nthreads": 1},
                 "config": {
                     "instance_type": "c5.large",
