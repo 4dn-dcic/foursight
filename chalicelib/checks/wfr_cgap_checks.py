@@ -1009,8 +1009,8 @@ def cgapS3_status(connection, **kwargs):
             # step1b micro annotation
             input_vcf = an_msa['processed_files'][0]['@id']
             s1b_input_files = {'input_vcf': input_vcf,
-                               'mti': "1408ceb9-7ae3-4002-aed7-c9a301014de2",
-                               'regions': "1c07a3aa-e2a3-498c-b838-15991c4a2f28",
+                               'mti': "GAPFIFJM2A8Z",
+                               'regions': "GAPFIBGEOI72",
                                'additional_file_parameters': {'mti': {"mount": True}}
                                }
             s1b_tag = an_msa['@id'] + '_Part3step1b'
@@ -1753,8 +1753,8 @@ def cgapS3_er_status(connection, **kwargs):
             # step1b micro annotation
             input_vcf = an_msa['processed_files'][0]['@id']
             s1b_input_files = {'input_vcf': input_vcf,
-                               'mti': "1408ceb9-7ae3-4002-aed7-c9a301014de2",
-                               'regions': "1c07a3aa-e2a3-498c-b838-15991c4a2f28",
+                               'mti': "GAPFIFJM2A8Z",
+                               'regions': "GAPFIBGEOI72",
                                'additional_file_parameters': {'mti': {"mount": True}}
                                }
             s1b_tag = an_msa['@id'] + '_Part3step1b'
