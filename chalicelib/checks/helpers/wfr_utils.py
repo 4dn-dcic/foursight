@@ -213,12 +213,14 @@ feature_calling_accepted_versions = {
 bwa_index = {"human": "4DNFIZQZ39L9",
              "mouse": "4DNFI823LSI8",
              "fruit-fly": '4DNFIO5MGY32',
-             "chicken": "4DNFIVGRYVQF"}
+             "chicken": "4DNFIVGRYVQF",
+             "zebrafish": "4DNFIUH46PG1"}
 
 chr_size = {"human": "4DNFI823LSII",
             "mouse": "4DNFI3UBJ3HZ",
             "fruit-fly": '4DNFIBEEN92C',
-            "chicken": "4DNFIQFZW4DX"}
+            "chicken": "4DNFIQFZW4DX",
+            "zebrafish": "4DNFI5W8CN1M"}
 
 # star index for rna Seq
 rna_star_index = {"human": "4DNFI3FCGSW2",
@@ -285,7 +287,8 @@ re_nz_sizes = {"HindIII": "6",
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
-          'chicken': 'galGal5'}
+          'chicken': 'galGal5',
+          'zebrafish': 'GRCz11'}
 
 # color map states bed file
 states_file_type = {
