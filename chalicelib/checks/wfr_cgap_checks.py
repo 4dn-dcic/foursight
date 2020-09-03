@@ -1043,7 +1043,7 @@ def cgapS3_status(connection, **kwargs):
             step2_status = ""
         else:
             s2_input_files = {"input_vcf": step1b_output,
-                              "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
+                              #"bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
                               }
             s2_tag = an_msa['@id'] + '_Part3step2'
@@ -1056,10 +1056,10 @@ def cgapS3_status(connection, **kwargs):
         else:
             if run_mode == 'trio':
                 s3_input_files = {'input_vcf': step2_output,
-                                  # 'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
+                                  'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
                                   'trio': step1a_output,
                                   'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
-                                                                 # 'unrelated': {"mount": True},
+                                                                 'unrelated': {"mount": True},
                                                                  'trio': {"mount": True},
                                                                  }
                                   }
@@ -1787,7 +1787,7 @@ def cgapS3_er_status(connection, **kwargs):
             step2_status = ""
         else:
             s2_input_files = {"input_vcf": step1b_output,
-                              "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
+                              # "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
                               }
             s2_tag = an_msa['@id'] + '_Part3step2'
