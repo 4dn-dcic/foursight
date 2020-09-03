@@ -138,6 +138,10 @@ workflow_details = {
     'merge-fastq': {
         "run_time": 200,
         "accepted_versions": ['v1']
+    },
+    'insulation-scores-and-boundaries-caller': {
+            "run_time": 200,
+            "accepted_versions": ['v1']
     }
 }
 
@@ -201,16 +205,22 @@ accepted_versions = {
     'TRIP': ['']
     }
 
+# Accepted versions for feature calling pipelines
+feature_calling_accepted_versions = {
+    'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"]
+}
 # Reference Files
 bwa_index = {"human": "4DNFIZQZ39L9",
              "mouse": "4DNFI823LSI8",
              "fruit-fly": '4DNFIO5MGY32',
-             "chicken": "4DNFIVGRYVQF"}
+             "chicken": "4DNFIVGRYVQF",
+             "zebrafish": "4DNFIUH46PG1"}
 
 chr_size = {"human": "4DNFI823LSII",
             "mouse": "4DNFI3UBJ3HZ",
             "fruit-fly": '4DNFIBEEN92C',
-            "chicken": "4DNFIQFZW4DX"}
+            "chicken": "4DNFIQFZW4DX",
+            "zebrafish": "4DNFI5W8CN1M"}
 
 # star index for rna Seq
 rna_star_index = {"human": "4DNFI3FCGSW2",
@@ -277,7 +287,8 @@ re_nz_sizes = {"HindIII": "6",
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
-          'chicken': 'galGal5'}
+          'chicken': 'galGal5',
+          'zebrafish': 'GRCz11'}
 
 # color map states bed file
 states_file_type = {
@@ -391,6 +402,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # get default run out time
     if not run:
         run = workflow_details[wfr_name]['run_time']
+
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
     run_status = 'did not run'
@@ -615,6 +627,39 @@ def build_exp_type_query(exp_type, kwargs):
     # for some cases we don't have a defined complete processing tag
     if versions:
         pre_query += "".join(["&completed_processes!=" + i for i in versions])
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        pre_query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        pre_query += '&lab.display_title=' + lab
+    return pre_query
+
+
+def build_feature_calling_query(exp_types, feature, kwargs):
+    assert feature in feature_calling_accepted_versions
+
+    for exp_type in exp_types:
+        assert exp_type in accepted_versions
+
+    # Temporary run on released ExperimentSets only
+    # statuses = ['pre-release', 'released', 'released to project']
+    statuses = ['released']
+    versions = [i for i in accepted_versions[exp_type]]
+    feature_calling_versions = feature_calling_accepted_versions[feature]
+    # Build the query
+    pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
+    pre_query += "".join(["&experiments_in_set.experiment_type=" + i for i in exp_types])
+    pre_query += "".join(["&status=" + i for i in statuses])
+    # for some cases we don't have a defined complete processing tag
+    if versions:
+        pre_query += "".join(["&completed_processes=" + i for i in versions])
+
+    if feature_calling_versions:
+        pre_query += "".join(["&completed_processes!=" + i for i in feature_calling_versions])
+
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1193,7 +1238,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
-              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files"}
+              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
+              'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1264,7 +1310,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 def start_missing_run(run_info, auth, env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
-                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles']
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
