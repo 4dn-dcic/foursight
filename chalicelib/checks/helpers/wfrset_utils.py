@@ -6,12 +6,14 @@ random_wait = 20
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
-          'chicken': 'galGal5'}
+          'chicken': 'galGal5',
+          'zebrafish': 'GRCz11'}
 
 pairs_mapper = {"GRCh38": "hg38",
                 "GRCm38": "mm10",
                 "dm6": 'dm6',
-                "galGal5": "galGal5"}
+                "galGal5": "galGal5",
+                "GRCz11": "danRer11"}
 
 
 def step_settings(step_name, my_organism, attribution, overwrite=None):
