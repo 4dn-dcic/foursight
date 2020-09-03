@@ -2093,6 +2093,120 @@ def bam_re_start(connection, **kwargs):
     return action
 
 
+@check_function()
+def insulation_scores_and_boundaries_status(connection, **kwargs):
+    """Calls insulation scores and boundaries on mcool files produced by the Hi-C pipeline"""
+
+    check = CheckResult(connection, 'insulation_scores_and_boundaries_status')
+    my_auth = connection.ff_keys
+    check.action = "insulation_scores_and_boundaries_start"
+    check.description = ""
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
+    feature = 'insulation_scores_and_boundaries'
+    # minimum number of reads in the mcool file (100M)
+    reads_cutoff = 100000000
+    # completion tag
+    tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
+    # check indexing queue
+
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+
+    # Build the first query, experiments that have run the hic pipeline. add date and lab if available
+    query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
+
+    # filter expSets by the total number of reads in the mcoolfile (found in the combined-pairs file qc)
+    query += '&processed_files.file_format.display_title=pairs'
+    query += f'&processed_files.quality_metric.Total reads.from={reads_cutoff}'
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+
+    if not res:
+        check.summary = 'All Good!'
+        return check
+
+    for a_res in res:
+        running = []
+        completed = {'patch_opf': [], 'add_tag': []}
+        missing_run = []
+        problematic_run = []
+        for pfile in a_res['processed_files']:
+            if pfile['file_format']['display_title'] == 'mcool':
+                file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
+
+        if insu_and_boun_report['status'] == 'running':
+            running.append(pfile['accession'])
+        elif insu_and_boun_report['status'].startswith("no complete run, too many"):
+            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
+        elif insu_and_boun_report['status'] != 'complete':
+            enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
+            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+            re_enz_size = wfr_utils.re_nz_sizes[enz]
+            if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
+                binsize = 5000
+            if int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
+                binsize = 10000
+            overwrite = {'parameters': {"binsize": binsize}}
+            inp_f = {'mcoolfile': pfile['accession']}
+            missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
+                                inp_f, a_res['accession']])
+        else:
+            patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
+            completed['patch_opf'].append([a_res['accession'], patch_data])
+            completed['add_tag'] = [a_res['accession'], tag]
+
+        if running:
+            check.full_output['running_runs'].append({a_res['accession']: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({a_res['accession']: missing_run})
+        if completed.get('add_tag'):
+            assert not running
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.allow_action = True
+        check.status = 'WARN'
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.allow_action = True
+        check.status = 'WARN'
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def insulation_scores_and_boundaries_start(connection, **kwargs):
+    """Start template runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'insulation_scores_and_boundaries_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    insu_and_boun_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = insu_and_boun_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = insu_and_boun_check_result.get('completed_runs')
+
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='insulation_scores_and_boundaries')
+    return action
+
 ###################################
 ###################################
 # TEMPLATES
