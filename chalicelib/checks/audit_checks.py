@@ -197,8 +197,8 @@ def paired_end_info_consistent(connection, **kwargs):
     '''
     check = CheckResult(connection, 'paired_end_info_consistent')
 
-    search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
-    search2 = 'search/?type=FileFastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
+    search1 = 'search/?type=FileFastq&file_format.file_format=fastq&related_files.relationship_type=paired+with&paired_end=No+value'
+    search2 = 'search/?type=FileFastq&file_format.file_format=fastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
 
     results1 = ff_utils.search_metadata(search1 + '&frame=object', key=connection.ff_keys)
     results2 = ff_utils.search_metadata(search2 + '&frame=object', key=connection.ff_keys)

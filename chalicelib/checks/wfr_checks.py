@@ -1894,7 +1894,7 @@ def fastq_first_line_status(connection, **kwargs):
         return check
 
     query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'
-             '&type=FileFastq&file_first_line=No value&status=restricted')
+             '&type=FileFastq&file_format.file_format=fastq&file_first_line=No value&status=restricted')
 
     # The search
     print('About to query ES for files')
