@@ -641,7 +641,9 @@ def build_feature_calling_query(exp_types, feature, kwargs):
     for exp_type in exp_types:
         assert exp_type in accepted_versions
 
-    statuses = ['pre-release', 'released', 'released to project']
+    # Temporary run on released ExperimentSets only
+    # statuses = ['pre-release', 'released', 'released to project']
+    statuses = ['released']
     versions = [i for i in accepted_versions[exp_type]]
     feature_calling_versions = feature_calling_accepted_versions[feature]
     # Build the query
