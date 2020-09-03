@@ -677,6 +677,8 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
       file dict  { exp1 : [ [file1, file2], [file3, file4]]} # paired
     - refs keys  {pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab}
     """
+    # remove non fastq.gz files from the file list
+    fastq_files = [i for i in fastq_files if i['file_format']['file_format'] == 'fastq']
     file_dict = {}
     refs = {}
     # check pairing for the first file, and assume all same

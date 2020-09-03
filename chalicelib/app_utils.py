@@ -9,6 +9,7 @@ import datetime
 import ast
 import copy
 import requests
+import sys
 from itertools import chain
 from dateutil import tz
 from base64 import b64decode
@@ -47,11 +48,14 @@ jin_env = Environment(
 )
 
 
-def init_environments(env='all'):
+def init_environments(env='all', envs=None):
     """
     Generate environment information from the foursight-envs bucket in s3.
     Returns a dictionary keyed by environment name with value of a sub-dict
     with the fields needed to initiate a connection.
+
+    :param env: allows you to specify a single env to be initialized
+    :param envs: allows you to specify multiple envs to be initialized
     """
     stage = get_stage_info()['stage']
     s3_connection = S3Connection('foursight-envs')
@@ -61,7 +65,9 @@ def init_environments(env='all'):
         if env in env_keys:
             env_keys = [env]
         else:
-            return {} # provided env is not in s3
+            return {}  # provided env is not in s3
+    elif envs is not None:
+        env_keys = envs
     for env_key in env_keys:
         env_res = s3_connection.get_object(env_key)
         # check that the keys we need are in the object
@@ -76,14 +82,14 @@ def init_environments(env='all'):
     return environments
 
 
-def init_connection(environ):
+def init_connection(environ, _environments=None):
     """
     Initialize the fourfront/s3 connection using the FSConnection object
     and the given environment.
     Returns an FSConnection object or raises an error.
     """
     error_res = {}
-    environments = init_environments(environ)
+    environments = init_environments(environ) if _environments is None else _environments
     # if still not there, return an error
     if environ not in environments:
         error_res = {
@@ -230,8 +236,38 @@ def query_params_to_literals(params):
     return params
 
 
-def trim_output(output, max_size=100000):
+def get_size(obj, seen=None):
+    """ Recursively finds size of objects
+        Taken directly from: https://goshippo.com/blog/measure-real-size-any-python-object/
     """
+    size = sys.getsizeof(obj)
+    if seen is None:
+        seen = set()
+    obj_id = id(obj)
+    if obj_id in seen:
+        return 0
+    # Important mark as seen *before* entering recursion to gracefully handle
+    # self-referential objects
+    seen.add(obj_id)
+    if isinstance(obj, dict):
+        size += sum([get_size(v, seen) for v in obj.values()])
+        size += sum([get_size(k, seen) for k in obj.keys()])
+    elif hasattr(obj, '__dict__'):
+        size += get_size(obj.__dict__, seen)
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+        size += sum([get_size(i, seen) for i in obj])
+    return size
+
+
+TRIM_ERR_OUTPUT = 'Output too large to provide on main page - see check result directly'
+
+
+def trim_output(output, max_size=100000):
+    """ Uses the helper above with sys.getsizeof to determine the output size and remove it if it is too large.
+        Instead of encoding as JSON as that is very slow.
+
+    Old docstring below:
+
     AWS lambda has a maximum body response size of 6MB. Since results are currently delivered entirely
     in the body of the response, let's limit the size of the 'full_output', 'brief_output', and
     'admin_output' fields to 100 KB (see if this is a reasonable amount).
@@ -240,11 +276,15 @@ def trim_output(output, max_size=100000):
 
     Takes in the non-json formatted version of the fields. For now, just use this for /view/.
     """
-    formatted = json.dumps(output, indent=4)
-    if len(formatted) > max_size:
-        return ''.join([formatted[:max_size], '\n\n... Output truncated ...'])
-    else:
-        return formatted
+    # formatted = json.dumps(output, indent=4)
+    # if len(formatted) > max_size:
+    #     return ''.join([formatted[:max_size], '\n\n... Output truncated ...'])
+    # else:
+    #     return formatted
+    size = get_size(output)
+    if size > max_size:
+        return TRIM_ERR_OUTPUT
+    return output
 
 
 ##### ROUTE RUNNING FUNCTIONS #####
@@ -326,13 +366,14 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     """
     html_resp = Response('Foursight viewing suite')
     html_resp.headers = {'Content-Type': 'text/html'}
-    environments = init_environments()
+    requested_envs = [e.strip() for e in environ.split(',')]
+    environments = init_environments(envs=requested_envs)  # cached at start of page load
     total_envs = []
     servers = []
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
-            connection = init_connection(this_environ)
+            connection = init_connection(this_environ, _environments=environments)
         except Exception:
             connection = None
         if connection:
@@ -477,12 +518,12 @@ def process_view_result(connection, res, is_admin):
     proc_ts = ''.join([str(ts_local.date()), ' at ', str(ts_local.time())])
     res['local_time'] = proc_ts
     if res.get('brief_output'):
-        res['brief_output'] = trim_output(res['brief_output'])
+        res['brief_output'] = json.dumps(trim_output(res['brief_output']), indent=2)
     if res.get('full_output'):
-        res['full_output'] = trim_output(res['full_output'])
+        res['full_output'] = json.dumps(trim_output(res['full_output']), indent=2)
     # only return admin_output if an admin is logged in
     if res.get('admin_output') and is_admin:
-        res['admin_output'] = trim_output(res['admin_output'])
+        res['admin_output'] = json.dumps(trim_output(res['admin_output']), indent=2)
     else:
         res['admin_output'] = None
 
@@ -490,7 +531,6 @@ def process_view_result(connection, res, is_admin):
     # if this check has already run an action, display that. Otherwise, allow
     # action to be run.
     # For now also get the latest result for the checks action
-    # TODO: replace latest_action with action history
     if res.get('action'):
         action = ActionResult(connection, res.get('action'))
         if action:
@@ -521,11 +561,10 @@ def process_view_result(connection, res, is_admin):
                 # not yet run, display an icon status to signify this
                 res['assc_action_status'] = 'ready'
 
-            # If we got an action, set its name to 'latest action'
-            # so we can grab it's history via same method as this check
-            latest_action = action.get_latest_result()
-            if latest_action:
-                res['latest_action'] = latest_action.get('name')
+            # This used to try to get the latest result and only populate 'latest_action' if one exists.
+            # Doing so makes the main page take 2-3x as long to load, so we won't be doing that anymore.
+            res['action_history'] = res.get('action')  # = action name
+
         else:
             del res['action']
     return res

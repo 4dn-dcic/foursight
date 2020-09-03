@@ -82,8 +82,8 @@
                     <a class="commonstyle own-line" target="_blank" href={{context + 'history/' + environment + '/' + check['name']}}>
                         Result History
                     </a>
-                    {% if check.get('latest_action') %}
-                      <a class="commonstyle own-line" target="_blank" href={{context + 'history/' + environment + '/' + check['latest_action']}}>
+                    {% if check.get('action_history') %}
+                      <a class="commonstyle own-line" target="_blank" href={{context + 'history/' + environment + '/' + check['action_history']}}>
                         Action History
                       </a>
                     {% endif %}
