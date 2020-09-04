@@ -324,7 +324,7 @@ def cgap_status(connection, **kwargs):
         bam_sample_id = a_sample.get('bam_sample_id')
         if not bam_sample_id:
             final_status = a_case['accession'] + "-" + a_sample['accession'] + ' missing bam_sample_id'
-            check.brief_output.extend(final_status)
+            check.brief_output.append(final_status)
             check.full_output['problematic_runs'].append({a_sample['accession']: final_status})
             break
 
