@@ -894,6 +894,8 @@ def cgapS3_status(connection, **kwargs):
             check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
             continue
         samples_pedigree = an_msa['samples_pedigree']
+        # remove parent ids that are not in the sample_pedigree as individual
+        samples_pedigree = cgap_utils.remove_parents_without_sample(samples_pedigree)
         # Define run Mode: Trio or Proband only
         # order samples by father/mother/proband
         run_mode = ""
@@ -1043,7 +1045,7 @@ def cgapS3_status(connection, **kwargs):
             step2_status = ""
         else:
             s2_input_files = {"input_vcf": step1b_output,
-                              #"bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
+                              # "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
                               }
             s2_tag = an_msa['@id'] + '_Part3step2'
