@@ -114,7 +114,7 @@ def pid_is_alive(pid):
     Returns True if pid is still alive
     """
     try:
-        os.kill(pid, 0)
+        os.kill(pid, 0)  # do not send a signal, just error check
     except OSError:
         return False
     else:
