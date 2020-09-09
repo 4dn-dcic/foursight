@@ -18,58 +18,77 @@ workflow_details = {
         "run_time": 50,
         "accepted_versions": ["0.2.0"]
     },
+    "fastqc": {
+        "run_time": 50,
+        "accepted_versions": ["v1", "v2"]
+    },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
     },
     "workflow_picard-MarkDuplicates-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
     },
     "workflow_sort-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
     },
     "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
     },
     "workflow_gatk-ApplyBQSR-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
     },
     # defunct step 8
     "workflow_index-sorted-bam": {
         "run_time": 12,
         "accepted_versions": ["v9"]
     },
+    "workflow_granite-mpileupCounts": {
+        "run_time": 12,
+        "accepted_versions": ["v14", "v15", "v16"]
+    },
     # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
     },
+    # step 9
+    'workflow_granite-mpileupCounts': {
+        "run_time": 12,
+        "accepted_versions": ["v14", "v15", "v16"]
+    },
+    # step 10
+    'cgap-bamqc': {
+        "run_time": 12,
+        "accepted_versions": ["v2", "v3"]
+    },
+    # # PART II
     # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
     },
     # part II step 2
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
     },
     # part III step 3
     'workflow_gatk-VQSR-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
     },
     "workflow_qcboard-bam": {
         "run_time": 12,
@@ -77,9 +96,59 @@ workflow_details = {
     },
     "workflow_cram2fastq": {
         "run_time": 12,
-        "accepted_versions": ["v12", "v13"]
+        "accepted_versions": ["v12", "v13", "v15", "v16"]
     },
+    "workflow_cram2bam-check": {
+        "run_time": 12,
+        "accepted_versions": ["v13", "v15", "v16"]
+    },
+    # Part III
+    "workflow_granite-rckTar": {
+        "run_time": 12,
+        "accepted_versions": ["v16"]
+    },
+    "workflow_mutanno-micro-annot-check": {
+        "run_time": 12,
+        "accepted_versions": ["v16"]
+    },
+    "workflow_granite-filtering-check": {
+        "run_time": 12,
+        "accepted_versions": ['v16']
+    },
+    "workflow_granite-novoCaller-rck-check": {
+        "run_time": 12,
+        "accepted_versions": ["v16"]
+    },
+    "workflow_granite-comHet-check": {
+        "run_time": 12,
+        "accepted_versions": ["v16"]
+    },
+    "workflow_mutanno-annot-check": {
+        "run_time": 12,
+        "accepted_versions": ["v16"]
+    },
+    "bamsnap": {
+        "run_time": 12,
+        "accepted_versions": ["v14", "v15", "v16"]
+    },
+    "workflow_granite-qcVCF": {
+        "run_time": 12,
+        "accepted_versions": ["v2", "v3"]
+    },
+    "workflow_peddy": {
+        "run_time": 12,
+        "accepted_versions": ["v3"]
+    }
 }
+
+
+def remove_parents_without_sample(samples_pedigree):
+    individuals = [i['individual'] for i in samples_pedigree]
+    for a_member in samples_pedigree:
+        parents = a_member['parents']
+        new_parents = [i for i in parents if i in individuals]
+        a_member['parents'] = new_parents
+    return samples_pedigree
 
 
 def check_workflow_version(workflows):
@@ -88,17 +157,27 @@ def check_workflow_version(workflows):
         wf_name = a_wf['app_name']
         # make sure the workflow is in our control list
         if wf_name not in workflow_details:
-            errors.apend(wf_name + ' not in worflow_details')
+            errors.append(wf_name + ' not in worflow_details')
             continue
         wf_info = workflow_details[wf_name]
         versions = wf_info['accepted_versions']
         # latest version should be the last one on the list
         last_version = versions[-1]
-        workflow_version = a_wf['app_version']
-        if workflow_version not in versions:
-            err = '{} version {} is not in accepted versions {})'.format(wf_name,
-                                                                         workflow_version,
-                                                                         str(versions))
+        # sometimes there are 2 or more workflows with same app name
+        # and the old one might not have the latest version
+        # look for all wfs with same name and make sure the latest version is on one
+        all_wf_versions = [i.get('app_version', '') for i in workflows if i['app_name'] == wf_name]
+        # make sure all versions are in accepted
+        for a_version in all_wf_versions:
+            if a_version not in versions:
+                err = '{} version {} is not in accepted versions {})'.format(wf_name,
+                                                                             a_version,
+                                                                             str(versions))
+                errors.append(err)
+        # make sure the latest is also on one of the wfrs
+        if last_version not in all_wf_versions:
+            err = '{} version {} is not on any wf app_version)'.format(wf_name,
+                                                                       last_version)
             errors.append(err)
     return errors
 
@@ -134,7 +213,7 @@ def check_qcs_on_files(file_meta, all_qcs):
         if not qc_result.get('qc_list'):
             return
         for qc in qc_result['qc_list']:
-            qc_resp = [i for i in all_qcs if i['@id'] == qc['@id']][0]
+            qc_resp = [i for i in all_qcs if i['@id'] == qc['value']['@id']][0]
             failed_qcs = check_qc(file_meta['accession'], qc_resp, failed_qcs)
     else:
         failed_qcs = check_qc(file_meta['accession'], qc_result, failed_qcs)
@@ -178,6 +257,9 @@ def stepper(library, keep,
             qc_errors.extend(errors)
         name_tag = new_step_input_file.split('/')[2]
     # if there are qc errors, return with qc qc_errors
+    # TEMP PIECE FOR V13 PART I - don't check qc on step4
+    if step_tag == 'step4':
+        qc_errors = []
     if qc_errors:
         problematic_run.append([step_tag + ' input file qc error', qc_errors])
         step_status = "no complete run, qc error"
@@ -319,7 +401,7 @@ def get_attribution(file_json):
     return attributions
 
 
-def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
+def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename=[]):
     """Takes file id, and creates info dict for tibanna"""
     my_s3_util = s3Utils(env=env)
     raw_bucket = my_s3_util.raw_file_bucket
@@ -353,6 +435,8 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         template['bucket_name'] = buckets[0]
         if rename:
             template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        if additional_parameters:
+            template.update(additional_parameters)
 
     # if obj_id is a string
     else:
@@ -367,31 +451,27 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         template['bucket_name'] = my_bucket
         if rename:
             template['rename'] = template['object_key'].replace(change_from, change_to)
+        if additional_parameters:
+            template.update(additional_parameters)
     return template
 
 
 def start_missing_run(run_info, auth, env):
     # arguments for finding the file with the attribution (as opposed to reference files)
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
-                 'fastq_R1', 'input_bam', 'input_gvcf', 'cram']
+                 'fastq_R1', 'input_bam', 'input_gvcf', 'cram',
+                 'input_gvcfs', 'input_rcks', 'input_vcf',
+                 '']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
     # find file to use for attribution
-    # if there is a single input, use that one
-    if len(inputs) == 1:
-        for i in inputs:
-            attr_file = inputs[i]
+    for attr_key in attr_keys:
+        if attr_key in inputs:
+            attr_file = inputs[attr_key]
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
             break
-    else:
-        for attr_key in attr_keys:
-            if attr_key in inputs:
-                attr_file = inputs[attr_key]
-                if isinstance(attr_file, list):
-                    attr_file = attr_file[0]
-                break
     # use pony_dev
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
@@ -399,10 +479,15 @@ def start_missing_run(run_info, auth, env):
     return url
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env):
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
     all_inputs = []
+    # input_files container
+    input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
+    # additional input file parameters
+    input_file_parameters = input_files_and_params.get('additional_file_parameters', {})
     for arg, files in input_files.items():
-        inp = extract_file_info(files, arg, auth, env)
+        additional_params = input_file_parameters.get(arg, {})
+        inp = extract_file_info(files, arg, additional_params, auth, env)
         all_inputs.append(inp)
     # tweak to get bg2bw working
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
@@ -416,9 +501,9 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
-    # input_json['env_name'] = 'fourfront-cgap'
+    # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
     input_json['step_function_name'] = 'tibanna_zebra'
-    # input_json['public_postrun_json'] = True
+    input_json['public_postrun_json'] = True
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']

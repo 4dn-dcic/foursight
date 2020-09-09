@@ -482,3 +482,18 @@ def store_json(rel, fname, data):
     path = os.path.join(os.path.dirname(rel), fname)
     with open(path, 'w+') as f:
         return json.dump(data, f)
+
+
+def cat_indices(client):
+    """ Wrapper function for the ES API _cat/indices so that the result returned is comprehensible.
+
+        :param client: es client to use
+        :returns: 2-tuple lists of header, rows
+    """
+    if not client:
+        return [], []
+    indices = client.cat.indices(v=True).split('\n')
+    split_indices = [ind.split() for ind in indices]
+    headers = split_indices.pop(0)  # first row is header
+    return headers, split_indices
+

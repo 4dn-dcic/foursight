@@ -5,6 +5,8 @@ from ..utils import (
 )
 from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
+from dcicutils.env_utils import FF_PROD_BUCKET_ENV
+import re
 import requests
 import json
 import datetime
@@ -60,10 +62,10 @@ def workflow_run_has_deleted_input_file(connection, **kwargs):
         wfr_as_list.append(wfr_info['uuid'])
         if wfr_info.get('output_files'):
             for o in wfr_info['output_files']:
-                    if o.get('value'):
-                        wfr_as_list.append(o['value']['uuid'])
-                    if o.get('value_qc'):
-                        wfr_as_list.append(o['value_qc']['uuid'])
+                if o.get('value'):
+                    wfr_as_list.append(o['value']['uuid'])
+                if o.get('value_qc'):
+                    wfr_as_list.append(o['value_qc']['uuid'])
         if wfr_info.get('output_quality_metrics'):
             for qc in wfr_info['output_quality_metrics']:
                 if qc.get('value'):
@@ -117,6 +119,30 @@ def patch_workflow_run_to_deleted(connection, **kwargs):
     return action
 
 
+# helper functions for biorxiv check
+def get_biorxiv_meta(biorxiv_id, connection):
+    ''' Attempts to get metadata for provided biorxiv id
+        returns the error string if fails
+    '''
+    try:
+        biorxiv = ff_utils.get_metadata(biorxiv_id, key=connection.ff_keys, add_on='frame=object')
+    except Exception as e:
+        return 'Problem getting biorxiv - msg: ' + str(e)
+    else:
+        if not biorxiv:
+            return 'Biorxiv not found!'
+    return biorxiv
+
+
+def get_transfer_fields(biorxiv_meta):
+    fields2transfer = [
+        'lab', 'contributing_labs', 'award', 'categories', 'exp_sets_prod_in_pub',
+        'exp_sets_used_in_pub', 'published_by', 'static_headers',
+        'static_content'
+    ]
+    return {f: biorxiv_meta.get(f) for f in fields2transfer if biorxiv_meta.get(f) is not None}
+
+
 @check_function(uuid_list=None, false_positives=None, add_to_result=None)
 def biorxiv_is_now_published(connection, **kwargs):
     ''' To restrict the check to just certain biorxivs use a comma separated list
@@ -132,16 +158,20 @@ def biorxiv_is_now_published(connection, **kwargs):
 
         There are some examples of the title and author list being different enough so
         that the pubmid esearch query doesn't find the journal article.  In order to
-        allow the replacement, movement of all the relevant fields and adding static sections
+        allow the replacement, movement of all the relevant fields and adding replacement static sections
         in the action - a parameter is provided to manually input a mapping between biorxiv (uuid)
         to journal article (PMID:ID) - to add that pairing to the result full_output. It will
         be acted on by the associated action format of input is uuid PMID:nnnnnn, uuid PMID:nnnnnn
+
+        NOTE: because the data to transfer from biorxiv to pub is obtained from the check result
+        it is important to run the check (again) before executing the action in case something has
+        changed since the check was run
     '''
     check = CheckResult(connection, 'biorxiv_is_now_published')
     chkstatus = ''
     chkdesc = ''
     check.action = "add_pub_and_replace_biorxiv"
-    fulloutput = {'biorxivs2check': {}, 'false_positives': {}}
+    fulloutput = {'biorxivs2check': {}, 'false_positives': {}, 'GEO datasets found': {}}
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
@@ -149,7 +179,18 @@ def biorxiv_is_now_published(connection, **kwargs):
     fndcnt = 0
     if kwargs.get('add_to_result'):
         b2p = [pair.strip().split(' ') for pair in kwargs.get('add_to_result').split(',')]
-        fulloutput['biorxivs2check'].update({b.strip(): [p.strip()] for b, p in b2p})
+        b2p = {b.strip(): p.strip() for b, p in b2p}
+        # if there was a manual mapping need to report info to transfer
+        for bid, pid in b2p.items():
+            b_meta = get_biorxiv_meta(bid, connection)
+            if isinstance(b_meta, str):
+                check.status = "FAIL"
+                check.description = "Problem retrieving metadata for input data - " + b_meta
+                return check
+            fulloutput['biorxivs2check'].setdefault(bid, {}).update({'new_pub_ids': [pid]})
+            if b_meta.get('url'):
+                fulloutput['biorxivs2check'][bid].setdefault('blink', b_meta.get('url'))
+            fulloutput['biorxivs2check'][bid].setdefault('data2transfer', {}).update(get_transfer_fields(b_meta))
         fndcnt = len(b2p)
     search = 'search/?'
     if kwargs.get('uuid_list'):
@@ -240,10 +281,31 @@ def biorxiv_is_now_published(connection, **kwargs):
         if ids:
             # we have possible article(s) - populate check_result
             fndcnt += 1
-            fulloutput['biorxivs2check'][buuid] = ['PMID:' + id for id in ids]
+            fulloutput['biorxivs2check'].setdefault(buuid, {}).update({'new_pub_ids': ['PMID:' + id for id in ids]})
+            if bx.get('url'):
+                fulloutput['biorxivs2check'][buuid].setdefault('blink', bx.get('url'))
+            # here we don't want the embedded search view so get frame=object
+            bmeta = get_biorxiv_meta(buuid, connection)
+            fulloutput['biorxivs2check'][buuid].setdefault('data2transfer', {}).update(get_transfer_fields(bmeta))
+            # look for GEO datasets
+            for id_ in ids:
+                result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
+                                      'elink.fcgi?dbfrom=pubmed&db=gds&id={}&retmode=json'.format(id_))
+                if result.status_code != 200:
+                    continue
+                geo_ids = [num for link in json.loads(result.text).get('linksets', [])
+                           for item in link.get('linksetdbs', []) for num in item.get('links', [])]
+                geo_accs = []
+                for geo_id in geo_ids:
+                    geo_result = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
+                                              'efetch.fcgi?db=gds&id={}'.format(geo_id))
+                    if geo_result.status_code == 200:
+                        geo_accs.extend([item for item in geo_result.text.split() if item.startswith('GSE')])
+                if geo_accs:
+                    fulloutput['GEO datasets found']['PMID:' + id_] = geo_accs
 
     if fndcnt != 0:
-        chkdesc = "Candidate Biorxivs to replace found\n" + chkdesc
+        chkdesc = "Candidate Biorxivs to replace found\nNOTE: please re-run check directly prior to running action to ensure all metadata is up to date." + chkdesc
         if not chkstatus:
             chkstatus = 'WARN'
         check.allow_action = True
@@ -268,43 +330,23 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     biorxiv_check_result = action.get_associated_check_result(kwargs)
     check_output = biorxiv_check_result.get('full_output', {})
     to_replace = check_output.get('biorxivs2check', {})
-    for buuid, pmids in to_replace.items():
+    for buuid, transfer_info in to_replace.items():
         error = ''
-        if len(pmids) > 1:
+        pmids = transfer_info.get('new_pub_ids', [])
+        if len(pmids) != 1:
             pmstr = ', '.join(pmids)
-            action_log[buuid] = 'multiple pmids {} - manual intervention needed!'.format(pmstr)
+            action_log[buuid] = '0 or multiple pmids {} - manual intervention needed!\n\tNOTE: to transfer to a single pub you can enter the biorxiv uuid PMID in add_to_result'.format(pmstr)
             continue
 
         pmid = pmids[0]
-        biorxiv = None
-        # get biorxiv info
-        try:
-            biorxiv = ff_utils.get_metadata(buuid, key=connection.ff_keys, add_on='frame=object')
-        except Exception as e:
-            error = 'Problem getting biorxiv - msg: ' + str(e)
-        else:
-            if not biorxiv:
-                error = 'Biorxiv not found!'
-        if error:
-            action_log[buuid] = error
-            continue
-
         # prepare a post/patch for transferring data
         existing_fields = {}
         fields_to_patch = {}
-        fields2transfer = [
-            'lab', 'award', 'categories', 'exp_sets_prod_in_pub',
-            'exp_sets_used_in_pub', 'published_by'
-        ]
-        fields2flag = ['static_headers', 'static_content']
-        post_metadata = {f: biorxiv.get(f) for f in fields2transfer if biorxiv.get(f) is not None}
+        post_metadata = transfer_info.get('data2transfer', {})
         post_metadata['ID'] = pmid
         post_metadata['status'] = 'current'
-        if 'url' in biorxiv:
-            post_metadata['aka'] = biorxiv.get('url')
-        flags = {f: biorxiv.get(f) for f in fields2flag if biorxiv.get(f) is not None}
-        if flags:
-            action_log[buuid] = 'Static content to check: ' + str(flags)
+        if 'blink' in transfer_info:
+            post_metadata['aka'] = transfer_info.get('blink')
 
         # first try to post the pub
         pub_upd_res = None
@@ -377,12 +419,12 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             action_log[buuid] = 'NEW PUB INFO NOT AVAILABLE'
             continue
 
-        header_alias = "static_header:replaced_biorxiv_{}_by_{}".format(biorxiv.get('uuid'), pmid.replace(':', '_'))
-        header_name = "static-header.replaced_item_{}".format(biorxiv.get('uuid'))
+        header_alias = "static_header:replaced_biorxiv_{}_by_{}".format(buuid, pmid.replace(':', '_'))
+        header_name = "static-header.replaced_item_{}".format(buuid)
         header_post = {
             "body": "This biorxiv set was replaced by [{0}]({2}{1}/).".format(pmid, pub.get('uuid'), connection.ff_server),
-            "award": biorxiv.get('award'),
-            "lab": biorxiv.get('lab'),
+            "award": post_metadata.get('award'),
+            "lab": post_metadata.get('lab'),
             "name": header_name,
             "section_type": "Item Page Header",
             "options": {"title_icon": "info", "default_open": True, "filetype": "md", "collapsible": False},
@@ -418,7 +460,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
         patch_json = {'status': 'replaced'}
         if huuid:  # need to see if other static content exists and add this one
-            existing_content = biorxiv.get('static_content', [])
+            existing_content = post_metadata.get('static_content', [])
             existing_content.append({'content': huuid, 'location': 'header'})
             patch_json['static_content'] = existing_content
         try:
@@ -497,7 +539,6 @@ def item_counts_by_type(connection, **kwargs):
 
 @check_function()
 def change_in_item_counts(connection, **kwargs):
-    from ..utils import convert_camel_to_snake
     # use this check to get the comparison
     check = CheckResult(connection, 'change_in_item_counts')
     # add random wait
@@ -531,6 +572,7 @@ def change_in_item_counts(connection, **kwargs):
 
     # now do a metadata search to make sure they match
     # date_created endpoints for the FF search
+    # XXX: We should revisit if we really think this search is necessary. - will 3-26-2020
     to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     # tracking items and ontology terms must be explicitly searched for
@@ -541,15 +583,15 @@ def change_in_item_counts(connection, **kwargs):
     # add deleted/replaced items
     search_query += '&status=deleted&status=replaced'
     search_resp.extend(ff_utils.search_metadata(search_query, key=connection.ff_keys))
-    search_output = []
     for res in search_resp:
-        # convert type to index name. e.g. ExperimentSet --> experiment_set
-        res_index = convert_camel_to_snake(res['@type'][0])
-        if res_index in diff_counts:
-            diff_counts[res_index]['ES'] = diff_counts[res_index]['ES'] + 1 if 'ES' in diff_counts[res_index] else 1
-        else:
-            # db entry wasn't already present for this index
-            diff_counts[res_index] = {'DB': 0, 'ES': 1}
+
+        # Stick with given type name in CamelCase since this is now what we get on the counts page
+        _type = res['@type'][0]
+        _entry = diff_counts.get(_type)
+        if not _entry:
+            diff_counts[_type] = _entry = {'DB': 0, 'ES': 0}
+        if _type in diff_counts:
+            _entry['ES'] += 1
 
     check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&',
                              'type=OntologyTerm&type=TrackingItem&date_created.from=',
@@ -560,7 +602,7 @@ def change_in_item_counts(connection, **kwargs):
     total_counts_db = sum([diff_counts[coll]['DB'] for coll in diff_counts if diff_counts[coll]['DB'] >= 0])
     # see if we have negative counts
     # allow negative counts, but make note of, for the following types
-    purged_types = ['tracking_item', 'higlass_view_config']
+    purged_types = ['TrackingItem', 'HiglassViewConfig']
     negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
     inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
     if negative_types:
@@ -1185,6 +1227,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "proximity to cellular component": "Proximity-seq",
         "dna binding": "DNA binding",
         "open chromatin": "Open Chromatin",
+        "open chromatin - single cell": "Open Chromatin",
         "dna-dna pairwise interactions": "Hi-C",
         "dna-dna pairwise interactions - single cell": "Hi-C (single cell)",
         "dna-dna multi-way interactions": "Hi-C (multi-contact)",
@@ -1193,6 +1236,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "dna-dna pairwise interactions of selected loci": "3/4/5-C",
         "ligation-free 3c": "Ligation-free 3C",
         "transcription": "Transcription",
+        "transcription - single cell": "Transcription",
         "rna-dna pairwise interactions": "RNA-DNA HiC",
         "fixed sample dna localization": "DNA FISH",
         "fixed sample rna localization": "RNA FISH",
@@ -1201,6 +1245,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "scanning electron microscopy": "SEM",
         "transmission electron microscopy": "TEM",
         "immunofluorescence": "Immunofluorescence",
+        "synthetic condensation": "OptoDroplet",
         "capture hi-c": "Enrichment Hi-C"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
@@ -1291,60 +1336,86 @@ def check_for_ontology_updates(connection, **kwargs):
     from the previous primary check result.
     '''
     check = CheckResult(connection, 'check_for_ontology_updates')
+    check.summary = ''
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
     ontologies = ff_utils.search_metadata(
-        'search/?type=Ontology&field=current_ontology_version&field=ontology_prefix',
+        'search/?type=Ontology&frame=object',
         key=connection.ff_keys
     )
+    ontologies = [o for o in ontologies if o['ontology_prefix'] != '4DN']
     versions = {
         o['ontology_prefix']: {
             'current': o.get('current_ontology_version'),
             'needs_update': False
         } for o in ontologies
     }
-    del versions['4DN']
-    efo = requests.get('https://api.github.com/repos/EBISPOT/efo/releases')
-    versions['EFO']['latest'] = efo.json()[0]['tag_name']
-    uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
-    ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
-    versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
-    obi = requests.get('https://api.github.com/repos/obi-ontology/obi/releases')
-    versions['OBI']['latest'] = obi.json()[0]['tag_name'].lstrip('v')
-    so = requests.get(
-        'https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so.owl',
-        headers={"Range": "bytes=0-1000"}
-    )
-    idx = so.text.index('versionIRI')
-    so_release = so.text[idx:idx+150].split('/')
-    if 'releases' in so_release:
-        versions['SO']['latest'] = so_release[so_release.index('releases') + 1]
-    else:
-        versions['SO']['latest'] = 'Error'
+    for o in ontologies:
+        # UBERON needs different behavior
+        if o['ontology_prefix'] == 'UBERON':
+            uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
+            ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
+            versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
+        # instead of repos etc, check download url for ontology header to get version
+        elif o.get('download_url'):
+            owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
+            if owl.status_code == 404:
+                versions[o['ontology_prefix']]['latest'] = 'WARN: 404 at download_url'
+                check.summary = '404 at download_url'
+                check.description = 'One or more ontologies has a download_url with a 404 error.'
+                check.description += ' Please update ontology item or try again later.'
+                check.status = 'WARN'
+                continue
+            if 'versionIRI' in owl.text:
+                idx = owl.text.index('versionIRI')
+                vline = owl.text[idx:idx+150]
+                if 'releases'in vline:
+                    vline = vline.split('/')
+                    v = vline[vline.index('releases')+1]
+                    versions[o['ontology_prefix']]['latest'] = v
+                    continue
+                else:
+                    # looks for date string in versionIRI line
+                    match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
+                    if match:
+                        v = match.group()
+                        versions[o['ontology_prefix']]['latest'] = v
+                        continue
+            # SO removed version info from versionIRI, use date field instead
+            if 'oboInOwl:date' in owl.text:
+                idx = owl.text.index('>', owl.text.index('oboInOwl:date'))
+                vline = owl.text[idx+1:owl.text.index('<', idx)]
+                v = vline.split()[0]
+                versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
+    check.brief_output = []
     for k, v in versions.items():
-        if not v['current']:
-            update = True
+        if v.get('latest') and '404' in v['latest']:
+            check.brief_output.append('{} - 404'.format(k))
+        elif not v['current']:
+            v['needs_update'] = True
+            check.brief_output.append('{} needs update'.format(k))
         elif k == 'EFO' and semver2int(v['latest']) > semver2int(v['current']):
-            update = True
+            v['needs_update'] = True
+            check.brief_output.append('{} needs update'.format(k))
         elif k != 'EFO' and v['latest'] > v['current']:
-            update = True
+            v['needs_update'] = True
+            check.brief_output.append('{} needs update'.format(k))
         else:
-            update = False
-        v['needs_update'] = update
+            check.brief_output.append('{} OK'.format(k))
     check.full_output = versions
-    check.brief_output = [k + ' needs update' if check.full_output[k]['needs_update'] else k + ' OK' for k in check.full_output.keys()]
     num = ''.join(check.brief_output).count('update')
-    if num:
-        check.summary = 'Ontology updates available'
-        check.description = '{} ontologies need update'.format(num)
-        check.status = 'WARN'
-    else:
-        check.summary = 'Ontologies up-to-date'
-        check.description = 'No ontology updates needed'
-        check.status = 'PASS'
-    if num == 1 & versions['SO']['needs_update']:
-        check.status = 'PASS'
+    if '404' not in check.summary:
+        if num:
+            check.summary = 'Ontology updates available'
+            check.description = '{} ontologies need update'.format(num)
+            check.status = 'WARN'
+        else:
+            check.summary = 'Ontologies up-to-date'
+            check.description = 'No ontology updates needed'
+            check.status = 'PASS'
+        if num == 1 & versions['SO']['needs_update']:
+            check.status = 'PASS'
     return check
 
 
@@ -1356,7 +1427,7 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-    query = '/search/?file_type=states&type=File'
+    query = '/search/?file_type=chromatin states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     for re in res:
         if not re.get('higlass_defaults'):
@@ -1388,7 +1459,7 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     total_patches = check_res['full_output']['to_add']
 
     s3 = boto3.resource('s3')
-    bucket = s3.Bucket('elasticbeanstalk-fourfront-webprod-files')
+    bucket = s3.Bucket('elasticbeanstalk-%s-files' % FF_PROD_BUCKET_ENV)
 
     query = '/search/?type=FileReference'
     all_ref_files = ff_utils.search_metadata(query, key=connection.ff_keys)
@@ -1793,5 +1864,263 @@ def add_suggested_enum_values(connection, **kwargs):
     action_logs = {}
     # check_result = action.get_associated_check_result(kwargs)
     action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function(days_back=30)
+def check_external_references_uri(connection, **kwargs):
+    '''
+    Check if external_references.uri is missing while external_references.ref
+    is present.
+    '''
+    check = CheckResult(connection, 'check_external_references_uri')
+
+    days_back = kwargs.get('days_back')
+    try:
+        days_back = float(days_back)
+    except (ValueError, TypeError):
+        from_date_query = ''
+        from_text = ''
+    else:
+        date_now = datetime.datetime.now(datetime.timezone.utc)
+        date_diff = datetime.timedelta(days=days_back)
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
+        from_date_query = '&last_modified.date_modified.from=' + from_date
+        from_text = 'modified from %s ' % from_date
+
+    search = ('search/?type=Item&external_references.ref%21=No+value' +
+              '&field=external_references' + from_date_query)
+    result = ff_utils.search_metadata(search, key=connection.ff_keys, is_generator=True)
+    items = []
+    for res in result:
+        bad_refs = [er.get('ref') for er in res.get('external_references', []) if not er.get('uri')]
+        if bad_refs:
+            items.append({'@id': res['@id'], 'refs': bad_refs})
+    names = [ref.split(':')[0] for item in items for ref in item['refs']]
+    name_counts = [{na: names.count(na)} for na in set(names)]
+
+    if items:
+        check.status = 'WARN'
+        check.summary = 'external_references.uri is missing'
+        check.description = '%s items %sare missing uri' % (len(items), from_text)
+    else:
+        check.status = 'PASS'
+        check.summary = 'All external_references uri are present'
+        check.description = 'All dbxrefs %sare formatted properly' % from_text
+    check.brief_output = name_counts
+    check.full_output = items
+    return check
+
+
+@check_function(days_back=30)
+def check_opf_lab_different_than_experiment(connection, **kwargs):
+    '''
+    Check if other processed files have lab (generating lab) that is different
+    than the lab of that generated the experiment. In this case, the
+    experimental lab needs to be added to the opf (contributing lab).
+    '''
+    check = CheckResult(connection, 'check_opf_lab_different_than_experiment')
+    check.action = 'add_contributing_lab_opf'
+
+    # check only recently modified files, to reduce the number of items
+    days_back = kwargs.get('days_back')
+    try:
+        days_back = float(days_back)
+    except (ValueError, TypeError):
+        from_date_query = ''
+        from_text = ''
+    else:
+        date_now = datetime.datetime.now(datetime.timezone.utc)
+        date_diff = datetime.timedelta(days=days_back)
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d+%H:%M")
+        from_date_query = '&last_modified.date_modified.from=' + from_date
+        from_text = 'modified from %s ' % from_date
+
+    search = ('search/?type=FileProcessed' +
+              '&track_and_facet_info.experiment_bucket%21=No+value' +
+              '&track_and_facet_info.experiment_bucket%21=processed+file' +
+              '&field=experiment_sets&field=experiments' +
+              '&field=lab&field=contributing_labs' + from_date_query)
+    result = ff_utils.search_metadata(search, key=connection.ff_keys)
+
+    opf = {'to_patch': [], 'problematic': []}
+    exp_set_uuids = []  # Exp or ExpSet uuid list
+    for res in result:
+        if res.get('experiments'):
+            if len(res['experiments']) != 1:  # this should not happen
+                opf['problematic'].append({
+                    '@id': res['@id'],
+                    'experiments': [exp['uuid'] for exp in res['experiments']]})
+                continue
+            exp_or_set = res['experiments'][0]
+        elif res.get('experiment_sets'):
+            if len(res['experiment_sets']) != 1:  # this should not happen
+                opf['problematic'].append({
+                    '@id': res['@id'],
+                    'experiment_sets': [es['uuid'] for es in res['experiment_sets']]})
+                continue
+            exp_or_set = res['experiment_sets'][0]
+        else:  # this should not happen
+            opf['problematic'].append({'@id': res['@id']})
+            continue
+        res['exp_set_uuid'] = exp_or_set['uuid']
+        if res['exp_set_uuid'] not in exp_set_uuids:
+            exp_set_uuids.append(res['exp_set_uuid'])
+
+    # get lab of Exp/ExpSet
+    result_exp_set = ff_utils.get_es_metadata(exp_set_uuids, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
+    uuid_2_lab = {}  # map file uuid to Exp/Set lab
+    for item in result_exp_set:
+        uuid_2_lab[item['uuid']] = item['properties']['lab']
+
+    # evaluate contributing lab
+    for res in result:
+        if res['@id'] not in [pr['@id'] for pr in opf['problematic']]:
+            contr_lab = []
+            exp_set_lab = uuid_2_lab[res['exp_set_uuid']]
+            if exp_set_lab == res['lab']['uuid']:
+                continue
+            elif res.get('contributing_labs'):
+                contr_lab = [lab['uuid'] for lab in res['contributing_labs']]
+                if exp_set_lab in contr_lab:
+                    continue
+            contr_lab.append(exp_set_lab)
+            opf['to_patch'].append({
+                '@id': res['@id'],
+                'contributing_labs': contr_lab,
+                'lab': res['lab']['display_title']})
+
+    if opf['to_patch'] or opf['problematic']:
+        check.status = 'WARN'
+        check.summary = 'Supplementary files need attention'
+        check.description = '%s files %sneed patching' % (len(opf['to_patch']), from_text)
+        if opf['problematic']:
+            check.description += ' and %s files have problems with experiments or sets' % len(opf['problematic'])
+        if opf['to_patch']:
+            check.allow_action = True
+    else:
+        check.status = 'PASS'
+        check.summary = 'All supplementary files have correct contributing labs'
+        check.description = 'All files %sare good' % from_text
+    check.brief_output = {'to_patch': len(opf['to_patch']), 'problematic': len(opf['problematic'])}
+    check.full_output = opf
+    return check
+
+
+@action_function()
+def add_contributing_lab_opf(connection, **kwargs):
+    '''
+    Add contributing lab (the experimental lab that owns the experiment/set) to
+    the other processed files (supplementary) analyzed by a different lab.
+    '''
+    action = ActionResult(connection, 'add_contributing_lab_opf')
+    check_res = action.get_associated_check_result(kwargs)
+    files_to_patch = check_res['full_output']['to_patch']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    for a_file in files_to_patch:
+        patch_body = {'contributing_labs': a_file['contributing_labs']}
+        try:
+            ff_utils.patch_metadata(patch_body, a_file['@id'], key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({a_file['@id']: str(e)})
+        else:
+            action_logs['patch_success'].append(a_file['@id'])
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function()
+def grouped_with_file_relation_consistency(connection, **kwargs):
+    ''' Check if "grouped with" file relationships are reciprocal and complete.
+        While other types of file relationships are automatically updated on
+        the related file, "grouped with" ones need to be explicitly (manually)
+        patched on the related file. This check ensures that there are no
+        related files that lack the reciprocal relationship, or that lack some
+        of the group relationships (for groups larger than 2 files).
+    '''
+    check = CheckResult(connection, 'grouped_with_file_relation_consistency')
+    check.action = 'add_grouped_with_file_relation'
+    search = 'search/?type=File&related_files.relationship_type=grouped+with&field=related_files'
+    files = ff_utils.search_metadata(search, key=connection.ff_keys, is_generator=True)
+
+    file2all = {}  # map all existing relations
+    file2grp = {}  # map "group with" existing relations
+    for f in files:
+        for rel in f['related_files']:
+            rel_type = rel['relationship_type']
+            rel_file = rel['file']['@id']
+            file2all.setdefault(f['@id'], []).append(
+                {"relationship_type": rel_type, "file": rel_file})
+            if rel_type == "grouped with":
+                file2grp.setdefault(f['@id'], []).append(rel_file)
+
+    # list groups of related items
+    groups = []
+    newgroups = [set(rel).union({file}) for file, rel in file2grp.items()]
+
+    # Check if any pair of groups in the list has a common file (intersection).
+    # In that case, they are parts of the same group: merge them.
+    # Repeat until all groups are disjoint (not intersecting).
+    while len(groups) != len(newgroups):
+        groups, newgroups = newgroups, []
+        for a_group in groups:
+            for each_group in newgroups:
+                if not a_group.isdisjoint(each_group):
+                    each_group.update(a_group)
+                    break
+            else:
+                newgroups.append(a_group)
+
+    # find missing relations
+    missing = {}
+    for a_group in newgroups:
+        pairs = [(a, b) for a in a_group for b in a_group if a != b]
+        for (a_file, related) in pairs:
+            if related not in file2grp.get(a_file, []):
+                missing.setdefault(a_file, []).append(related)
+
+    if missing:
+        # add existing relations to patch related_files
+        to_patch = {}
+        for f, r in missing.items():
+            to_patch[f] = file2all.get(f, [])
+            to_patch[f].extend([{"relationship_type": "grouped with", "file": rel_f} for rel_f in r])
+        check.brief_output = missing
+        check.full_output = to_patch
+        check.status = 'WARN'
+        check.summary = 'File relationships are missing'
+        check.description = "{} files are missing 'grouped with' relationships".format(len(missing))
+        check.allow_action = True
+        check.action_message = ("DO NOT RUN if relations need to be removed! "
+            "This action will attempt to patch {} items by adding the missing 'grouped with' relations".format(len(to_patch)))
+    else:
+        check.status = 'PASS'
+        check.summary = check.description = "All 'grouped with' file relationships are consistent"
+    return check
+
+
+@action_function()
+def add_grouped_with_file_relation(connection, **kwargs):
+    action = ActionResult(connection, 'add_grouped_with_file_relation')
+    check_res = action.get_associated_check_result(kwargs)
+    files_to_patch = check_res['full_output']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    for a_file, related_list in files_to_patch.items():
+        patch_body = {"related_files": related_list}
+        try:
+            ff_utils.patch_metadata(patch_body, a_file, key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({a_file: str(e)})
+        else:
+            action_logs['patch_success'].append(a_file)
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
     action.output = action_logs
     return action

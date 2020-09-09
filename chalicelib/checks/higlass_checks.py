@@ -1278,6 +1278,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
                         "genome_assembly": fil["genome_assembly"],
                         "files": [],
                         "type": filegroup["type"],
+                        "higlass_item_uuid": filegroup.get('higlass_view_config', {}).get('uuid')
                     }
 
                 # add file accessions to this group
@@ -1440,6 +1441,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
         new_viewconfs = {}
         viewconfs_updated_goal += len(filegroups_to_update[accession].keys())
         number_of_posted_viewconfs = 0
+        expset_patch = False
         for title, info in filegroups_to_update[accession].items():
             # If we've taken more than 270 seconds to complete, break immediately
             if time.time() - start_time > 270:
@@ -1506,33 +1508,37 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
                 matching_title_filegroups = [ newfilegroup, ]
 
             # Add the higlass_view_config to the filegroup
-            matching_title_filegroups[0]["higlass_view_config"] = higlass_item_results["item_uuid"]
-            matching_title_filegroups[0]["higlass_view_config"]
+            if matching_title_filegroups[0].get("higlass_view_config", {}).get('uuid') != higlass_item_results["item_uuid"]:
+                expset_patch = True
+                matching_title_filegroups[0]["higlass_view_config"] = higlass_item_results["item_uuid"]
 
             new_viewconfs[title] = higlass_item_results["item_uuid"]
             number_of_posted_viewconfs += 1
 
-        # The other_processed_files section has been updated. Patch the changes.
-        try:
-            # Make sure all higlass_view_config fields just show the uuid.
-            for g in [ group for group in expsets_to_update[accession]["other_processed_files"] if "higlass_view_config" in group ]:
-                if isinstance(g["higlass_view_config"], dict):
-                    uuid = g["higlass_view_config"]["uuid"]
-                    g["higlass_view_config"] = uuid
+        if expset_patch:
+            # The other_processed_files section has been updated. Patch the changes.
+            try:
+                # Make sure all higlass_view_config fields just show the uuid.
+                for g in [ group for group in expsets_to_update[accession]["other_processed_files"] if "higlass_view_config" in group ]:
+                    if isinstance(g["higlass_view_config"], dict):
+                        uuid = g["higlass_view_config"]["uuid"]
+                        g["higlass_view_config"] = uuid
 
-            ff_utils.patch_metadata(
-                {'other_processed_files': expsets_to_update[accession]["other_processed_files"]},
-                obj_id=accession,
-                key=connection.ff_keys
-            )
+                ff_utils.patch_metadata(
+                    {'other_processed_files': expsets_to_update[accession]["other_processed_files"]},
+                    obj_id=accession,
+                    key=connection.ff_keys
+                )
+                number_of_viewconfs_updated += number_of_posted_viewconfs
+            except Exception as e:
+                if accession not in action_logs['failed_to_patch_expset']:
+                    action_logs['failed_to_patch_expset'][accession] = {}
+                if title not in action_logs['failed_to_patch_expset'][accession]:
+                    action_logs['failed_to_patch_expset'][accession][title] = {}
+                action_logs['failed_to_patch_expset'][accession][title] = str(e)
+                continue
+        else:
             number_of_viewconfs_updated += number_of_posted_viewconfs
-        except Exception as e:
-            if accession not in action_logs['failed_to_patch_expset']:
-                action_logs['failed_to_patch_expset'][accession] = {}
-            if title not in action_logs['failed_to_patch_expset'][accession]:
-                action_logs['failed_to_patch_expset'][accession][title] = {}
-            action_logs['failed_to_patch_expset'][accession][title] = str(e)
-            continue
 
         # Success. Note which titles link to which HiGlass view configs.
         if accession not in action_logs['successes']:
@@ -1815,7 +1821,9 @@ def patch_file_higlass_uid(connection, **kwargs):
         'patch_failure': {},
         'patch_success': {},
         'registration_failure': {},
-        'registration_success': 0
+        'registration_success': 0,
+        'beddb_copy_failure': {},
+        'beddb_copy_success': 0
     }
     # get latest results
     higlass_check = CheckResult(connection, 'files_not_registered_with_higlass')
@@ -1842,6 +1850,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     start_time = time.time()
     time_expired = False
 
+    
+
     # Files to register is organized by filetype.
     to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
     for ftype, hits in to_be_registered.items():
@@ -1857,7 +1867,8 @@ def patch_file_higlass_uid(connection, **kwargs):
                 continue
 
             # Based on the filetype, construct a payload to upload to the higlass server.
-            payload = {'coordSystem': hit['genome_assembly']}
+            payload = {}
+            payload['coordSystem'] = hit['genome_assembly']
             if ftype == 'chromsizes':
                 payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'chromsizes-tsv'
@@ -1887,6 +1898,25 @@ def patch_file_higlass_uid(connection, **kwargs):
                 err_msg = 'No filetype case specified for %s' % ftype
                 action_logs['registration_failure'][hit['accession']] = err_msg
                 continue
+
+            # Call the Flask server component on the Higlass server to copy beddb files
+            # from S3 to the local file system. Using mounted versions of these files is very slow. 
+            if payload['filetype'] == 'beddb':
+                copy_res = requests.post(
+                    higlass_server + ':8005/cp/' + payload["filepath"]
+                )
+
+                if copy_res.status_code == 200:
+                    # If copying has been successful, we point to the local file
+                    payload["filepath"] = "beddbs/" + payload["filepath"]
+                    action_logs['beddb_copy_success'] += 1
+                else:
+                    try:
+                        err_msg = copy_res.text
+                    except Exception:
+                        err_msg = copy_res.status_code
+                        action_logs['beddb_copy_failure'][hit['accession']] = err_msg
+
 
             # register with previous higlass_uid if already there
             # otherwise, specify our own new higlass_uid with slugid

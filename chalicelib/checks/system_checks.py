@@ -1,38 +1,72 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    action_function,
-    basestring
+    basestring,
+    cat_indices
 )
-from ..run_result import CheckResult, ActionResult
+from ..run_result import CheckResult
 from dcicutils import (
     ff_utils,
     es_utils,
-    beanstalk_utils
+    beanstalk_utils,
+    env_utils
 )
-
+from dcicutils.misc_utils import Retry
+import re
 import requests
-import sys
 import json
 import datetime
 import boto3
 import time
 
 
-@check_function()
-def wipe_build_indices(connection, **kwargs):
-    """ Wipes all indices on the FF-Build ES env """
+# XXX: put into utils?
+CGAP_TEST_CLUSTER = 'search-cgap-testing-ud3ggpjj7x6vclx62nmzymyzfi.us-east-1.es.amazonaws.com:80'
+FF_TEST_CLUSTER = 'search-fourfront-testing-hjozudm7pq5wwlssx2pjlsyz7y.us-east-1.es.amazonaws.com:80'
+TEST_ES_CLUSTERS = [
+    CGAP_TEST_CLUSTER,
+    FF_TEST_CLUSTER
+]
+BUILD_INDICES_REGEX = re.compile('^[0-9]')  # build indices are prefixed by numbers
+
+
+def wipe_build_indices(connection, es_url):
+    """ Wipes all number-prefixed indices on the given es_url. Be careful not to run while
+        builds are running as this will cause them to fail.
+    """
     check = CheckResult(connection, 'wipe_build_indices')
     check.status = 'PASS'
-    check.summary = check.description = 'Wiped all test indices'
-    BUILD_ES = 'search-fourfront-builds-uhevxdzfcv7mkm5pj5svcri3aq.us-east-1.es.amazonaws.com:80'
-    client = es_utils.create_es_client(BUILD_ES, True)
-    full_output = client.indices.delete(index='*')
-    if full_output['acknowledged'] != True:
+    check.summary = check.description = 'Wiped all test indices on url: %s' % es_url
+    client = es_utils.create_es_client(es_url, True)
+    full_output = []
+    _, indices = cat_indices(client)  # index name is index 2 in row
+    for index in indices:
+        index_name = index[2]
+        if re.match(BUILD_INDICES_REGEX, index_name) is not None:
+            try:
+                resp = Retry.retrying(client.indices.delete, retries_allowed=3)(index=index_name)
+            except Exception as e:
+                full_output.append({'acknowledged': True, 'error': str(e)})
+            else:
+                full_output.append(resp)
+
+    if any(output['acknowledged'] is not True for output in full_output):
         check.status = 'FAIL'
         check.summary = check.description = 'Failed to wipe all test indices, see full output'
     check.full_output = full_output
     return check
+
+
+@check_function()
+def wipe_cgap_build_indices(connection, **kwargs):
+    """ Wipes build indices for CGAP (on cgap-testing) """
+    return wipe_build_indices(connection, CGAP_TEST_CLUSTER)
+
+
+@check_function()
+def wipe_ff_build_indices(connection, **kwargs):
+    """ Wipes build (number prefixed) indices (on fourfront-testing) """
+    return wipe_build_indices(connection, FF_TEST_CLUSTER)
 
 
 @check_function()
@@ -106,7 +140,6 @@ def elastic_beanstalk_health(connection, **kwargs):
         )
         deploy_info = application_versions['ApplicationVersions'][0]
         inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['version_description'] = deploy_info['Description']
         inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
         inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
         inst_info['id'] = instance['InstanceId']
@@ -562,12 +595,13 @@ def snapshot_rds(connection, **kwargs):
     if get_stage_info()['stage'] != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
-    rds_name = 'fourfront-webprod' if 'webprod' in connection.ff_env else connection.ff_env
+    # XXX: must be updated when cgap-blue/cgap-green come to fruition -will 4-1-2020
+    rds_name = 'fourfront-production' if (env_utils.is_fourfront_env(connection.ff_env) and env_utils.is_stg_or_prd_env(connection.ff_env)) else connection.ff_env
     # snapshot ID can only have letters, numbers, and hyphens
     snap_time = datetime.datetime.strptime(kwargs['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%dT%H-%M-%S")
     snapshot_name = 'foursight-snapshot-%s-%s' % (rds_name, snap_time)
     res = beanstalk_utils.create_db_snapshot(rds_name, snapshot_name)
-    if res == 'Deleting':
+    if res == 'Deleting':  # XXX: How this^ function works should be changed - Will 6/2/2020
         check.status = 'FAIL'
         check.summary = check.description = 'Something went wrong during snaphot creation'
     else:

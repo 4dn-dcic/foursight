@@ -32,7 +32,10 @@ CONFIG_BASE = {
     }
   },
   "version": "2.0",
-  "app_name": "foursight"
+  "app_name": "foursight",
+  "layers": [  # required for Deployment Checks - Will 5/20/2020
+      "arn:aws:lambda:us-east-1:553035198032:layer:git:11"
+  ]
 }
 
 

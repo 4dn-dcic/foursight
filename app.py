@@ -11,7 +11,17 @@ app.debug = True
 STAGE = os.environ.get('chalice_stage', 'dev')
 DEFAULT_ENV = 'data'
 
-######### SCHEDULED FXNS #########
+'''######### SCHEDULED FXNS #########'''
+
+
+def effectively_never():
+    """Every February 31st, a.k.a. 'never'."""
+    return Cron('0', '0', '31', '2', '?', '?')
+
+
+def end_of_day_on_weekdays():
+    """ Cron schedule that runs at 6pm EST (22:00 UTC) on weekdays. Used for deployments. """
+    return Cron('0', '22', '?', '*', 'MON-FRI', '*')
 
 # this dictionary defines the CRON schedules for the dev and prod foursight
 # stagger them to reduce the load on Fourfront. Times are UTC
@@ -23,22 +33,29 @@ foursight_cron_by_schedule = {
         'thirty_min_checks': Cron('0/30', '*', '*', '*', '?', '*'),
         'hourly_checks': Cron('0', '0/1', '*', '*', '?', '*'),
         'hourly_checks_2': Cron('15', '0/1', '*', '*', '?', '*'),
+        'early_morning_checks': Cron('0', '8', '*', '*', '?', '*'),
         'morning_checks': Cron('0', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('15', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('0', '9', '?', '*', '2', '*'),
-        'monthly_checks': Cron('0', '9', '1', '*', '?', '*')
+        'monthly_checks': Cron('0', '9', '1', '*', '?', '*'),
+        'manual_checks': effectively_never(),
+        'deployment_checks': end_of_day_on_weekdays()
     },
     'dev': {
         'ten_min_checks': Cron('5/10', '*', '*', '*', '?', '*'),
         'thirty_min_checks': Cron('15/30', '*', '*', '*', '?', '*'),
         'hourly_checks': Cron('30', '0/1', '*', '*', '?', '*'),
         'hourly_checks_2': Cron('45', '0/1', '*', '*', '?', '*'),
+        'early_morning_checks': Cron('0', '8', '*', '*', '?', '*'),
         'morning_checks': Cron('30', '10', '*', '*', '?', '*'),
         'morning_checks_2': Cron('45', '10', '*', '*', '?', '*'),
         'monday_checks': Cron('30', '9', '?', '*', '2', '*'),
-        'monthly_checks': Cron('30', '9', '1', '*', '?', '*')
+        'monthly_checks': Cron('30', '9', '1', '*', '?', '*'),
+        'manual_checks': effectively_never(),
+        'deployment_checks': end_of_day_on_weekdays()  # disabled, see schedule below
     }
 }
+
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['ten_min_checks'])
 def ten_min_checks(event):
@@ -47,35 +64,53 @@ def ten_min_checks(event):
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['thirty_min_checks'])
 def thirty_min_checks(event):
-    queue_scheduled_checks('all','thirty_min_checks')
+    queue_scheduled_checks('all', 'thirty_min_checks')
 
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks'])
 def hourly_checks(event):
     queue_scheduled_checks('all', 'hourly_checks')
 
+
 @app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks_2'])
 def hourly_checks_2(event):
     queue_scheduled_checks('all', 'hourly_checks_2')
+
+
+@app.schedule(foursight_cron_by_schedule[STAGE]['early_morning_checks'])
+def early_morning_checks(event):
+    queue_scheduled_checks('all', 'early_morning_checks')
+
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks'])
 def morning_checks(event):
     queue_scheduled_checks('all', 'morning_checks')
 
+
 @app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks_2'])
 def morning_checks_2(event):
     queue_scheduled_checks('all', 'morning_checks_2')
 
+
 @app.schedule(foursight_cron_by_schedule[STAGE]['monday_checks'])
 def monday_checks(event):
     queue_scheduled_checks('all', 'monday_checks')
+
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['monthly_checks'])
 def monthly_checks(event):
     queue_scheduled_checks('all', 'monthly_checks')
 
 
-######### END SCHEDULED FXNS #########
+@app.schedule(foursight_cron_by_schedule[STAGE]['deployment_checks'])
+def deployment_checks(event):
+    if STAGE == 'dev':
+        return  # do not schedule the deployment checks on dev
+    queue_scheduled_checks('all', 'deployment_checks')
+
+
+'''######### END SCHEDULED FXNS #########'''
+
 
 @app.route('/callback')
 def auth0_callback():
@@ -119,7 +154,7 @@ def auth0_callback():
         expires_in = res.json().get('expires_in', None)
         if expires_in:
             expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)
-            cookie_str +=  (' Expires=' + expires.strftime("%a, %d %b %Y %H:%M:%S GMT") + ';')
+            cookie_str += (' Expires=' + expires.strftime("%a, %d %b %Y %H:%M:%S GMT") + ';')
         resp_headers['Set-Cookie'] = cookie_str
     return Response(status_code=302, body=json.dumps(resp_headers), headers=resp_headers)
 
@@ -271,6 +306,22 @@ def get_environment_route(environ):
         return run_get_environment(environ)
     else:
         return forbidden_response()
+
+
+@app.route('/environments/{environ}/delete', methods=['DELETE'])
+def delete_environment(environ):
+    """
+    Takes a DELETE request and purges the foursight environment specified by 'environ'.
+    NOTE: This only de-schedules all checks, it does NOT wipe data associated with this
+    environment - that can only be done directly from S3 (for safety reasons).
+
+    Protected route
+    """
+    if check_authorization(app.current_request.to_dict(), environ):  # TODO (C4-138) Centralize authorization check
+        return run_delete_environment(environ)
+    else:
+        return forbidden_response()
+
 
 ######### PURE LAMBDA FUNCTIONS #########
 

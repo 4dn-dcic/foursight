@@ -72,14 +72,8 @@
     "experiment_set_reporting_data": {
         "title": "Release updates data collection",
         "group": "Metadata checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
+        "schedule": {},
+        "display": ["data"]
     },
     "data_release_updates": {
         "title": "Data release updates",
@@ -466,8 +460,20 @@
         "title": "Static Section URL check",
         "group": "Audit checks",
         "schedule": {
-            "morning_checks": {
-                "all_4dn": {
+            "early_morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_search_urls": {
+        "title": "Static Section search URLs check",
+        "group": "Audit checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -886,7 +892,7 @@
         "title": "Find Cypress Test files to Purge",
         "group": "Cleanup checks",
         "schedule": {
-            "morning_checks": {
+            "early_morning_checks": {
                 "data": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
@@ -1017,7 +1023,7 @@
         }
     },
     "md5run_status_extra_file" : {
-        "title": "b) MD5run extrafiles",
+        "title": "a) MD5run extrafiles",
         "group": "Pipeline checks",
         "schedule": {
             "morning_checks": {
@@ -1029,7 +1035,7 @@
         }
     },
     "fastqc_status" : {
-        "title": "c) FastQC",
+        "title": "b) FastQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1041,7 +1047,19 @@
         }
     },
     "pairsqc_status" : {
-        "title": "d) PairsQC",
+        "title": "b) PairsQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "bamqc_status" : {
+        "title": "b) BamQC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1053,19 +1071,19 @@
         }
     },
     "bg2bw_status" : {
-        "title": "e) BedGraph to BigWig",
+        "title": "c) BedGraph to BigWig",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
                 "data": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
         }
     },
     "bed2beddb_status" : {
-        "title": "f) Bed to Beddb",
+        "title": "c) Bed to Beddb",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1076,8 +1094,20 @@
             }
         }
     },
+    "bed2multivec_status" : {
+        "title": "c) Bed to multivec",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "in_situ_hic_status" : {
-        "title": "g) in situ Hi-C",
+        "title": "d) in situ Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1089,7 +1119,7 @@
         }
     },
     "dilution_hic_status" : {
-        "title": "h) Dilution Hi-C",
+        "title": "d) Dilution Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1101,7 +1131,7 @@
         }
     },
     "tcc_status" : {
-        "title": "i) TCC",
+        "title": "d) TCC",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1113,7 +1143,7 @@
         }
     },
     "dnase_hic_status" : {
-        "title": "j) DNAse Hi-C",
+        "title": "d) DNAse Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1125,7 +1155,7 @@
         }
     },
     "capture_hic_status" : {
-        "title": "k) Capture Hi-C",
+        "title": "d) Capture Hi-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1137,7 +1167,7 @@
         }
     },
     "micro_c_status" : {
-        "title": "l) Micro-C",
+        "title": "d) Micro-C",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1149,7 +1179,7 @@
         }
     },
     "chia_pet_status" : {
-        "title": "m) ChIA-PET",
+        "title": "d) ChIA-PET",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1161,7 +1191,7 @@
         }
     },
     "in_situ_chia_pet_status" : {
-        "title": "m) in situ ChIA-PET",
+        "title": "d) in situ ChIA-PET",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1173,7 +1203,7 @@
         }
     },
     "trac_loop_status" : {
-        "title": "n) TrAC-loop",
+        "title": "d) TrAC-loop",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1185,7 +1215,7 @@
         }
     },
     "plac_seq_status" : {
-        "title": "o) PLAC-seq",
+        "title": "d) PLAC-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1197,7 +1227,7 @@
         }
     },
     "repli_2_stage_status" : {
-        "title": "p) Repliseq - 2 Stage",
+        "title": "e) Repliseq - 2 Stage",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1209,7 +1239,7 @@
         }
     },
     "repli_multi_stage_status" : {
-        "title": "q) Repliseq - Multi Stage",
+        "title": "e) Repliseq - Multi Stage",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1221,7 +1251,7 @@
         }
     },
     "tsa_seq_status" : {
-        "title": "r) TSA-seq",
+        "title": "e) TSA-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1233,7 +1263,7 @@
         }
     },
     "nad_seq_status" : {
-        "title": "s) NAD-seq",
+        "title": "e) NAD-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1245,7 +1275,7 @@
         }
     },
     "atac_seq_status" : {
-        "title": "t) ATAC-seq",
+        "title": "f) ATAC-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1257,7 +1287,7 @@
         }
     },
     "chip_seq_status" : {
-        "title": "u) ChIP-seq",
+        "title": "g) ChIP-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1269,7 +1299,7 @@
         }
     },
     "margi_status" : {
-        "title": "v) MARGI",
+        "title": "h) MARGI",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1281,12 +1311,48 @@
         }
     },
     "rna_seq_status" : {
-        "title": "w) RNA-seq",
+        "title": "i) RNA-seq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "bam_re_status" : {
+        "title": "l) Restriction Enzyme Check",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "rna_strandedness_status" : {
+        "title": "l) RNA Strandedness",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true,  "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastq_first_line_status" : {
+        "title": "l) Fastq first line",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1334,14 +1400,62 @@
                     "dependencies": []
                 },
                 "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgapS2_status" : {
+        "title": "d) CGAP pipeline Part II",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "cgapS3_status" : {
+        "title": "d) CGAP pipeline Part III",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "ingest_vcf_status" : {
+        "title": "d) CGAP trigger VCF ingestion",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
         }
     },
     "cram_status" : {
-        "title": "d) CGAP pipeline cram2fastq",
+        "title": "e) CGAP pipeline cram2fastq",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {
@@ -1408,29 +1522,6 @@
             }
         }
     },
-    "wipe_build_indices" : {
-        "title": "Wipe Build Indicies",
-        "group": "System checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true}
-                }
-            }
-        }
-    },
-    "rna_strandedness_status" : {
-        "title": "y) RNA Strandedness",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true,  "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "check_for_strandedness_consistency": {
         "title": "RNA-seq experiments without strandedness verification",
         "group": "Metadata checks",
@@ -1438,18 +1529,6 @@
             "morning_checks": {
                 "data": {
                     "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "bamqc_status" : {
-        "title": "z) BamQC",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
@@ -1471,8 +1550,171 @@
             }
         }
     },
-    "fastq_first_line_status" : {
-        "title": "aa) Fastq first line",
+    "check_fastq_read_id": {
+        "title": "Fastq files with integer read ids",
+        "group": "Audit checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "released_hela_files": {
+        "title": "HeLa fastq or bam files not restricted",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "released_output_from_restricted_input": {
+        "title": "Processed files not restricted",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_external_references_uri": {
+        "title": "Check dbxrefs links",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "indexer_server_status": {
+        "title": "Indexer Server Status",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "provision_indexer_environment": {
+        "title": "Provision Indexer Environment",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "deploy_application_to_beanstalk": {
+        "title": "Deploy Version to ElasticBeanstalk",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "deploy_cgap_production": {
+        "title": "Deploy CGAP-portal master to the cgap production environment",
+        "group": "Deployment Checks",
+        "schedule": {
+            "deployment_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "deploy_ff_staging": {
+        "title": "Deploy Fourfront master to staging.4dnucleome.org",
+        "group": "Deployment Checks",
+        "schedule": {
+            "deployment_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_opf_lab_different_than_experiment": {
+        "title": "Opf contributing lab",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "grouped_with_file_relation_consistency": {
+        "title": "File relation 'grouped with'",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "wipe_cgap_build_indices": {
+        "title": "Wipe CGAP build indices",
+        "group": "System checks",
+        "schedule": {
+             "morning_checks": {
+                "cgap": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+     "wipe_ff_build_indices": {
+        "title": "Wipe FF build indices",
+        "group": "System checks",
+        "schedule": {
+             "morning_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "insulation_scores_and_boundaries_status": {
+        "title": "l) insulation scores and boundaries",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks": {

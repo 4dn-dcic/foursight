@@ -26,7 +26,8 @@ def md5run_status_extra_file(connection, **kwargs):
         return check
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
-             '&extra_files.status!=uploaded&extra_files.href!=No value')
+             '&status!=archived&status!=archived to project'
+             '&extra_files.status!=uploaded&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -63,7 +64,7 @@ def md5run_status(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    query = '/search/?status=uploading&status=upload failed'
+    query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
     # add file type
     f_type = kwargs.get('file_type')
     query += '&type=' + f_type
@@ -181,7 +182,7 @@ def md5run_start(connection, **kwargs):
         inp_f = {'input_file': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
 
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -232,7 +233,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'fastqc-0-11-4-1', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start)
     return check
 
 
@@ -257,8 +258,9 @@ def fastqc_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
-        wfr_setup = wfrset_utils.step_settings('fastqc-0-11-4-1', 'no_organism', attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        wfr_setup = wfrset_utils.step_settings('fastqc', 'no_organism', attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'],
+                                        connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -352,7 +354,7 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -384,8 +386,9 @@ def bg2bw_status(connection, **kwargs):
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
-             "extra_files.file_format.display_title!=bw"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&extra_files.file_format.display_title!=bw"
+             "&status!=uploading&status!=to be uploaded by workflow"
+             "&status!=archived&status!=archived to project")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -394,8 +397,26 @@ def bg2bw_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
+    # build a second query for checking failed ones
+    query_f = ("/search/?type=FileProcessed&file_format.file_format=bg"
+               "&extra_files.file_format.display_title=bw"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res = res_one + res_two
     if not res:
         check.summary = 'All Good!'
         return check
@@ -430,7 +451,7 @@ def bg2bw_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedGraphToBigWig',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -456,16 +477,20 @@ def bed2beddb_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
-    accepted_types = ['LADs', 'boundaries', 'domains']
-    file_size_limit = 100000  # 100KB
+    check.summary = ''
+
+    # These are the accepted file types for this check
+    accepted_types = ['LADs', 'boundaries', 'domain calls', 'peaks']
+
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query (find bg files without bw files)
     query = ("/search/?type=FileProcessed&file_format.file_format=bed"
-             "extra_files.file_format.display_title!=beddb"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&extra_files.file_format.display_title!=beddb"
+             "&status!=uploading&status!=to be uploaded by workflow"
+             "&status!=archived&status!=archived to project")
     query += "".join(["&file_type=" + i for i in accepted_types])
     # add date
     s_date = kwargs.get('start_date')
@@ -475,23 +500,50 @@ def bed2beddb_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
-    # The search
-    res_all = ff_utils.search_metadata(query, key=my_auth)
 
-    res = [i for i in res_all if i['file_size'] < file_size_limit]
-    if not res:
+    # build a second query for checking failed ones
+    query_f = ("/search/?type=FileProcessed&file_format.file_format=bed"
+               "&extra_files.file_format.display_title=beddb"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
+    # The search
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res_all = res_one + res_two
+    missing = []
+    for a_file in res_all:
+        if not a_file.get('genome_assembly'):
+            missing.append(a_file['accession'])
+    res_all = [i for i in res_all if i.get('genome_assembly')]
+    if not res_all:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'bedtobeddb', my_auth, start)
-    if len(res_all) > len(res):
-        check.summary = 'Files with large size skipped, check parameters might need to change'
-        check.status = 'FAIL'
+    check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
+    if missing:
+        check['full_output']['missing_assembly'] = missing
+        msg = str(len(missing)) + ' files missing genome assembly'
+        check['brief_output'].insert(0, msg)
     return check
 
 
 @action_function(start_missing_run=True, start_missing_meta=True)
 def bed2beddb_start(connection, **kwargs):
     """Start bed2beddb runs by sending compiled input_json to run_workflow endpoint"""
+    # converter for workflow parameters
+    genome = {"GRCh38": "hg38",
+              "GRCm38": "mm10",
+              "dm6": 'dm6',
+              "galGal5": "galGal5"}
     start = datetime.utcnow()
     action = ActionResult(connection, 'bed2beddb_start')
     action_logs = {'runs_started': [], 'runs_failed': []}
@@ -511,10 +563,12 @@ def bed2beddb_start(connection, **kwargs):
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'bedfile': a_file['@id']}
+        override = {'parameters': {'assembly': genome[a_file['genome_assembly']]}}
         wfr_setup = wfrset_utils.step_settings('bedtobeddb',
                                                'no_organism',
-                                               attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+                                               attributions,
+                                               overwrite=override)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -768,17 +822,10 @@ def capture_hic_status(connection, **kwargs):
     exp_type = 'Capture Hi-C'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
-
     # check indexing queue
-    env = connection.ff_env
-    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
-    if indexing_queue:
-        check.status = 'PASS'  # maybe use warn?
-        check.brief_output = ['Waiting for indexing queue to clear']
-        check.summary = 'Waiting for indexing queue to clear'
-        check.full_output = {}
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
         return check
-
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
 
@@ -1316,6 +1363,10 @@ def atac_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ATAC-seq'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
     return check
 
 
@@ -1356,6 +1407,10 @@ def chip_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ChIP-seq'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
     return check
 
 
@@ -1454,7 +1509,10 @@ def bed2multivec_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find bed files without bed.multires.mv5 files)
-    query = ("search/?file_format.file_format=bed&file_type=states&type=FileProcessed&extra_files.file_format.display_title!=bed.multires.mv5")
+    query = ("search/?type=FileProcessed&file_format.file_format=bed&file_type=chromatin states"
+             "&extra_files.file_format.display_title!=bed.multires.mv5"
+             "&status!=uploading&status!=to be uploaded by workflow"
+             "&status!=archived&status!=archived to project")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1463,8 +1521,26 @@ def bed2multivec_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+
+    # build a second query for checking failed ones
+    query_f = ("search/?type=FileProcessed&file_format.file_format=bed&file_type=chromatin states"
+               "&extra_files.file_format.display_title=bed.multires.mv5"
+               "&extra_files.status=uploading"
+               "&extra_files.status=to be uploaded by workflow"
+               "&status!=uploading&status!=to be uploaded by workflow")
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query_f += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query_f += '&lab.display_title=' + lab
+
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    res_one = ff_utils.search_metadata(query, key=my_auth)
+    res_two = ff_utils.search_metadata(query_f, key=my_auth)
+    res = res_one + res_two
 
     if not res:
         check.summary = 'All Good!'
@@ -1568,7 +1644,8 @@ def rna_strandedness_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (RNA-seq experiments)
-    query = '/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&status=pre-release&status=released&status=released to project'
+    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
+             '&status=pre-release&status=released&status=released to project')
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -1733,7 +1810,7 @@ def bamqc_status(connection, **kwargs):
     default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
-    query = 'search/?file_type=alignment&{}'.format(stati)
+    query = 'search/?file_type=alignments&{}'.format(stati)
     query += '&type=FileProcessed'
     query += wfr_outputs
     query += '&quality_metric.display_title=No+value'
@@ -1816,7 +1893,8 @@ def fastq_first_line_status(connection, **kwargs):
     if skip:
         return check
 
-    query = '/search/?status=uploaded&status=pre-release&status=released+to+project&status=released&type=FileFastq'
+    query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'
+             '&type=FileFastq&file_format.file_format=fastq&file_first_line=No value&status=restricted')
 
     # The search
     print('About to query ES for files')
@@ -1887,6 +1965,301 @@ def fastq_first_line_start(connection, **kwargs):
                                                'no_organism',
                                                attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function()
+def bam_re_status(connection, **kwargs):
+    """Searches for fastq files that don't have bam_re"""
+    # AluI pattern seems to be problematic and disabled until it its fixed
+    # ChiA pet needs a new version of this check and disabled on this one
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'bam_re_status')
+    my_auth = connection.ff_keys
+    check.action = "bam_re_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (skip to be uploaded by workflow)
+    exp_types = ['in+situ+Hi-C',
+                 'Dilution+Hi-C',
+                 'Capture+Hi-C',
+                 'TCC',
+                 # 'in+situ+ChIA-PET',
+                 'PLAC-seq']
+    query = ("/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed"
+             "&status!=uploading&status!=to be uploaded by workflow")
+    exp_type_key = '&track_and_facet_info.experiment_type='
+    exp_type_filter = exp_type_key + exp_type_key.join(exp_types)
+    exclude_processed = '&percent_clipped_sites_with_re_motif=No value'
+    query += exp_type_filter
+    query += exclude_processed
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    # check if they were processed with an acceptable enzyme
+    # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
+    acceptable_enzymes = [  # "AluI",
+                          "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
+                          "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII"  # added patterns in action
+                          ]
+    # make a new list of files to work on
+    filtered_res = []
+    # make a list of skipped files
+    missing_nz_files = []
+    # make a list of skipped enzymes
+    missing_nz = []
+    for a_file in res:
+        # expecting all files to have an experiment
+        nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
+        if nz in acceptable_enzymes:
+            filtered_res.append(a_file)
+        else:
+            missing_nz_files.append(a_file)
+            if nz not in missing_nz:
+                missing_nz.append(nz)
+
+    check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
+    if missing_nz:
+        skipped_files = str(len(res) - len(filtered_res))
+        nzs = ', '.join(missing_nz)
+        message = 'INFO: skipping files ({}) using {}'.format(skipped_files, nzs)
+        check.summary += ', ' + message
+        check.brief_output.insert(0, message)
+        check.full_output['skipped'] = [i['accession'] for i in missing_nz_files]
+        check.status = 'WARN'
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def bam_re_start(connection, **kwargs):
+    """Start bam_re runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'bam_re_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    bam_re_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    # these enzymes are not covered by workflow, but can be covered with these patterns
+    nz_patterns = {
+        "DdeI and DpnII": {"motif": {"regex": "CT.AT.AG|CT.AGATC|GATCT.AG|GATCGATC"}},
+        "DdeI": {"motif": {"regex": "CT.AT.AG"}},
+        "MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
+        "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
+                                                "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
+                                                "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}}}
+    if kwargs.get('start_missing_run'):
+        targets.extend(bam_re_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(bam_re_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
+        attributions = wfr_utils.get_attribution(a_file)
+        inp_f = {'bamfile': a_file['@id']}
+        if nz in nz_patterns:
+            additional_setup = {"parameters": nz_patterns[nz]}
+        else:
+            additional_setup = {"parameters": {"motif": {"common_enz": nz}}}
+        wfr_setup = wfrset_utils.step_settings('re_checker_workflow',
+                                               'no_organism',
+                                               attributions,
+                                               overwrite=additional_setup)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
+
+
+@check_function()
+def insulation_scores_and_boundaries_status(connection, **kwargs):
+    """Calls insulation scores and boundaries on mcool files produced by the Hi-C pipeline"""
+
+    check = CheckResult(connection, 'insulation_scores_and_boundaries_status')
+    my_auth = connection.ff_keys
+    check.action = "insulation_scores_and_boundaries_start"
+    check.description = ""
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
+    feature = 'insulation_scores_and_boundaries'
+    # minimum number of reads in the mcool file (100M)
+    reads_cutoff = 100000000
+    # completion tag
+    tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
+    # check indexing queue
+
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+
+    # Build the first query, experiments that have run the hic pipeline. add date and lab if available
+    query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
+
+    # filter expSets by the total number of reads in the mcoolfile (found in the combined-pairs file qc)
+    query += '&processed_files.file_format.display_title=pairs'
+    query += f'&processed_files.quality_metric.Total reads.from={reads_cutoff}'
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+
+    if not res:
+        check.summary = 'All Good!'
+        return check
+
+    for a_res in res:
+        running = []
+        completed = {'patch_opf': [], 'add_tag': []}
+        missing_run = []
+        problematic_run = []
+        for pfile in a_res['processed_files']:
+            if pfile['file_format']['display_title'] == 'mcool':
+                file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
+
+        if insu_and_boun_report['status'] == 'running':
+            running.append(pfile['accession'])
+        elif insu_and_boun_report['status'].startswith("no complete run, too many"):
+            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
+        elif insu_and_boun_report['status'] != 'complete':
+            enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
+            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+            re_enz_size = wfr_utils.re_nz_sizes[enz]
+            if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
+                binsize = 5000
+            if int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
+                binsize = 10000
+            overwrite = {'parameters': {"binsize": binsize}}
+            inp_f = {'mcoolfile': pfile['accession']}
+            missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
+                                inp_f, a_res['accession']])
+        else:
+            patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
+            completed['patch_opf'].append([a_res['accession'], patch_data])
+            completed['add_tag'] = [a_res['accession'], tag]
+
+        if running:
+            check.full_output['running_runs'].append({a_res['accession']: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({a_res['accession']: missing_run})
+        if completed.get('add_tag'):
+            assert not running
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.allow_action = True
+        check.status = 'WARN'
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.allow_action = True
+        check.status = 'WARN'
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def insulation_scores_and_boundaries_start(connection, **kwargs):
+    """Start template runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'insulation_scores_and_boundaries_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    insu_and_boun_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = insu_and_boun_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = insu_and_boun_check_result.get('completed_runs')
+
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='insulation_scores_and_boundaries')
+    return action
+
+###################################
+###################################
+# TEMPLATES
+
+# ##Template for qc type runs
+@check_function()
+def template_status(connection, **kwargs):
+    """Searches for fastq files that don't have template"""
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'template_status')
+    my_auth = connection.ff_keys
+    check.action = "template_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (skip to be uploaded by workflow)
+    query = ("/search/?type=File&my_own_field=my_value")
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_runs_without_output(res, check, 'template', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def template_start(connection, **kwargs):
+    """Start template runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'template_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    template_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(template_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(template_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        inp_f = {'input_fastq': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('template', 'no_organism', attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)

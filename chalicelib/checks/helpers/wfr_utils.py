@@ -8,6 +8,7 @@ from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
 random_wait = wfrset_utils.random_wait
+load_wait = wfrset_utils.load_wait
 # check at the end
 # check extract_file_info has 4 arguments
 
@@ -17,9 +18,14 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["0.0.4", "0.2.6"]
     },
+    # old workflow run naming, updated on workflows for old ones
     "fastqc-0-11-4-1": {
         "run_time": 50,
         "accepted_versions": ["0.2.0"]
+    },
+    "fastqc": {
+        "run_time": 50,
+        "accepted_versions": ["v1", "v2"]
     },
     "bwa-mem": {
         "run_time": 50,
@@ -55,7 +61,7 @@ workflow_details = {
     },
     "bedGraphToBigWig": {
         "run_time": 24,
-        "accepted_versions": ["v4"]
+        "accepted_versions": ["v4", "v5"]
     },
     "bedtomultivec": {
         "run_time": 24,
@@ -121,7 +127,24 @@ workflow_details = {
         "run_time": 200,
         "accepted_versions": ["v2"]
     },
+    're_checker_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['v1.1', 'v1.2']
+    },
+    'mad_qc_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['1.1_dcic_2']
+    },
+    'merge-fastq': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
+    },
+    'insulation-scores-and-boundaries-caller': {
+            "run_time": 200,
+            "accepted_versions": ['v1']
+    }
 }
+
 
 # accepted versions for completed pipelines
 accepted_versions = {
@@ -147,7 +170,7 @@ accepted_versions = {
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
-    # Preliminary - Released to network
+    # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
                       'RepliSeq_Pipeline_v16_step1'],
@@ -182,16 +205,22 @@ accepted_versions = {
     'TRIP': ['']
     }
 
+# Accepted versions for feature calling pipelines
+feature_calling_accepted_versions = {
+    'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"]
+}
 # Reference Files
 bwa_index = {"human": "4DNFIZQZ39L9",
              "mouse": "4DNFI823LSI8",
              "fruit-fly": '4DNFIO5MGY32',
-             "chicken": "4DNFIVGRYVQF"}
+             "chicken": "4DNFIVGRYVQF",
+             "zebrafish": "4DNFIUH46PG1"}
 
 chr_size = {"human": "4DNFI823LSII",
             "mouse": "4DNFI3UBJ3HZ",
             "fruit-fly": '4DNFIBEEN92C',
-            "chicken": "4DNFIQFZW4DX"}
+            "chicken": "4DNFIQFZW4DX",
+            "zebrafish": "4DNFI5W8CN1M"}
 
 # star index for rna Seq
 rna_star_index = {"human": "4DNFI3FCGSW2",
@@ -215,7 +244,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'NcoI': '/files-reference/4DNFI3HVU2OD/',
                    'MspI': '/files-reference/4DNFI2JHR3OI/',
                    'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/',
-                   'AluI': '/files-reference/4DNFIN4DB5O8/'
+                   'AluI': '/files-reference/4DNFIN4DB5O8/',
+                   'DdeI': '/files-reference/4DNFI4YGL4RE/',
+                   'DdeI and DpnII': '/files-reference/4DNFIS1FCRRK/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
@@ -248,22 +279,40 @@ re_nz_sizes = {"HindIII": "6",
                "NcoI": "6",
                "MspI": "4",
                "BspHI": "6",
+               "DdeI and DpnII": "4",
+               "DdeI": "4",
                "NcoI_MspI_BspHI": "4"  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
                }
 
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
-          'chicken': 'galGal5'}
+          'chicken': 'galGal5',
+          'zebrafish': 'GRCz11'}
 
 # color map states bed file
-states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+states_file_type = {
+    'SPIN_states_v1':
+        {
+            'color_mapper': '/files-reference/4DNFI27WSLAG/',
+            'num_states': 9
+            }
+        }
 
 
 def check_indexing(check, connection):
+    """Checks the indexing queue, if there are items in the queue,
+    Modifies the check, and returns it along with a flag that is set to True,
+    if no items, returns original checks, and flag False"""
     # wait for random time
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
+    # # TEMPORARILY DISABLE ALL PIPELINE RUNS
+    # check.status = 'PASS'  # maybe use warn?
+    # check.brief_output = ['Check Temporarily Disabled']
+    # check.summary = 'Check Temporarily Disabled'
+    # check.full_output = {}
+    # return check, True
     # check indexing queue
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
@@ -353,6 +402,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # get default run out time
     if not run:
         run = workflow_details[wfr_name]['run_time']
+
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
     run_status = 'did not run'
@@ -536,6 +586,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 
 
 def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
+    time.sleep(load_wait)
     all_inputs = []
     for arg, files in input_files.items():
         inp = extract_file_info(files, arg, auth, env)
@@ -587,6 +638,39 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
+def build_feature_calling_query(exp_types, feature, kwargs):
+    assert feature in feature_calling_accepted_versions
+
+    for exp_type in exp_types:
+        assert exp_type in accepted_versions
+
+    # Temporary run on released ExperimentSets only
+    # statuses = ['pre-release', 'released', 'released to project']
+    statuses = ['released']
+    versions = [i for i in accepted_versions[exp_type]]
+    feature_calling_versions = feature_calling_accepted_versions[feature]
+    # Build the query
+    pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
+    pre_query += "".join(["&experiments_in_set.experiment_type=" + i for i in exp_types])
+    pre_query += "".join(["&status=" + i for i in statuses])
+    # for some cases we don't have a defined complete processing tag
+    if versions:
+        pre_query += "".join(["&completed_processes=" + i for i in versions])
+
+    if feature_calling_versions:
+        pre_query += "".join(["&completed_processes!=" + i for i in feature_calling_versions])
+
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        pre_query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        pre_query += '&lab.display_title=' + lab
+    return pre_query
+
+
 def find_fastq_info(my_rep_set, fastq_files, type=None):
     """Find fastq files from experiment set
     expects my_rep_set to be set response in frame object (search result)
@@ -598,6 +682,8 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
       file dict  { exp1 : [ [file1, file2], [file3, file4]]} # paired
     - refs keys  {pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab}
     """
+    # remove non fastq.gz files from the file list
+    fastq_files = [i for i in fastq_files if i['file_format']['file_format'] == 'fastq']
     file_dict = {}
     refs = {}
     # check pairing for the first file, and assume all same
@@ -712,7 +798,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
             problems.append(file_id)
         elif report['status'] != 'complete':
             missing_run.append(file_id)
-        # There is a successful run, but no extra_file
+        # There is a successful run, but not the expected change (should be part of query)
         elif report['status'] == 'complete':
             missing_meta_changes.append(file_id)
     if running:
@@ -1152,7 +1238,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
-              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files"}
+              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
+              'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1222,7 +1309,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'rna.fastqs_R1']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1464,9 +1552,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
 
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
-        for i in exp_files:
-            print(i, exp_files[i])
-
         paired = refs['pairing']
         organism = refs['organism']
         set_summary = " - ".join([set_acc, organism, refs['f_size']])
@@ -1480,7 +1565,6 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
         if organism not in ['mouse', 'human']:
             msg = 'No reference file for ' + organism
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
@@ -1497,14 +1581,17 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 not_verified.append(an_exp)
         if not_verified:
             msg = ', '.join(not_verified) + ' Not verified for strandedness'
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
             continue
 
         # cycle through the experiments, skip the ones without usable files
+        # accumulate files for madqc
+        step2_files = []
+        step2_status = 'ready'
         for exp in exp_files.keys():
+            step1_status = 'ready'
             if not exp_files.get(exp):
                 continue
 
@@ -1542,6 +1629,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
             # if successful
             if step1_result['status'] == 'complete':
+                # add  madqc file
+                step2_files.append(step1_result['rna.gene_expression'])
                 # create processed files list for experiment
                 exp_results = []
                 for a_type in ['rna.outbam',
@@ -1555,15 +1644,15 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 complete['patch_opf'].append([exp, exp_results])
             # if still running
             elif step1_result['status'] == 'running':
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 running.append(['step1', exp])
             # if run is not successful
             elif step1_result['status'].startswith("no complete run, too many"):
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 problematic_run.append(['step1', exp])
             # if it is missing
             else:
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 # add part
                 name_tag = exp
                 inp_f = {'rna.align_index': rna_star_index[organism],
@@ -1577,6 +1666,44 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                     inp_f['rna.fastqs_R1'] = [input_files]
                 overwrite = {'parameters': pars}
                 missing_run.append(['step1', [app_name, organism, overwrite], inp_f, name_tag])
+            if step1_status != 'ready':
+                step2_status = 'not ready'
+
+        if step2_status != 'ready':
+            if running:
+                set_summary += "| running step 1"
+            elif missing_run:
+                set_summary += "| missing step 1"
+            elif problematic_run:
+                set_summary += "| problem in step 1"
+        # if there is a single replicate, skip madqc
+        elif len(step2_files) == 1:
+            step2_status = 'ready'
+        # run step2 if step1 s are complete
+        else:
+            step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
+
+            # if successful
+            if step2_result['status'] == 'complete':
+                pass
+            # if still running
+            elif step2_result['status'] == 'running':
+                step2_status = 'not ready'
+                running.append(['step2', set_acc])
+            # if run is not successful
+            elif step2_result['status'].startswith("no complete run, too many"):
+                step2_status = 'not ready'
+                problematic_run.append(['step2', set_acc])
+            # if it is missing
+            else:
+                step2_status = 'not ready'
+                # add part
+                name_tag = set_acc
+                inp_f = {'mad_qc.quantfiles': step2_files}
+                missing_run.append(['step2', ['mad_qc_workflow', organism, {}], inp_f, name_tag])
+        if step2_status != 'ready':
+            final_status = 'not ready'
 
         if final_status == 'ready':
             # add the tag
@@ -1584,11 +1711,11 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             complete['add_tag'] = [set_acc, tag]
         else:
             if running:
-                set_summary += "| running step 1"
+                set_summary += "| running step 2"
             elif missing_run:
-                set_summary += "| missing step 1"
+                set_summary += "| missing step 2"
             elif problematic_run:
-                set_summary += "| problem in step 1"
+                set_summary += "| problem in step 2"
 
         check.brief_output.append(set_summary)
         if running:
