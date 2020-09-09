@@ -1231,8 +1231,24 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
 
 
 def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
-    """If move to pc is set to true, if the exp_set or exp status is released/to project
-    it will move the files to processed_files"""
+    """Function to update experiment and experiment set metadata for pipeline completions
+    and output files.
+    Parameters
+    ----------
+    patch_data: (dict) example format:
+                {
+                'patch_opf': [
+                    ['set_acc', ['file1', 'file2']],
+                    ['exp_acc', ['file3', 'file4']]
+                    ]
+                'add_tag': [['exp_acc', 'completed_pipeline_tag']]
+                }
+    pipeline_type: (str) key for titles dictionary for setting the opf title
+    move_to_pc: (bool) If False, processing results go to other_processed_files field
+                If True:
+                   If set/exp is released/to project processing results go to other_processed_files field
+                   If set/exp is in other status, processing results go to processed_files field
+    """
     titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
