@@ -863,6 +863,13 @@ def check_long_running_ec2s(connection, **kwargs):
                 flag_instance = True
             else:
                 flag_instance = False
+            # see if long running instances are associated with a deleted WFR
+            if flag_instance and inst_name and created < warn_time:
+                search_url = 'search/?type=WorkflowRunAwsem&status=deleted&awsem_job_id='
+                search_url += '&awsem_job_id='.join([name[6:] for name in inst_name if name.startswith('awsem-')])
+                wfrs = ff_utils.search_metadata(search_url, key=connection.ff_keys)
+                if wfrs:
+                    ec2_log['deleted workflow runs'] = [wfr['@id'] for wfr in wfrs]
             # always add record to full_output; add to brief_output if
             # the instance is flagged based on 'Name' tag
             if created < fail_time:
