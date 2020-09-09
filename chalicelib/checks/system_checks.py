@@ -872,7 +872,7 @@ def check_long_running_ec2s(connection, **kwargs):
                     ec2_log['active workflow runs'] = [wfr['@id'] for wfr in wfrs]
                 deleted_wfrs = ff_utils.search_metadata(search_url + '&status=deleted', key=connection.ff_keys)
                 if deleted_wfrs:
-                    ec2_log['deleted workflow runs'] = [wfr['@id'] for wfr in wfrs]
+                    ec2_log['deleted workflow runs'] = [wfr['@id'] for wfr in deleted_wfrs]
             # always add record to full_output; add to brief_output if
             # the instance is flagged based on 'Name' tag
             if created < fail_time:
