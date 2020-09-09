@@ -142,6 +142,15 @@ workflow_details = {
 }
 
 
+def remove_parents_without_sample(samples_pedigree):
+    individuals = [i['individual'] for i in samples_pedigree]
+    for a_member in samples_pedigree:
+        parents = a_member['parents']
+        new_parents = [i for i in parents if i in individuals]
+        a_member['parents'] = new_parents
+    return samples_pedigree
+
+
 def check_workflow_version(workflows):
     errors = []
     for a_wf in workflows:
