@@ -37,6 +37,7 @@ class ESConnection(AbstractConnection):
     Implements the AbstractConnection 'interface'
     """
     def __init__(self, index=None, doc_type='result'):
+        # TODO: configure a new foursight cluster with HTTPS enabled
         self.es = es_utils.create_es_client(HOST, use_aws_url=True)
         self.index = index
         if index and not self.index_exists(index):
