@@ -1231,8 +1231,8 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
 
 
 def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
-    """If move to pc is set to true, if the exp_set or exp status is released/to project
-    it will move the files to processed_files"""
+    """If move to pc is set to true, it will move the files to processed_files,
+    unless the status of the exp_set or exp is released/to project"""
     titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
