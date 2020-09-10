@@ -240,7 +240,7 @@ def expset_opf_unique_files(connection, **kwargs):
         check.status = 'WARN'
         check.summary = '{} exp sets found with files that are also other_processed_files'.format(len(errors))
         check.description = ('{} Experiment Sets {}found that have other_processed_files'
-                             ' which are also present in raw, processed or reference files'.format(len(errors)), from_text)
+                             ' which are also present in raw, processed or reference files'.format(len(errors), from_text)
     else:
         check.status = 'PASS'
         check.summary = 'No exp sets found with files that are also other_processed_files'
