@@ -1877,7 +1877,7 @@ def check_external_references_uri(connection, **kwargs):
     check = CheckResult(connection, 'check_external_references_uri')
 
     days_back = kwargs.get('days_back')
-    from_date_query, from_text = last_modified_from(days_back)
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=Item&external_references.ref%21=No+value' +
               '&field=external_references' + from_date_query)
@@ -1915,7 +1915,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
 
     # check only recently modified files, to reduce the number of items
     days_back = kwargs.get('days_back')
-    from_date_query, from_text = last_modified_from(days_back)
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=FileProcessed' +
               '&track_and_facet_info.experiment_bucket%21=No+value' +

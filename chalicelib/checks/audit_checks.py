@@ -199,7 +199,7 @@ def expset_opf_unique_files(connection, **kwargs):
     '''
     check = CheckResult(connection, 'expset_opf_unique_files')
     days_back = kwargs.get('days_back')
-    from_date_query, from_text = last_modified_from(days_back)
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
     # opfs can be on Exps or ExpSets: search ExpSets for each case and merge results
     opf_query = ('other_processed_files.files.uuid%21=No+value' +
                  from_date_query +
@@ -209,9 +209,9 @@ def expset_opf_unique_files(connection, **kwargs):
     opf_exps = ff_utils.search_metadata(
         'search/?type=ExperimentSet&experiments_in_set.' + opf_query, key=connection.ff_keys)
     # merge
-    es_list = [expset['accession'] for expset in opf_sets]
+    es_list = [expset['@id'] for expset in opf_sets]
     for expset in opf_exps:
-        if expset['accession'] not in es_list:
+        if expset['@id'] not in es_list:
             opf_sets.append(expset)
 
     errors = {}
@@ -220,32 +220,32 @@ def expset_opf_unique_files(connection, **kwargs):
         if not expset.get('experiments_in_set'):
             continue
 
-        opfs_acc = []  # list opfs accession in the ExpSet and Exps
+        opfs_id = []  # list opfs @id in the ExpSet and Exps
         all_files = []  # list all raw, processed and reference files in the ExpSet
         if expset.get('other_processed_files'):
-            opfs_acc.extend([f['accession'] for grp in expset['other_processed_files'] for f in grp.get('files', []) if f])
+            opfs_id.extend([f['@id'] for grp in expset['other_processed_files'] for f in grp.get('files', [])])
         for exp in expset['experiments_in_set']:
             if exp.get('other_processed_files'):
-                opfs_acc.extend([f['accession'] for grp in exp['other_processed_files'] for f in grp.get('files', []) if f])
-            all_files.extend([f['accession'] for f in exp.get('files', []) if f])
-            all_files.extend([f['accession'] for f in exp.get('processed_files', []) if f])
-            all_files.extend([f['accession'] for f in exp.get('reference_files', []) if f])
-        all_files.extend([f['accession'] for f in expset.get('processed_files', []) if f])
+                opfs_id.extend([f['@id'] for grp in exp['other_processed_files'] for f in grp.get('files', [])])
+            all_files.extend([f['@id'] for f in exp.get('files', [])])
+            all_files.extend([f['@id'] for f in exp.get('processed_files', [])])
+            all_files.extend([f['@id'] for f in exp.get('reference_files', [])])
+        all_files.extend([f['@id'] for f in expset.get('processed_files', [])])
 
         # compare opfs and files lists to find duplicates
-        for opf in opfs_acc:
+        for opf in opfs_id:
             if opf in all_files:
-                errors.setdefault(expset['accession'], []).append(opf)
+                errors.setdefault(expset['@id'], []).append(opf)
     if errors:
         check.status = 'WARN'
         check.summary = '{} exp sets found with files that are also other_processed_files'.format(len(errors))
-        check.description = ('{} Experiment Sets found that have other_processed_files'
-                             ' which are also present in raw, processed or reference files'.format(len(errors)))
+        check.description = ('{} Experiment Sets {}found that have other_processed_files'
+                             ' which are also present in raw, processed or reference files'.format(len(errors)), from_text)
     else:
         check.status = 'PASS'
         check.summary = 'No exp sets found with files that are also other_processed_files'
-        check.description = ('0 Experiment Sets found that have other_processed_files'
-                             ' which are also present in raw, processed or reference files')
+        check.description = ('No Experiment Sets {}found that have other_processed_files'
+                             ' which are also present in raw, processed or reference files'.format(from_text))
     check.full_output = errors
 
     return check
