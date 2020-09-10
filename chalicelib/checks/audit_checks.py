@@ -203,7 +203,7 @@ def expset_opf_unique_files(connection, **kwargs):
     # opfs can be on Exps or ExpSets: search ExpSets for each case and merge results
     opf_query = ('other_processed_files.files.uuid%21=No+value' +
                  from_date_query +
-                 '&field=experiments_in_set&field=other_processed_files')
+                 '&field=experiments_in_set&field=processed_files&field=other_processed_files')
     opf_sets = ff_utils.search_metadata(
         'search/?type=ExperimentSet&' + opf_query, key=connection.ff_keys)
     opf_exps = ff_utils.search_metadata(
