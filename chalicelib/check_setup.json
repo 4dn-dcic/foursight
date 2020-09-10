@@ -1400,7 +1400,7 @@
                     "dependencies": []
                 },
                 "cgapwolf": {
-                    "kwargs": {"primary": true},
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
