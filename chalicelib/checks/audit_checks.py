@@ -406,6 +406,7 @@ def check_help_page_urls(connection, **kwargs):
     results = help_results
     results = results + [item for item in resource_results if item['@id'] not in [res['@id'] for res in results]]
     sections_w_broken_links = {}
+    addl_exceptions = {}
     timeouts = {}
     for result in results:
         broken_links = []
@@ -444,6 +445,9 @@ def check_help_page_urls(connection, **kwargs):
                 timeouts[result['@id']].append(url)
             except requests.exceptions.SSLError:
                 continue
+            except Exception as e:
+                addl_exceptions.setdefault(result['@id'], {})
+                addl_exceptions[result['@id']][url] = e
         if broken_links:
             sections_w_broken_links[result['@id']] = broken_links
     if sections_w_broken_links:
@@ -457,7 +461,8 @@ def check_help_page_urls(connection, **kwargs):
         check.description = check.summary
     check.full_output = {
         'broken links': sections_w_broken_links,
-        'timed out requests': timeouts
+        'timed out requests': timeouts,
+        'additional exceptions': addl_exceptions
     }
     return check
 
