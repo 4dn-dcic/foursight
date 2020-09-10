@@ -255,7 +255,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
          "fruit-fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
                        },
          "chicken": {"HindIII": '/files-reference/4DNFITPCJFWJ/'
-                     }
+                     },
+         "zebrafish": {'MboI': '/files-reference/4DNFI6OUDFWL/'
+                       }
          }
 
 
