@@ -148,6 +148,19 @@
             }
         }
     },
+    "expset_opf_unique_files": {
+
+        "title": "Experiment Sets with other processed files also present in files",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "expset_opf_unique_files_in_experiments": {
         "title": "Other_processed_files collections with non-unique files",
         "group": "Audit checks",
