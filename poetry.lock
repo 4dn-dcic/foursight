@@ -52,10 +52,10 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = false
 python-versions = "*"
-version = "1.14.58"
+version = "1.14.59"
 
 [package.dependencies]
-botocore = ">=1.17.58,<1.18.0"
+botocore = ">=1.17.59,<1.18.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
@@ -65,13 +65,16 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = false
 python-versions = "*"
-version = "1.17.58"
+version = "1.17.59"
 
 [package.dependencies]
 docutils = ">=0.10,<0.16"
 jmespath = ">=0.7.1,<1.0.0"
 python-dateutil = ">=2.1,<3.0.0"
-urllib3 = ">=1.20,<1.26"
+
+[package.dependencies.urllib3]
+python = "<3.4.0 || >=3.5.0"
+version = ">=1.20,<1.26"
 
 [[package]]
 category = "main"
@@ -157,7 +160,7 @@ description = "Utility package for interacting with the 4DN Data Portal and othe
 name = "dcicutils"
 optional = false
 python-versions = ">=3.4,<3.8"
-version = "1.0.0b0"
+version = "1.0.0b1"
 
 [package.dependencies]
 aws-requests-auth = ">=0.4.2,<1"
@@ -759,7 +762,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "3511e1187fb268867cccadc637d5d79f470371aa16881795919d2879b7d95ce8"
+content-hash = "75dee48f488663b4f35b32182346b6efee65bfb1be0a87e64ac972974fa4f2df"
 python-versions = ">=3.6,<3.7"
 
 [metadata.files]
@@ -781,11 +784,12 @@ beautifulsoup4 = [
     {file = "beautifulsoup4-4.9.1.tar.gz", hash = "sha256:73cc4d115b96f79c7d77c1c7f7a0a8d4c57860d1041df407dd1aae7f07a77fd7"},
 ]
 boto3 = [
-    {file = "boto3-1.14.58-py2.py3-none-any.whl", hash = "sha256:cf186e0bcf3f0ecdc99cb4f4b579c39a30779ebaf050a3d74b2b4d2dd6b4abcf"},
-    {file = "boto3-1.14.58.tar.gz", hash = "sha256:89939e68c6200154c326dfe791c6492ea8f78ba966de5e57308bc48847a16a91"},
+    {file = "boto3-1.14.59-py2.py3-none-any.whl", hash = "sha256:b596a80181fecd775ccc009286400f4d785136f250967895cb34beeeef65eb1f"},
+    {file = "boto3-1.14.59.tar.gz", hash = "sha256:20edd03ae4c4e141b0d8a9a9afc773af4345d54b68202b6aa502956b57b18b3f"},
 ]
 botocore = [
-    {file = "botocore-1.17.58.tar.gz", hash = "sha256:37cc3f1013c00dc0f061582198d6b785dadf147bd99307d41c5c0e47debca65c"},
+    {file = "botocore-1.17.59-py2.py3-none-any.whl", hash = "sha256:9736ff0c2a27e800864953c812be2f41fb9a6247350db4f052ef5e5b200a1ac4"},
+    {file = "botocore-1.17.59.tar.gz", hash = "sha256:47aa4683597b5b20bbaeee31f583d9ad701a6dd51ed56e1b61708a2057bbb1ae"},
 ]
 cachetools = [
     {file = "cachetools-4.1.1-py3-none-any.whl", hash = "sha256:513d4ff98dd27f85743a8dc0e92f55ddb1b49e060c2d5961512855cda2c01a98"},
@@ -848,8 +852,8 @@ coverage = [
     {file = "coverage-5.2.1.tar.gz", hash = "sha256:a34cb28e0747ea15e82d13e14de606747e9e484fb28d63c999483f5d5188e89b"},
 ]
 dcicutils = [
-    {file = "dcicutils-1.0.0b0-py3-none-any.whl", hash = "sha256:6404b7023fad247c654a8fbc2ccbc96145e724ff106bb721e174c8af31e87351"},
-    {file = "dcicutils-1.0.0b0.tar.gz", hash = "sha256:a7bd8fb7206a70af27f66d415d8f002999b7aa48a18c50d855f26a61115ab4aa"},
+    {file = "dcicutils-1.0.0b1-py3-none-any.whl", hash = "sha256:bb86f19e5e6ff114b4690a5317d6c7c1919085324f81021840588b3d9c58b965"},
+    {file = "dcicutils-1.0.0b1.tar.gz", hash = "sha256:94f2e5550f40e523cec61c5b5a82605fdd5104b2881d5acd6193af6351a946aa"},
 ]
 decorator = [
     {file = "decorator-4.4.2-py2.py3-none-any.whl", hash = "sha256:41fa54c2a0cc4ba648be4fd43cff00aedf5b9465c9bf18d64325bc225f08f760"},
