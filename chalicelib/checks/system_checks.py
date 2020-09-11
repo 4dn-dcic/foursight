@@ -1,7 +1,8 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    basestring
+    basestring,
+    create_es_client_secure
 )
 from ..run_result import CheckResult
 from dcicutils import (
@@ -34,8 +35,7 @@ def wipe_build_indices(connection, es_url):
     check = CheckResult(connection, 'wipe_build_indices')
     check.status = 'PASS'
     check.summary = check.description = 'Wiped all test indices on url: %s' % es_url
-    es_options = { 'use_ssl': True }
-    client = es_utils.create_es_client(es_url, True, **es_options)
+    client = create_es_client_secure(es_url)
     full_output = []
     for i in range(1, 10):  # delete all number prefixed indices 0-9
         try:
@@ -69,8 +69,7 @@ def elastic_search_space(connection, **kwargs):
     """ Checks that our ES nodes all have a certain amount of space remaining """
     check = CheckResult(connection, 'elastic_search_space')
     full_output = {}
-    es_options = {'use_ssl': True}
-    client = es_utils.create_es_client(connection.ff_es, True, **es_options)
+    client = create_es_client_secure(connection.ff_es)
     # use cat.nodes to get id,diskAvail for all nodes, filter out empties
     node_space_entries = filter(None, [data.split() for data in client.cat.nodes(h='id,diskAvail').split('\n')])
     check.summary = check.description = None
@@ -163,8 +162,7 @@ def elastic_beanstalk_health(connection, **kwargs):
 def status_of_elasticsearch_indices(connection, **kwargs):
     check = CheckResult(connection, 'status_of_elasticsearch_indices')
     ### the check
-    es_options = {'use_ssl': True}
-    client = es_utils.create_es_client(connection.ff_es, True, **es_options)
+    client = create_es_client_secure(connection.ff_es)
     indices = client.cat.indices(v=True).split('\n')
     split_indices = [ind.split() for ind in indices]
     headers = split_indices.pop(0)
@@ -230,8 +228,7 @@ def indexing_progress(connection, **kwargs):
 @check_function()
 def indexing_records(connection, **kwargs):
     check = CheckResult(connection, 'indexing_records')
-    es_options = {'use_ssl': True}
-    client = es_utils.create_es_client(connection.ff_es, True, **es_options)
+    client = create_es_client_secure(connection.ff_es)
     namespaced_index = connection.ff_env + 'indexing'
     # make sure we have the index and items within it
     if (not client.indices.exists(namespaced_index) or
@@ -778,8 +775,7 @@ def purge_download_tracking_items(connection, **kwargs):
     search = '/search/?type=TrackingItem&tracking_type=download_tracking&status=deleted&field=uuid&limit=300'
     search_res = ff_utils.search_metadata(search, key=connection.ff_keys)
     search_uuids = [res['uuid'] for res in search_res]
-    es_options = {'use_ssl': True}
-    client = es_utils.create_es_client(connection.ff_es, True, **es_options)
+    client = create_es_client_secure(connection.ff_es)
     # a bit convoluted, but we want the frame=raw, which does not include uuid
     # use get_es_metadata to handle this. Use it as a generator
     for to_purge in ff_utils.get_es_metadata(search_uuids, es_client=client, is_generator=True,

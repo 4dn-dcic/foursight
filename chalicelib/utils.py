@@ -13,6 +13,7 @@ import json
 import re
 from importlib import import_module
 from functools import wraps, partial
+from dcicutils.es_utils import create_es_client
 from .run_result import CheckResult, ActionResult, BadCheckOrAction
 from .s3_connection import S3Connection
 
@@ -442,3 +443,15 @@ def store_json(rel, fname, data):
     path = os.path.join(os.path.dirname(rel), fname)
     with open(path, 'w+') as f:
         return json.dump(data, f)
+
+
+def create_es_client_secure(es_url):
+    """ Helper function that creates an es client, inferring whether or not to use SSL based on if
+        the port is '443'.
+    """
+    port = es_url[-3:]  # last 3 chars of URL, if this is an SSL connection, should be port 443
+    if port == '443':
+        es_options = {'use_ssl': True}
+        return create_es_client(es_url, True, **es_options)
+    else:
+        return create_es_client(es_url, True)
