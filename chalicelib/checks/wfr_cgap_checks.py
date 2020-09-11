@@ -288,7 +288,7 @@ def cgap_status(connection, **kwargs):
         check.full_output = {}
         return check
 
-    query_base = '/search/?type=Case&sample.files.display_title%21=No+value'
+    query_base = '/search/?type=Case&sample.files.display_title%21=No+value&sample.workup_type=WGS&sample.workup_type=WES'
     version_filter = "".join(["&sample.completed_processes!=" + i for i in cgap_partI_version])
     q = query_base + version_filter
 
