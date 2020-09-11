@@ -218,6 +218,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "insulation-scores-and-boundaries-caller",
         "workflow_uuid": "dc9efc2d-baa5-4304-b72b-14610d8d5fc4",
         "parameters": {"binsize": -1, "windowsize": 100000},
+        "config": {'mem': 32},
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,
@@ -228,6 +229,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'boundaries',
                 'description': 'Boundaries calls on Hi-C contact matrices'}
             }
+        },
+        {
+        "app_name": "compartments-caller",
+        "workflow_uuid": "",
+        "parameters": {"binsize": -1, "contact_type": 100000},
+        'custom_pf_fields': {
+            'bwfile': {
+                'genome_assembly': genome,
+                'file_type': 'compartments',
+                'description': 'Compartments signals on Hi-C contact matrices'}
+            },
         },
         {
         "app_name": "rna-strandedness",
