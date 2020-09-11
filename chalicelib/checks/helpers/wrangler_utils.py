@@ -1,3 +1,6 @@
+import datetime
+
+
 # calculate strandedness in fastq files
 def calculate_rna_strandedness(files):
     '''
@@ -81,3 +84,21 @@ def calculate_rna_strandedness(files):
         strandedness_info['files'] = files
 
     return strandedness_info
+
+
+def last_modified_from(days_back):
+    """Check if input is a number and return a string to search for items last
+    modified from n days ago. Also returns a message with the resulting number.
+    """
+    try:
+        days_back = float(days_back)
+    except (ValueError, TypeError):
+        from_date_query = ''
+        from_text = ''
+    else:
+        date_now = datetime.datetime.now(datetime.timezone.utc)
+        date_diff = datetime.timedelta(days=days_back)
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
+        from_date_query = '&last_modified.date_modified.from=' + from_date
+        from_text = 'modified from %s ' % from_date
+    return from_date_query, from_text

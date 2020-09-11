@@ -1877,17 +1877,7 @@ def check_external_references_uri(connection, **kwargs):
     check = CheckResult(connection, 'check_external_references_uri')
 
     days_back = kwargs.get('days_back')
-    try:
-        days_back = float(days_back)
-    except (ValueError, TypeError):
-        from_date_query = ''
-        from_text = ''
-    else:
-        date_now = datetime.datetime.now(datetime.timezone.utc)
-        date_diff = datetime.timedelta(days=days_back)
-        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
-        from_date_query = '&last_modified.date_modified.from=' + from_date
-        from_text = 'modified from %s ' % from_date
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=Item&external_references.ref%21=No+value' +
               '&field=external_references' + from_date_query)
@@ -1925,17 +1915,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
 
     # check only recently modified files, to reduce the number of items
     days_back = kwargs.get('days_back')
-    try:
-        days_back = float(days_back)
-    except (ValueError, TypeError):
-        from_date_query = ''
-        from_text = ''
-    else:
-        date_now = datetime.datetime.now(datetime.timezone.utc)
-        date_diff = datetime.timedelta(days=days_back)
-        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d+%H:%M")
-        from_date_query = '&last_modified.date_modified.from=' + from_date
-        from_text = 'modified from %s ' % from_date
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=FileProcessed' +
               '&track_and_facet_info.experiment_bucket%21=No+value' +
