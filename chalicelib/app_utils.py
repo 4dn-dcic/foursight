@@ -376,6 +376,8 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
+            if 'cgap' in this_environ and not is_admin:  # no view permissions for non-admins on CGAP
+                continue
             connection = init_connection(this_environ, _environments=environments)
         except Exception:
             connection = None
