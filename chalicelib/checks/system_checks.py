@@ -41,7 +41,10 @@ def wipe_build_indices(connection, es_url):
     full_output = []
     _, indices = cat_indices(client)  # index name is index 2 in row
     for index in indices:
-        index_name = index[2]
+        try:
+            index_name = index[2]
+        except IndexError:  # empty [] sometimes returned by API call
+            continue
         if re.match(BUILD_INDICES_REGEX, index_name) is not None:
             try:
                 resp = Retry.retrying(client.indices.delete, retries_allowed=3)(index=index_name)
