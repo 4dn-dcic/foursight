@@ -1,7 +1,8 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    basestring
+    basestring,
+    cat_indices
 )
 from ..run_result import CheckResult
 from dcicutils import (
@@ -10,6 +11,8 @@ from dcicutils import (
     beanstalk_utils,
     env_utils
 )
+from dcicutils.misc_utils import Retry
+import re
 import requests
 import json
 import datetime
@@ -19,12 +22,12 @@ import time
 
 # XXX: put into utils?
 CGAP_TEST_CLUSTER = 'search-cgap-testing-ud3ggpjj7x6vclx62nmzymyzfi.us-east-1.es.amazonaws.com:80'
-FF_TEST_CLUSTER = 'search-fourfront-testing-hjozudm7pq5wwlssx2pjlsyz7y.us-east-1.es.amazonaws.com:80'
+FF_TEST_CLUSTER = 'search-fourfront-testing-6-8-kncqa2za2r43563rkcmsvgn2fq.us-east-1.es.amazonaws.com:443'
 TEST_ES_CLUSTERS = [
     CGAP_TEST_CLUSTER,
     FF_TEST_CLUSTER
 ]
-DELETE_REQUEST_TIMEOUT = 30  # wildcard delete could take time, default is 10
+BUILD_INDICES_REGEX = re.compile('^[0-9]')  # build indices are prefixed by numbers
 
 
 def wipe_build_indices(connection, es_url):
@@ -36,14 +39,20 @@ def wipe_build_indices(connection, es_url):
     check.summary = check.description = 'Wiped all test indices on url: %s' % es_url
     client = es_utils.create_es_client(es_url, True)
     full_output = []
-    for i in range(1, 10):  # delete all number prefixed indices 0-9
+    _, indices = cat_indices(client)  # index name is index 2 in row
+    for index in indices:
         try:
-            resp = client.indices.delete(index=str(i) + '*',
-                                         request_timeout=DELETE_REQUEST_TIMEOUT)
-        except Exception as e:
-            full_output.append({'acknowledged': True, 'error': str(e)})
-        else:
-            full_output.append(resp)
+            index_name = index[2]
+        except IndexError:  # empty [] sometimes returned by API call
+            continue
+        if re.match(BUILD_INDICES_REGEX, index_name) is not None:
+            try:
+                resp = Retry.retrying(client.indices.delete, retries_allowed=3)(index=index_name)
+            except Exception as e:
+                full_output.append({'acknowledged': True, 'error': str(e)})
+            else:
+                full_output.append(resp)
+
     if any(output['acknowledged'] is not True for output in full_output):
         check.status = 'FAIL'
         check.summary = check.description = 'Failed to wipe all test indices, see full output'
