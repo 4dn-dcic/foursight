@@ -40,7 +40,8 @@ from .utils import (
 )
 from .s3_connection import S3Connection
 
-DEFAULT_FAVICON = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
+FOURFRONT_FAVICON = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
+CGAP_FAVICON = 'https://cgap.hms.harvard.edu/static/img/favicon-fs.ico'
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -179,13 +180,15 @@ def get_favicon(server):
     Tries to grab favicon from the given server. If it's not found it will use
     the default favicon (data)
     """
-    try:
-        favicon = server + 'static/img/favicon-fs.ico'
+    def favicon_is_valid(favicon):
         res = requests.head(favicon)
-        assert res.status_code == 200
-    except:
-        favicon = DEFAULT_FAVICON
-    return favicon
+        return res.status_code == 200
+
+    if 'cgap' in server:
+        favicon = CGAP_FAVICON  # want full HTTPS, so hard-coded in
+    else:
+        favicon = FOURFRONT_FAVICON  # *should* always be valid, so reasonable fallback
+    return favicon if favicon_is_valid(favicon) else FOURFRONT_FAVICON
 
 
 def get_domain_and_context(request_dict):
@@ -209,7 +212,7 @@ def process_response(response):
     Does any final processing of a Foursight response before returning it. Right now, this includes:
     * Changing the response body if it is greater than 5.5 MB (Lambda body max is 6 MB)
     """
-    if len(json.dumps(response.body)) > 5500000:
+    if get_size(response.body) > 5500000:  # should be much faster than json.dumps
         response.body = 'Body size exceeded 6 MB maximum.'
         response.status_code = 413
     return response
@@ -371,6 +374,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     total_envs = []
     servers = []
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
+    import pdb; pdb.set_trace()
     for this_environ in view_envs:
         try:
             connection = init_connection(this_environ, _environments=environments)
@@ -403,7 +407,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     queue_attr = get_sqs_attributes(get_sqs_queue().url)
     running_checks = queue_attr.get('ApproximateNumberOfMessagesNotVisible')
     queued_checks = queue_attr.get('ApproximateNumberOfMessages')
-    first_env_favicon = get_favicon(servers[0]) # use first env
+    first_env_favicon = get_favicon(servers[0]) if len(servers) > 0 else get_favicon('ff')  # use first env, default FF
     html_resp.body = template.render(
         env=environ,
         view_envs=total_envs,
@@ -602,7 +606,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
     if server is not None:
         favicon = get_favicon(server)
     else:
-        favicon = DEFAULT_FAVICON
+        favicon = FOURFRONT_FAVICON
     html_resp.body = template.render(
         env=environ,
         check=check,
