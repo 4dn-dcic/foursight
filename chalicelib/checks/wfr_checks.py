@@ -530,9 +530,9 @@ def bed2beddb_status(connection, **kwargs):
         return check
     check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
     if missing:
-        check['full_output']['missing_assembly'] = missing
+        check.full_output['missing_assembly'] = missing
         msg = str(len(missing)) + ' files missing genome assembly'
-        check['brief_output'].insert(0, msg)
+        check.brief_output.insert(0, msg)
     return check
 
 

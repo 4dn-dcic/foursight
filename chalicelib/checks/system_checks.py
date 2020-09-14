@@ -22,7 +22,7 @@ import time
 
 # XXX: put into utils?
 CGAP_TEST_CLUSTER = 'search-cgap-testing-ud3ggpjj7x6vclx62nmzymyzfi.us-east-1.es.amazonaws.com:80'
-FF_TEST_CLUSTER = 'search-fourfront-testing-hjozudm7pq5wwlssx2pjlsyz7y.us-east-1.es.amazonaws.com:80'
+FF_TEST_CLUSTER = 'search-fourfront-testing-6-8-kncqa2za2r43563rkcmsvgn2fq.us-east-1.es.amazonaws.com:443'
 TEST_ES_CLUSTERS = [
     CGAP_TEST_CLUSTER,
     FF_TEST_CLUSTER
@@ -869,6 +869,16 @@ def check_long_running_ec2s(connection, **kwargs):
                 flag_instance = True
             else:
                 flag_instance = False
+            # see if long running instances are associated with a deleted WFR
+            if flag_instance and inst_name and created < warn_time:
+                search_url = 'search/?type=WorkflowRunAwsem&awsem_job_id='
+                search_url += '&awsem_job_id='.join([name[6:] for name in inst_name if name.startswith('awsem-')])
+                wfrs = ff_utils.search_metadata(search_url, key=connection.ff_keys)
+                if wfrs:
+                    ec2_log['active workflow runs'] = [wfr['@id'] for wfr in wfrs]
+                deleted_wfrs = ff_utils.search_metadata(search_url + '&status=deleted', key=connection.ff_keys)
+                if deleted_wfrs:
+                    ec2_log['deleted workflow runs'] = [wfr['@id'] for wfr in deleted_wfrs]
             # always add record to full_output; add to brief_output if
             # the instance is flagged based on 'Name' tag
             if created < fail_time:
