@@ -272,7 +272,8 @@ re_kmer = {"human": '/files-reference/4DNFIDMVPFSO/',
 max_size = {"human": None,
             "mouse": 8.2,
             "fruit-fly": 7.5,
-            "chicken": 8.2}
+            "chicken": 8.2,
+            "zebrafish": 7.8}
 
 # Restriction enzyme recognition site length`
 re_nz_sizes = {"HindIII": "6",
