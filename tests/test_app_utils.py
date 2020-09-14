@@ -24,7 +24,7 @@ class TestAppUtils():
 
     def test_get_favicon(self):
         """ Tests that given 'mastertest' we get the right url for favicon """
-        expected = self.conn.ff_server + 'static/img/favicon-fs.ico'
+        expected = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
         actual = app_utils.get_favicon(self.conn.ff_server)
         assert expected == actual
 
