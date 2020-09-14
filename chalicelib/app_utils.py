@@ -374,7 +374,6 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     total_envs = []
     servers = []
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
-    import pdb; pdb.set_trace()
     for this_environ in view_envs:
         try:
             connection = init_connection(this_environ, _environments=environments)
