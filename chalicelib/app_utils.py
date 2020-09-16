@@ -14,6 +14,7 @@ from itertools import chain
 from dateutil import tz
 from base64 import b64decode
 from dcicutils import ff_utils
+from dcicutils.env_utils import is_cgap_env, is_cgap_server
 from .fs_connection import FSConnection
 from .run_result import CheckResult, ActionResult
 from .check_utils import (
@@ -42,6 +43,7 @@ from .s3_connection import S3Connection
 
 FOURFRONT_FAVICON = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
 CGAP_FAVICON = 'https://cgap.hms.harvard.edu/static/img/favicon-fs.ico'
+LAMBDA_MAX_BODY_SIZE = 5500000  # 6Mb is the "real" threshold
 
 jin_env = Environment(
     loader=FileSystemLoader('chalicelib/templates'),
@@ -184,7 +186,7 @@ def get_favicon(server):
         res = requests.head(favicon)
         return res.status_code == 200
 
-    if 'cgap' in server:
+    if is_cgap_server(server):
         favicon = CGAP_FAVICON  # want full HTTPS, so hard-coded in
     else:
         favicon = FOURFRONT_FAVICON  # *should* always be valid, so reasonable fallback
@@ -212,7 +214,7 @@ def process_response(response):
     Does any final processing of a Foursight response before returning it. Right now, this includes:
     * Changing the response body if it is greater than 5.5 MB (Lambda body max is 6 MB)
     """
-    if get_size(response.body) > 5500000:  # should be much faster than json.dumps
+    if get_size(response.body) > LAMBDA_MAX_BODY_SIZE:  # should be much faster than json.dumps
         response.body = 'Body size exceeded 6 MB maximum.'
         response.status_code = 413
     return response
@@ -376,7 +378,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
-            if 'cgap' in this_environ and not is_admin:  # no view permissions for non-admins on CGAP
+            if is_cgap_env(this_environ) and not is_admin:  # no view permissions for non-admins on CGAP
                 continue
             connection = init_connection(this_environ, _environments=environments)
         except Exception:
@@ -607,7 +609,7 @@ def view_foursight_history(environ, check, start=0, limit=25, is_admin=False,
     if server is not None:
         favicon = get_favicon(server)
     else:
-        favicon = FOURFRONT_FAVICON
+        favicon = FOURFRONT_FAVICON  # default to fourfront if no server
     html_resp.body = template.render(
         env=environ,
         check=check,
