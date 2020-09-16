@@ -2,6 +2,8 @@ from conftest import *
 import json
 import boto3
 from botocore.exceptions import ClientError
+from dcicutils.env_utils import FF_PUBLIC_URL_PRD
+
 
 class TestAppUtils():
     """
@@ -24,7 +26,7 @@ class TestAppUtils():
 
     def test_get_favicon(self):
         """ Tests that given 'mastertest' we get the right url for favicon """
-        expected = self.conn.ff_server + 'static/img/favicon-fs.ico'
+        expected = FF_PUBLIC_URL_PRD + '/static/img/favicon-fs.ico'  # favicon acquired from prod
         actual = app_utils.get_favicon(self.conn.ff_server)
         assert expected == actual
 
