@@ -383,7 +383,11 @@ def cgap_status(connection, **kwargs):
             will_go_to_part_3 = True
 
         for pair in sample_raw_files:
-            # RUN STEP 1
+            if isinstance(pair, list):
+                keep['problematic_run'].append(['fastq file is missing its pair'])
+                stop_level_2 = True
+                continue
+
             s1_input_files = {'fastq_R1': pair[0], 'fastq_R2': pair[1], 'reference': refs['bwa_ref']}
             s1_tag = a_sample['accession'] + '_' + pair[0].split('/')[2] + '_' + pair[1].split('/')[2]
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,

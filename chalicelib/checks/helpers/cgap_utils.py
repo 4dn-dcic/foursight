@@ -631,7 +631,7 @@ def find_fastq_info(my_sample, fastq_files, organism='human'):
                     paired = "No"
 
             if paired == 'No':
-                files.append(f1)
+                files.append([f1])
             elif paired == 'Yes':
                 relations = file_resp['related_files']
                 paired_files = [relation['file']['@id'] for relation in relations
