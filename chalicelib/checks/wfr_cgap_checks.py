@@ -360,7 +360,14 @@ def cgap_status(connection, **kwargs):
         # are all files uploaded ?
         all_uploaded = True
         # get all fastq files (can be file_fastq or file_processed)
-        fastq_files = [i for i in all_files if i.get('file_format', {}).get('file_format') == 'fastq']
+        fastq_file_ids = [i.get('@id') for i in a_sample.get('files', [])]
+        if not fastq_file_ids:
+            final_status = a_sample['accession'] + ' skipped, no files on sample'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({a_sample['accession']: 'no files on sample'})
+            continue
+        fastq_files = [i for i in all_files if i['@id'] in fastq_file_ids]
         for a_file in fastq_files:
             if a_file['status'] in ['uploading', 'upload failed']:
                 all_uploaded = False
