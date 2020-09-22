@@ -97,7 +97,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             # step1
             {
                 'app_name': 'workflow_bwa-mem_no_unzip-check',
-                'workflow_uuid': '9e094699-561b-4396-8d6a-ffc45f98c5e1',
+                'workflow_uuid': '50e75343-2e00-471d-a667-4acb083287d8',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5n.18xlarge",
@@ -115,7 +115,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             # step2
             {
                 'app_name': 'workflow_add-readgroups-check',
-                'workflow_uuid': '6ea6bf43-76c2-4616-8dd6-dd60d72a2bf2',
+                'workflow_uuid': 'd554d59b-e709-4c35-a81f-68a0cb3dd38a',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5.2xlarge",
