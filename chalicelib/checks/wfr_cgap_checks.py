@@ -471,9 +471,11 @@ def cgap_status(connection, **kwargs):
             if step7_status != 'complete':
                 step8_status = ""
             else:
+                # mpileupCounts
                 s8_input_files = {'input_bam': step7_output,
                                   'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                                  'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+                                  'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7',
+                                  'additional_file_parameters': {'input_bam': {"mount": True}}}
                 keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
                                                                       'step8', a_sample['accession'], step7_output,
                                                                       s8_input_files,  step8_name, 'rck')
