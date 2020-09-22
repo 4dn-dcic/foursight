@@ -7,14 +7,16 @@ from git import Repo
 
 from ..run_result import CheckResult, ActionResult
 from ..utils import check_function, action_function
+from dcicutils.ff_utils import get_metadata
 from dcicutils.deployment_utils import EBDeployer
 from dcicutils.beanstalk_utils import compute_ff_stg_env
 from dcicutils.env_utils import (
     FF_ENV_INDEXER, CGAP_ENV_INDEXER, is_fourfront_env, is_cgap_env,
 
 )
-from dcicutils.beanstalk_utils import compute_cgap_prd_env, compute_ff_prd_env
-from dcicutils.beanstalk_utils import beanstalk_info, is_indexing_finished
+from dcicutils.beanstalk_utils import (
+    compute_cgap_prd_env, compute_ff_prd_env, beanstalk_info, is_indexing_finished
+)
 
 
 def try_to_describe_indexer_env(env):
@@ -45,6 +47,22 @@ def cleanup_tempdir(tempdir):
     shutil.rmtree(tempdir)
 
 
+def are_counts_are_even(env):
+    """ From dcicutils - to be ported over in this form at some point. """
+    try:
+        totals = get_metadata('/counts', ff_env=env)['db_es_total'].split()
+    except Exception:
+        # if we cant get counts page assume its False
+        return False, {}
+
+    # example value of split totals: ["DB:", "74048", "ES:", "74048"]
+    db_total = totals[1]
+    es_total = totals[3]
+    if int(db_total) > int(es_total):
+        return False, totals
+    return True, totals
+
+
 @check_function(env='fourfront-hotseat')
 def indexer_server_status(connection, **kwargs):
     """ Checks the status of index servers (if any are up) """
@@ -54,14 +72,14 @@ def indexer_server_status(connection, **kwargs):
     indexer_env = FF_ENV_INDEXER if is_fourfront_env(env) else CGAP_ENV_INDEXER
     description = try_to_describe_indexer_env(indexer_env)  # verify an indexer is online
     if description is None:
-        check.status = 'ERROR'
+        check.status = 'PASS'  # could have been terminated
         check.summary = 'Did not locate corresponding indexer env: ' \
                         'given env %s does not have indexer %s' % (env, indexer_env)
         check.allow_action = False
         return check
 
     try:
-        indexing_finished, counts = is_indexing_finished(env)
+        indexing_finished, counts = are_counts_are_even(env)
     except Exception as e:  # XXX: This should be handled in dcicutils -Will 5/18/2020
         check.status = 'ERROR'
         check.summary = 'Failed to get indexing status of given env: %s' % str(e)
