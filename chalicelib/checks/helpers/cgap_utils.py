@@ -88,11 +88,11 @@ workflow_details = {
     # part III step 3
     'workflow_gatk-VQSR-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13"]
     },
     "workflow_qcboard-bam": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v3"]
     },
     "workflow_cram2fastq": {
         "run_time": 12,
@@ -161,8 +161,6 @@ def check_workflow_version(workflows):
             continue
         wf_info = workflow_details[wf_name]
         versions = wf_info['accepted_versions']
-        # latest version should be the last one on the list
-        last_version = versions[-1]
         # sometimes there are 2 or more workflows with same app name
         # and the old one might not have the latest version
         # look for all wfs with same name and make sure the latest version is on one
@@ -174,13 +172,29 @@ def check_workflow_version(workflows):
                                                                              a_version,
                                                                              str(versions))
                 errors.append(err)
-        # make sure the latest is also on one of the wfrs
-        if last_version not in all_wf_versions:
-            err = '{} version {} is not on any wf app_version)'.format(wf_name,
-                                                                       last_version)
-            errors.append(err)
     return errors
 
+
+def check_latest_workflow_version(workflows):
+    errors = []
+    for a_wf in workflows:
+        wf_name = a_wf['app_name']
+        # make sure the workflow is in our control list
+        if wf_name not in workflow_details:
+            continue
+        wf_info = workflow_details[wf_name]
+        versions = wf_info['accepted_versions']
+        # latest version should be the last one on the list
+        last_version = versions[-1]
+        # sometimes there are 2 or more workflows with same app name
+        # and the old one might not have the latest version
+        # look for all wfs with same name and make sure the latest version is on one
+        all_wf_versions = [i.get('app_version', '') for i in workflows if i['app_name'] == wf_name]
+        # make sure the latest is also on one of the wfrs
+        if last_version not in all_wf_versions:
+            err = '{} version {} is not on any wf app_version)'.format(wf_name, last_version)
+            errors.append(err)
+    return errors
 
 # accepted versions for completed pipelines
 # accepted_versions = {

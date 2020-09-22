@@ -311,6 +311,12 @@ def cgap_status(connection, **kwargs):
     step10_name = 'cgap-bamqc'
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
+    wf_errs = cgap_utils.check_latest_workflow_version(all_system_wfs)
+    if wf_errs:
+        check.summary = 'Error, problem with latest workflow versions'
+        check.brief_output.extend(wf_errs)
+        return check
+
     for a_case in all_cases:
         all_items, all_uuids = ff_utils.expand_es_metadata([a_case['uuid']], my_auth,
                                                            store_frame='embedded',
@@ -341,8 +347,8 @@ def cgap_status(connection, **kwargs):
 
         # check for workflow version problems
         all_collected_wfs = all_items.get('workflow', [])
-        all_app_names = [i['app_name'] for i in all_collected_wfs]
-        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
+        all_wf_uuids = [i['uuid'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['uuid'] in all_wf_uuids]
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
@@ -626,6 +632,11 @@ def cgapS2_status(connection, **kwargs):
 
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
+    wf_errs = cgap_utils.check_latest_workflow_version(all_system_wfs)
+    if wf_errs:
+        final_status = 'Error, workflow versions'
+        check.brief_output.extend(wf_errs)
+        return check
 
     # iterate over msa
     print(len(res))
@@ -652,8 +663,8 @@ def cgapS2_status(connection, **kwargs):
 
         # check for workflow version problems
         all_collected_wfs = all_items.get('workflow', [])
-        all_app_names = [i['app_name'] for i in all_collected_wfs]
-        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
+        all_wf_uuids = [i['uuid'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['uuid'] in all_wf_uuids]
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
@@ -849,6 +860,11 @@ def cgapS3_status(connection, **kwargs):
     step6_name = 'bamsnap'
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
+    wf_errs = cgap_utils.check_latest_workflow_version(all_system_wfs)
+    if wf_errs:
+        final_status = 'Error, workflow versions'
+        check.brief_output.extend(wf_errs)
+        return check
     # iterate over msa
     print(len(res))
     for an_msa in res:
@@ -874,8 +890,8 @@ def cgapS3_status(connection, **kwargs):
 
         # check for workflow version problems
         all_collected_wfs = all_items.get('workflow', [])
-        all_app_names = [i['app_name'] for i in all_collected_wfs]
-        all_wfs = [i for i in all_system_wfs if i['app_name'] in all_app_names]
+        all_wf_uuids = [i['uuid'] for i in all_collected_wfs]
+        all_wfs = [i for i in all_system_wfs if i['uuid'] in all_wf_uuids]
         wf_errs = cgap_utils.check_workflow_version(all_wfs)
         # if there are problems kill the loop, and report the error
         if wf_errs:
