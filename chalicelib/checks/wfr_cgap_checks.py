@@ -1155,7 +1155,11 @@ def cgapS3_status(connection, **kwargs):
         if step5a_status != 'complete':
             step6_status = ""
         else:
-            s6_input_files = {'input_bams': input_bams,
+            # BAMSNAP
+                # change order of samples and input_titles to have proband first on bamsnap
+            input_bams_rev = input_bams[::-1]
+            input_titles_rev = input_titles[::-1]
+            s6_input_files = {'input_bams': input_bams_rev,
                               'input_vcf': step5_output,
                               'ref': 'GAPFIXRDPDK5',
                               'additional_file_parameters': {'input_vcf': {"mount": True},
