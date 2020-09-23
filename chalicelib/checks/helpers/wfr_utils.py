@@ -69,7 +69,7 @@ workflow_details = {
     },
     "bedtobeddb": {
         "run_time": 24,
-        "accepted_versions": ["v2"]
+        "accepted_versions": ["v2", "v3"]
     },
     "encode-chipseq-aln-chip": {
         "run_time": 200,
