@@ -223,7 +223,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'parameters': {"nthreads": 15},
                 "config": {
                     "instance_type": "c5.4xlarge",
-                    "ebs_size": "100",
+                    "ebs_size": 100,
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
