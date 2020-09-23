@@ -232,7 +232,6 @@ class TestCheckUtils():
         assert (assc_check['name'] == act_kwargs['check_name'])
         assert (assc_check['uuid'] == act_uuid)
 
-
     def test_run_check_errors(self):
         bad_check_group = [
             ['indexing_progress', {}, [], 'xx1'],
