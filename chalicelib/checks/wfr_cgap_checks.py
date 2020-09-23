@@ -360,7 +360,14 @@ def cgap_status(connection, **kwargs):
         # are all files uploaded ?
         all_uploaded = True
         # get all fastq files (can be file_fastq or file_processed)
-        fastq_files = [i for i in all_files if i.get('file_format', {}).get('file_format') == 'fastq']
+        fastq_file_ids = [i.get('@id') for i in a_sample.get('files', [])]
+        if not fastq_file_ids:
+            final_status = a_sample['accession'] + ' skipped, no files on sample'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({a_sample['accession']: 'no files on sample'})
+            continue
+        fastq_files = [i for i in all_files if i['@id'] in fastq_file_ids]
         for a_file in fastq_files:
             if a_file['status'] in ['uploading', 'upload failed']:
                 all_uploaded = False
@@ -464,9 +471,11 @@ def cgap_status(connection, **kwargs):
             if step7_status != 'complete':
                 step8_status = ""
             else:
+                # mpileupCounts
                 s8_input_files = {'input_bam': step7_output,
                                   'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                                  'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+                                  'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7',
+                                  'additional_file_parameters': {'input_bam': {"mount": True}}}
                 keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
                                                                       'step8', a_sample['accession'], step7_output,
                                                                       s8_input_files,  step8_name, 'rck')
@@ -1146,7 +1155,11 @@ def cgapS3_status(connection, **kwargs):
         if step5a_status != 'complete':
             step6_status = ""
         else:
-            s6_input_files = {'input_bams': input_bams,
+            # BAMSNAP
+                # change order of samples and input_titles to have proband first on bamsnap
+            input_bams_rev = input_bams[::-1]
+            input_titles_rev = input_titles[::-1]
+            s6_input_files = {'input_bams': input_bams_rev,
                               'input_vcf': step5_output,
                               'ref': 'GAPFIXRDPDK5',
                               'additional_file_parameters': {'input_vcf': {"mount": True},
