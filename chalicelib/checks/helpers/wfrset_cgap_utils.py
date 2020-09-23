@@ -223,7 +223,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'parameters': {"nthreads": 15},
                 "config": {
                     "instance_type": "c5.4xlarge",
-                    "ebs_size": "4x",
+                    "ebs_size": "100",
                     "EBS_optimized": True
                 },
                 'custom_pf_fields': {
@@ -446,7 +446,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     template = [i for i in wf_dict if i['app_name'] == step_name][0]
     update_config = {
-        "spot_instance": False,
+        "spot_instance": True,
         "log_bucket": "tibanna-output",
         "key_name": "4dn-encode",
         "public_postrun_json": True,
