@@ -47,7 +47,7 @@ def cleanup_tempdir(tempdir):
     shutil.rmtree(tempdir)
 
 
-def are_counts_are_even(env):
+def are_counts_even(env):
     """ From dcicutils - to be ported over in this form at some point. """
     try:
         totals = get_metadata('/counts', ff_env=env)['db_es_total'].split()
@@ -79,7 +79,7 @@ def indexer_server_status(connection, **kwargs):
         return check
 
     try:
-        indexing_finished, counts = are_counts_are_even(env)
+        indexing_finished, counts = are_counts_even(env)
     except Exception as e:  # XXX: This should be handled in dcicutils -Will 5/18/2020
         check.status = 'ERROR'
         check.summary = 'Failed to get indexing status of given env: %s' % str(e)
