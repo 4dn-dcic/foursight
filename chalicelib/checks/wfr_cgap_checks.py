@@ -12,7 +12,7 @@ lambda_limit = cgap_utils.lambda_limit
 # list of acceptible version
 cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13', 'WGS_partI_V15', 'WGS_partI_V16']
 cgap_partII_version = ['WGS_PartII_V11', 'WGS_PartII_V13', 'WGS_partII_V15', 'WGS_partII_V16']
-cgap_partIII_version = ['WGS_PartIII_V16']
+cgap_partIII_version = ['WGS_PartIII_V15', 'WGS_PartIII_V16']
 
 
 @check_function(file_type='File', start_date=None)
@@ -847,7 +847,7 @@ def cgapS3_status(connection, **kwargs):
         return check
 
     query_base = '/search/?type=SampleProcessing&samples.uuid!=No value&completed_processes!=No value&processed_files.uuid!=No value'
-    accepted_analysis_types = ['WGS-Trio', 'WGS', 'WGS-Group']
+    accepted_analysis_types = ['WGS-Trio', 'WGS', 'WGS-Group', 'WES-Trio', 'WES', 'WES-Group']
     analysis_type_filter = "".join(["&analysis_type=" + i for i in accepted_analysis_types])
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partIII_version])
     q = query_base + analysis_type_filter + version_filter
@@ -886,7 +886,11 @@ def cgapS3_status(connection, **kwargs):
                                                                          'references',
                                                                          'reference_pubs'])
         now = datetime.utcnow()
-        print(an_msa['@id'], (now-start).seconds, len(all_uuids))
+
+        alll = an_msa.get('aliases', ['none'])[0]
+
+        print()
+        print(an_msa['@id'], alll, (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
 
@@ -907,7 +911,9 @@ def cgapS3_status(connection, **kwargs):
             final_status = an_msa['@id'] + ' error, workflow versions'
             check.brief_output.extend(wf_errs)
             check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
-            break
+            for er in wf_errs:
+                print(er)
+            # break
 
         # only run for trios
         all_samples = an_msa['samples']
@@ -963,8 +969,7 @@ def cgapS3_status(connection, **kwargs):
                 }
             qc_pedigree.append(member_qc_pedigree)
             run_mode = 'proband_only'
-        print(run_mode)
-        print(qc_pedigree)
+
         # Setup for step 1a
         input_rcks = []
         sample_ids = []  # used by comHet
@@ -1059,7 +1064,6 @@ def cgapS3_status(connection, **kwargs):
                                           "trio_errors": True,
                                           "het_hom": True,
                                           "ti_tv": True}}
-            print(update_pars)
             s1c_tag = an_msa['@id'] + '_Part3step1c'
             keep, step1c_status, step1c_output = cgap_utils.stepper(library, keep,
                                                                     'step1c', s1c_tag, step1b_output,
@@ -1168,7 +1172,7 @@ def cgapS3_status(connection, **kwargs):
                                                              }
                               }
             s6_tag = an_msa['@id'] + '_Part3step6'
-            update_pars = {"parameters": {"titles": input_titles}}  # proband last
+            update_pars = {"parameters": {"titles": input_titles_rev}}  # proband last
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   'step6', s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',
