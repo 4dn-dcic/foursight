@@ -449,7 +449,7 @@ def view_foursight_check(environ, check, uuid, is_admin=False, domain="", contex
                 data = {
                     'name': check,
                     'uuid': uuid,
-                    'status': 'ERROR',
+                    'status': 'ERROR',  # in this case we just queued a check, so ERROR is ok
                     'summary': 'Check has not yet run',
                     'description': 'Check has not yet run'
                 }
