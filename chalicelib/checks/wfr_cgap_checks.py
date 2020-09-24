@@ -626,9 +626,12 @@ def cgapS2_status(connection, **kwargs):
         check.full_output = {}
         return check
 
+    accepted_analysis_types = ['WGS-Trio', 'WGS', 'WGS-Group', 'WGS-Joint calling',
+                               'WES-Trio', 'WES', 'WES-Group', 'WES-Joint calling']
+    analysis_type_filter = "".join(["&analysis_type=" + i for i in accepted_analysis_types])
     query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
-    q = query_base + version_filter
+    q = query_base + version_filter + analysis_type_filter
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
