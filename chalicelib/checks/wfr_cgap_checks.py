@@ -288,9 +288,10 @@ def cgap_status(connection, **kwargs):
         check.full_output = {}
         return check
 
-    query_base = '/search/?type=Case&sample.files.display_title%21=No+value&sample.workup_type=WGS&sample.workup_type=WES'
+    query_base = '/search/?type=Case&sample.workup_type=WGS&sample.workup_type=WES'
+    file_filter = '&sample.files.display_title%21=No+value&sample.files.status%21=uploading&sample.files.status%21=upload failed'
     version_filter = "".join(["&sample.completed_processes!=" + i for i in cgap_partI_version])
-    q = query_base + version_filter
+    q = query_base + version_filter + file_filter
 
     all_cases = ff_utils.search_metadata(q, my_auth)
     print(len(all_cases))
@@ -309,6 +310,7 @@ def cgap_status(connection, **kwargs):
     step8_name = 'workflow_granite-mpileupCounts'
     step9_name = 'workflow_gatk-HaplotypeCaller'
     step10_name = 'cgap-bamqc'
+
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
     wf_errs = cgap_utils.check_latest_workflow_version(all_system_wfs)
@@ -626,12 +628,13 @@ def cgapS2_status(connection, **kwargs):
         check.full_output = {}
         return check
 
+    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
     accepted_analysis_types = ['WGS-Trio', 'WGS', 'WGS-Group', 'WGS-Joint calling',
                                'WES-Trio', 'WES', 'WES-Group', 'WES-Joint calling']
     analysis_type_filter = "".join(["&analysis_type=" + i for i in accepted_analysis_types])
-    query_base = '/search/?type=SampleProcessing&samples.uuid!=No value'
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
-    q = query_base + version_filter + analysis_type_filter
+    file_filter = '&samples.processed_files.uuid!=No value'
+    q = query_base + version_filter + analysis_type_filter + file_filter
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
@@ -1184,7 +1187,7 @@ def cgapS3_status(connection, **kwargs):
             # existing_pf = [i['@id'] for i in an_msa['processed_files']]
             completed = [
                 an_msa['@id'],
-                {'processed_files': previous_files + [step1b_output, step5_output],
+                {'processed_files': previous_files + [step5_output, ],
                  'completed_processes': previous_tags + [pipeline_tag, ]}]
             print('COMPLETED', step5_output)
         else:
