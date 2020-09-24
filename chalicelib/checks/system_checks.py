@@ -21,7 +21,7 @@ import time
 
 
 # XXX: put into utils?
-CGAP_TEST_CLUSTER = 'search-cgap-testing-ud3ggpjj7x6vclx62nmzymyzfi.us-east-1.es.amazonaws.com:80'
+CGAP_TEST_CLUSTER = 'search-cgap-testing-6-8-vo4mdkmkshvmyddc65ux7dtaou.us-east-1.es.amazonaws.com:443'
 FF_TEST_CLUSTER = 'search-fourfront-testing-6-8-kncqa2za2r43563rkcmsvgn2fq.us-east-1.es.amazonaws.com:443'
 TEST_ES_CLUSTERS = [
     CGAP_TEST_CLUSTER,
@@ -30,11 +30,10 @@ TEST_ES_CLUSTERS = [
 BUILD_INDICES_REGEX = re.compile('^[0-9]')  # build indices are prefixed by numbers
 
 
-def wipe_build_indices(connection, es_url):
+def wipe_build_indices(es_url, check):
     """ Wipes all number-prefixed indices on the given es_url. Be careful not to run while
         builds are running as this will cause them to fail.
     """
-    check = CheckResult(connection, 'wipe_build_indices')
     check.status = 'PASS'
     check.summary = check.description = 'Wiped all test indices on url: %s' % es_url
     client = es_utils.create_es_client(es_url, True)
@@ -63,13 +62,15 @@ def wipe_build_indices(connection, es_url):
 @check_function()
 def wipe_cgap_build_indices(connection, **kwargs):
     """ Wipes build indices for CGAP (on cgap-testing) """
-    return wipe_build_indices(connection, CGAP_TEST_CLUSTER)
+    check = CheckResult(connection, 'wipe_cgap_build_indices')
+    return wipe_build_indices(CGAP_TEST_CLUSTER, check)
 
 
 @check_function()
 def wipe_ff_build_indices(connection, **kwargs):
     """ Wipes build (number prefixed) indices (on fourfront-testing) """
-    return wipe_build_indices(connection, FF_TEST_CLUSTER)
+    check = CheckResult(connection, 'wipe_ff_build_indices')
+    return wipe_build_indices(FF_TEST_CLUSTER, check)
 
 
 @check_function()

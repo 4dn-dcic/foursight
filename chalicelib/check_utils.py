@@ -347,7 +347,7 @@ def create_placeholder_check(check_name):
         'name': check_name,
         'uuid': _uuid,
         'kwargs': {'uuid': _uuid, 'primary': True},
-        'status': 'WARN',
+        'status': 'PASS',  # so these show up green
         'summary': 'Check has not yet run',
         'description': 'If queued, this check will run with default arguments'
     }

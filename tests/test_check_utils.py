@@ -232,7 +232,6 @@ class TestCheckUtils():
         assert (assc_check['name'] == act_kwargs['check_name'])
         assert (assc_check['uuid'] == act_uuid)
 
-
     def test_run_check_errors(self):
         bad_check_group = [
             ['indexing_progress', {}, [], 'xx1'],
@@ -271,5 +270,5 @@ class TestCheckUtils():
         """ Tests that placeholder checks are properly generated """
         placeholder = check_utils.create_placeholder_check('test_check')
         assert placeholder['name'] == 'test_check'
-        assert placeholder['status'] == 'WARN'
+        assert placeholder['status'] == 'PASS'
         assert placeholder['description'] == 'If queued, this check will run with default arguments'
