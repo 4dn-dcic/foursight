@@ -151,6 +151,56 @@ def remove_parents_without_sample(samples_pedigree):
     return samples_pedigree
 
 
+def analyze_pedigree(samples_pedigree_json, all_samples):
+    """extract pedigree for qc for trio (father/mother/proband) or proband
+    - input samples accession list
+    - qc pedigree
+    - run mode (trio or proband_only)
+    - error (expected empty)
+    """
+    # remove parent ids that are not in the sample_pedigree as individual
+    samples_pedigree = remove_parents_without_sample(samples_pedigree_json)
+    # Define run Mode: Trio or Proband only
+    # order samples by father/mother/proband
+    run_mode = ""
+    input_samples = []
+    qc_pedigree = []  # used by vcfqc
+    # trio analysis
+    if len(all_samples) > 2:
+        for member in ['father', 'mother', 'proband']:
+            sample_info = [i for i in samples_pedigree if i.get('relationship') == member]
+            if not sample_info:
+                break
+            member_qc_pedigree = {
+                'gender': sample_info[0].get('sex', ''),
+                'individual': sample_info[0].get('individual', ''),
+                'parents': sample_info[0].get('parents', []),
+                'sample_name': sample_info[0].get('sample_name', '')
+                }
+            qc_pedigree.append(member_qc_pedigree)
+            input_samples.append(sample_info[0]['sample_accession'])
+        if len(input_samples) != 3:
+            error = 'does not have mother father proband info'
+            return "", "", "", error
+        run_mode = 'trio'
+    # if there are only 2 or less members, go for proband only
+    else:
+        sample_info = [i for i in samples_pedigree if i.get('relationship') == 'proband']
+        if not sample_info:
+            error = 'does not have proband info'
+            return "", "", "", error
+        input_samples.append(sample_info[0]['sample_accession'])
+        member_qc_pedigree = {
+            'gender': sample_info[0].get('sex', ''),
+            'individual': sample_info[0].get('individual', ''),
+            'parents': sample_info[0].get('parents', []),
+            'sample_name': sample_info[0].get('sample_name', '')
+            }
+        qc_pedigree.append(member_qc_pedigree)
+        run_mode = 'proband_only'
+    return input_samples, qc_pedigree, run_mode, error
+
+
 def check_workflow_version(workflows):
     errors = []
     for a_wf in workflows:
