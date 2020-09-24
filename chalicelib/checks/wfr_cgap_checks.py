@@ -641,6 +641,8 @@ def cgapS2_status(connection, **kwargs):
     step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
     # step3_name = 'workflow_gatk-VQSR-check'
+    step3_name = 'workflow_mutanno-micro-annot-check'
+    step3c_name = 'workflow_granite-qcVCF'
 
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
@@ -685,6 +687,30 @@ def cgapS2_status(connection, **kwargs):
             check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
             break
 
+        all_samples = an_msa['samples']
+        # if there are multiple families, this part will need changes
+        families = an_msa['families']
+        if len(families) > 1:
+            final_status = an_msa['@id'] + ' error, multiple families'
+            check.brief_output.extend(final_status)
+            check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
+            continue
+        # get variables used by vcfqc
+        samples_pedigree = an_msa['samples_pedigree']
+        vcfqc_input_samples, qc_pedigree, run_mode, error = cgap_utils.analyze_pedigree(samples_pedigree, all_samples)
+        if error:
+            error_msg = an_msa['@id'] + " " + error
+            check.brief_output.extend(error_msg)
+            check.full_output['problematic_runs'].append({an_msa['@id']: error_msg})
+            continue
+        sample_ids = []  # used by comHet, reversed one will be used by vcfqc
+        # check all samples and collect input files
+        for a_sample in vcfqc_input_samples:
+            sample_resp = [i for i in all_items['sample'] if i['accession'] == a_sample][0]
+            sample_id = sample_resp.get('bam_sample_id')
+            if sample_id:
+                sample_ids.append(sample_id)
+
         # if there are multiple samples merge them
         # if not skip step 1
         input_samples = an_msa['samples']
@@ -719,7 +745,7 @@ def cgapS2_status(connection, **kwargs):
             else:
                 ebs_size = str(10 + len(input_samples) - 3) + 'x'
             update_pars = {"config": {"ebs_size": ebs_size}}
-            s1_tag = an_msa['@id'] + '_S2run1' + input_vcfs[0].split('/')[2]
+            s1_tag = an_msa['@id'] + '_Part2step1' + input_vcfs[0].split('/')[2]
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                                   'step1', s1_tag, input_vcfs,
                                                                   s1_input_files,  step1_name, 'combined_gvcf',
@@ -736,10 +762,44 @@ def cgapS2_status(connection, **kwargs):
                               "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
                               "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0",
                               'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980'}
-            s2_tag = an_msa['@id'] + '_S2run2' + step1_output.split('/')[2]
+            s2_tag = an_msa['@id'] + '_Part2step2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1_output,
                                                                   s2_input_files,  step2_name, 'vcf')
+
+        if step2_status != 'complete':
+            step3_status = ""
+        else:
+            # run step3 micro annotation
+            s3_input_files = {'input_vcf': step2_output,
+                              'mti': "GAPFIFJM2A8Z",
+                              'regions': "GAPFIBGEOI72",
+                              'additional_file_parameters': {'mti': {"mount": True}}
+                              }
+            s3_tag = an_msa['@id'] + '_Part2step3' + step1_output.split('/')[2]
+            keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
+                                                                  'step3', s3_tag, step2_output,
+                                                                  s3_input_files,  step3_name, 'annotated_vcf')
+
+        if step3_status != 'complete':
+            step3c_status = ""
+        else:
+            # step 3c vcfqc
+            s3c_input_files = {"input_vcf": step3_output,
+                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
+                               }
+            str_qc_pedigree = str(json.dumps(qc_pedigree))
+            proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
+            update_pars = {"parameters": {"samples": proband_first_sample_list,
+                                          "pedigree": str_qc_pedigree,
+                                          "trio_errors": True,
+                                          "het_hom": True,
+                                          "ti_tv": True}}
+            s3c_tag = an_msa['@id'] + '_Part3step3c'
+            keep, step3c_status, step3c_output = cgap_utils.stepper(library, keep,
+                                                                    'step3c', s3c_tag, step3_output,
+                                                                    s3c_input_files,  step3c_name, '',
+                                                                    additional_input=update_pars, no_output=True)
 
         final_status = an_msa['@id']
         completed = []
@@ -751,12 +811,12 @@ def cgapS2_status(connection, **kwargs):
         running = keep['running']
         problematic_run = keep['problematic_run']
 
-        if step2_status == 'complete':
+        if step3c_status == 'complete':
             final_status += ' completed'
             # existing_pf = [i['@id'] for i in an_msa['processed_files']]
             completed = [
                 an_msa['@id'],
-                {'processed_files': [step2_output],
+                {'processed_files': [step3_output],
                  'completed_processes': previous_tags + [pipeline_tag, ]}]
             print('COMPLETED', step2_output)
         else:
@@ -862,8 +922,8 @@ def cgapS3_status(connection, **kwargs):
         return check
     # list step names
     step1a_name = 'workflow_granite-rckTar'
-    step1b_name = 'workflow_mutanno-micro-annot-check'
-    step1c_name = 'workflow_granite-qcVCF'
+    # step1b_name = 'workflow_mutanno-micro-annot-check'
+    # step1c_name = 'workflow_granite-qcVCF'
     step2_name = 'workflow_granite-filtering-check'
     step3_name = 'workflow_granite-novoCaller-rck-check'
     step4_name = 'workflow_granite-comHet-check'
@@ -914,9 +974,7 @@ def cgapS3_status(connection, **kwargs):
             final_status = an_msa['@id'] + ' error, workflow versions'
             check.brief_output.extend(wf_errs)
             check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
-            for er in wf_errs:
-                print(er)
-            # break
+            break
 
         # only run for trios
         all_samples = an_msa['samples']
@@ -928,50 +986,13 @@ def cgapS3_status(connection, **kwargs):
             check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
             continue
         samples_pedigree = an_msa['samples_pedigree']
-        # remove parent ids that are not in the sample_pedigree as individual
-        samples_pedigree = cgap_utils.remove_parents_without_sample(samples_pedigree)
-        # Define run Mode: Trio or Proband only
-        # order samples by father/mother/proband
-        run_mode = ""
-        input_samples = []
-        qc_pedigree = []  # used by vcfqc
-        # trio analysis
-        if len(all_samples) > 2:
-            for member in ['father', 'mother', 'proband']:
-                sample_info = [i for i in samples_pedigree if i.get('relationship') == member]
-                if not sample_info:
-                    break
-                member_qc_pedigree = {
-                    'gender': sample_info[0].get('sex', ''),
-                    'individual': sample_info[0].get('individual', ''),
-                    'parents': sample_info[0].get('parents', []),
-                    'sample_name': sample_info[0].get('sample_name', '')
-                    }
-                qc_pedigree.append(member_qc_pedigree)
-                input_samples.append(sample_info[0]['sample_accession'])
-            if len(input_samples) != 3:
-                final_status = an_msa['@id'] + ' does not have mother father proband info'
-                check.brief_output.extend(final_status)
-                check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
-                continue
-            run_mode = 'trio'
-        # if there are only 2 or less members, go for proband only
-        else:
-            sample_info = [i for i in samples_pedigree if i.get('relationship') == 'proband']
-            if not sample_info:
-                final_status = an_msa['@id'] + ' does not have proband info'
-                check.brief_output.extend(final_status)
-                check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
-                continue
-            input_samples.append(sample_info[0]['sample_accession'])
-            member_qc_pedigree = {
-                'gender': sample_info[0].get('sex', ''),
-                'individual': sample_info[0].get('individual', ''),
-                'parents': sample_info[0].get('parents', []),
-                'sample_name': sample_info[0].get('sample_name', '')
-                }
-            qc_pedigree.append(member_qc_pedigree)
-            run_mode = 'proband_only'
+
+        input_samples, qc_pedigree, run_mode, error = cgap_utils.analyze_pedigree(samples_pedigree, all_samples)
+        if error:
+            error_msg = an_msa['@id'] + " " + error
+            check.brief_output.extend(error_msg)
+            check.full_output['problematic_runs'].append({an_msa['@id']: error_msg})
+            continue
 
         # Setup for step 1a
         input_rcks = []
@@ -1039,50 +1060,16 @@ def cgapS3_status(connection, **kwargs):
             step1a_output = ''
 
         if step1a_status != 'complete':
-            step1b_status = ""
-        else:
-            # step1b micro annotation
-            input_vcf = an_msa['processed_files'][0]['@id']
-            s1b_input_files = {'input_vcf': input_vcf,
-                               'mti': "GAPFIFJM2A8Z",
-                               'regions': "GAPFIBGEOI72",
-                               'additional_file_parameters': {'mti': {"mount": True}}
-                               }
-            s1b_tag = an_msa['@id'] + '_Part3step1b'
-            keep, step1b_status, step1b_output = cgap_utils.stepper(library, keep,
-                                                                    'step1b', s1b_tag, input_vcf,
-                                                                    s1b_input_files,  step1b_name, 'annotated_vcf')
-
-        if step1b_status != 'complete':
-            step1c_status = ""
-        else:
-            # step 1c vcfqc
-            s1c_input_files = {"input_vcf": step1b_output,
-                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
-                               }
-            str_qc_pedigree = str(json.dumps(qc_pedigree))
-            proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
-            update_pars = {"parameters": {"samples": proband_first_sample_list,
-                                          "pedigree": str_qc_pedigree,
-                                          "trio_errors": True,
-                                          "het_hom": True,
-                                          "ti_tv": True}}
-            s1c_tag = an_msa['@id'] + '_Part3step1c'
-            keep, step1c_status, step1c_output = cgap_utils.stepper(library, keep,
-                                                                    'step1c', s1c_tag, step1b_output,
-                                                                    s1c_input_files,  step1c_name, '',
-                                                                    additional_input=update_pars, no_output=True)
-
-        if step1c_status != 'complete':
             step2_status = ""
         else:
-            s2_input_files = {"input_vcf": step1b_output,
+            input_vcf = an_msa['processed_files'][0]['@id']
+            s2_input_files = {"input_vcf": input_vcf,
                               # "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
                               }
             s2_tag = an_msa['@id'] + '_Part3step2'
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
-                                                                  'step2', s2_tag, step1b_output,
+                                                                  'step2', s2_tag, input_vcf,
                                                                   s2_input_files,  step2_name, 'merged_vcf')
 
         if step2_status != 'complete':
