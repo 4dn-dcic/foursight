@@ -318,8 +318,9 @@ def cgap_status(connection, **kwargs):
         check.summary = 'Error, problem with latest workflow versions'
         check.brief_output.extend(wf_errs)
         return check
-
+    cnt = 0
     for a_case in all_cases:
+        cnt += 1
         all_items, all_uuids = ff_utils.expand_es_metadata([a_case['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -339,6 +340,7 @@ def cgap_status(connection, **kwargs):
         now = datetime.utcnow()
         print(a_case['accession'], a_sample['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
+            check.summary = 'Timout - only {} samples were processed'.format(str(cnt))
             break
         # collect similar types of items under library
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
@@ -657,7 +659,9 @@ def cgapS2_status(connection, **kwargs):
 
     # iterate over msa
     print(len(res))
+    cnt = 0
     for an_msa in res:
+        cnt += 1
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -669,6 +673,7 @@ def cgapS2_status(connection, **kwargs):
         now = datetime.utcnow()
         print(an_msa['@id'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
+            check.summary = 'Timout - only {} sample_processings were processed'.format(str(cnt))
             break
 
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
@@ -942,7 +947,9 @@ def cgapS3_status(connection, **kwargs):
         return check
     # iterate over msa
     print(len(res))
+    cnt = 0
     for an_msa in res:
+        cnt += 1
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -958,6 +965,7 @@ def cgapS3_status(connection, **kwargs):
         print()
         print(an_msa['@id'], alll, (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
+            check.summary = 'Timout - only {} sample_processings were processed'.format(str(cnt))
             break
 
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
