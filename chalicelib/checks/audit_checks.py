@@ -11,15 +11,15 @@ from .helpers import wrangler_utils
 
 
 STATUS_LEVEL = {
-    'released': 3,
-    'archived': 3,
-    'current': 3,
-    'revoked': 3,
+    'released': 4,
+    'archived': 4,
+    'current': 4,
+    'revoked': 4,
     'released to project': 3,
-    'pre-release': 3,
-    'restricted': 3,
+    'pre-release': 2,
+    'restricted': 4,
     'planned': 2,
-    'archived to project': 2,
+    'archived to project': 3,
     'in review by lab': 1,
     'released to lab': 1,
     'submission in progress': 1,
@@ -662,16 +662,21 @@ def check_opf_status_mismatch(connection, **kwargs):
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
             statuses = set([opf_status_dict[f['uuid']] for f in file_list])
-            if len(statuses) > 1:  # status mismatch in opf collection
-                problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
-                if hg_dict.get(title):
-                    problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
+            # import pdb; pdb.set_trace()
+            if not statuses:
+                # to account for empty sections that may not yet contain files
+                pass
+            elif len(statuses) > 1:  # status mismatch in opf collection
+                scores = set([STATUS_LEVEL.get(status, 0) for status in list(statuses)])
+                if len(scores) > 1:
+                    problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
+                    if hg_dict.get(title):
+                        problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
             elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
                 if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
                     problem_dict[title] = {'files': list(statuses)[0],
                                            'higlass_view_config': opf_status_dict[hg_dict[title]]}
-            elif 'release' not in result['status'] and (STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]):
-                # if ExpSet not released, and opf collection has higher status
+            elif STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]:
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
             for f in file_list:
                 if opf_linked_dict.get(f['uuid']):
