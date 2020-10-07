@@ -636,7 +636,7 @@ def cgapS2_status(connection, **kwargs):
     analysis_type_filter = "".join(["&analysis_type=" + i for i in accepted_analysis_types])
     version_filter = "".join(["&completed_processes!=" + i for i in cgap_partII_version])
     file_filter = '&samples.processed_files.uuid!=No value'
-    q = query_base + version_filter + analysis_type_filter  # + file_filter
+    q = query_base + version_filter + analysis_type_filter + file_filter
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
