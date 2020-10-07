@@ -298,6 +298,23 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap downstream pipeline'}
                         }
             },
+            {  # micro-annotation
+                'app_name': 'workflow_mutanno-micro-annot-check',
+                'workflow_uuid': '087325b4-f098-4a43-a190-81a878039de2',
+                'parameters': {"nthreads": 70},
+                "config": {
+                    "instance_type": "c5n.18xlarge",
+                    "ebs_size": "3x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'annotated_vcf': {
+                        'genome_assembly': genome,
+                        'file_type': 'micro-annotated VCF',
+                        'description': 'micro-annotated VCF file'
+                    }
+                }
+            },
             #  ____   __   ____  ____    __  __  __
             # (  _ \ / _\ (  _ \(_  _)  (  )(  )(  )
             #  ) __//    \ )   /  )(     )(  )(  )(
@@ -316,23 +333,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'genome_assembly': genome,
                         'file_type': 'tarred read counts (rck)',
                         'description': 'tarred read counts (rck) file'
-                    }
-                }
-            },
-            {  # Step1b micro-annotation
-                'app_name': 'workflow_mutanno-micro-annot-check',
-                'workflow_uuid': '087325b4-f098-4a43-a190-81a878039de2',
-                'parameters': {"nthreads": 70},
-                "config": {
-                    "instance_type": "c5n.18xlarge",
-                    "ebs_size": "3x",
-                    "EBS_optimized": True
-                },
-                'custom_pf_fields': {
-                    'annotated_vcf': {
-                        'genome_assembly': genome,
-                        'file_type': 'micro-annotated VCF',
-                        'description': 'micro-annotated VCF file'
                     }
                 }
             },
