@@ -102,6 +102,10 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v13", "v15", "v16"]
     },
+    "workflow_vep-parallel": {
+        "run_time": 12,
+        "accepted_versions": ["v17"]
+    },
     "workflow_mutanno-micro-annot-check": {
         "run_time": 12,
         "accepted_versions": ["v16"]

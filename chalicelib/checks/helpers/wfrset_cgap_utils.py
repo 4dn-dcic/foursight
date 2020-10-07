@@ -298,6 +298,28 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                         'description': 'processed output from cgap downstream pipeline'}
                         }
             },
+            {  # VEP
+                'app_name': 'workflow_vep-parallel',
+                'workflow_uuid': '7a9d1047-1966-4563-9f62-e7f1ea7ff0dc',
+                'parameters': {"nthreads": 15},
+                "config": {
+                    "instance_type": "c5.9xlarge",
+                    "ebs_size": "10x",
+                    "EBS_optimized": True
+                },
+                'custom_pf_fields': {
+                    'microannot_mti': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate file'
+                        },
+                    'annot_mti': {
+                        'genome_assembly': genome,
+                        'file_type': 'intermediate file',
+                        'description': 'Intermediate file'
+                        }
+                }
+            },
             {  # micro-annotation
                 'app_name': 'workflow_mutanno-micro-annot-check',
                 'workflow_uuid': '087325b4-f098-4a43-a190-81a878039de2',
