@@ -102,12 +102,12 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v13", "v15", "v16"]
     },
-    # Part III
-    "workflow_granite-rckTar": {
+    "workflow_mutanno-micro-annot-check": {
         "run_time": 12,
         "accepted_versions": ["v16"]
     },
-    "workflow_mutanno-micro-annot-check": {
+    # Part III
+    "workflow_granite-rckTar": {
         "run_time": 12,
         "accepted_versions": ["v16"]
     },
