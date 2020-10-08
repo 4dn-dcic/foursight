@@ -251,7 +251,7 @@ def check_latest_workflow_version(workflows):
             err = '{} version {} is not on any wf app_version)'.format(wf_name, last_version)
             errors.append(err)
             continue
-        # if it is , check the uuids on wfr_dict and the workflow item match
+        # check if the lastest version workflow uuids is correct on wfr_dict (wfrset_cgap_utils.py)
         latest_workflow_uuid = [i['uuid'] for i in workflows if i['app_version'] == last_version][0]
         wf_dict_item = [i['workflow_uuid'] for i in wf_dict if i['app_name'] == wf_name][0]
         if latest_workflow_uuid != wf_dict_item:

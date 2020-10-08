@@ -314,10 +314,10 @@ def cgap_status(connection, **kwargs):
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
     wf_errs = cgap_utils.check_latest_workflow_version(all_system_wfs)
-    # if wf_errs:
-    #     check.summary = 'Error, problem with latest workflow versions'
-    #     check.brief_output.extend(wf_errs)
-    #     return check
+    if wf_errs:
+        check.summary = 'Error, problem with latest workflow versions'
+        check.brief_output.extend(wf_errs)
+        return check
     cnt = 0
     for a_case in all_cases:
         cnt += 1
@@ -799,7 +799,7 @@ def cgapS2_status(connection, **kwargs):
         if step3_status != 'complete':
             step4_status = ""
         else:
-            # run step3 micro annotation
+            # run step4 micro annotation
             # VEP has 2 outputs, unpack them
             step3_output_micro = step3_outputs[0]
             step3_output_full = step3_outputs[1]
@@ -829,7 +829,7 @@ def cgapS2_status(connection, **kwargs):
                                           "ti_tv": True}}
             s5_tag = an_msa['@id'] + '_Part3step5'
             keep, step3c_status, step3c_output = cgap_utils.stepper(library, keep,
-                                                                    'step3c', s5_tag, step4_output,
+                                                                    'step5', s5_tag, step4_output,
                                                                     s5_input_files,  step5_name, '',
                                                                     additional_input=update_pars, no_output=True)
 
