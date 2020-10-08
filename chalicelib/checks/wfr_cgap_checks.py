@@ -646,6 +646,7 @@ def cgapS2_status(connection, **kwargs):
     # list step names
     step1_name = 'workflow_gatk-CombineGVCFs'
     step2_name = 'workflow_gatk-GenotypeGVCFs-check'
+    step2b_name = 'workflow_peddy'
     step3_name = 'workflow_vep-parallel'
     step4_name = 'workflow_mutanno-micro-annot-check'
     step5_name = 'workflow_granite-qcVCF'
@@ -745,6 +746,7 @@ def cgapS2_status(connection, **kwargs):
 
         # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
+            # Step1 Run CombineGVCFs
             s1_input_files = {'input_gvcfs': input_vcfs,
                               'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
@@ -766,7 +768,7 @@ def cgapS2_status(connection, **kwargs):
         if step1_status != 'complete':
             step2_status = ""
         else:
-            # run step2
+            # run step2 GenotypeGVCFs
             s2_input_files = {'input_gvcf': step1_output,
                               "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
                               "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0",
@@ -777,6 +779,22 @@ def cgapS2_status(connection, **kwargs):
                                                                   s2_input_files,  step2_name, 'vcf')
 
         if step2_status != 'complete':
+            step2b_status = ""
+        else:
+            # step 2b peddy qc
+            s2b_input_files = {"input_vcf": step2_output}
+            # str_qc_pedigree = str(json.dumps(qc_pedigree))
+            proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
+            update_pars = {"parameters": {"family": "",
+                                          "pedigree": ""}
+                           }
+            s2b_tag = an_msa['@id'] + '_Part2step2b'
+            keep, step3c_status, step3c_output = cgap_utils.stepper(library, keep,
+                                                                    'step2b', s2b_tag, step2_output,
+                                                                    s2b_input_files,  step2b_name, '',
+                                                                    additional_input=update_pars, no_output=True)
+
+        if step2b_status != 'complete':
             step3_status = ""
         else:
             # run step3 VEP
@@ -827,7 +845,7 @@ def cgapS2_status(connection, **kwargs):
                                           "trio_errors": True,
                                           "het_hom": True,
                                           "ti_tv": True}}
-            s5_tag = an_msa['@id'] + '_Part3step5'
+            s5_tag = an_msa['@id'] + '_Part2step5'
             keep, step3c_status, step3c_output = cgap_utils.stepper(library, keep,
                                                                     'step5', s5_tag, step4_output,
                                                                     s5_input_files,  step5_name, '',
