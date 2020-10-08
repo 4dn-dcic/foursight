@@ -219,7 +219,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             # part 1 - step 8   (only run for samples that will go to part3)
             {  # mpileupCounts
                 'app_name': 'workflow_granite-mpileupCounts',
-                'workflow_uuid': '6e89bc5d-b4a0-4954-9c3f-361477d5f537',
+                'workflow_uuid': 'c6dac0af-631d-402f-a1c1-282e091f1b3e',
                 'parameters': {"nthreads": 15},
                 "config": {
                     "instance_type": "c5.4xlarge",
@@ -322,7 +322,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # micro-annotation
                 'app_name': 'workflow_mutanno-micro-annot-check',
-                'workflow_uuid': '087325b4-f098-4a43-a190-81a878039de2',
+                'workflow_uuid': 'ca3469c6-ac71-4a7d-97ea-477037b05f2f',
                 'parameters': {"nthreads": 70},
                 "config": {
                     "instance_type": "c5n.18xlarge",
@@ -343,7 +343,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             # (__)  \_/\_/(__\_) (__)   (__)(__)(__)
             {  # step1a rckTar
                 'app_name': 'workflow_granite-rckTar',
-                'workflow_uuid': '778149e7-98d7-4362-83a4-9e80af1da101',
+                'workflow_uuid': '64ff003a-b25d-4856-a9fc-ad8702b8c6d4',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5.xlarge",
@@ -360,7 +360,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # Step2 - filtering
                 'app_name': 'workflow_granite-filtering-check',
-                'workflow_uuid': 'cb85683c-54a6-44e8-820c-1800aec9fdcd',
+                'workflow_uuid': 'e43171b4-4ee5-4074-8734-727399e3179d',
                 'parameters': {"aftag": "gnomADgenome", "afthr": 0.01},
                 "config": {
                     "instance_type": "t3.medium",
@@ -377,7 +377,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # Step3 - novocaller
                 'app_name': 'workflow_granite-novoCaller-rck-check',
-                'workflow_uuid': 'f38b91fb-7e0c-44e0-a871-a91a58227b34',
+                'workflow_uuid': '55c9ebf7-ef39-4eb0-9685-c090f2e788ae',
                 'parameters': {},
                 "config": {
                     "instance_type": "c5.xlarge",
@@ -394,7 +394,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # Step4 - compHet
                 'app_name': 'workflow_granite-comHet-check',
-                'workflow_uuid': '9e43a0ef-be16-43f1-a789-b76261ee95a3',
+                'workflow_uuid': 'f43c5ac3-d755-4acc-a6ed-7f65b8b4961b',
                 'parameters': {},
                 "config": {
                     "instance_type": "t3.small",
@@ -411,7 +411,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             },
             {  # Step5 - full annotation
                 'app_name': 'workflow_mutanno-annot-check',
-                'workflow_uuid': '26769afe-3d0f-4494-8a67-9acc8de71b73',
+                'workflow_uuid': '3b18898d-7be5-4020-95d6-3fa453da70cf',
                 'parameters': {"nthreads": 1},
                 "config": {
                     "instance_type": "c5.large",
