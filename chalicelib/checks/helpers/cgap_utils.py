@@ -86,6 +86,11 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
+    # part II step 2b
+    "workflow_peddy": {
+        "run_time": 12,
+        "accepted_versions": ["v3"]
+    },
     # part III step 3
     'workflow_gatk-VQSR-check': {
         "run_time": 12,

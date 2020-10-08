@@ -271,6 +271,16 @@ wf_dict = [
                 'description': 'processed output from cgap downstream pipeline'}
                 }
     },
+    {  # peddy_qc
+        'app_name': 'workflow_peddy',
+        'workflow_uuid': 'e17b9fe7-19e7-40d7-9c46-07bc7920ffc8',
+        'parameters': {},
+        "config": {
+            "instance_type": "t3.small",
+            "ebs_size": "1.2x",
+            "EBS_optimized": True
+        }
+    },
     {  # VEP
         'app_name': 'workflow_vep-parallel',
         'workflow_uuid': '7a9d1047-1966-4563-9f62-e7f1ea7ff0dc',
