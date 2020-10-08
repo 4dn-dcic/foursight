@@ -273,7 +273,7 @@ wf_dict = [
     },
     {  # VEP
         'app_name': 'workflow_vep-parallel',
-        'workflow_uuid': '7a9d1047-1966-4563-9f62-e7f1ea7ff0dc',
+        'workflow_uuid': 'adc588cf-1c6c-4281-9193-9645726eb792',
         'parameters': {"nthreads": 15},
         "config": {
             "instance_type": "c5.9xlarge",
@@ -377,7 +377,7 @@ wf_dict = [
     },
     {  # Step5 - full annotation
         'app_name': 'workflow_mutanno-annot-check',
-        'workflow_uuid': '3b18898d-7be5-4020-95d6-3fa453da70cf',
+        'workflow_uuid': '04da27aa-204c-4db2-9d66-a1624a463c13',
         'parameters': {"nthreads": 1},
         "config": {
             "instance_type": "c5.large",
