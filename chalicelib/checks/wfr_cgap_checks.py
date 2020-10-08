@@ -292,11 +292,16 @@ def cgap_status(connection, **kwargs):
     file_filter = '&sample.files.display_title%21=No+value&sample.files.status%21=uploading&sample.files.status%21=upload failed'
     version_filter = "".join(["&sample.completed_processes!=" + i for i in cgap_partI_version])
     q = query_base + version_filter + file_filter
-
     all_cases = ff_utils.search_metadata(q, my_auth)
-    print(len(all_cases))
+    # sometimes the same sample is assigned to two cases, get unique ones
+    # (ie when same family anayzed for two different probands, same samle gets 2 cases)
+    all_unique_cases = []
+    for a_case in all_cases:
+        if a_case['sample']['uuid'] not in [i['sample']['uuid'] for i in all_unique_cases]:
+            all_unique_cases.append(a_case)
+    print(len(all_unique_cases))
 
-    if not all_cases:
+    if not all_unique_cases:
         check.summary = 'All Good!'
         return check
 
@@ -319,16 +324,18 @@ def cgap_status(connection, **kwargs):
         check.brief_output.extend(wf_errs)
         return check
     cnt = 0
-    for a_case in all_cases:
+    for a_case in all_unique_cases:
         cnt += 1
+        # get all items around case except old workflow versions, mother, father and sample_processing(we only want sample related items)
         all_items, all_uuids = ff_utils.expand_es_metadata([a_case['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['previous_version',
-                                                                         'experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+                                                                         'sample_processing',
+                                                                         'family',
+                                                                         'mother',
+                                                                         'father'
+                                                                         ])
         a_sample = [i for i in all_items['sample'] if i['uuid'] == a_case['sample']['uuid']][0]
         bam_sample_id = a_sample.get('bam_sample_id')
         if not bam_sample_id:
@@ -666,11 +673,7 @@ def cgapS2_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['previous_version',
-                                                                         'experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+                                                           ignore_field=['previous_version'])
         now = datetime.utcnow()
         print(an_msa['@id'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
@@ -975,11 +978,7 @@ def cgapS3_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['previous_version',
-                                                                         'experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+                                                           ignore_field=['previous_version'])
         now = datetime.utcnow()
 
         alll = an_msa.get('aliases', ['none'])[0]
