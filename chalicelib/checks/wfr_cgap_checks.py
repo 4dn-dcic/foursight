@@ -10,9 +10,9 @@ from .helpers import cgap_utils, wfrset_cgap_utils
 lambda_limit = cgap_utils.lambda_limit
 
 # list of acceptible version
-cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13', 'WGS_partI_V15', 'WGS_partI_V16']
-cgap_partII_version = ['WGS_partII_V11', 'WGS_partII_V13', 'WGS_partII_V15', 'WGS_partII_V16']
-cgap_partIII_version = ['WGS_partIII_V15', 'WGS_partIII_V16']
+cgap_partI_version = ['WGS_partI_V11', 'WGS_partI_V12', 'WGS_partI_V13', 'WGS_partI_V15', 'WGS_partI_V16', 'WGS_partI_V17']
+cgap_partII_version = ['WGS_partII_V11', 'WGS_partII_V13', 'WGS_partII_V15', 'WGS_partII_V16', 'WGS_partII_V17']
+cgap_partIII_version = ['WGS_partIII_V15', 'WGS_partIII_V16', 'WGS_partIII_V17']
 
 
 @check_function(file_type='File', start_date=None)
@@ -774,6 +774,15 @@ def cgapS2_status(connection, **kwargs):
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   'step2', s2_tag, step1_output,
                                                                   s2_input_files,  step2_name, 'vcf')
+
+        if step2_status != 'complete':
+            step3_status = ""
+        else:
+            # run step3 micro annotation
+            s3_input_files = {'input_vcf': step2_output,
+                              'mti': "GAPFIFJM2A8Z",
+                                                                                             'step3', s3_tag, step2_output,
+                                                                                             s3_input_files,  step3_name, 'annotated_vcf')
 
         if step2_status != 'complete':
             step3_status = ""
