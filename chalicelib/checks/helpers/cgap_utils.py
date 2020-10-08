@@ -4,7 +4,8 @@ from operator import itemgetter
 from . import wfrset_cgap_utils
 import json
 lambda_limit = wfrset_cgap_utils.lambda_limit
-
+# use wf_dict in workflow version check to make sure latest version and workflow uuid matches
+wf_dict = wfrset_cgap_utils.wf_dict
 # check at the end
 # check extract_file_info has 4 arguments
 
@@ -24,31 +25,31 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_picard-MarkDuplicates-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_sort-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_gatk-ApplyBQSR-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # defunct step 8
     "workflow_index-sorted-bam": {
@@ -57,17 +58,17 @@ workflow_details = {
     },
     "workflow_granite-mpileupCounts": {
         "run_time": 12,
-        "accepted_versions": ["v14", "v15", "v16"]
+        "accepted_versions": ["v14", "v15", "v16", "v17"]
     },
     # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # step 9
     'workflow_granite-mpileupCounts': {
         "run_time": 12,
-        "accepted_versions": ["v14", "v15", "v16"]
+        "accepted_versions": ["v14", "v15", "v16", "v17"]
     },
     # step 10
     'cgap-bamqc': {
@@ -78,12 +79,12 @@ workflow_details = {
     # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # part II step 2
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # part III step 3
     'workflow_gatk-VQSR-check': {
@@ -96,40 +97,44 @@ workflow_details = {
     },
     "workflow_cram2fastq": {
         "run_time": 12,
-        "accepted_versions": ["v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_cram2bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v13", "v15", "v16"]
+        "accepted_versions": ["v13", "v15", "v16", "v17"]
+    },
+    "workflow_vep-parallel": {
+        "run_time": 12,
+        "accepted_versions": ["v17"]
+    },
+    "workflow_mutanno-micro-annot-check": {
+        "run_time": 12,
+        "accepted_versions": ["v16", "v17"]
     },
     # Part III
     "workflow_granite-rckTar": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
-    },
-    "workflow_mutanno-micro-annot-check": {
-        "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_granite-filtering-check": {
         "run_time": 12,
-        "accepted_versions": ['v16']
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_granite-novoCaller-rck-check": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_granite-comHet-check": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_mutanno-annot-check": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v16", "v17"]
     },
     "bamsnap": {
         "run_time": 12,
-        "accepted_versions": ["v14", "v15", "v16"]
+        "accepted_versions": ["v14", "v15", "v16", "v17"]
     },
     "workflow_granite-qcVCF": {
         "run_time": 12,
@@ -245,6 +250,12 @@ def check_latest_workflow_version(workflows):
         if last_version not in all_wf_versions:
             err = '{} version {} is not on any wf app_version)'.format(wf_name, last_version)
             errors.append(err)
+            continue
+        # check if the lastest version workflow uuids is correct on wfr_dict (wfrset_cgap_utils.py)
+        latest_workflow_uuid = [i['uuid'] for i in workflows if i['app_version'] == last_version][0]
+        wf_dict_item = [i['workflow_uuid'] for i in wf_dict if i['app_name'] == wf_name][0]
+        if latest_workflow_uuid != wf_dict_item:
+            err = '{} item on wf_dict does not have the latest workflow uuid'.format(wf_name)
     return errors
 
 # accepted versions for completed pipelines
