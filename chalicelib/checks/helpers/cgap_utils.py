@@ -245,17 +245,19 @@ def check_latest_workflow_version(workflows):
         # sometimes there are 2 or more workflows with same app name
         # and the old one might not have the latest version
         # look for all wfs with same name and make sure the latest version is on one
-        all_wf_versions = [i.get('app_version', '') for i in workflows if i['app_name'] == wf_name]
+        same_wf_name_workflows = [i for i in workflows if i['app_name'] == wf_name]
+        all_wf_versions = [i.get('app_version', '') for i in same_wf_name_workflows]
         # make sure the latest is also on one of the wfrs
         if last_version not in all_wf_versions:
             err = '{} version {} is not on any wf app_version)'.format(wf_name, last_version)
             errors.append(err)
             continue
         # check if the lastest version workflow uuids is correct on wfr_dict (wfrset_cgap_utils.py)
-        latest_workflow_uuid = [i['uuid'] for i in workflows if i['app_version'] == last_version][0]
+        latest_workflow_uuid = [i['uuid'] for i in same_wf_name_workflows if i['app_version'] == last_version][0]
         wf_dict_item = [i['workflow_uuid'] for i in wf_dict if i['app_name'] == wf_name][0]
         if latest_workflow_uuid != wf_dict_item:
             err = '{} item on wf_dict does not have the latest workflow uuid'.format(wf_name)
+            errors.append(err)
     return errors
 
 # accepted versions for completed pipelines
