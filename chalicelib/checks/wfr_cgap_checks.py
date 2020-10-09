@@ -410,9 +410,8 @@ def cgap_status(connection, **kwargs):
         for pair in sample_raw_files:
             # RUN STEP 1
             s1_input_files = {'fastq_R1': pair[0], 'fastq_R2': pair[1], 'reference': refs['bwa_ref']}
-            s1_tag = a_sample['accession'] + '_' + pair[0].split('/')[2] + '_' + pair[1].split('/')[2]
-            keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'step1', s1_tag, pair,
+            s1_tag = 'step1_' + a_sample['accession'] + '_' + pair[0].split('/')[2] + '_' + pair[1].split('/')[2]
+            keep, step1_status, step1_output = cgap_utils.stepper(library, keep, s1_tag, pair,
                                                                   s1_input_files,  step1_name, 'raw_bam')
             # RUN STEP 2
             if step1_status != 'complete':
@@ -420,10 +419,9 @@ def cgap_status(connection, **kwargs):
                 stop_level_2 = True
             else:
                 s2_input_files = {'input_bam': step1_output}
-                s2_tag = a_sample['accession'] + '_' + step1_output.split('/')[2]
+                s2_tag = 'step2_' + a_sample['accession'] + '_' + step1_output.split('/')[2]
                 add_par = {"parameters": {"sample_name": bam_sample_id}}
-                keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
-                                                                      'step2', s2_tag, step1_output,
+                keep, step2_status, step2_output = cgap_utils.stepper(library, keep, s2_tag, step1_output,
                                                                       s2_input_files,  step2_name, 'bam_w_readgroups',
                                                                       add_par)
             if step2_status != 'complete':
@@ -440,24 +438,24 @@ def cgap_status(connection, **kwargs):
                 step3_output = s3_input_bams[0]
             else:
                 s3_input_files = {'input_bams': s3_input_bams}
-                keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
-                                                                      'step3', a_sample['accession'], s3_input_bams,
+                s3_tag = 'step3_' + a_sample['accession']
+                keep, step3_status, step3_output = cgap_utils.stepper(library, keep, s3_tag, s3_input_bams,
                                                                       s3_input_files,  step3_name, 'merged_bam')
         # RUN STEP 4
         if step3_status != 'complete':
             step4_status = ""
         else:
             s4_input_files = {'input_bam': step3_output}
-            keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
-                                                                  'step4', a_sample['accession'], step3_output,
+            s4_tag = 'step4_' + a_sample['accession']
+            keep, step4_status, step4_output = cgap_utils.stepper(library, keep, s4_tag, step3_output,
                                                                   s4_input_files,  step4_name, 'dupmarked_bam')
         # RUN STEP 5
         if step4_status != 'complete':
             step5_status = ""
         else:
             s5_input_files = {'input_bam': step4_output}
-            keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
-                                                                  'step5', a_sample['accession'], step4_output,
+            s5_tag = 'step5_' + a_sample['accession']
+            keep, step5_status, step5_output = cgap_utils.stepper(library, keep, s5_tag, step4_output,
                                                                   s5_input_files,  step5_name, 'sorted_bam')
         # RUN STEP 6
         if step5_status != 'complete':
@@ -465,8 +463,8 @@ def cgap_status(connection, **kwargs):
         else:
             s6_input_files = {'input_bam': step5_output, 'known-sites-snp': 'GAPFI4LJRN98',
                               'known-sites-indels': 'GAPFIAX2PPYB', 'reference': 'GAPFIXRDPDK5'}
-            keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
-                                                                  'step6', a_sample['accession'], step5_output,
+            s6_tag = 'step6_' + a_sample['accession']
+            keep, step6_status, step6_output = cgap_utils.stepper(library, keep, s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, 'recalibration_report')
         # RUN STEP 7
         if step6_status != 'complete':
@@ -475,8 +473,8 @@ def cgap_status(connection, **kwargs):
             s7_input_files = {'input_bam': step5_output,
                               'reference': 'GAPFIXRDPDK5',
                               'recalibration_report': step6_output}
-            keep, step7_status, step7_output = cgap_utils.stepper(library, keep,
-                                                                  'step7', a_sample['accession'], step6_output,
+            s7_tag = 'step7_' + a_sample['accession']
+            keep, step7_status, step7_output = cgap_utils.stepper(library, keep, s7_tag, step6_output,
                                                                   s7_input_files,  step7_name, 'recalibrated_bam')
         # RUN STEP 8 - only run if will_go_to_part_3 is True
         if will_go_to_part_3:
@@ -488,8 +486,8 @@ def cgap_status(connection, **kwargs):
                                   'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
                                   'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7',
                                   'additional_file_parameters': {'input_bam': {"mount": True}}}
-                keep, step8_status, step8_output = cgap_utils.stepper(library, keep,
-                                                                      'step8', a_sample['accession'], step7_output,
+                s8_tag = 'step8_' + a_sample['accession']
+                keep, step8_status, step8_output = cgap_utils.stepper(library, keep, s8_tag, step7_output,
                                                                       s8_input_files,  step8_name, 'rck')
         else:
             step8_status = 'complete'
@@ -502,8 +500,8 @@ def cgap_status(connection, **kwargs):
             s9_input_files = {'input_bam': step7_output,
                               'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
                               'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
-            keep, step9_status, step9_output = cgap_utils.stepper(library, keep,
-                                                                  'step9', a_sample['accession'], step7_output,
+            s9_tag = 'step9_' + a_sample['accession']
+            keep, step9_status, step9_output = cgap_utils.stepper(library, keep, s9_tag, step7_output,
                                                                   s9_input_files,  step9_name, 'gvcf')
 
         # step10 bamqc
@@ -515,11 +513,10 @@ def cgap_status(connection, **kwargs):
                                'additional_file_parameters': {'input_bam': {"mount": True}}
                                }
             update_pars = {"parameters": {'sample': bam_sample_id}}
-            keep, step10_status, step10_output = cgap_utils.stepper(library, keep,
-                                                                    'step10', a_sample['accession'], step7_output,
+            s10_tag = 'step10_' + a_sample['accession']
+            keep, step10_status, step10_output = cgap_utils.stepper(library, keep, s10_tag, step7_output,
                                                                     s10_input_files,  step10_name, '',
                                                                     additional_input=update_pars, no_output=True)
-
         # are all runs done
         all_runs_completed = False
         if step8_status == 'complete' and step9_status == 'complete' and step10_status == 'complete':
@@ -759,7 +756,7 @@ def cgapS2_status(connection, **kwargs):
             update_pars = {"config": {"ebs_size": ebs_size}}
             s1_tag = an_msa['@id'] + '_Part2step1' + input_vcfs[0].split('/')[2]
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'step1', s1_tag, input_vcfs,
+                                                                  s1_tag, input_vcfs,
                                                                   s1_input_files,  step1_name, 'combined_gvcf',
                                                                   additional_input=update_pars)
         else:
@@ -776,7 +773,7 @@ def cgapS2_status(connection, **kwargs):
                               'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980'}
             s2_tag = an_msa['@id'] + '_Part2step2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
-                                                                  'step2', s2_tag, step1_output,
+                                                                  s2_tag, step1_output,
                                                                   s2_input_files,  step2_name, 'vcf')
 
         if step2_status != 'complete':
@@ -796,7 +793,7 @@ def cgapS2_status(connection, **kwargs):
             s3_tag = an_msa['@id'] + '_Part2step3' + step2_output.split('/')[2]
             # there are 2 files we need, one to use in the next step
             keep, step3_status, step3_outputs = cgap_utils.stepper(library, keep,
-                                                                   'step3', s3_tag, step2_output,
+                                                                   s3_tag, step2_output,
                                                                    s3_input_files,  step3_name, ['microannot_mti', 'annot_mti'])
 
         if step3_status != 'complete':
@@ -813,7 +810,7 @@ def cgapS2_status(connection, **kwargs):
                               }
             s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
-                                                                  'step4', s4_tag, step3_output_micro,
+                                                                  s4_tag, step3_output_micro,
                                                                   s4_input_files,  step4_name, 'annotated_vcf')
 
         if step4_status != 'complete':
@@ -832,7 +829,7 @@ def cgapS2_status(connection, **kwargs):
                                           "ti_tv": True}}
             s5_tag = an_msa['@id'] + '_Part3step5'
             keep, step3c_status, step3c_output = cgap_utils.stepper(library, keep,
-                                                                    'step5', s5_tag, step4_output,
+                                                                    s5_tag, step4_output,
                                                                     s5_input_files,  step5_name, '',
                                                                     additional_input=update_pars, no_output=True)
 
@@ -1090,7 +1087,7 @@ def cgapS3_status(connection, **kwargs):
                               }
             s1_tag = an_msa['@id'] + '_Part3step1'
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'step1', s1_tag, input_rcks,
+                                                                  s1_tag, input_rcks,
                                                                   s1_input_files,  step1_name, 'rck_tar')
         else:
             step1_status = 'complete'
@@ -1107,7 +1104,7 @@ def cgapS3_status(connection, **kwargs):
                               }
             s2_tag = an_msa['@id'] + '_Part3step2'
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
-                                                                  'step2', s2_tag, input_vcf,
+                                                                  s2_tag, input_vcf,
                                                                   s2_input_files,  step2_name, 'merged_vcf')
 
         if step2_status != 'complete':
@@ -1125,7 +1122,7 @@ def cgapS3_status(connection, **kwargs):
                                   }
                 s3_tag = an_msa['@id'] + '_Part3step3'
                 keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
-                                                                      'step3', s3_tag, step2_output,
+                                                                      s3_tag, step2_output,
                                                                       s3_input_files,  step3_name, 'novoCaller_vcf')
             else:
                 # if proband only pass step2 output to next one
@@ -1143,7 +1140,7 @@ def cgapS3_status(connection, **kwargs):
             update_pars = {"parameters": {"trio": proband_first_sample_list}}
             s4_tag = an_msa['@id'] + '_Part3step4'
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
-                                                                  'step4', s4_tag, step3_output,
+                                                                  s4_tag, step3_output,
                                                                   s4_input_files,  step4_name, 'comHet_vcf',
                                                                   additional_input=update_pars)
 
@@ -1162,7 +1159,7 @@ def cgapS3_status(connection, **kwargs):
                               }
             s5_tag = an_msa['@id'] + '_Part3step5'
             keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
-                                                                  'step5', s5_tag, step4_output,
+                                                                  s5_tag, step4_output,
                                                                   s5_input_files,  step5_name, 'annotated_vcf')
 
         if step5_status != 'complete':
@@ -1186,7 +1183,7 @@ def cgapS3_status(connection, **kwargs):
                            }
             s5a_tag = an_msa['@id'] + '_Part3step5a'
             keep, step5a_status, step5a_output = cgap_utils.stepper(library, keep,
-                                                                    'step5a', s5a_tag, step5_output,
+                                                                    s5a_tag, step5_output,
                                                                     s5a_input_files,  step5a_name, '',
                                                                     additional_input=update_pars, no_output=True)
 
@@ -1209,7 +1206,7 @@ def cgapS3_status(connection, **kwargs):
             s6_tag = an_msa['@id'] + '_Part3step6'
             update_pars = {"parameters": {"titles": input_titles_rev}}  # proband last
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
-                                                                  'step6', s6_tag, step5_output,
+                                                                  s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',
                                                                   additional_input=update_pars, no_output=True)
 
@@ -1526,9 +1523,9 @@ def cram_status(connection, **kwargs):
             input_files = {'cram': a_cram['@id'],
                            'reference_fasta': '/files-reference/GAPFIXRDPDK5/',
                            'reference_md5_list': '/files-reference/GAPFIGWSGHNU/'}
-            tag = a_sample['accession'] + '_' + a_cram['@id']
+            tag = 'cram2fastq_' + a_sample['accession'] + '_' + a_cram['@id']
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
-                                                                  'cram2fastq', tag, a_cram['@id'],
+                                                                  tag, a_cram['@id'],
                                                                   input_files,  'workflow_cram2fastq',
                                                                   ['fastq1', 'fastq2'])
             # RUN STEP 2

@@ -298,14 +298,34 @@ def check_qcs_on_files(file_meta, all_qcs):
     return failed_qcs
 
 
+def filter_wfrs_with_input_and_tag(a, b):
+    return b
+
+
 def stepper(library, keep,
-            step_tag, sample_tag, new_step_input_file,
+            step_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input={}, organism='human', no_output=False):
+            additional_input={}, organism='human', no_output=False, tag=''):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
     It will also check for failed qcs on input files.
-    new_step_output_arg= can be str or list, will return str or list of @id for output files with given argument(s)"""
+    - args
+      -library:   dictionary with keys files/wfrs/qcs that contain all related items
+      -keep:      tracking run progress with keys running/problematic_run/missing_run
+      -step_tag:  informative summary used in the output (ie step name + input file accession)
+      -new_step_input_file:  files to check for qc and get attribution from
+      -input_file_dict:      all files and arguments used in the wfr
+      -new_step_name:        workflow app_name
+      -new_step_output_arg:  can be str or list, will return str or list of @id for output files with given argument(s)
+      -additional_input:     overwrite or add to final json, example {"parameters": {'key': 'value'}, "config": {"key": "value"}}
+      -organism:    by default human, used for adding genome assembly
+      -no_output:   default False, should be True for workflows that don't produce an output file (ie QC runs)
+      -tag:         if used, filter workflow_run items for the ones which have this as a tag
+                    (used for distinguishing sample_processing specific steps even when input files are the same (ie micro annotation))
+    - returns
+        - keep : same as input, with addition from this check
+        - step_status : a short summary of this functions result (complete, running, no complete run)
+    """
     step_output = ''
     # unpack library
     all_files = library['files']
@@ -335,18 +355,24 @@ def stepper(library, keep,
             qc_errors.extend(errors)
         name_tag = new_step_input_file.split('/')[2]
     # if there are qc errors, return with qc qc_errors
-    # TEMP PIECE FOR V13 PART I - don't check qc on step4
-    if step_tag == 'step4':
-        qc_errors = []
     if qc_errors:
         problematic_run.append([step_tag + ' input file qc error', qc_errors])
         step_status = "no complete run, qc error"
     # if no qc problem, go on with the run check
     else:
+        # filter workflows for the ones with same input files, and if exist, tags
+        # filtering with input - important for steps like combine gVCF there same input file
+        #                        might have multiple runs of same type with different input
+        #                        combinations, coming from different sample_procesing items.
+        # filtering with tag - for some steps, even if the input files are the same,
+        #                      you need to run different versions for different sample processing items
+        #                      (ie 2 quads made up of the same samples with different probands.)
+        filtered_wfrs = filter_wfrs_with_input_and_tag(input_file_dict, all_wfrs)
+
         if no_output:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=filtered_wfrs, md_qc=True)
         else:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=filtered_wfrs)
         step_status = step_result['status']
         # if successful
         input_file_accession = input_resp['accession']
@@ -362,10 +388,10 @@ def stepper(library, keep,
             pass
         # if still running
         elif step_status == 'running':
-            running.append([step_tag, sample_tag, input_file_accession])
+            running.append([step_tag, input_file_accession])
         # if run is not successful
         elif step_status.startswith("no complete run, too many"):
-            problematic_run.append([step_tag, sample_tag, input_file_accession])
+            problematic_run.append([step_tag, input_file_accession])
         else:
             # add step 4
             missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
@@ -544,16 +570,22 @@ def start_missing_run(run_info, auth, env):
     inputs = run_info[2]
     name_tag = run_info[3]
     # find file to use for attribution
+    attr_file = ''
     for attr_key in attr_keys:
         if attr_key in inputs:
             attr_file = inputs[attr_key]
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
             break
-    # use pony_dev
+    if not attr_file:
+        possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
+        error_message = ('one of these argument names {} which carry the input file -not the references-'
+                         ' should be added to att_keys dictionary on foursight cgap_utils.py function start_missing_run').format(possible_keys)
+        raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
+    url = ''
     return url
 
 
