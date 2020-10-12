@@ -147,6 +147,10 @@ workflow_details = {
 }
 
 
+# Reference Files
+bwa_index = {'human': 'GAPFI4U1HXIY'}
+
+
 def remove_parents_without_sample(samples_pedigree):
     individuals = [i['individual'] for i in samples_pedigree]
     for a_member in samples_pedigree:
@@ -232,11 +236,24 @@ def check_workflow_version(workflows):
 
 
 def check_latest_workflow_version(workflows):
+    """Some sanity checks for workflow versions
+    expectations:
+     - All workflows that we are currently active should be listed both on
+       cgap_utils.py (workflow_details) and wfrset_cgap_utils.py (wf_dict)
+     - The lastest workflow version on foursight (workflow_details) should be carried by the
+       latest released workflow item on the data portal.
+       If a new version is released on the portal, we need it to be on foursight too, if not stop the check.
+       If a new version is decleared on foursight, it should be released on the portal, if not stop the check.
+    """
     errors = []
     for a_wf in workflows:
         wf_name = a_wf['app_name']
-        # make sure the workflow is in our control list
+        # make sure the workflow is in our control list on cgap_utils.py
         if wf_name not in workflow_details:
+            continue
+        # make sure the workflow is in our settings list on wfrset_cgap_utils.py
+        if wf_name not in [i['app_name'] for i in wf_dict]:
+            print(wf_name)
             continue
         wf_info = workflow_details[wf_name]
         versions = wf_info['accepted_versions']
@@ -252,26 +269,20 @@ def check_latest_workflow_version(workflows):
             err = '{} version {} is not on any wf app_version)'.format(wf_name, last_version)
             errors.append(err)
             continue
+        # fist item on same_wf_name_workflows should be the latest released workflow, check if we added that to foursight
+        last_wf_version_on_portal = all_wf_versions[0]
+        if last_wf_version_on_portal not in all_wf_versions:
+            err = '{} version {} is not decleared on foursight)'.format(wf_name, last_wf_version_on_portal)
+            errors.append(err)
+            continue
         # check if the lastest version workflow uuids is correct on wfr_dict (wfrset_cgap_utils.py)
         latest_workflow_uuid = [i['uuid'] for i in same_wf_name_workflows if i['app_version'] == last_version][0]
         wf_dict_item = [i['workflow_uuid'] for i in wf_dict if i['app_name'] == wf_name][0]
         if latest_workflow_uuid != wf_dict_item:
             err = '{} item on wf_dict does not have the latest workflow uuid'.format(wf_name)
             errors.append(err)
+            continue
     return errors
-
-# accepted versions for completed pipelines
-# accepted_versions = {
-#     'WGS':  ["WGS_Pipeline_V8"]
-#     }
-
-# Reference Files
-bwa_index = {'human': 'GAPFI4U1HXIY'}
-
-# chr_size = {"human": "4DNFI823LSII",
-#             "mouse": "4DNFI3UBJ3HZ",
-#             "fruit-fly": '4DNFIBEEN92C',
-#             "chicken": "4DNFIQFZW4DX"}
 
 
 def check_qcs_on_files(file_meta, all_qcs):
