@@ -319,6 +319,7 @@ def cgap_status(connection, **kwargs):
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
     wf_errs = cgap_utils.check_latest_workflow_version(all_system_wfs)
+    print('wf_errs', wf_errs)
     if wf_errs:
         check.summary = 'Error, problem with latest workflow versions'
         check.brief_output.extend(wf_errs)
@@ -461,8 +462,10 @@ def cgap_status(connection, **kwargs):
         if step5_status != 'complete':
             step6_status = ""
         else:
-            s6_input_files = {'input_bam': step5_output, 'known-sites-snp': 'GAPFI4LJRN98',
-                              'known-sites-indels': 'GAPFIAX2PPYB', 'reference': 'GAPFIXRDPDK5'}
+            s6_input_files = {'input_bam': step5_output,
+                              'known-sites-snp': '/files-reference/GAPFI4LJRN98/',
+                              'known-sites-indels': '/files-reference/GAPFIAX2PPYB/',
+                              'reference': '/files-reference/GAPFIXRDPDK5/'}
             s6_tag = 'step6_' + a_sample['accession']
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep, s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, 'recalibration_report')
@@ -471,7 +474,7 @@ def cgap_status(connection, **kwargs):
             step7_status = ""
         else:
             s7_input_files = {'input_bam': step5_output,
-                              'reference': 'GAPFIXRDPDK5',
+                              'reference': '/files-reference/GAPFIXRDPDK5/',
                               'recalibration_report': step6_output}
             s7_tag = 'step7_' + a_sample['accession']
             keep, step7_status, step7_output = cgap_utils.stepper(library, keep, s7_tag, step6_output,
@@ -483,8 +486,8 @@ def cgap_status(connection, **kwargs):
             else:
                 # mpileupCounts
                 s8_input_files = {'input_bam': step7_output,
-                                  'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                                  'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7',
+                                  'regions': '/files-reference/GAPFIBGEOI72/',
+                                  'reference': '/files-reference/GAPFIXRDPDK5/',
                                   'additional_file_parameters': {'input_bam': {"mount": True}}}
                 s8_tag = 'step8_' + a_sample['accession']
                 keep, step8_status, step8_output = cgap_utils.stepper(library, keep, s8_tag, step7_output,
@@ -498,8 +501,8 @@ def cgap_status(connection, **kwargs):
             step9_status = ""
         else:
             s9_input_files = {'input_bam': step7_output,
-                              'regions': '1c07a3aa-e2a3-498c-b838-15991c4a2f28',
-                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+                              'regions': '/files-reference/GAPFIBGEOI72/',
+                              'reference': '/files-reference/GAPFIXRDPDK5/'}
             s9_tag = 'step9_' + a_sample['accession']
             keep, step9_status, step9_output = cgap_utils.stepper(library, keep, s9_tag, step7_output,
                                                                   s9_input_files,  step9_name, 'gvcf')
@@ -746,8 +749,8 @@ def cgapS2_status(connection, **kwargs):
         # if multiple sample, merge vcfs, if not skip it
         if len(input_samples) > 1:
             s1_input_files = {'input_gvcfs': input_vcfs,
-                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980',
-                              'reference': '1936f246-22e1-45dc-bb5c-9cfd55537fe7'}
+                              'chromosomes': '/files-reference/GAPFIGJVJDUY/',
+                              'reference': '/files-reference/GAPFIXRDPDK5/'}
             # benchmarking
             if len(input_samples) < 4:
                 ebs_size = '10x'
@@ -768,9 +771,9 @@ def cgapS2_status(connection, **kwargs):
         else:
             # run step2
             s2_input_files = {'input_gvcf': step1_output,
-                              "reference": "1936f246-22e1-45dc-bb5c-9cfd55537fe7",
-                              "known-sites-snp": "8ed35691-0af4-467a-adbc-81eb088549f0",
-                              'chromosomes': 'a1d504ee-a313-4064-b6ae-65fed9738980'}
+                              "reference": "/files-reference/GAPFIXRDPDK5/",
+                              "known-sites-snp": "/files-reference/GAPFI4LJRN98/",
+                              'chromosomes': '/files-reference/GAPFIGJVJDUY/'}
             s2_tag = an_msa['@id'] + '_Part2step2' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   s2_tag, step1_output,
@@ -781,10 +784,10 @@ def cgapS2_status(connection, **kwargs):
         else:
             # run step3 VEP
             s3_input_files = {'input_vcf': step2_output,
-                              'mti': "GAPFIFJM2A8Z",
-                              'reference': "GAPFIXRDPDK5",
-                              'regions': "GAPFIBGEOI72",
-                              'vep_tar': "GAPFIFZB4NUO",
+                              'mti': "/files-reference/GAPFIFJM2A8Z/",
+                              'reference': "/files-reference/GAPFIXRDPDK5/",
+                              'regions': "/files-reference/GAPFIBGEOI72/",
+                              'vep_tar': "/files-reference/GAPFIFZB4NUO/",
                               'additional_file_parameters': {'mti': {"mount": True},
                                                              'reference': {"mount": True},
                                                              'vep_tar': {"mount": True}
@@ -804,8 +807,8 @@ def cgapS2_status(connection, **kwargs):
             step3_output_micro = step3_outputs[0]
             step3_output_full = step3_outputs[1]
             s4_input_files = {'input_vcf': step3_output_micro,
-                              'mti': "GAPFIFJM2A8Z",
-                              'regions': "GAPFIBGEOI72",
+                              'mti': "/files-reference/GAPFIFJM2A8Z/",
+                              'regions': "/files-reference/GAPFIBGEOI72/",
                               'additional_file_parameters': {'mti': {"mount": True}}
                               }
             s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
@@ -1113,7 +1116,7 @@ def cgapS3_status(connection, **kwargs):
             # Run novoCaller
             if run_mode == 'trio':
                 s3_input_files = {'input_vcf': step2_output,
-                                  'unrelated': '77953507-7be8-4d78-a50e-97ddab7e1c13',
+                                  'unrelated': '/files-processed/GAPFI344NFZE/',
                                   'trio': step1_output,
                                   'additional_file_parameters': {'input_vcf': {"unzip": "gz"},
                                                                  'unrelated': {"mount": True},
@@ -1149,10 +1152,10 @@ def cgapS3_status(connection, **kwargs):
         else:
             # Run Full Annotation
             s5_input_files = {'input_vcf': step4_output,
-                              'mti': 'GAPFIL98NJ2K',
+                              'mti': '/files-reference/GAPFIL98NJ2K/',
                               'mti_vep': mti_vep_full,
-                              'chainfile': 'GAPFIYPTSAU8',
-                              'regions': 'GAPFIBGEOI72',
+                              'chainfile': '/files-reference/GAPFIYPTSAU8/',
+                              'regions': '/files-reference/GAPFIBGEOI72/',
                               'additional_file_parameters': {'mti': {"mount": True},
                                                              'mti_vep': {"mount": True}
                                                              },
@@ -1197,7 +1200,7 @@ def cgapS3_status(connection, **kwargs):
             input_titles_rev = input_titles[::-1]
             s6_input_files = {'input_bams': input_bams_rev,
                               'input_vcf': step5_output,
-                              'ref': 'GAPFIXRDPDK5',
+                              'ref': '/files-reference/GAPFIXRDPDK5/',
                               'additional_file_parameters': {'input_vcf': {"mount": True},
                                                              'input_bams': {"mount": True},
                                                              'ref': {"mount": True}
