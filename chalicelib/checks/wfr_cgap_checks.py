@@ -859,6 +859,11 @@ def cgapS2_status(connection, **kwargs):
         check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
         check.status = 'WARN'
     if check.full_output['needs_runs']:
+        # in rare cases, the same run can be triggered by two different sample_processings
+        # example is a quad analyzed for 2 different probands. In this case you want a single
+        # combineGVCF step, but 2 sample_processings will be generated trying to run same job,
+        # identify and remove duplicates
+        check.full_output['needs_runs'] = cgap_utils.remove_duplicate_need_runs(check.full_output['needs_runs'])
         check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
         check.status = 'WARN'
         check.allow_action = True

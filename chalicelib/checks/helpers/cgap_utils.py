@@ -286,6 +286,57 @@ def check_qcs_on_files(file_meta, all_qcs):
 
 
 def filter_wfrs_with_input_and_tag(all_wfr_items, step_name, input_file_dict, tag):
+def order_input_dictionary(input_file_dict):
+    """Keep the order of file_arg keys in dictionary, but if the value is a list of files
+    order them to be able to compare them"""
+    ordered_input = {}
+    for an_input_arg in input_file_dict:
+        if isinstance(input_file_dict[an_input_arg], (list, tuple)):
+            ordered_input[an_input_arg] = sorted(input_file_dict[an_input_arg])
+        else:
+            ordered_input[an_input_arg] = input_file_dict[an_input_arg]
+    return ordered_input
+
+
+def remove_duplicate_need_runs(need_runs_dictionary):
+    """In rare cases, the same run can be triggered by two different sample_processings
+    example is a quad analyzed for 2 different probands. In this case you want a single
+    combineGVCF step, but 2 sample_processings will be generated trying to run same job,
+    identify and remove duplicates, used by PartII
+    input_structure:
+    [{"sample_processing_id": [
+            # list of items per run
+            ["step_id",  # name for the run
+             ["workflow_app_name", "organism", "additional_parameters"],  # run settings
+             {"input_arg1": ["file_id1", "file_id2"], "input_arg2": "file_id3"},  # run input files
+             "GAPFI1RGV5US_GAPFIOASB96R_GAPFIVPH2MVG_GAPFICMTHU2P"  # all input files going in the run
+             ]]}]
+    """
+    # keep a track of sorted runs
+    sorted_runs = []
+    unique_needs_runs_dictionary = []
+
+    for an_item in need_runs_dictionary:
+        for an_sp_id in an_item:
+            keep_runs = []
+            all_runs = an_item[an_sp_id]
+            for a_run in all_runs:
+                # sort input files
+                run_setttings = a_run[1]
+                input_files = a_run[2]
+                ordered_input = order_input_dictionary(input_files)
+                # get elements that should be unique and store as string
+                run_info = str(run_setttings) + str(ordered_input)
+                if run_info in sorted_runs:
+                    continue
+                else:
+                    keep_runs.append(a_run)
+                    sorted_runs.append(run_info)
+            if keep_runs:
+                unique_needs_runs_dictionary.append({an_sp_id: keep_runs})
+    return unique_needs_runs_dictionary
+
+
     """given an input file dictionary and list of workflow_run items, filter wfrs
     for input files that match the input file dictionary. If a filter tag is given
     also filter for workflow_runs that have the given filter_tag in tags field"""
