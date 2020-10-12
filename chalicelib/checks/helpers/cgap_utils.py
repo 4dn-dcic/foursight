@@ -211,30 +211,6 @@ def analyze_pedigree(samples_pedigree_json, all_samples):
     return input_samples, qc_pedigree, run_mode, error
 
 
-def check_workflow_version(workflows):
-    errors = []
-    for a_wf in workflows:
-        wf_name = a_wf['app_name']
-        # make sure the workflow is in our control list
-        if wf_name not in workflow_details:
-            errors.append(wf_name + ' not in worflow_details')
-            continue
-        wf_info = workflow_details[wf_name]
-        versions = wf_info['accepted_versions']
-        # sometimes there are 2 or more workflows with same app name
-        # and the old one might not have the latest version
-        # look for all wfs with same name and make sure the latest version is on one
-        all_wf_versions = [i.get('app_version', '') for i in workflows if i['app_name'] == wf_name]
-        # make sure all versions are in accepted
-        for a_version in all_wf_versions:
-            if a_version not in versions:
-                err = '{} version {} is not in accepted versions {})'.format(wf_name,
-                                                                             a_version,
-                                                                             str(versions))
-                errors.append(err)
-    return errors
-
-
 def check_latest_workflow_version(workflows):
     """Some sanity checks for workflow versions
     expectations:

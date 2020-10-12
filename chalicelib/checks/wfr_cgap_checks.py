@@ -357,18 +357,6 @@ def cgap_status(connection, **kwargs):
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
 
-        # check for workflow version problems
-        all_collected_wfs = all_items.get('workflow', [])
-        all_wf_uuids = [i['uuid'] for i in all_collected_wfs]
-        all_wfs = [i for i in all_system_wfs if i['uuid'] in all_wf_uuids]
-        wf_errs = cgap_utils.check_workflow_version(all_wfs)
-        # if there are problems kill the loop, and report the error
-        if wf_errs:
-            final_status = a_case['accession'] + ' error, workflow versions'
-            check.brief_output.extend(wf_errs)
-            check.full_output['problematic_runs'].append({a_sample['accession']: wf_errs})
-            break
-
         # are all files uploaded ?
         all_uploaded = True
         # get all fastq files (can be file_fastq or file_processed)
@@ -687,18 +675,6 @@ def cgapS2_status(connection, **kwargs):
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
 
-        # check for workflow version problems
-        all_collected_wfs = all_items.get('workflow', [])
-        all_wf_uuids = [i['uuid'] for i in all_collected_wfs]
-        all_wfs = [i for i in all_system_wfs if i['uuid'] in all_wf_uuids]
-        wf_errs = cgap_utils.check_workflow_version(all_wfs)
-        # if there are problems kill the loop, and report the error
-        if wf_errs:
-            final_status = an_msa['@id'] + ' error, workflow versions'
-            check.brief_output.extend(wf_errs)
-            check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
-            break
-
         all_samples = an_msa['samples']
         # if there are multiple families, this part will need changes
         families = an_msa['families']
@@ -995,18 +971,6 @@ def cgapS3_status(connection, **kwargs):
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
-
-        # check for workflow version problems
-        all_collected_wfs = all_items.get('workflow', [])
-        all_wf_uuids = [i['uuid'] for i in all_collected_wfs]
-        all_wfs = [i for i in all_system_wfs if i['uuid'] in all_wf_uuids]
-        wf_errs = cgap_utils.check_workflow_version(all_wfs)
-        # if there are problems kill the loop, and report the error
-        if wf_errs:
-            final_status = an_msa['@id'] + ' error, workflow versions'
-            check.brief_output.extend(wf_errs)
-            check.full_output['problematic_runs'].append({an_msa['@id']: wf_errs})
-            break
 
         # only run for trios
         all_samples = an_msa['samples']
