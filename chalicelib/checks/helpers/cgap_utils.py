@@ -525,7 +525,13 @@ def stepper(library, keep,
         elif step_status.startswith("no complete run, too many"):
             problematic_run.append([step_tag, input_file_accession])
         else:
-            # add step 4
+            # add missing run
+            # if there is a tag, pass it to the workflow_run metadata
+            if tag:
+                if not additional_input.get('wfr_meta'):
+                    additional_input['wfr_meta'] = {'tags': [tag, ]}
+                else:
+                    additional_input['wfr_meta']['tags'] = [tag, ]
             missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
 
     keep['running'] = running
@@ -717,7 +723,6 @@ def start_missing_run(run_info, auth, env):
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
-    url = ''
     return url
 
 

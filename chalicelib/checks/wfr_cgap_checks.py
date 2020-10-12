@@ -787,9 +787,12 @@ def cgapS2_status(connection, **kwargs):
                               'additional_file_parameters': {'mti': {"mount": True}}
                               }
             s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
+            # this step is tagged (with an_msa['@id']), which means that when finding the workflowruns, it will not only look with
+            # workflow app name and input files, but also the tag on workflow run items
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
                                                                   s4_tag, step3_output_micro,
-                                                                  s4_input_files,  step4_name, 'annotated_vcf')
+                                                                  s4_input_files,  step4_name, 'annotated_vcf',
+                                                                  tag=an_msa['@id'])
 
         if step4_status != 'complete':
             step5_status = ""
