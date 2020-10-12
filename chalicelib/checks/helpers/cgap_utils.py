@@ -229,7 +229,6 @@ def check_latest_workflow_version(workflows):
             continue
         # make sure the workflow is in our settings list on wfrset_cgap_utils.py
         if wf_name not in [i['app_name'] for i in wf_dict]:
-            print(wf_name)
             continue
         wf_info = workflow_details[wf_name]
         versions = wf_info['accepted_versions']
@@ -258,7 +257,8 @@ def check_latest_workflow_version(workflows):
             err = '{} item on wf_dict does not have the latest workflow uuid'.format(wf_name)
             errors.append(err)
             continue
-    return errors
+    # return unique errors
+    return list(set(errors))
 
 
 def check_qcs_on_files(file_meta, all_qcs):
@@ -287,6 +287,28 @@ def check_qcs_on_files(file_meta, all_qcs):
 
 def filter_wfrs_with_input_and_tag(a, b):
     return b
+def check_input_structure_at_id(input_file_dict):
+    """Check all input file strings and make sure they are @id format."""
+    all_inputs = []
+    error = ''
+    for an_input_arg in input_file_dict:
+        # skip the parameter key
+        if an_input_arg == 'additional_file_parameters':
+            continue
+        inputs = input_file_dict[an_input_arg]
+        # if the input is array
+        if isinstance(inputs, list) or isinstance(inputs, tuple):
+            all_inputs.extend(inputs)
+        else:
+            all_inputs.append(inputs)
+    for an_input in all_inputs:
+        if an_input.count('/') != 3:
+            error += an_input + ' '
+    if error:
+        error += 'files are not @ids, foursight needs update'
+        return [error, ]
+    else:
+        return []
 
 
 def stepper(library, keep,
@@ -323,11 +345,14 @@ def stepper(library, keep,
     problematic_run = keep['problematic_run']
     missing_run = keep['missing_run']
 
+    qc_errors = []
+    # make sure input files are @ids, if not foursight needs an update, report it as error
+    qc_errors = check_input_structure_at_id(input_file_dict)
+    print('wrong_input', qc_errors)
     # Lets get the repoinse from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
     # new_step_input_file must be the @id
     # also check for qc status
-    qc_errors = []
     if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
         for an_input in new_step_input_file:
             input_resp = [i for i in all_files if i['@id'] == an_input][0]
@@ -354,7 +379,7 @@ def stepper(library, keep,
         # filtering with tag - for some steps, even if the input files are the same,
         #                      you need to run different versions for different sample processing items
         #                      (ie 2 quads made up of the same samples with different probands.)
-        filtered_wfrs = filter_wfrs_with_input_and_tag(input_file_dict, all_wfrs)
+        filtered_wfrs = filter_wfrs_with_input_and_tag(all_wfrs, new_step_name, input_file_dict, tag)
 
         if no_output:
             step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=filtered_wfrs, md_qc=True)

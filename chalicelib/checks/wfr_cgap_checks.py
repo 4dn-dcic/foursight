@@ -319,7 +319,6 @@ def cgap_status(connection, **kwargs):
     # collect all wf for wf version check
     all_system_wfs = ff_utils.search_metadata('/search/?type=Workflow&status=released', my_auth)
     wf_errs = cgap_utils.check_latest_workflow_version(all_system_wfs)
-    print('wf_errs', wf_errs)
     if wf_errs:
         check.summary = 'Error, problem with latest workflow versions'
         check.brief_output.extend(wf_errs)
