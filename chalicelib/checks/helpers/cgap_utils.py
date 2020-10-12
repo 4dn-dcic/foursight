@@ -285,7 +285,6 @@ def check_qcs_on_files(file_meta, all_qcs):
     return failed_qcs
 
 
-def filter_wfrs_with_input_and_tag(all_wfr_items, step_name, input_file_dict, tag):
 def order_input_dictionary(input_file_dict):
     """Keep the order of file_arg keys in dictionary, but if the value is a list of files
     order them to be able to compare them"""
@@ -296,6 +295,27 @@ def order_input_dictionary(input_file_dict):
         else:
             ordered_input[an_input_arg] = input_file_dict[an_input_arg]
     return ordered_input
+
+
+def collect_input_files_from_input_dictionary(input_file_dict):
+    """Collect all @ids from the input file dictionary"""
+    all_inputs = []
+    for an_input_arg in input_file_dict:
+        if isinstance(input_file_dict[an_input_arg], (list, tuple)):
+            all_inputs.extend(input_file_dict[an_input_arg])
+        else:
+            all_inputs.append(input_file_dict[an_input_arg])
+    return all_inputs
+
+
+def collect_inputs_from_workflow_run(wfr_resp):
+    """Given a wfr item in embedded frame, collect input files as a list of @ids"""
+    input_files = []
+    inputs = wfr_resp['input_files']
+    for an_input in inputs:
+        if an_input.get('value'):
+            input_files.append(an_input['value']['@id'])
+    return input_files
 
 
 def remove_duplicate_need_runs(need_runs_dictionary):
@@ -337,9 +357,18 @@ def remove_duplicate_need_runs(need_runs_dictionary):
     return unique_needs_runs_dictionary
 
 
+def filter_wfrs_with_input_and_tag(all_wfr_items, app_name, input_file_dict, tag, match_all_input=True):
     """given an input file dictionary and list of workflow_run items, filter wfrs
     for input files that match the input file dictionary. If a filter tag is given
-    also filter for workflow_runs that have the given filter_tag in tags field"""
+    also filter for workflow_runs that have the given filter_tag in tags field
+    -- args
+    all_wfr_items: all workflow run items collected from ES
+    step_name: workflow_app_name
+    input_file_dict: all input files
+    tag: if filter should look for a tag (ie sample_processing uuid) on wfr
+    match_all_input: (Bool) True by default. Looks for exact match between input file dict and the workflowrun
+    # TODO: for combine GVCF, we need to implement the False case, where we utilize the partial match
+    """
     # filter workflows for workflow_name, the ones with same input files, and if exist, tags
     # filtering with input - important for steps like combine gVCF there same input file
     #                        might have multiple runs of same type with different input
@@ -349,20 +378,28 @@ def remove_duplicate_need_runs(need_runs_dictionary):
     #                      (ie 2 quads made up of the same samples with different probands.)
 
     # filter for app_name
-
-
-    # print(step_name)
-    # print(len(all_wfr_items))
-    wfrs_app_name = [i for i in all_wfr_items if i['display_title'].startswith(step_name)]
-    # print(len(wfrs_app_name))
+    wfrs_with_app_name = [i for i in all_wfr_items if i['display_title'].startswith(app_name)]
     # filter for tag
     if tag:
-        wfrs_tag = [i for i in wfrs_app_name if tag in i.get('tags', [])]
+        wfrs_with_tag = [i for i in wfrs_with_app_name if tag in i.get('tags', [])]
     else:
-        wfrs_tag = wfrs_app_name
+        wfrs_with_tag = wfrs_with_app_name
     # filter for input files
     # collect input files
-
+    input_files = collect_input_files_from_input_dictionary(input_file_dict)
+    # check for workflows with same inputs
+    filtered_wfrs = []
+    for a_wfr in wfrs_with_tag:
+        # get all input files from the workflow item
+        wfr_inputs = collect_inputs_from_workflow_run(a_wfr)
+        # expectation is exact match of input files, if so pass the filter
+        if match_all_input:
+            if sorted(wfr_inputs) == sorted(input_files):
+                filtered_wfrs.append(a_wfr)
+        # if input files are contained by the wfr input files, pass the filter
+        else:
+            if all(file in wfr_inputs for file in input_files):
+                filtered_wfrs.append(a_wfr)
     return all_wfr_items
 
 
