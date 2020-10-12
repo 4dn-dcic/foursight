@@ -109,7 +109,7 @@ workflow_details = {
     },
     "workflow_mutanno-micro-annot-check": {
         "run_time": 12,
-        "accepted_versions": ["v16", "v17"]
+        "accepted_versions": ["v17"]
     },
     # Part III
     "workflow_granite-rckTar": {
@@ -130,11 +130,11 @@ workflow_details = {
     },
     "workflow_mutanno-annot-check": {
         "run_time": 12,
-        "accepted_versions": ["v16", "v17"]
+        "accepted_versions": ["v17"]
     },
     "bamsnap": {
         "run_time": 12,
-        "accepted_versions": ["v14", "v15", "v16", "v17"]
+        "accepted_versions": ["v17"]
     },
     "workflow_granite-qcVCF": {
         "run_time": 12,
@@ -147,8 +147,8 @@ workflow_details = {
 }
 
 
-# Reference Files
-bwa_index = {'human': 'GAPFI4U1HXIY'}
+# Reference Files (should be @id)
+bwa_index = {'human': '/files-reference/GAPFI4U1HXIY/'}
 
 
 def remove_parents_without_sample(samples_pedigree):
@@ -285,8 +285,36 @@ def check_qcs_on_files(file_meta, all_qcs):
     return failed_qcs
 
 
-def filter_wfrs_with_input_and_tag(a, b):
-    return b
+def filter_wfrs_with_input_and_tag(all_wfr_items, step_name, input_file_dict, tag):
+    """given an input file dictionary and list of workflow_run items, filter wfrs
+    for input files that match the input file dictionary. If a filter tag is given
+    also filter for workflow_runs that have the given filter_tag in tags field"""
+    # filter workflows for workflow_name, the ones with same input files, and if exist, tags
+    # filtering with input - important for steps like combine gVCF there same input file
+    #                        might have multiple runs of same type with different input
+    #                        combinations, coming from different sample_procesing items.
+    # filtering with tag - for some steps, even if the input files are the same,
+    #                      you need to run different versions for different sample processing items
+    #                      (ie 2 quads made up of the same samples with different probands.)
+
+    # filter for app_name
+
+
+    # print(step_name)
+    # print(len(all_wfr_items))
+    wfrs_app_name = [i for i in all_wfr_items if i['display_title'].startswith(step_name)]
+    # print(len(wfrs_app_name))
+    # filter for tag
+    if tag:
+        wfrs_tag = [i for i in wfrs_app_name if tag in i.get('tags', [])]
+    else:
+        wfrs_tag = wfrs_app_name
+    # filter for input files
+    # collect input files
+
+    return all_wfr_items
+
+
 def check_input_structure_at_id(input_file_dict):
     """Check all input file strings and make sure they are @id format."""
     all_inputs = []
@@ -345,14 +373,14 @@ def stepper(library, keep,
     problematic_run = keep['problematic_run']
     missing_run = keep['missing_run']
 
-    qc_errors = []
     # make sure input files are @ids, if not foursight needs an update, report it as error
-    qc_errors = check_input_structure_at_id(input_file_dict)
-    print('wrong_input', qc_errors)
+    at_id_errors = check_input_structure_at_id(input_file_dict)
+
     # Lets get the repoinse from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
     # new_step_input_file must be the @id
     # also check for qc status
+    qc_errors = []
     if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
         for an_input in new_step_input_file:
             input_resp = [i for i in all_files if i['@id'] == an_input][0]
@@ -366,8 +394,12 @@ def stepper(library, keep,
         if errors:
             qc_errors.extend(errors)
         name_tag = new_step_input_file.split('/')[2]
+    # if there are @id errors return it
+    if at_id_errors:
+        problematic_run.append([step_tag + ' foursight error', at_id_errors])
+        step_status = "no complete run, foursight error"
     # if there are qc errors, return with qc qc_errors
-    if qc_errors:
+    elif qc_errors:
         problematic_run.append([step_tag + ' input file qc error', qc_errors])
         step_status = "no complete run, qc error"
     # if no qc problem, go on with the run check
