@@ -301,6 +301,8 @@ def collect_input_files_from_input_dictionary(input_file_dict):
     """Collect all @ids from the input file dictionary"""
     all_inputs = []
     for an_input_arg in input_file_dict:
+        if an_input_arg == 'additional_file_parameters':
+            continue
         if isinstance(input_file_dict[an_input_arg], (list, tuple)):
             all_inputs.extend(input_file_dict[an_input_arg])
         else:
@@ -400,7 +402,7 @@ def filter_wfrs_with_input_and_tag(all_wfr_items, app_name, input_file_dict, tag
         else:
             if all(file in wfr_inputs for file in input_files):
                 filtered_wfrs.append(a_wfr)
-    return all_wfr_items
+    return filtered_wfrs
 
 
 def check_input_structure_at_id(input_file_dict):
@@ -445,7 +447,7 @@ def stepper(library, keep,
       -additional_input:     overwrite or add to final json, example {"parameters": {'key': 'value'}, "config": {"key": "value"}}
       -organism:    by default human, used for adding genome assembly
       -no_output:   default False, should be True for workflows that don't produce an output file (ie QC runs)
-      -tag:         if used, filter workflow_run items for the ones which have this as a tag
+      -tag:         if used, filter workflow_run items for the ones which have this as a tag, or add the tag when creating runs
                     (used for distinguishing sample_processing specific steps even when input files are the same (ie micro annotation))
     - returns
         - keep : same as input, with addition from this check
