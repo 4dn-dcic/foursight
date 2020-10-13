@@ -662,7 +662,7 @@ def cgapS2_status(connection, **kwargs):
                                                            add_pc_wfr=True,
                                                            ignore_field=['previous_version'])
         now = datetime.utcnow()
-        print(an_msa['@id'], (now-start).seconds, len(all_uuids))
+        print(an_msa['@id'], an_msa.get('aliases', ['no-alias'])[0], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             check.summary = 'Timout - only {} sample_processings were processed'.format(str(cnt))
             break
@@ -787,12 +787,15 @@ def cgapS2_status(connection, **kwargs):
                               'additional_file_parameters': {'mti': {"mount": True}}
                               }
             s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
-            # this step is tagged (with an_msa['@id']), which means that when finding the workflowruns, it will not only look with
+            # this step is tagged (with uuid of sample_processing, which means
+            # that when finding the workflowruns, it will not only look with
             # workflow app name and input files, but also the tag on workflow run items
+            # since we differentiate sample processings at this step, downsteam will be separated
+            # no need for tagging them too
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
                                                                   s4_tag, step3_output_micro,
                                                                   s4_input_files,  step4_name, 'annotated_vcf',
-                                                                  tag=an_msa['@id'])
+                                                                  tag=an_msa['uuid'])
 
         if step4_status != 'complete':
             step5_status = ""

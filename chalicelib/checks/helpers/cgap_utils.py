@@ -542,20 +542,29 @@ def stepper(library, keep,
     return keep, step_status, step_output
 
 
-def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
+def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs='not given', versions=None, md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
     does not have any file_format output, so they will simply return 'complete'
+    Can be run in two modes
+     - Search through given wfr library on all_wfrs parameter, dont give any key
+     - Search on the database without a given library (all_wfrs = not given and there should be a key) used by qcs
     args:
      emb_file: embedded frame file info
      wfr_name: base name without version
      key: authorization
      all_wfrs : all releated wfrs in embedded frame
+                to distinguish
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # sanity checks
+    # we need key if all wfrs is not supplied (it can even be empty list but needs to be provided)
+    if not key and all_wfrs == 'not given':
+        raise ValueError('library or key is required for get_wfr_out function')
+
     error_at_failed_runs = 1
     # you should provide key or all_wfrs
     # assert key or all_wfrs
@@ -569,9 +578,18 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     workflows = emb_file.get('workflow_run_inputs', [])
     wfr = {}
     run_status = 'did not run'
-
-    my_workflows = [i for i in workflows if i['display_title'].startswith(wfr_name)]
+    wfrs_on_file = [i for i in workflows if i['display_title'].startswith(wfr_name)]
+    # if all_wfrs is not given, get workflows from the file
+    if all_wfrs == 'not given':
+        my_workflows = wfrs_on_file
+    # otherwise, limit the workflows to the ones from all_wfrs
+    else:
+        library_uuids = [i['uuid'] for i in all_wfrs]
+        my_workflows = [i for i in wfrs_on_file if i['uuid'] in library_uuids]
     if not my_workflows:
+        return {'status': "no workflow on file"}
+    # if all_wfrs were given and there were no wfrs, it means that prefiltering did not return any
+    if not key and not all_wfrs:
         return {'status': "no workflow on file"}
 
     for a_wfr in my_workflows:
@@ -593,10 +611,10 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
     last_wfr = same_type_wfrs[0]
     # get metadata for the last wfr
-    if all_wfrs:
-        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
-    else:
+    if all_wfrs == 'not given':
         wfr = ff_utils.get_metadata(last_wfr['uuid'], key)
+    else:
+        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
     run_duration = last_wfr['run_hours']
     run_status = wfr['run_status']
 
