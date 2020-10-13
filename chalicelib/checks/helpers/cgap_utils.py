@@ -432,7 +432,7 @@ def check_input_structure_at_id(input_file_dict):
 def stepper(library, keep,
             step_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input={}, organism='human', no_output=False, tag=''):
+            additional_input=None, organism='human', no_output=False, tag=''):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
     It will also check for failed qcs on input files.
@@ -453,6 +453,8 @@ def stepper(library, keep,
         - keep : same as input, with addition from this check
         - step_status : a short summary of this functions result (complete, running, no complete run)
     """
+    if not additional_input:
+        additional_input = {}
     step_output = ''
     # unpack library
     all_files = library['files']
@@ -501,7 +503,7 @@ def stepper(library, keep,
         # filtering with tag - for some steps, even if the input files are the same,
         #                      you need to run different versions for different sample processing items
         #                      (ie 2 quads made up of the same samples with different probands.)
-        filtered_wfrs = filter_wfrs_with_input_and_tag(all_wfrs, new_step_name, input_file_dict, tag)
+        filtered_wfrs = filter_wfrs_with_input_and_tag(all_wfrs, new_step_name, input_file_dict, tag=tag)
 
         if no_output:
             step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=filtered_wfrs, md_qc=True)

@@ -781,10 +781,12 @@ def cgapS2_status(connection, **kwargs):
             # VEP has 2 outputs, unpack them
             step3_output_micro = step3_outputs[0]
             step3_output_full = step3_outputs[1]
-            s4_input_files = {'input_vcf': step3_output_micro,
+            s4_input_files = {'input_vcf': step2_output,
+                              'mti_vep': step3_output_micro,
                               'mti': "/files-reference/GAPFIFJM2A8Z/",
                               'regions': "/files-reference/GAPFIBGEOI72/",
-                              'additional_file_parameters': {'mti': {"mount": True}}
+                              'additional_file_parameters': {'mti': {"mount": True},
+                                                             'mti_vep': {"mount": True}}
                               }
             s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
             # this step is tagged (with uuid of sample_processing, which means
@@ -812,10 +814,10 @@ def cgapS2_status(connection, **kwargs):
                                           "het_hom": True,
                                           "ti_tv": True}}
             s5_tag = an_msa['@id'] + '_Part3step5'
-            keep, step3c_status, step3c_output = cgap_utils.stepper(library, keep,
-                                                                    s5_tag, step4_output,
-                                                                    s5_input_files,  step5_name, '',
-                                                                    additional_input=update_pars, no_output=True)
+            keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
+                                                                  s5_tag, step4_output,
+                                                                  s5_input_files,  step5_name, '',
+                                                                  additional_input=update_pars, no_output=True)
 
         final_status = an_msa['@id']
         completed = []
