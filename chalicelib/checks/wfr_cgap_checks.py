@@ -787,9 +787,12 @@ def cgapS2_status(connection, **kwargs):
                               'additional_file_parameters': {'mti': {"mount": True}}
                               }
             s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
+            # this step is tagged (with an_msa['@id']), which means that when finding the workflowruns, it will not only look with
+            # workflow app name and input files, but also the tag on workflow run items
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
                                                                   s4_tag, step3_output_micro,
-                                                                  s4_input_files,  step4_name, 'annotated_vcf')
+                                                                  s4_input_files,  step4_name, 'annotated_vcf',
+                                                                  tag=an_msa['@id'])
 
         if step4_status != 'complete':
             step5_status = ""
@@ -859,6 +862,11 @@ def cgapS2_status(connection, **kwargs):
         check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
         check.status = 'WARN'
     if check.full_output['needs_runs']:
+        # in rare cases, the same run can be triggered by two different sample_processings
+        # example is a quad analyzed for 2 different probands. In this case you want a single
+        # combineGVCF step, but 2 sample_processings will be generated trying to run same job,
+        # identify and remove duplicates
+        check.full_output['needs_runs'] = cgap_utils.remove_duplicate_need_runs(check.full_output['needs_runs'])
         check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
         check.status = 'WARN'
         check.allow_action = True
