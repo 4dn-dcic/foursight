@@ -1295,7 +1295,7 @@ def ingest_vcf_status(connection, **kwargs):
         query += '&date_created.from=' + s_date
     # add accessions
     file_accessions = kwargs.get('file_accessions')
-    if s_date:
+    if file_accessions:
         file_accessions = file_accessions.replace(' ', ',')
         accessions = [i.strip() for i in file_accessions.split(',') if i]
         for an_acc in accessions:
