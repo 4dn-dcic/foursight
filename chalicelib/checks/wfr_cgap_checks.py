@@ -1151,7 +1151,7 @@ def cgapS3_status(connection, **kwargs):
                                           "het_hom": False,
                                           "ti_tv": False},
                            "custom_qc_fields": {"filtering_condition": ("((Exonic and splice variants OR spliceAI>0.2) AND "
-                                                                        "(gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR "
+                                                                        "(gnomAD AF<0.01)) OR "
                                                                         "(Clinvar Pathogenic/Likely Pathogenic, Conflicting Interpretation or Risk Factor)")
                                                 }
                            }
