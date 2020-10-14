@@ -211,6 +211,56 @@ def analyze_pedigree(samples_pedigree_json, all_samples):
     return input_samples, qc_pedigree, run_mode, error
 
 
+def get_bamsnap_parameters(samples_pedigree, all_samples):
+    """collect bam @ids and titles for all samples in the sample_procesing item
+    used by bamsnap
+    start with proband, and continue with close relatives
+    - args: samples and samples_pedigree fields of sample_processing
+    - returns: 2 lists, collected bams and titles
+    """
+
+    def get_summary(a_role_info, all_samples):
+        """given a samples pedigree item and all samples information (from samples pedigree)
+        return a summary for bamsnap"""
+        relation = a_role_info['relationship']
+        sample_acc = a_role_info['sample_accession']
+        sample_name = a_role_info.get('sample_name', '')
+        sample_title = "{} ({})".format(sample_name, relation)
+        # get sample info from samples field
+        sample_info = [i for i in all_samples if sample_acc in i['@id']][0]
+        bams = [i['@id'] for i in sample_info['processed_files'] if i['display_title'].endswith('bam')]
+        if not bams:
+            raise ValueError('can not locate bam file on sample {} to be used by bamsnap'.format(sample_acc))
+        bam = bams[0]
+        return {'bam': bam, 'title': sample_title, 'accession': sample_acc}
+
+    # remove parent ids that are not in the sample_pedigree as individual
+    samples_pedigree = remove_parents_without_sample(samples_pedigree)
+    summary = []
+
+    for member in ['proband', 'mother', 'father', 'brother', 'sister', 'sibling', 'half-brother', 'half-sister', 'half-sibling']:
+        # if multiple relationships of same type are in the family they will have enumeration in the relationships
+        # ie brother, brother II
+        role_pedigree_infos = [i for i in samples_pedigree if i.get('relationship', '').split(' ')[0] == member]
+        if not role_pedigree_infos:
+            continue
+        for a_role_pedigree in role_pedigree_infos:
+            sample_summary = get_summary(a_role_pedigree, all_samples)
+            summary.append(sample_summary)
+    # for family members not listed on primary relations, get same information and continue appending
+    all_sample_accs = [i['@id'].split('/')[2] for i in all_samples]
+    seen_sample_accs = [i['accession'] for i in summary]
+    remaining_samples = [i for i in all_sample_accs if i not in seen_sample_accs]
+
+    for a_sample_acc in remaining_samples:
+        a_role_pedigree = [i for i in samples_pedigree if i['sample_accession'] == a_sample_acc]
+        sample_summary = get_summary(a_role_pedigree, all_samples)
+        summary.append(sample_summary)
+    bams = [i['bam'] for i in summary]
+    titles = [i['title'] for i in summary]
+    return bams, titles
+
+
 def check_latest_workflow_version(workflows):
     """Some sanity checks for workflow versions
     expectations:

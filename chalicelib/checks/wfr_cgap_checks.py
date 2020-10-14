@@ -1006,11 +1006,9 @@ def cgapS3_status(connection, **kwargs):
             continue
 
         # Setup for step 1a
-        input_rcks = []
+        input_rcks = []  # used by rcktar
         sample_ids = []  # used by comHet
-        input_bams = []  # used by bamsnap
-        input_titles = []  # used by bamsnap
-        # check all samples and collect input files
+        # check trio/proband samples and collect input files
         for a_sample in input_samples:
             rck = ''
             sample_resp = [i for i in all_items['sample'] if i['accession'] == a_sample][0]
@@ -1020,9 +1018,6 @@ def cgapS3_status(connection, **kwargs):
             rck = [i['@id'] for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')]
             if rck:
                 input_rcks.append(rck[0])
-            bam = [i['@id'] for i in sample_resp['processed_files'] if i['display_title'].endswith('bam')]
-            if bam:
-                input_bams.append(bam[0])
         # older processings might be missing rck files, a precaution
         if len(input_rcks) != len(input_samples) and run_mode == 'trio':
             final_status = an_msa['@id'] + ' missing rck files on samples'
@@ -1038,15 +1033,10 @@ def cgapS3_status(connection, **kwargs):
             check.full_output['skipped'].append({an_msa['@id']: final_status})
             continue
 
-        # add the input titles used by bamsnap
-        if len(sample_ids) == 1:
-            proband_title = '{} (Proband)'.format(sample_ids[0])
-            input_titles = [proband_title]
-        else:
-            father_title = '{} (Father)'.format(sample_ids[0])
-            mother_title = '{} (Mother)'.format(sample_ids[1])
-            proband_title = '{} (Proband)'.format(sample_ids[2])
-            input_titles = [father_title, mother_title, proband_title]
+        input_bams = []  # used by bamsnap
+        input_titles = []  # used by bamsnap
+        # return bams and titles for all samples in sample_proessing starting with proband-mother-father-sibling
+        input_bams, input_titles = cgap_utils.get_bamsnap_parameters(samples_pedigree, all_samples)
 
         # we need the vep and micro vcf in the processed_files field of sample_processing
         if len(an_msa.get('processed_files', [])) != 2:
@@ -1172,11 +1162,7 @@ def cgapS3_status(connection, **kwargs):
             step6_status = ""
         else:
             # BAMSNAP
-            # TODO: add all samples, not just trio
-            # change order of samples and input_titles to have proband first on bamsnap
-            input_bams_rev = input_bams[::-1]
-            input_titles_rev = input_titles[::-1]
-            s6_input_files = {'input_bams': input_bams_rev,
+            s6_input_files = {'input_bams': input_bams,
                               'input_vcf': step5_output,
                               'ref': '/files-reference/GAPFIXRDPDK5/',
                               'additional_file_parameters': {'input_vcf': {"mount": True},
@@ -1185,7 +1171,7 @@ def cgapS3_status(connection, **kwargs):
                                                              }
                               }
             s6_tag = an_msa['@id'] + '_Part3step6'
-            update_pars = {"parameters": {"titles": input_titles_rev}}  # proband last
+            update_pars = {"parameters": {"titles": input_titles}}
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',
