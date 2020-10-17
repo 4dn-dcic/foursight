@@ -662,7 +662,7 @@ def cgapS2_status(connection, **kwargs):
                                                            add_pc_wfr=True,
                                                            ignore_field=['previous_version'])
         now = datetime.utcnow()
-        print(an_msa['@id'], (now-start).seconds, len(all_uuids))
+        print(an_msa['@id'], an_msa.get('aliases', ['no-alias'])[0], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             check.summary = 'Timout - only {} sample_processings were processed'.format(str(cnt))
             break
@@ -781,18 +781,23 @@ def cgapS2_status(connection, **kwargs):
             # VEP has 2 outputs, unpack them
             step3_output_micro = step3_outputs[0]
             step3_output_full = step3_outputs[1]
-            s4_input_files = {'input_vcf': step3_output_micro,
+            s4_input_files = {'input_vcf': step2_output,
+                              'mti_vep': step3_output_micro,
                               'mti': "/files-reference/GAPFIFJM2A8Z/",
                               'regions': "/files-reference/GAPFIBGEOI72/",
-                              'additional_file_parameters': {'mti': {"mount": True}}
+                              'additional_file_parameters': {'mti': {"mount": True},
+                                                             'mti_vep': {"mount": True}}
                               }
             s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
-            # this step is tagged (with an_msa['@id']), which means that when finding the workflowruns, it will not only look with
+            # this step is tagged (with uuid of sample_processing, which means
+            # that when finding the workflowruns, it will not only look with
             # workflow app name and input files, but also the tag on workflow run items
+            # since we differentiate sample processings at this step, downsteam will be separated
+            # no need for tagging them too
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
                                                                   s4_tag, step3_output_micro,
                                                                   s4_input_files,  step4_name, 'annotated_vcf',
-                                                                  tag=an_msa['@id'])
+                                                                  tag=an_msa['uuid'])
 
         if step4_status != 'complete':
             step5_status = ""
@@ -809,10 +814,10 @@ def cgapS2_status(connection, **kwargs):
                                           "het_hom": True,
                                           "ti_tv": True}}
             s5_tag = an_msa['@id'] + '_Part3step5'
-            keep, step3c_status, step3c_output = cgap_utils.stepper(library, keep,
-                                                                    s5_tag, step4_output,
-                                                                    s5_input_files,  step5_name, '',
-                                                                    additional_input=update_pars, no_output=True)
+            keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
+                                                                  s5_tag, step4_output,
+                                                                  s5_input_files,  step5_name, '',
+                                                                  additional_input=update_pars, no_output=True)
 
         final_status = an_msa['@id']
         completed = []
@@ -837,6 +842,8 @@ def cgapS2_status(connection, **kwargs):
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
             if running:
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
 
         # add dictionaries to main ones
         set_acc = an_msa['@id']
@@ -999,11 +1006,9 @@ def cgapS3_status(connection, **kwargs):
             continue
 
         # Setup for step 1a
-        input_rcks = []
+        input_rcks = []  # used by rcktar
         sample_ids = []  # used by comHet
-        input_bams = []  # used by bamsnap
-        input_titles = []  # used by bamsnap
-        # check all samples and collect input files
+        # check trio/proband samples and collect input files
         for a_sample in input_samples:
             rck = ''
             sample_resp = [i for i in all_items['sample'] if i['accession'] == a_sample][0]
@@ -1013,9 +1018,6 @@ def cgapS3_status(connection, **kwargs):
             rck = [i['@id'] for i in sample_resp['processed_files'] if i['display_title'].endswith('rck.gz')]
             if rck:
                 input_rcks.append(rck[0])
-            bam = [i['@id'] for i in sample_resp['processed_files'] if i['display_title'].endswith('bam')]
-            if bam:
-                input_bams.append(bam[0])
         # older processings might be missing rck files, a precaution
         if len(input_rcks) != len(input_samples) and run_mode == 'trio':
             final_status = an_msa['@id'] + ' missing rck files on samples'
@@ -1031,15 +1033,10 @@ def cgapS3_status(connection, **kwargs):
             check.full_output['skipped'].append({an_msa['@id']: final_status})
             continue
 
-        # add the input titles used by bamsnap
-        if len(sample_ids) == 1:
-            proband_title = '{} (Proband)'.format(sample_ids[0])
-            input_titles = [proband_title]
-        else:
-            father_title = '{} (Father)'.format(sample_ids[0])
-            mother_title = '{} (Mother)'.format(sample_ids[1])
-            proband_title = '{} (Proband)'.format(sample_ids[2])
-            input_titles = [father_title, mother_title, proband_title]
+        input_bams = []  # used by bamsnap
+        input_titles = []  # used by bamsnap
+        # return bams and titles for all samples in sample_proessing starting with proband-mother-father-sibling
+        input_bams, input_titles = cgap_utils.get_bamsnap_parameters(samples_pedigree, all_samples)
 
         # we need the vep and micro vcf in the processed_files field of sample_processing
         if len(an_msa.get('processed_files', [])) != 2:
@@ -1151,7 +1148,7 @@ def cgapS3_status(connection, **kwargs):
                                           "het_hom": False,
                                           "ti_tv": False},
                            "custom_qc_fields": {"filtering_condition": ("((Exonic and splice variants OR spliceAI>0.2) AND "
-                                                                        "(gnomAD AF<0.01 AND not seen in 2 individuals among a set of 20 unrelated samples)) OR "
+                                                                        "(gnomAD AF<0.01)) OR "
                                                                         "(Clinvar Pathogenic/Likely Pathogenic, Conflicting Interpretation or Risk Factor)")
                                                 }
                            }
@@ -1165,11 +1162,7 @@ def cgapS3_status(connection, **kwargs):
             step6_status = ""
         else:
             # BAMSNAP
-            # TODO: add all samples, not just trio
-            # change order of samples and input_titles to have proband first on bamsnap
-            input_bams_rev = input_bams[::-1]
-            input_titles_rev = input_titles[::-1]
-            s6_input_files = {'input_bams': input_bams_rev,
+            s6_input_files = {'input_bams': input_bams,
                               'input_vcf': step5_output,
                               'ref': '/files-reference/GAPFIXRDPDK5/',
                               'additional_file_parameters': {'input_vcf': {"mount": True},
@@ -1178,7 +1171,7 @@ def cgapS3_status(connection, **kwargs):
                                                              }
                               }
             s6_tag = an_msa['@id'] + '_Part3step6'
-            update_pars = {"parameters": {"titles": input_titles_rev}}  # proband last
+            update_pars = {"parameters": {"titles": input_titles}}
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',
@@ -1208,6 +1201,8 @@ def cgapS3_status(connection, **kwargs):
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
             if running:
                 final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
 
         # add dictionaries to main ones
         set_acc = an_msa['@id']
@@ -1300,7 +1295,7 @@ def ingest_vcf_status(connection, **kwargs):
         query += '&date_created.from=' + s_date
     # add accessions
     file_accessions = kwargs.get('file_accessions')
-    if s_date:
+    if file_accessions:
         file_accessions = file_accessions.replace(' ', ',')
         accessions = [i.strip() for i in file_accessions.split(',') if i]
         for an_acc in accessions:

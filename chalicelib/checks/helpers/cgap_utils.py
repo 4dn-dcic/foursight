@@ -211,6 +211,56 @@ def analyze_pedigree(samples_pedigree_json, all_samples):
     return input_samples, qc_pedigree, run_mode, error
 
 
+def get_bamsnap_parameters(samples_pedigree, all_samples):
+    """collect bam @ids and titles for all samples in the sample_procesing item
+    used by bamsnap
+    start with proband, and continue with close relatives
+    - args: samples and samples_pedigree fields of sample_processing
+    - returns: 2 lists, collected bams and titles
+    """
+
+    def get_summary(a_role_info, all_samples):
+        """given a samples pedigree item and all samples information (from samples pedigree)
+        return a summary for bamsnap"""
+        relation = a_role_info['relationship']
+        sample_acc = a_role_info['sample_accession']
+        sample_name = a_role_info.get('sample_name', '')
+        sample_title = "{} ({})".format(sample_name, relation)
+        # get sample info from samples field
+        sample_info = [i for i in all_samples if sample_acc in i['@id']][0]
+        bams = [i['@id'] for i in sample_info['processed_files'] if i['display_title'].endswith('bam')]
+        if not bams:
+            raise ValueError('can not locate bam file on sample {} to be used by bamsnap'.format(sample_acc))
+        bam = bams[0]
+        return {'bam': bam, 'title': sample_title, 'accession': sample_acc}
+
+    # remove parent ids that are not in the sample_pedigree as individual
+    samples_pedigree = remove_parents_without_sample(samples_pedigree)
+    summary = []
+
+    for member in ['proband', 'mother', 'father', 'brother', 'sister', 'sibling', 'half-brother', 'half-sister', 'half-sibling']:
+        # if multiple relationships of same type are in the family they will have enumeration in the relationships
+        # ie brother, brother II
+        role_pedigree_infos = [i for i in samples_pedigree if i.get('relationship', '').split(' ')[0] == member]
+        if not role_pedigree_infos:
+            continue
+        for a_role_pedigree in role_pedigree_infos:
+            sample_summary = get_summary(a_role_pedigree, all_samples)
+            summary.append(sample_summary)
+    # for family members not listed on primary relations, get same information and continue appending
+    all_sample_accs = [i['@id'].split('/')[2] for i in all_samples]
+    seen_sample_accs = [i['accession'] for i in summary]
+    remaining_samples = [i for i in all_sample_accs if i not in seen_sample_accs]
+
+    for a_sample_acc in remaining_samples:
+        a_role_pedigree = [i for i in samples_pedigree if i['sample_accession'] == a_sample_acc]
+        sample_summary = get_summary(a_role_pedigree, all_samples)
+        summary.append(sample_summary)
+    bams = [i['bam'] for i in summary]
+    titles = [i['title'] for i in summary]
+    return bams, titles
+
+
 def check_latest_workflow_version(workflows):
     """Some sanity checks for workflow versions
     expectations:
@@ -432,7 +482,7 @@ def check_input_structure_at_id(input_file_dict):
 def stepper(library, keep,
             step_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input={}, organism='human', no_output=False, tag=''):
+            additional_input=None, organism='human', no_output=False, tag=''):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
     It will also check for failed qcs on input files.
@@ -453,6 +503,8 @@ def stepper(library, keep,
         - keep : same as input, with addition from this check
         - step_status : a short summary of this functions result (complete, running, no complete run)
     """
+    if not additional_input:
+        additional_input = {}
     step_output = ''
     # unpack library
     all_files = library['files']
@@ -501,7 +553,7 @@ def stepper(library, keep,
         # filtering with tag - for some steps, even if the input files are the same,
         #                      you need to run different versions for different sample processing items
         #                      (ie 2 quads made up of the same samples with different probands.)
-        filtered_wfrs = filter_wfrs_with_input_and_tag(all_wfrs, new_step_name, input_file_dict, tag)
+        filtered_wfrs = filter_wfrs_with_input_and_tag(all_wfrs, new_step_name, input_file_dict, tag=tag)
 
         if no_output:
             step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=filtered_wfrs, md_qc=True)
@@ -542,20 +594,29 @@ def stepper(library, keep,
     return keep, step_status, step_output
 
 
-def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
+def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs='not given', versions=None, md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
     does not have any file_format output, so they will simply return 'complete'
+    Can be run in two modes
+     - Search through given wfr library on all_wfrs parameter, dont give any key
+     - Search on the database without a given library (all_wfrs = not given and there should be a key) used by qcs
     args:
      emb_file: embedded frame file info
      wfr_name: base name without version
      key: authorization
      all_wfrs : all releated wfrs in embedded frame
+                to distinguish
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # sanity checks
+    # we need key if all wfrs is not supplied (it can even be empty list but needs to be provided)
+    if not key and all_wfrs == 'not given':
+        raise ValueError('library or key is required for get_wfr_out function')
+
     error_at_failed_runs = 1
     # you should provide key or all_wfrs
     # assert key or all_wfrs
@@ -569,9 +630,18 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     workflows = emb_file.get('workflow_run_inputs', [])
     wfr = {}
     run_status = 'did not run'
-
-    my_workflows = [i for i in workflows if i['display_title'].startswith(wfr_name)]
+    wfrs_on_file = [i for i in workflows if i['display_title'].startswith(wfr_name)]
+    # if all_wfrs is not given, get workflows from the file
+    if all_wfrs == 'not given':
+        my_workflows = wfrs_on_file
+    # otherwise, limit the workflows to the ones from all_wfrs
+    else:
+        library_uuids = [i['uuid'] for i in all_wfrs]
+        my_workflows = [i for i in wfrs_on_file if i['uuid'] in library_uuids]
     if not my_workflows:
+        return {'status': "no workflow on file"}
+    # if all_wfrs were given and there were no wfrs, it means that prefiltering did not return any
+    if not key and not all_wfrs:
         return {'status': "no workflow on file"}
 
     for a_wfr in my_workflows:
@@ -593,10 +663,10 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
     last_wfr = same_type_wfrs[0]
     # get metadata for the last wfr
-    if all_wfrs:
-        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
-    else:
+    if all_wfrs == 'not given':
         wfr = ff_utils.get_metadata(last_wfr['uuid'], key)
+    else:
+        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
     run_duration = last_wfr['run_hours']
     run_status = wfr['run_status']
 
