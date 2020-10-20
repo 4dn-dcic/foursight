@@ -812,6 +812,11 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
     my_s3_util = s3Utils(env=env)
     out_bucket = my_s3_util.outfile_bucket
+    # shorten long name_tags
+    # they get combined with workflow name, and total should be less then 80
+    # (even less since repeats need unique names)
+    if len(run_name) > 30:
+        run_name = run_name[:30] + '...'
     """Creates the trigger json that is used by foufront endpoint.
     """
     input_json['input_files'] = all_inputs
