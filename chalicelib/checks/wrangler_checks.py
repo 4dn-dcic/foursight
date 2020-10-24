@@ -2104,3 +2104,167 @@ def add_grouped_with_file_relation(connection, **kwargs):
         action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def check_hic_summary_tables(connection, **kwargs):
+    ''' Check for recently modified Hi-C Experiment Sets that are released.
+        If any result is found, update the summary tables.
+    '''
+    check = CheckResult(connection, 'check_hic_summary_tables')
+    check.action = 'patch_hic_summary_tables'
+    query = ('search/?type=ExperimentSetReplicate&status=released' +
+             '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
+
+    # search new sets only
+    from_date_query = wrangler_utils.last_modified_from(1)
+    new_sets = ff_utils.search_metadata(query + from_date_query + '&field=study_group', key=connection.ff_keys)
+
+    if len(new_sets) == 0:  # no update needed
+        check.status = 'PASS'
+        check.summary = check.description = "No update needed for Hi-C summary tables"
+        return check
+
+    else:
+        check.status = 'WARN'
+        check.summary = 'New Hi-C datasets found'
+        # collect ALL metadata to patch
+        expsets = ff_utils.search_metadata(query, key=connection.ff_keys)
+
+        def _add_set_to_row(row, expset, dsg):
+            ''' Add ExpSet metadata to the table row for dsg'''
+
+            row.setdefault('Data Set', {'text': dsg})
+            row['Data Set'].setdefault('ds_list', set()).add(expset.get('dataset_label'))
+
+            row.setdefault('Study', set()).add(expset.get('study'))
+            row.setdefault('Class', set()).add(expset.get('study_group'))
+            row.setdefault('Project', set()).add(expset['award']['project'])
+            row.setdefault('Lab', set()).add(expset['lab']['display_title'])
+
+            exp_type = expset['experiments_in_set'][0]['experiment_type']['display_title']
+            row['Replicate Sets'] = row.get('Replicate Sets', dict())
+            row['Replicate Sets'][exp_type] = row['Replicate Sets'].get(exp_type, 0) + 1
+
+            biosample = expset['experiments_in_set'][0]['biosample']
+            row.setdefault('Species', set()).add(biosample['biosource'][0]['individual']['organism']['name'])
+
+            if biosample['biosource'][0].get('cell_line'):
+                biosource = biosample['biosource'][0]['cell_line']['display_title']
+            else:
+                biosource = biosample['biosource_summary']
+            row.setdefault('Biosources', set()).add(biosource)
+
+            journal_mapping = {
+                'Science (New York, N.Y.)': 'Science',
+                'Genome biology': 'Genome Biol',
+                'Nature biotechnology': 'Nat Biotechnol',
+                'Nature genetics': 'Nat Genet',
+                'Nature communications': 'Nat Commun',
+                'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
+                'The Journal of biological chemistry': 'J Biol Chem',
+                'The EMBO journal': 'EMBO J',
+                'The Journal of cell biology': 'J Cell Biol',
+                'Nature cell biology': 'Nat Cell Biol',
+                'Molecular cell': 'Mol Cell'
+            }
+            pub = expset.get('produced_in_pub')
+            if pub:
+                publication = [
+                    {'text': pub['short_attribution'], 'link': pub['@id']},
+                    {'text': '(' + journal_mapping.get(pub['journal'], pub['journal']) + ')', 'link': pub['url']}]
+                previous_pubs = [i['text'] for i in row.get('Publication', []) if row.get('Publication')]
+                if publication[0]['text'] not in previous_pubs:
+                    row.setdefault('Publication', []).extend(publication)
+
+            return row
+
+        def _row_cleanup(row):
+            '''Summarize various fields in row'''
+            (row['Study'],) = row['Study']
+            (row['Class'],) = row['Class']
+
+            dsg_link = ''.join(["dataset_label=" + ds for ds in row['Data Set']['ds_list']])
+            dsg_link = "/browse/?" + dsg_link.replace("+", "%2B").replace("/", "%2F").replace(" ", "+")
+            row['Data Set']['link'] = dsg_link
+
+            row['Replicate Sets'] = "<br>".join(
+                [str(count) + " " + exp_type for exp_type, count in row['Replicate Sets'].items()])
+
+            return row
+
+        # build the table
+        table = {}
+        problematic = {}
+        for a_set in expsets:
+            # make sure dataset and study group are present
+            if (a_set.get('dataset_label') is None) or (a_set.get('study_group') is None):
+                problematic.setdefault('missing_info', []).append(a_set['@id'])
+                continue
+            # create/update row in the table
+            dsg = a_set.get('dataset_group', a_set['dataset_label'])
+            table[dsg] = _add_set_to_row(table.get(dsg, {}), a_set, dsg)
+
+        # consolidate the table
+        for dsg, row in table.items():
+            if (len(row['Study']) == 1) and (len(row['Class']) == 1):
+                table[dsg] = _row_cleanup(row)
+            else:
+                problematic.setdefault('multiple_info', []).append(dsg)
+                table.pop(dsg)
+
+        # split table into studygroup-specific output tables
+        output = {}
+        study_groups = list({row['Class'] for row in table.values()})
+        for st_grp in study_groups:
+            table_stg = {dsg: row for dsg, row in table.items() if row['Class'] == st_grp}
+
+            keys = ['Data Set', 'Project', 'Replicate Sets', 'Species', 'Biosources', 'Publication', 'Study', 'Lab']
+            if st_grp == "Single Time Point and Condition":
+                keys.remove('Study')
+
+            # make markdown table
+            name = "data-highlights.hic." + st_grp.lower().replace(" ", "-") + ".md"
+            default_col_widths = "[-1,100,-1,100,-1,-1,-1,-1]"
+            if "Study" not in keys:
+                default_col_widths = "[-1,100,-1,120,250,-1,170]"
+            output[st_grp] = {
+                'alias': "4dn-dcic-lab:" + name,
+                'body': wrangler_utils.md_table_maker(table_stg, keys, name, default_col_widths)}
+
+    check.description = "Hi-C summary tables need to be updated."
+    if problematic:
+        check.full_output = problematic
+        if problematic['missing_info']:
+            check.description += ' Dataset or study group are missing.'
+        if problematic['multiple_info']:
+            check.description += ' Multiple study or study groups found for the same dataset group.'
+        check.description += ' Will NOT patch until these problems are resolved. See full output for details.'
+    else:
+        check.full_output = output
+        check.allow_action = True
+        check.action_message = 'Will attempt to patch {} static sections'.format(len(output))
+    return check
+
+
+@action_function()
+def patch_hic_summary_tables(connection, **kwargs):
+    ''' Update the Hi-C summary tables
+    '''
+    action = ActionResult(connection, 'patch_hic_summary_tables')
+    check_res = action.get_associated_check_result(kwargs)
+    sections_to_patch = check_res['full_output']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    for item in sections_to_patch.values():
+        try:
+            ff_utils.patch_metadata({"body": item['body']}, item['alias'], key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({item['alias']: str(e)})
+        else:
+            action_logs['patch_success'].append(item['alias'])
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
