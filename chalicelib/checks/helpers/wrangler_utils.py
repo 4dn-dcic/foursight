@@ -98,7 +98,7 @@ def last_modified_from(days_back):
     else:
         date_now = datetime.datetime.now(datetime.timezone.utc)
         date_diff = datetime.timedelta(days=days_back)
-        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d")
+        from_date = datetime.datetime.strftime(date_now - date_diff, "%Y-%m-%d %H:%M")
         from_date_query = '&last_modified.date_modified.from=' + from_date
         from_text = 'modified from %s ' % from_date
     return from_date_query, from_text
@@ -112,13 +112,10 @@ def md_cell_maker(item):
         outstr = item
 
     if isinstance(item, set):
-        outstr = "<br>".join(item)
+        outstr = ",<br>".join(item)
 
     if isinstance(item, list):
-        for i in item:
-            outstr += md_cell_maker(i) + "<br>"
-        if len(item) > 0:
-            outstr = outstr[:-4]
+        outstr = "<br>".join([md_cell_maker(i) for i in item])
 
     if isinstance(item, dict):
         if item.get("link") is None:

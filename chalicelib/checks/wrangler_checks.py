@@ -2106,7 +2106,7 @@ def add_grouped_with_file_relation(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(days_back=1)
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
         If any result is found, update the summary tables.
@@ -2116,9 +2116,9 @@ def check_hic_summary_tables(connection, **kwargs):
     query = ('search/?type=ExperimentSetReplicate&status=released' +
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
 
-    # search new sets only
-    from_date_query = wrangler_utils.last_modified_from(1)
-    new_sets = ff_utils.search_metadata(query + from_date_query + '&field=study_group', key=connection.ff_keys)
+    # search if there is any new expset
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
+    new_sets = ff_utils.search_metadata(query + from_date_query + '&limit=1', key=connection.ff_keys)
 
     if len(new_sets) == 0:  # no update needed
         check.status = 'PASS'
