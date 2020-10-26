@@ -2117,7 +2117,7 @@ def check_hic_summary_tables(connection, **kwargs):
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
 
     # search if there is any new expset
-    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
+    from_date_query, from_text = wrangler_utils.last_modified_from('days_back')
     new_sets = ff_utils.search_metadata(query + from_date_query + '&limit=1', key=connection.ff_keys)
 
     if len(new_sets) == 0:  # no update needed
