@@ -588,37 +588,6 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     return template
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
-    time.sleep(load_wait)
-    all_inputs = []
-    for arg, files in input_files.items():
-        inp = extract_file_info(files, arg, auth, env)
-        all_inputs.append(inp)
-    # tweak to get bg2bw working
-    all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
-    my_s3_util = s3Utils(env=env)
-    out_bucket = my_s3_util.outfile_bucket
-    """Creates the trigger json that is used by foufront endpoint.
-    """
-    input_json['input_files'] = all_inputs
-    input_json['output_bucket'] = out_bucket
-    input_json["_tibanna"] = {
-        "env": env,
-        "run_type": input_json['app_name'],
-        "run_id": run_name}
-    input_json['step_function_name'] = 'tibanna_pony'
-    input_json['public_postrun_json'] = True
-    if mount:
-        for a_file in input_json['input_files']:
-            a_file['mount'] = True
-    try:
-        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
-        url = json.loads(e['input'])['_tibanna']['url']
-        return url
-    except Exception as e:
-        return str(e)
-
-
 def build_exp_type_query(exp_type, kwargs):
     assert exp_type in accepted_versions
     statuses = ['pre-release', 'released', 'released to project']
@@ -1325,6 +1294,38 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     new_tags = list(set(existing_tags + [new_tag]))
     ff_utils.patch_metadata({'completed_processes': new_tags}, set_acc, auth)
     return log
+
+
+def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
+    time.sleep(load_wait)
+    all_inputs = []
+    for arg, files in input_files.items():
+        inp = extract_file_info(files, arg, auth, env)
+        all_inputs.append(inp)
+    # tweak to get bg2bw working
+    all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
+    my_s3_util = s3Utils(env=env)
+    out_bucket = my_s3_util.outfile_bucket
+    """Creates the trigger json that is used by foufront endpoint.
+    """
+    input_json['input_files'] = all_inputs
+    input_json['output_bucket'] = out_bucket
+    input_json["_tibanna"] = {
+        "env": env,
+        "run_type": input_json['app_name'],
+        "run_id": run_name}
+    input_json['step_function_name'] = 'tibanna_pony'
+    input_json['public_postrun_json'] = True
+    if mount:
+        for a_file in input_json['input_files']:
+            a_file['mount'] = True
+
+    try:
+        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
+        url = json.loads(e['input'])['_tibanna']['url']
+        return url
+    except Exception as e:
+        return str(e)
 
 
 def start_missing_run(run_info, auth, env):
