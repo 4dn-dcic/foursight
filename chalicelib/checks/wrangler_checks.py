@@ -2235,9 +2235,9 @@ def check_hic_summary_tables(connection, **kwargs):
     check.description = "Hi-C summary tables need to be updated."
     if problematic:
         check.full_output = problematic
-        if problematic['missing_info']:
+        if problematic.get('missing_info'):
             check.description += ' Dataset or study group are missing.'
-        if problematic['multiple_info']:
+        if problematic.get('multiple_info'):
             check.description += ' Multiple study or study groups found for the same dataset group.'
         check.description += ' Will NOT patch until these problems are resolved. See full output for details.'
     else:
