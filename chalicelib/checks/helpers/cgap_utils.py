@@ -224,7 +224,6 @@ def get_bamsnap_parameters(samples_pedigree, all_samples):
     def get_summary(a_role_info, all_samples):
         """given a samples pedigree item and all samples information (from samples pedigree)
         return a summary for bamsnap"""
-        print(a_role_info)
         relation = a_role_info['relationship']
         sample_acc = a_role_info['sample_accession']
         sample_name = a_role_info.get('sample_name', '')
