@@ -401,7 +401,7 @@ wf_dict = [
             "EBS_optimized": True
         }
     },
-    {  # VCFQC used in Part III
+    {  # VCFQC used in Part III & Part II
         'app_name': 'workflow_granite-qcVCF',
         'workflow_uuid': '33a85705-b757-49e0-aaef-d786695d6d03',
         'parameters': {"trio_errors": True,
