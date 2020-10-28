@@ -208,6 +208,8 @@ def analyze_pedigree(samples_pedigree_json, all_samples):
             }
         qc_pedigree.append(member_qc_pedigree)
         run_mode = 'proband_only'
+    # remove parents from mother and father (temporary fix until vcfqc V4 is in production)
+    qc_pedigree = remove_parents_without_sample(qc_pedigree)
     return input_samples, qc_pedigree, run_mode, error
 
 
@@ -253,7 +255,7 @@ def get_bamsnap_parameters(samples_pedigree, all_samples):
     remaining_samples = [i for i in all_sample_accs if i not in seen_sample_accs]
 
     for a_sample_acc in remaining_samples:
-        a_role_pedigree = [i for i in samples_pedigree if i['sample_accession'] == a_sample_acc]
+        a_role_pedigree = [i for i in samples_pedigree if i['sample_accession'] == a_sample_acc][0]
         sample_summary = get_summary(a_role_pedigree, all_samples)
         summary.append(sample_summary)
     bams = [i['bam'] for i in summary]

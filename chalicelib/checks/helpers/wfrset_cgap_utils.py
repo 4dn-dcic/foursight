@@ -401,7 +401,7 @@ wf_dict = [
             "EBS_optimized": True
         }
     },
-    {  # VCFQC used in Part III
+    {  # VCFQC used in Part III & Part II
         'app_name': 'workflow_granite-qcVCF',
         'workflow_uuid': '33a85705-b757-49e0-aaef-d786695d6d03',
         'parameters': {"trio_errors": True,
@@ -436,7 +436,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     output files; genome assembly, file_type, desc
     overwrite is a dictionary, if given will overwrite keys in resulting template
     overwrite = {'config': {"a": "b"},
-                 'parameters': {'c': "d"}
+                 'parameters': {'c': "d"},
+                 'custom_pf_fields': { 'file_arg': {'e': 'f'}}
                     }
     """
     genome = ""
@@ -485,5 +486,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:
-                template[a_key][a_spec] = overwrite[a_key][a_spec]
+                # if the key value is a dictionary, use update
+                if isinstance(overwrite[a_key][a_spec], dict):
+                    template[a_key][a_spec].update(overwrite[a_key][a_spec])
+                # if it is string array bool, set the value
+                else:
+                    template[a_key][a_spec] = overwrite[a_key][a_spec]
     return template

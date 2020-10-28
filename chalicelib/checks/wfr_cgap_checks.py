@@ -1005,6 +1005,15 @@ def cgapS3_status(connection, **kwargs):
             check.full_output['problematic_runs'].append({an_msa['@id']: error_msg})
             continue
 
+        # Some annotated vcf files are not meant to be ingested as variant samples on cgapwolf
+        # these are often data processing for lab members (ie exceptional responders)
+        # If the sample_processing has don't ingest tag
+        # 1) disable ingestion of ann vcf file
+        # 2) skip bamsnap step
+        skip_ingestion = False
+        if 'skip_ingestion' in an_msa.get('tags', []):
+            skip_ingestion = True
+
         # Setup for step 1a
         input_rcks = []  # used by rcktar
         sample_ids = []  # used by comHet
@@ -1128,10 +1137,17 @@ def cgapS3_status(connection, **kwargs):
                                                              'mti_vep': {"mount": True}
                                                              },
                               }
+            # if ingestion needs to be skipped, we need to pass metadata to the vcf file
+            if skip_ingestion:
+                update_file_metadata = {'custom_pf_fields': {'annotated_vcf': {'file_ingestion_status': 'Ingestion disabled'}}}
+            else:
+                update_file_metadata = {}
+
             s5_tag = an_msa['@id'] + '_Part3step5'
             keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
                                                                   s5_tag, step4_output,
-                                                                  s5_input_files,  step5_name, 'annotated_vcf')
+                                                                  s5_input_files,  step5_name, 'annotated_vcf',
+                                                                  additional_input=update_file_metadata)
 
         if step5_status != 'complete':
             step5a_status = ""
@@ -1157,9 +1173,13 @@ def cgapS3_status(connection, **kwargs):
                                                                     s5a_tag, step5_output,
                                                                     s5a_input_files,  step5a_name, '',
                                                                     additional_input=update_pars, no_output=True)
-
+        # in principle we can run bamsnap and vcf qc at the same time
+        # currently we are waiting for qc to be successful to continue
         if step5a_status != 'complete':
             step6_status = ""
+        # if skipping ingestion, skip bamsnap too
+        elif skip_ingestion:
+            step6_status = 'complete'
         else:
             # BAMSNAP
             s6_input_files = {'input_bams': input_bams,
