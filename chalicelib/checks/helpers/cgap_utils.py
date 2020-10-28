@@ -208,6 +208,8 @@ def analyze_pedigree(samples_pedigree_json, all_samples):
             }
         qc_pedigree.append(member_qc_pedigree)
         run_mode = 'proband_only'
+    # remove parents from mother and father (temporary fix until vcfqc V4 is in production)
+    qc_pedigree = remove_parents_without_sample(qc_pedigree)
     return input_samples, qc_pedigree, run_mode, error
 
 
