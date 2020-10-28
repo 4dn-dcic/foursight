@@ -1737,5 +1737,17 @@
                 }
             }
         }
+    },
+    "check_hic_summary_tables": {
+        "title": "Hi-C summary tables",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
