@@ -2117,8 +2117,8 @@ def check_hic_summary_tables(connection, **kwargs):
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
 
     # search if there is any new expset
-    from_date_query, from_text = wrangler_utils.last_modified_from('days_back')
-    new_sets = ff_utils.search_metadata(query + from_date_query + '&limit=1', key=connection.ff_keys)
+    from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back'))
+    new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
     if len(new_sets) == 0:  # no update needed
         check.status = 'PASS'
@@ -2241,6 +2241,7 @@ def check_hic_summary_tables(connection, **kwargs):
             check.description += ' Multiple study or study groups found for the same dataset group.'
         check.description += ' Will NOT patch until these problems are resolved. See full output for details.'
     else:
+        check.brief_output = [s['accession'] for s in new_sets]
         check.full_output = output
         check.allow_action = True
         check.action_message = 'Will attempt to patch {} static sections'.format(len(output))
