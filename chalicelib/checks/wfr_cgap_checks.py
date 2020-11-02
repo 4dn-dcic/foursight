@@ -656,13 +656,20 @@ def cgapS2_status(connection, **kwargs):
     print(len(res))
     cnt = 0
     for an_msa in res:
+        # msa id to be used on foursight brief output
+        # use first alias if available, uuid if not
+        if an_msa.get('aliases'):
+            print_id = an_msa['aliases'][0]
+        else:
+            print_id = an_msa['uuid']
+
         cnt += 1
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['previous_version'])
         now = datetime.utcnow()
-        print(an_msa['@id'], an_msa.get('aliases', ['no-alias'])[0], (now-start).seconds, len(all_uuids))
+        print(print_id, (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             check.summary = 'Timout - only {} sample_processings were processed'.format(str(cnt))
             break
@@ -678,7 +685,7 @@ def cgapS2_status(connection, **kwargs):
         # if there are multiple families, this part will need changes
         families = an_msa['families']
         if len(families) > 1:
-            final_status = an_msa['@id'] + ' error, multiple families'
+            final_status = print_id + ' error, multiple families'
             check.brief_output.extend(final_status)
             check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
             continue
@@ -686,7 +693,7 @@ def cgapS2_status(connection, **kwargs):
         samples_pedigree = an_msa['samples_pedigree']
         vcfqc_input_samples, qc_pedigree, run_mode, error = cgap_utils.analyze_pedigree(samples_pedigree, all_samples)
         if error:
-            error_msg = an_msa['@id'] + " " + error
+            error_msg = print_id + " " + error
             check.brief_output.extend(error_msg)
             check.full_output['problematic_runs'].append({an_msa['@id']: error_msg})
             continue
@@ -715,13 +722,13 @@ def cgapS2_status(connection, **kwargs):
             input_vcfs.append(vcf)
 
         if not samples_ready:
-            final_status = an_msa['@id'] + ' waiting for upstream part'
+            final_status = print_id + ' waiting for upstream part'
             print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({an_msa['@id']: 'missing upstream part'})
             continue
 
-        # if multiple sample, merge vcfs, if not skip it
+        # if multiple sample, merge vcfs, if not skip it (CombineGVCF)
         if len(input_samples) > 1:
             s1_input_files = {'input_gvcfs': input_vcfs,
                               'chromosomes': '/files-reference/GAPFIGJVJDUY/',
@@ -732,7 +739,7 @@ def cgapS2_status(connection, **kwargs):
             else:
                 ebs_size = str(10 + len(input_samples) - 3) + 'x'
             update_pars = {"config": {"ebs_size": ebs_size}}
-            s1_tag = an_msa['@id'] + '_Part2step1' + input_vcfs[0].split('/')[2]
+            s1_tag = print_id + '_combineGVCF_' + input_vcfs[0].split('/')[2]
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                                   s1_tag, input_vcfs,
                                                                   s1_input_files,  step1_name, 'combined_gvcf',
@@ -744,12 +751,12 @@ def cgapS2_status(connection, **kwargs):
         if step1_status != 'complete':
             step2_status = ""
         else:
-            # run step2
+            # run step2 GenotypeGVCF
             s2_input_files = {'input_gvcf': step1_output,
                               "reference": "/files-reference/GAPFIXRDPDK5/",
                               "known-sites-snp": "/files-reference/GAPFI4LJRN98/",
                               'chromosomes': '/files-reference/GAPFIGJVJDUY/'}
-            s2_tag = an_msa['@id'] + '_Part2step2' + step1_output.split('/')[2]
+            s2_tag = print_id + '_GenotypeGVCF_' + step1_output.split('/')[2]
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   s2_tag, step1_output,
                                                                   s2_input_files,  step2_name, 'vcf')
@@ -768,7 +775,7 @@ def cgapS2_status(connection, **kwargs):
                                                              'vep_tar': {"mount": True}
                                                              }
                               }
-            s3_tag = an_msa['@id'] + '_Part2step3' + step2_output.split('/')[2]
+            s3_tag = print_id + '_VEP_' + step2_output.split('/')[2]
             # there are 2 files we need, one to use in the next step
             keep, step3_status, step3_outputs = cgap_utils.stepper(library, keep,
                                                                    s3_tag, step2_output,
@@ -788,7 +795,7 @@ def cgapS2_status(connection, **kwargs):
                               'additional_file_parameters': {'mti': {"mount": True},
                                                              'mti_vep': {"mount": True}}
                               }
-            s4_tag = an_msa['@id'] + '_Part2step4' + step3_output_micro.split('/')[2]
+            s4_tag = print_id + '_micro_ann_' + step3_output_micro.split('/')[2]
             # this step is tagged (with uuid of sample_processing, which means
             # that when finding the workflowruns, it will not only look with
             # workflow app name and input files, but also the tag on workflow run items
@@ -813,13 +820,13 @@ def cgapS2_status(connection, **kwargs):
                                           "trio_errors": True,
                                           "het_hom": True,
                                           "ti_tv": True}}
-            s5_tag = an_msa['@id'] + '_Part3step5'
+            s5_tag = print_id + '_micro_vcfqc_' + step4_output.split('/')[2]
             keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
                                                                   s5_tag, step4_output,
                                                                   s5_input_files,  step5_name, '',
                                                                   additional_input=update_pars, no_output=True)
 
-        final_status = an_msa['@id']
+        final_status = print_id
         completed = []
         pipeline_tag = cgap_partII_version[-1]
         previous_tags = an_msa.get('completed_processes', [])
@@ -964,17 +971,20 @@ def cgapS3_status(connection, **kwargs):
     print(len(res))
     cnt = 0
     for an_msa in res:
+        # msa id to be used on foursight brief output
+        # use first alias if available, uuid if not
+        if an_msa.get('aliases'):
+            print_id = an_msa['aliases'][0]
+        else:
+            print_id = an_msa['uuid']
+
         cnt += 1
         all_items, all_uuids = ff_utils.expand_es_metadata([an_msa['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['previous_version'])
         now = datetime.utcnow()
-
-        alll = an_msa.get('aliases', ['none'])[0]
-
-        print()
-        print(an_msa['@id'], alll, (now-start).seconds, len(all_uuids))
+        print('\n', print_id, (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             check.summary = 'Timout - only {} sample_processings were processed'.format(str(cnt))
             break
@@ -991,7 +1001,7 @@ def cgapS3_status(connection, **kwargs):
         # if there are multiple families, this part will need changes
         families = an_msa['families']
         if len(families) > 1:
-            final_status = an_msa['@id'] + ' error, multiple families'
+            final_status = print_id + ' error, multiple families'
             check.brief_output.extend(final_status)
             check.full_output['problematic_runs'].append({an_msa['@id']: final_status})
             continue
@@ -1000,7 +1010,7 @@ def cgapS3_status(connection, **kwargs):
         # return input samples for trio/proband in sequence father,mother,proband
         input_samples, qc_pedigree, run_mode, error = cgap_utils.analyze_pedigree(samples_pedigree, all_samples)
         if error:
-            error_msg = an_msa['@id'] + " " + error
+            error_msg = print_id + " " + error
             check.brief_output.extend(error_msg)
             check.full_output['problematic_runs'].append({an_msa['@id']: error_msg})
             continue
@@ -1029,14 +1039,14 @@ def cgapS3_status(connection, **kwargs):
                 input_rcks.append(rck[0])
         # older processings might be missing rck files, a precaution
         if len(input_rcks) != len(input_samples) and run_mode == 'trio':
-            final_status = an_msa['@id'] + ' missing rck files on samples'
+            final_status = print_id + ' missing rck files on samples'
             print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({an_msa['@id']: final_status})
             continue
         # bail if sample id is missing
         if len(sample_ids) != len(input_samples):
-            final_status = an_msa['@id'] + 'some samples missing bam_sample_id'
+            final_status = print_id + 'some samples missing bam_sample_id'
             print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({an_msa['@id']: final_status})
@@ -1049,7 +1059,7 @@ def cgapS3_status(connection, **kwargs):
 
         # we need the vep and micro vcf in the processed_files field of sample_processing
         if len(an_msa.get('processed_files', [])) != 2:
-            final_status = an_msa['@id'] + '2 items in processed_files of msa was expected'
+            final_status = print_id + '2 items in processed_files of msa was expected'
             print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({an_msa['@id']: final_status})
@@ -1065,7 +1075,7 @@ def cgapS3_status(connection, **kwargs):
             s1_input_files = {'input_rcks': input_rcks,  # proband last
                               'additional_file_parameters': {'input_rcks': {"rename": new_names}}
                               }
-            s1_tag = an_msa['@id'] + '_Part3step1'
+            s1_tag = print_id + '_rck-tar'
             keep, step1_status, step1_output = cgap_utils.stepper(library, keep,
                                                                   s1_tag, input_rcks,
                                                                   s1_input_files,  step1_name, 'rck_tar')
@@ -1082,7 +1092,7 @@ def cgapS3_status(connection, **kwargs):
                               # "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
                               'additional_file_parameters': {'input_vcf': {"unzip": "gz"}}
                               }
-            s2_tag = an_msa['@id'] + '_Part3step2'
+            s2_tag = print_id + '_filtering'
             keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
                                                                   s2_tag, input_vcf,
                                                                   s2_input_files,  step2_name, 'merged_vcf')
@@ -1100,7 +1110,7 @@ def cgapS3_status(connection, **kwargs):
                                                                  'trio': {"mount": True},
                                                                  }
                                   }
-                s3_tag = an_msa['@id'] + '_Part3step3'
+                s3_tag = print_id + '_novocaller'
                 keep, step3_status, step3_output = cgap_utils.stepper(library, keep,
                                                                       s3_tag, step2_output,
                                                                       s3_input_files,  step3_name, 'novoCaller_vcf')
@@ -1118,7 +1128,7 @@ def cgapS3_status(connection, **kwargs):
                               }
             proband_first_sample_list = list(reversed(sample_ids))  # proband first sample ids
             update_pars = {"parameters": {"trio": proband_first_sample_list}}
-            s4_tag = an_msa['@id'] + '_Part3step4'
+            s4_tag = print_id + '_comhet'
             keep, step4_status, step4_output = cgap_utils.stepper(library, keep,
                                                                   s4_tag, step3_output,
                                                                   s4_input_files,  step4_name, 'comHet_vcf',
@@ -1143,7 +1153,7 @@ def cgapS3_status(connection, **kwargs):
             else:
                 update_file_metadata = {}
 
-            s5_tag = an_msa['@id'] + '_Part3step5'
+            s5_tag = print_id + '_full_ann'
             keep, step5_status, step5_output = cgap_utils.stepper(library, keep,
                                                                   s5_tag, step4_output,
                                                                   s5_input_files,  step5_name, 'annotated_vcf',
@@ -1168,7 +1178,7 @@ def cgapS3_status(connection, **kwargs):
                                                                         "(Clinvar Pathogenic/Likely Pathogenic, Conflicting Interpretation or Risk Factor)")
                                                 }
                            }
-            s5a_tag = an_msa['@id'] + '_Part3step5a'
+            s5a_tag = print_id + '_full_vcfqc'
             keep, step5a_status, step5a_output = cgap_utils.stepper(library, keep,
                                                                     s5a_tag, step5_output,
                                                                     s5a_input_files,  step5a_name, '',
@@ -1190,14 +1200,14 @@ def cgapS3_status(connection, **kwargs):
                                                              'ref': {"mount": True}
                                                              }
                               }
-            s6_tag = an_msa['@id'] + '_Part3step6'
+            s6_tag = print_id + '_bamsnap'
             update_pars = {"parameters": {"titles": input_titles}}
             keep, step6_status, step6_output = cgap_utils.stepper(library, keep,
                                                                   s6_tag, step5_output,
                                                                   s6_input_files,  step6_name, '',
                                                                   additional_input=update_pars, no_output=True)
 
-        final_status = an_msa['@id']
+        final_status = print_id
         completed = []
         pipeline_tag = cgap_partIII_version[-1]
         previous_tags = an_msa.get('completed_processes', [])
@@ -1493,7 +1503,6 @@ def cram_status(connection, **kwargs):
 
         if not all_uploaded:
             final_status = a_sample['accession'] + ' skipped, waiting for file upload'
-            print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_sample['accession']: 'files status uploading'})
             continue
