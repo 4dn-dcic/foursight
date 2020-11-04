@@ -1608,8 +1608,8 @@ def long_running_wfrs_status(connection, **kwargs):
     Find all runs with run status running/started. Action will cleanup their metadata, and this action might
     lead to new runs being started.
     arg:
-     - uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
-              should also work if a list item is provided as input
+     - limit_to_uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
+                       should also work if a list item is provided as input
     """
     check = CheckResult(connection, 'long_running_wfrs_status')
     my_auth = connection.ff_keys
@@ -1801,6 +1801,8 @@ def problematic_wfrs_status(connection, **kwargs):
         sum([counter[i] for i in report_catories]),
         ",".join([i for i in report_catories if counter[i]])
     )
+    # add summary as the first item in brief output
+    check.brief_output.insert(0, check.summary)
     return check
 
 
