@@ -1445,13 +1445,8 @@ def bamqcCGAP_start(connection, **kwargs):
     return action
 
 
-@check_function(start_date=None)
+@check_function()
 def cram_status(connection, **kwargs):
-    """
-    Keyword arguments:
-    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead
-    """
     start = datetime.utcnow()
     check = CheckResult(connection, 'cram_status')
     my_auth = connection.ff_keys
@@ -1607,12 +1602,110 @@ def cram_start(connection, **kwargs):
     return action
 
 
-@check_function(start_date=None)
+@check_function(uuids="")
+def long_running_wfrs_status(connection, **kwargs):
+    """
+    Find all runs with run status running/started. Action will cleanup their metadata, and this action might
+    lead to new runs being started.
+    arg:
+     - uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
+    """
+    check = CheckResult(connection, 'long_running_wfrs_status')
+    my_auth = connection.ff_keys
+    check.action = "long_running_wfrs_start"
+    check.description = "Find runs running longer then 12h, action will delete the metadata for cleanup"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = []
+    check.status = 'PASS'
+    check.allow_action = False
+    # get workflow run limits
+    workflow_details = cgap_utils.workflow_details
+    # find all runs thats status is not complete or error
+    q = '/search/?type=WorkflowRun&run_status!=complete&run_status!=error'
+    running_wfrs = ff_utils.search_metadata(q, my_auth)
+    print(len(running_wfrs))
+    # times are UTC on the portal
+    now = datetime.utcnow()
+    long_running = 0
+
+    def fetch_wfr_associated(wfr_info):
+        """Given wfr embedded frame, find associated output files and qcs"""
+        wfr_as_list = []
+        wfr_as_list.append(wfr_info['uuid'])
+        if wfr_info.get('output_files'):
+            for o in wfr_info['output_files']:
+                if o.get('value'):
+                    wfr_as_list.append(o['value']['uuid'])
+                elif o.get('value_qc'):
+                    wfr_as_list.append(o['value_qc']['uuid'])
+        if wfr_info.get('output_quality_metrics'):
+            for qc in wfr_info['output_quality_metrics']:
+                if qc.get('value'):
+                    wfr_as_list.append(qc['value']['uuid'])
+        if wfr_info.get('quality_metric'):
+            wfr_as_list.append(wfr_info['quality_metric']['uuid'])
+        return list(set(wfr_as_list))
+
+    for a_wfr in running_wfrs:
+        wfr_type, time_info = a_wfr['display_title'].split(' run ')
+        wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        # user submitted ones use run on insteand of run
+        time_info = time_info.strip('on').strip()
+        try:
+            wfr_time = datetime.strptime(time_info, '%Y-%m-%d %H:%M:%S.%f')
+        except ValueError:
+            wfr_time = datetime.strptime(time_info, '%Y-%m-%d %H:%M:%S')
+        run_time = (now - wfr_time).total_seconds() / 3600
+        run_type = wfr_type_base.strip()
+        # get run_limit, if wf not found set it to an hour, we should have an entry for all runs
+        run_limit = workflow_details.get(run_type, {}).get('run_time', 10)
+        if run_time > run_limit:
+            long_running += 1
+            # find all items to be deleted
+            delete_list_uuid = fetch_wfr_associated(a_wfr)
+            check.full_output.append({'wfr_uuid': a_wfr['uuid'],
+                                      'wfr_type': run_type,
+                                      'wfr_run_time': str(int(run_time)) + 'h',
+                                      'wfr_run_status': a_wfr['run_status'],
+                                      'wfr_status': a_wfr['status'],
+                                      'items_to_delete': delete_list_uuid})
+    if long_running:
+        check.allow_action = True
+        check.summary = "Found {} run(s) running longer than expected".format(long_running)
+    else:
+        check.summary = 'All Good!'
+    return check
+
+
+@action_function()
+def long_running_wfrs_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'long_running_wfrs_start')
+    my_auth = connection.ff_keys
+    long_running_wfrs_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    deleted_wfrs = 0
+    status_protected = 0
+    for a_wfr in long_running_wfrs_check_result:
+        # don't deleted if item is in protected statuses
+        if a_wfr['wfr_status'] in ['shared', 'current']:
+            status_protected += 1
+        else:
+            deleted_wfrs += 1
+            for an_item_to_delete in a_wfr['items_to_delete']:
+                ff_utils.patch_metadata({'status': 'deleted'}, an_item_to_delete, my_auth)
+    msg = '{} wfrs were removed'.format(str(deleted_wfrs))
+    if status_protected:
+        msg += ', {} wfrs were skipped due to protected item status.'.format(str(status_protected))
+    action.output = msg
+    action.status = 'DONE'
+    return action
+
+
+@check_function()
 def replace_me_status(connection, **kwargs):
     """
     Keyword arguments:
-    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
     check = CheckResult(connection, 'replace_me_status')
