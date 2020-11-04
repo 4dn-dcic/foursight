@@ -1696,6 +1696,137 @@ def long_running_wfrs_start(connection, **kwargs):
     return action
 
 
+@check_function(delete_categories='Rerun', limit_to_uuids="")
+def problematic_wfrs_status(connection, **kwargs):
+    """
+    Find all runs with run status error. Action will cleanup their metadata, and this action might
+    lead to new runs being started.
+    arg:
+     - delete_category: comma separated category list
+                        which categories to delete with action, by default Rerun is deleted
+     - limit_to_uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
+                       should also work if a list item is provided as input
+    """
+    check = CheckResult(connection, 'problematic_wfrs_status')
+    my_auth = connection.ff_keys
+    check.action = "problematic_wfrs_start"
+    check.description = "Find errored runs, action will delete the metadata for cleanup, which might lead to re-runs by pipeline checks"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'report_only': [], 'cleanup': []}
+    check.status = 'PASS'
+    check.allow_action = False
+    # find all runs thats status is not complete or error
+    q = '/search/?type=WorkflowRun&run_status=error'
+    errored_wfrs = ff_utils.search_metadata(q, my_auth)
+    # if a comma separated list of uuids is given, limit the result to them
+    uuids = str(kwargs.get('limit_to_uuids'))
+    if uuids:
+        uuids = cgap_utils.string_to_list(uuids)
+        errored_wfrs = [i for i in errored_wfrs if i['uuid'] in uuids]
+
+    delete_categories = str(kwargs.get('delete_categories'))
+    if delete_categories:
+        delete_categories = cgap_utils.string_to_list(delete_categories)
+
+    if not errored_wfrs:
+        check.summary = 'All Good!'
+        return check
+    print(len(errored_wfrs))
+    # report wfrs with error with warning
+    check.status = 'WARN'
+    # categorize errored runs based on the description keywords
+    category_dictionary = {'NotEnoughSpace': 'Not enough space',
+                           'Rerun': 'rerun',
+                           'CheckLog': 'tibanna log --',
+                           'EC2Idle': 'EC2 Idle',
+                           'PatchError': 'Bad status code for PATCH',
+                           'NotCategorized': ''  # to record all not categorized
+                           }
+    # counter for categories
+    counter = {k: 0 for k in category_dictionary}
+    # if a delete_category is not in category_dictionary, bail
+    wrong_category = [i for i in delete_categories if i not in category_dictionary]
+    if wrong_category:
+        check.summary = 'Category was not found: {}'.format(wrong_category)
+        return check
+
+    for a_wfr in errored_wfrs:
+        wfr_type, time_info = a_wfr['display_title'].split(' run ')
+        wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        run_type = wfr_type_base.strip()
+        # categorize
+        desc = a_wfr.get('description', '')
+        category = ''
+        for a_key in category_dictionary:
+            if category_dictionary[a_key] in desc:
+                counter[a_key] += 1
+                category = a_key
+                break
+        # all should be assigned to a category
+        assert category
+        # find all items to be deleted
+        delete_list_uuid = cgap_utils.fetch_wfr_associated(a_wfr)
+
+        info_pack = {'wfr_uuid': a_wfr['uuid'],
+                     'wfr_type': run_type,
+                     'wfr_run_status': a_wfr['run_status'],
+                     'wfr_status': a_wfr['status'],
+                     'wfr_description': a_wfr.get('description', '')[:50],
+                     'category': category,
+                     'items_to_delete': delete_list_uuid}
+        action_category = ''
+        # based on the category, place it in one of the lists in full output
+        if category in delete_categories:
+            action_category = 'To be deleted'
+            check.full_output['cleanup'].append(info_pack)
+        else:
+            check.full_output['report_only'].append(info_pack)
+            action_category = 'Only Reported'
+        # add a short description for brief output
+        check.brief_output.append("{}, {}, {}, {}".format(a_wfr['uuid'],
+                                                          run_type,
+                                                          category,
+                                                          action_category
+                                                          ))
+
+    if check.full_output['cleanup']:
+        check.allow_action = True
+
+    report_catories = [i for i in category_dictionary if i not in delete_categories]
+    check.summary = "{} wfrs ({}) will be deleted, and {} wfrs ({}) are reported".format(
+        sum([counter[i] for i in delete_categories]),
+        ",".join([i for i in delete_categories if counter[i]]),
+        sum([counter[i] for i in report_catories]),
+        ",".join([i for i in report_catories if counter[i]])
+    )
+    return check
+
+
+@action_function()
+def problematic_wfrs_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'problematic_wfrs_start')
+    my_auth = connection.ff_keys
+    problematic_wfrs_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    deleted_wfrs = 0
+    status_protected = 0
+    for a_wfr in problematic_wfrs_check_result['cleanup']:
+        # don't deleted if item is in protected statuses
+        if a_wfr['wfr_status'] in ['shared', 'current']:
+            status_protected += 1
+        else:
+            deleted_wfrs += 1
+            for an_item_to_delete in a_wfr['items_to_delete']:
+                ff_utils.patch_metadata({'status': 'deleted'}, an_item_to_delete, my_auth)
+    msg = '{} wfrs were removed'.format(str(deleted_wfrs))
+    if status_protected:
+        msg += ', {} wfrs were skipped due to protected item status.'.format(str(status_protected))
+    action.output = msg
+    action.status = 'DONE'
+    return action
+
+
 @check_function()
 def replace_me_status(connection, **kwargs):
     """
