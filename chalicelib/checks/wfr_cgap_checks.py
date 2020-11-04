@@ -1666,6 +1666,7 @@ def long_running_wfrs_status(connection, **kwargs):
                                       'items_to_delete': delete_list_uuid})
     if long_running:
         check.allow_action = True
+        check.status = 'WARN'
         check.summary = "Found {} run(s) running longer than expected".format(long_running)
     else:
         check.summary = 'All Good!'
