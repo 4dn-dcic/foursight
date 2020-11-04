@@ -1445,13 +1445,8 @@ def bamqcCGAP_start(connection, **kwargs):
     return action
 
 
-@check_function(start_date=None)
+@check_function()
 def cram_status(connection, **kwargs):
-    """
-    Keyword arguments:
-    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead
-    """
     start = datetime.utcnow()
     check = CheckResult(connection, 'cram_status')
     my_auth = connection.ff_keys
@@ -1603,5 +1598,394 @@ def cram_start(connection, **kwargs):
         missing_runs = cram_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = cram_check_result.get('completed_runs')
+    action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    return action
+
+
+@check_function(limit_to_uuids="")
+def long_running_wfrs_status(connection, **kwargs):
+    """
+    Find all runs with run status running/started. Action will cleanup their metadata, and this action might
+    lead to new runs being started.
+    arg:
+     - uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
+              should also work if a list item is provided as input
+    """
+    check = CheckResult(connection, 'long_running_wfrs_status')
+    my_auth = connection.ff_keys
+    check.action = "long_running_wfrs_start"
+    check.description = "Find runs running longer than specified, action will delete the metadata for cleanup, which might lead to re-runs by pipeline checks"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = []
+    check.status = 'PASS'
+    check.allow_action = False
+    # get workflow run limits
+    workflow_details = cgap_utils.workflow_details
+    # find all runs thats status is not complete or error
+    q = '/search/?type=WorkflowRun&run_status!=complete&run_status!=error'
+    running_wfrs = ff_utils.search_metadata(q, my_auth)
+
+    # if a comma separated list of uuids is given, limit the result to them
+    uuids = str(kwargs.get('limit_to_uuids'))
+    if uuids:
+        uuids = cgap_utils.string_to_list(uuids)
+        running_wfrs = [i for i in running_wfrs if i['uuid'] in uuids]
+
+    if not running_wfrs:
+        check.summary = 'All Good!'
+        return check
+
+    print(len(running_wfrs))
+    # times are UTC on the portal
+    now = datetime.utcnow()
+    long_running = 0
+
+    for a_wfr in running_wfrs:
+        wfr_type, time_info = a_wfr['display_title'].split(' run ')
+        wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        # user submitted ones use run on insteand of run
+        time_info = time_info.strip('on').strip()
+        try:
+            wfr_time = datetime.strptime(time_info, '%Y-%m-%d %H:%M:%S.%f')
+        except ValueError:
+            wfr_time = datetime.strptime(time_info, '%Y-%m-%d %H:%M:%S')
+        run_time = (now - wfr_time).total_seconds() / 3600
+        run_type = wfr_type_base.strip()
+        # get run_limit, if wf not found set it to an hour, we should have an entry for all runs
+        run_limit = workflow_details.get(run_type, {}).get('run_time', 10)
+        if run_time > run_limit:
+            long_running += 1
+            # find all items to be deleted
+            delete_list_uuid = cgap_utils.fetch_wfr_associated(a_wfr)
+            check.full_output.append({'wfr_uuid': a_wfr['uuid'],
+                                      'wfr_type': run_type,
+                                      'wfr_run_time': str(int(run_time)) + 'h',
+                                      'wfr_run_status': a_wfr['run_status'],
+                                      'wfr_status': a_wfr['status'],
+                                      'items_to_delete': delete_list_uuid})
+    if long_running:
+        check.allow_action = True
+        check.summary = "Found {} run(s) running longer than expected".format(long_running)
+    else:
+        check.summary = 'All Good!'
+    return check
+
+
+@action_function()
+def long_running_wfrs_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'long_running_wfrs_start')
+    my_auth = connection.ff_keys
+    long_running_wfrs_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    deleted_wfrs = 0
+    status_protected = 0
+    for a_wfr in long_running_wfrs_check_result:
+        # don't deleted if item is in protected statuses
+        if a_wfr['wfr_status'] in ['shared', 'current']:
+            status_protected += 1
+        else:
+            deleted_wfrs += 1
+            for an_item_to_delete in a_wfr['items_to_delete']:
+                ff_utils.patch_metadata({'status': 'deleted'}, an_item_to_delete, my_auth)
+    msg = '{} wfrs were removed'.format(str(deleted_wfrs))
+    if status_protected:
+        msg += ', {} wfrs were skipped due to protected item status.'.format(str(status_protected))
+    action.output = msg
+    action.status = 'DONE'
+    return action
+
+
+@check_function(delete_categories='Rerun', limit_to_uuids="")
+def problematic_wfrs_status(connection, **kwargs):
+    """
+    Find all runs with run status error. Action will cleanup their metadata, and this action might
+    lead to new runs being started.
+    arg:
+     - delete_category: comma separated category list
+                        which categories to delete with action, by default Rerun is deleted
+     - limit_to_uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
+                       should also work if a list item is provided as input
+    """
+    check = CheckResult(connection, 'problematic_wfrs_status')
+    my_auth = connection.ff_keys
+    check.action = "problematic_wfrs_start"
+    check.description = "Find errored runs, action will delete the metadata for cleanup, which might lead to re-runs by pipeline checks"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'report_only': [], 'cleanup': []}
+    check.status = 'PASS'
+    check.allow_action = False
+    # find all runs thats status is not complete or error
+    q = '/search/?type=WorkflowRun&run_status=error'
+    errored_wfrs = ff_utils.search_metadata(q, my_auth)
+    # if a comma separated list of uuids is given, limit the result to them
+    uuids = str(kwargs.get('limit_to_uuids'))
+    if uuids:
+        uuids = cgap_utils.string_to_list(uuids)
+        errored_wfrs = [i for i in errored_wfrs if i['uuid'] in uuids]
+
+    delete_categories = str(kwargs.get('delete_categories'))
+    if delete_categories:
+        delete_categories = cgap_utils.string_to_list(delete_categories)
+
+    if not errored_wfrs:
+        check.summary = 'All Good!'
+        return check
+    print(len(errored_wfrs))
+    # report wfrs with error with warning
+    check.status = 'WARN'
+    # categorize errored runs based on the description keywords
+    category_dictionary = {'NotEnoughSpace': 'Not enough space',
+                           'Rerun': 'rerun',
+                           'CheckLog': 'tibanna log --',
+                           'EC2Idle': 'EC2 Idle',
+                           'PatchError': 'Bad status code for PATCH',
+                           'NotCategorized': ''  # to record all not categorized
+                           }
+    # counter for categories
+    counter = {k: 0 for k in category_dictionary}
+    # if a delete_category is not in category_dictionary, bail
+    wrong_category = [i for i in delete_categories if i not in category_dictionary]
+    if wrong_category:
+        check.summary = 'Category was not found: {}'.format(wrong_category)
+        return check
+
+    for a_wfr in errored_wfrs:
+        wfr_type, time_info = a_wfr['display_title'].split(' run ')
+        wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        run_type = wfr_type_base.strip()
+        # categorize
+        desc = a_wfr.get('description', '')
+        category = ''
+        for a_key in category_dictionary:
+            if category_dictionary[a_key] in desc:
+                counter[a_key] += 1
+                category = a_key
+                break
+        # all should be assigned to a category
+        assert category
+        # find all items to be deleted
+        delete_list_uuid = cgap_utils.fetch_wfr_associated(a_wfr)
+
+        info_pack = {'wfr_uuid': a_wfr['uuid'],
+                     'wfr_type': run_type,
+                     'wfr_run_status': a_wfr['run_status'],
+                     'wfr_status': a_wfr['status'],
+                     'wfr_description': a_wfr.get('description', '')[:50],
+                     'category': category,
+                     'items_to_delete': delete_list_uuid}
+        action_category = ''
+        # based on the category, place it in one of the lists in full output
+        if category in delete_categories:
+            action_category = 'To be deleted'
+            check.full_output['cleanup'].append(info_pack)
+        else:
+            check.full_output['report_only'].append(info_pack)
+            action_category = 'Only Reported'
+        # add a short description for brief output
+        check.brief_output.append("{}, {}, {}, {}".format(a_wfr['uuid'],
+                                                          run_type,
+                                                          category,
+                                                          action_category
+                                                          ))
+
+    if check.full_output['cleanup']:
+        check.allow_action = True
+
+    report_catories = [i for i in category_dictionary if i not in delete_categories]
+    check.summary = "{} wfrs ({}) will be deleted, and {} wfrs ({}) are reported".format(
+        sum([counter[i] for i in delete_categories]),
+        ",".join([i for i in delete_categories if counter[i]]),
+        sum([counter[i] for i in report_catories]),
+        ",".join([i for i in report_catories if counter[i]])
+    )
+    return check
+
+
+@action_function()
+def problematic_wfrs_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'problematic_wfrs_start')
+    my_auth = connection.ff_keys
+    problematic_wfrs_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    deleted_wfrs = 0
+    status_protected = 0
+    for a_wfr in problematic_wfrs_check_result['cleanup']:
+        # don't deleted if item is in protected statuses
+        if a_wfr['wfr_status'] in ['shared', 'current']:
+            status_protected += 1
+        else:
+            deleted_wfrs += 1
+            for an_item_to_delete in a_wfr['items_to_delete']:
+                ff_utils.patch_metadata({'status': 'deleted'}, an_item_to_delete, my_auth)
+    msg = '{} wfrs were removed'.format(str(deleted_wfrs))
+    if status_protected:
+        msg += ', {} wfrs were skipped due to protected item status.'.format(str(status_protected))
+    action.output = msg
+    action.status = 'DONE'
+    return action
+
+
+@check_function()
+def replace_me_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'replace_me_status')
+    my_auth = connection.ff_keys
+    check.action = "replace_me_start"
+    check.description = "add description"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    query_base = '/search/?type=...'
+    q = query_base
+    # print(q)
+    res = ff_utils.search_metadata(q, my_auth)
+    # check if anything in scope
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    cnt = 0
+    for a_res in res:
+        # do something
+
+        # use first alias if available, uuid if not
+        if a_res.get('aliases'):
+            print_id = a_res['aliases'][0]
+        else:
+            print_id = a_res['uuid']
+
+        cnt += 1
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_res['uuid']], my_auth,
+                                                           store_frame='embedded',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['previous_version'])
+        now = datetime.utcnow()
+        print('\n', print_id, (now-start).seconds, len(all_uuids))
+        if (now-start).seconds > lambda_limit:
+            check.summary = 'Timout - only {} sample_processings were processed'.format(str(cnt))
+            break
+
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        file_items = [typ for typ in all_items if typ.startswith('file_') and typ != 'file_format']
+        all_files = [i for typ in all_items for i in all_items[typ] if typ in file_items]
+        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
+        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+        keep = {'missing_run': [], 'running': [], 'problematic_run': []}
+
+        # add steps ...
+
+        # step 1
+
+        # step2
+        if step1_status != 'complete':
+            step2_status = ""
+        else:
+            # Run step
+            s2_input_files = {"input_file": 'input file',
+                              # "bigfile": "20004873-b672-4d84-a7c1-7fd5c0407519",
+                              'additional_file_parameters': {'input_file': {"unzip": "gz"}}
+                              }
+            s2_tag = print_id + '_new_step'
+            keep, step2_status, step2_output = cgap_utils.stepper(library, keep,
+                                                                  s2_tag, 'input file',
+                                                                  s2_input_files,  'name of the app name', 'output argument')
+
+        # finalize steps
+        final_status = print_id
+        completed = []
+        pipeline_tag = cgap_partIIII_version[-1]
+        previous_tags = a_res.get('completed_processes', [])
+        previous_files = [i['@id'] for i in a_res['processed_files']]
+
+        # unpack results
+        missing_run = keep['missing_run']
+        running = keep['running']
+        problematic_run = keep['problematic_run']
+
+        if step2_status == 'complete':
+            final_status += ' completed'
+            # existing_pf = [i['@id'] for i in a_res['processed_files']]
+            completed = [
+                a_res['@id'],
+                {'processed_files': previous_files + [step2_output, ],
+                 'completed_processes': previous_tags + [pipeline_tag, ]}]
+            print('COMPLETED', step2_output)
+        else:
+            if missing_run:
+                final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
+            if running:
+                final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
+
+        # add dictionaries to main ones
+        set_acc = a_res['@id']
+        check.brief_output.append(final_status)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if completed:
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+
+    # complete check values
+    check.summary = ""
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['skipped']:
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def replace_me_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'replace_me_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    replace_me_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = replace_me_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = replace_me_check_result.get('completed_runs')
     action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
