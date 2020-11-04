@@ -1055,3 +1055,11 @@ def fetch_wfr_associated(wfr_info):
     if wfr_info.get('quality_metric'):
         wfr_as_list.append(wfr_info['quality_metric']['uuid'])
     return list(set(wfr_as_list))
+
+
+def string_to_list(string):
+    "Given a string that is either comma separated values, or a python list, parse to list"
+    for a_sep in "'\":[] ":
+        values = string.replace(a_sep, ",")
+    values = [i.strip() for i in values.split(',') if i]
+    return values

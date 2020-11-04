@@ -1627,12 +1627,9 @@ def long_running_wfrs_status(connection, **kwargs):
     running_wfrs = ff_utils.search_metadata(q, my_auth)
 
     # if a comma separated list of uuids is given, limit the result to them
-    # if a list is given, convert to str, replace all foreign chracters with comma
     uuids = str(kwargs.get('limit_to_uuids'))
     if uuids:
-        for a_sep in "'\":[] ":
-            uuids = uuids.replace(a_sep, ",")
-        uuids = [i.strip() for i in uuids.split(',') if i]
+        uuids = cgap_utils.string_to_list(uuids)
         running_wfrs = [i for i in running_wfrs if i['uuid'] in uuids]
 
     if not running_wfrs:
