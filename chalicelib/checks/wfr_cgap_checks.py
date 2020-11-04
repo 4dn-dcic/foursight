@@ -1634,28 +1634,15 @@ def long_running_wfrs_status(connection, **kwargs):
             uuids = uuids.replace(a_sep, ",")
         uuids = [i.strip() for i in uuids.split(',') if i]
         running_wfrs = [i for i in running_wfrs if i['uuid'] in uuids]
+
+    if not running_wfrs:
+        check.summary = 'All Good!'
+        return check
+
     print(len(running_wfrs))
     # times are UTC on the portal
     now = datetime.utcnow()
     long_running = 0
-
-    def fetch_wfr_associated(wfr_info):
-        """Given wfr embedded frame, find associated output files and qcs"""
-        wfr_as_list = []
-        wfr_as_list.append(wfr_info['uuid'])
-        if wfr_info.get('output_files'):
-            for o in wfr_info['output_files']:
-                if o.get('value'):
-                    wfr_as_list.append(o['value']['uuid'])
-                elif o.get('value_qc'):
-                    wfr_as_list.append(o['value_qc']['uuid'])
-        if wfr_info.get('output_quality_metrics'):
-            for qc in wfr_info['output_quality_metrics']:
-                if qc.get('value'):
-                    wfr_as_list.append(qc['value']['uuid'])
-        if wfr_info.get('quality_metric'):
-            wfr_as_list.append(wfr_info['quality_metric']['uuid'])
-        return list(set(wfr_as_list))
 
     for a_wfr in running_wfrs:
         wfr_type, time_info = a_wfr['display_title'].split(' run ')
@@ -1673,7 +1660,7 @@ def long_running_wfrs_status(connection, **kwargs):
         if run_time > run_limit:
             long_running += 1
             # find all items to be deleted
-            delete_list_uuid = fetch_wfr_associated(a_wfr)
+            delete_list_uuid = cgap_utils.fetch_wfr_associated(a_wfr)
             check.full_output.append({'wfr_uuid': a_wfr['uuid'],
                                       'wfr_type': run_type,
                                       'wfr_run_time': str(int(run_time)) + 'h',

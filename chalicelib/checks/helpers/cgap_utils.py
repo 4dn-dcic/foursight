@@ -1036,3 +1036,22 @@ def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
         if qc_metric_name not in qc_results['display_title']:
             return False
     return True
+
+
+def fetch_wfr_associated(wfr_info):
+    """Given wfr embedded frame, find associated output files and qcs"""
+    wfr_as_list = []
+    wfr_as_list.append(wfr_info['uuid'])
+    if wfr_info.get('output_files'):
+        for o in wfr_info['output_files']:
+            if o.get('value'):
+                wfr_as_list.append(o['value']['uuid'])
+            elif o.get('value_qc'):
+                wfr_as_list.append(o['value_qc']['uuid'])
+    if wfr_info.get('output_quality_metrics'):
+        for qc in wfr_info['output_quality_metrics']:
+            if qc.get('value'):
+                wfr_as_list.append(qc['value']['uuid'])
+    if wfr_info.get('quality_metric'):
+        wfr_as_list.append(wfr_info['quality_metric']['uuid'])
+    return list(set(wfr_as_list))
