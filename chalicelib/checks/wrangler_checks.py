@@ -2184,7 +2184,7 @@ def check_hic_summary_tables(connection, **kwargs):
             (row['Study'],) = row['Study']
             (row['Class'],) = row['Class']
 
-            dsg_link = ''.join(["dataset_label=" + ds for ds in row['Data Set']['ds_list']])
+            dsg_link = '&'.join(["dataset_label=" + ds for ds in row['Data Set']['ds_list']])
             dsg_link = "/browse/?" + dsg_link.replace("+", "%2B").replace("/", "%2F").replace(" ", "+")
             row['Data Set']['link'] = dsg_link
 
