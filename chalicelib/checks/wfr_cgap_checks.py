@@ -1602,18 +1602,19 @@ def cram_start(connection, **kwargs):
     return action
 
 
-@check_function(uuids="")
+@check_function(limit_to_uuids="")
 def long_running_wfrs_status(connection, **kwargs):
     """
     Find all runs with run status running/started. Action will cleanup their metadata, and this action might
     lead to new runs being started.
     arg:
      - uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
+              should also work if a list item is provided as input
     """
     check = CheckResult(connection, 'long_running_wfrs_status')
     my_auth = connection.ff_keys
     check.action = "long_running_wfrs_start"
-    check.description = "Find runs running longer then 12h, action will delete the metadata for cleanup"
+    check.description = "Find runs running longer than specified, action will delete the metadata for cleanup, which might lead to re-runs by pipeline checks"
     check.brief_output = []
     check.summary = ""
     check.full_output = []
@@ -1624,6 +1625,15 @@ def long_running_wfrs_status(connection, **kwargs):
     # find all runs thats status is not complete or error
     q = '/search/?type=WorkflowRun&run_status!=complete&run_status!=error'
     running_wfrs = ff_utils.search_metadata(q, my_auth)
+
+    # if a comma separated list of uuids is given, limit the result to them
+    # if a list is given, convert to str, replace all foreign chracters with comma
+    uuids = str(kwargs.get('limit_to_uuids'))
+    if uuids:
+        for a_sep in "'\":[] ":
+            uuids = uuids.replace(a_sep, ",")
+        uuids = [i.strip() for i in uuids.split(',') if i]
+        running_wfrs = [i for i in running_wfrs if i['uuid'] in uuids]
     print(len(running_wfrs))
     # times are UTC on the portal
     now = datetime.utcnow()
