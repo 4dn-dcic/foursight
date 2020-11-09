@@ -200,7 +200,7 @@ wf_dict = [
         'parameters': {"nthreads": 15},
         "config": {
             "instance_type": "c5.4xlarge",
-            "ebs_size": 120,
+            "ebs_size": 200,
             "EBS_optimized": True
         },
         'custom_pf_fields': {
@@ -217,7 +217,7 @@ wf_dict = [
         'parameters': {"nthreads": 20},
         "config": {
             "instance_type": "c5n.18xlarge",
-            "ebs_size": "3x",
+            "ebs_size": "5x",
             "EBS_optimized": True
         },
         'custom_pf_fields': {
@@ -283,7 +283,7 @@ wf_dict = [
     },
     {  # VEP
         'app_name': 'workflow_vep-parallel',
-        'workflow_uuid': '7a9d1047-1966-4563-9f62-e7f1ea7ff0dc',
+        'workflow_uuid': 'adc588cf-1c6c-4281-9193-9645726eb792',
         'parameters': {"nthreads": 15},
         "config": {
             "instance_type": "c5.9xlarge",
@@ -387,7 +387,7 @@ wf_dict = [
     },
     {  # Step5 - full annotation
         'app_name': 'workflow_mutanno-annot-check',
-        'workflow_uuid': '3b18898d-7be5-4020-95d6-3fa453da70cf',
+        'workflow_uuid': '04da27aa-204c-4db2-9d66-a1624a463c13',
         'parameters': {"nthreads": 1},
         "config": {
             "instance_type": "c5.large",
@@ -411,7 +411,7 @@ wf_dict = [
             "EBS_optimized": True
         }
     },
-    {  # VCFQC used in Part III
+    {  # VCFQC used in Part III & Part II
         'app_name': 'workflow_granite-qcVCF',
         'workflow_uuid': '33a85705-b757-49e0-aaef-d786695d6d03',
         'parameters': {"trio_errors": True,
@@ -446,15 +446,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     output files; genome assembly, file_type, desc
     overwrite is a dictionary, if given will overwrite keys in resulting template
     overwrite = {'config': {"a": "b"},
-                 'parameters': {'c': "d"}
+                 'parameters': {'c': "d"},
+                 'custom_pf_fields': { 'file_arg': {'e': 'f'}}
                     }
     """
     genome = ""
     genome = mapper.get(my_organism)
 
-    templates = [i for i in wf_dict if i['app_name'] == step_name][0]
+    templates = [i for i in wf_dict if i['app_name'] == step_name]
     # every app name should exist only once in wf_dict
-    assert len(templates) == 1
+    if len(templates) != 1:
+        raise ValueError('There are multiple {} settings on wfr_cgap_utils.py'.format(step_name))
     template = templates[0]
 
     # add genomes to output files
@@ -494,5 +496,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:
-                template[a_key][a_spec] = overwrite[a_key][a_spec]
+                # if the key value is a dictionary, use update
+                if isinstance(overwrite[a_key][a_spec], dict):
+                    template[a_key][a_spec].update(overwrite[a_key][a_spec])
+                # if it is string array bool, set the value
+                else:
+                    template[a_key][a_spec] = overwrite[a_key][a_spec]
     return template

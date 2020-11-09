@@ -1425,7 +1425,7 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 },
                 "cgapwolf": {
@@ -1441,7 +1441,7 @@
         "schedule": {
             "hourly_checks": {
                 "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 },
                 "cgapwolf": {
@@ -1478,6 +1478,38 @@
                 },
                 "cgapwolf": {
                     "kwargs": {"primary": true, "queue_action": "prod"},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "problematic_wfrs_status" : {
+        "title": "x) Errored Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "long_running_wfrs_status" : {
+        "title": "x) Long Running Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
                     "dependencies": []
                 }
             }
@@ -1733,6 +1765,18 @@
             "hourly_checks": {
                 "data": {
                     "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "check_hic_summary_tables": {
+        "title": "Hi-C summary tables",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true, "queue_action": "prod"},
                     "dependencies": []
                 }
             }
