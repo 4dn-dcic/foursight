@@ -2270,3 +2270,62 @@ def patch_hic_summary_tables(connection, **kwargs):
         action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function()
+def replace_me_status(connection, **kwargs):
+    """
+    Use replace function to replace `replace_me` and your check name to have a quick setup
+    Keyword arguments:
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'replace_me_status')
+    my_auth = connection.ff_keys
+    check.action = "replace_me_start"
+    check.description = "add description"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {}
+    check.status = 'PASS'
+    check.allow_action = False
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+
+    # if you need to check for indexing queue
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    query_base = '/search/?type=NotMyType'
+    q = query_base
+    # print(q)
+    res = ff_utils.search_metadata(q, my_auth)
+    # check if anything in scope
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    for a_res in res:
+        # do something
+        pass
+
+    check.summary = ""
+    check.full_output = {}
+    check.status = 'WARN'
+    check.allow_action = True
+    return check
+
+
+@action_function()
+def replace_me_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'replace_me_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    replace_me_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    # do something
+    return action
