@@ -2249,6 +2249,99 @@ def check_hic_summary_tables(connection, **kwargs):
     return check
 
 
+@check_function()
+def sync_users_oh_status(connection, **kwargs):
+    from oauth2client.service_account import ServiceAccountCredentials
+    import gspread
+    """
+    Use replace function to replace `sync_users_oh` and your check name to have a quick setup
+    Keyword arguments:
+    """
+    check = CheckResult(connection, 'sync_users_oh_status')
+    my_auth = connection.ff_keys
+    check.action = "sync_users_oh_start"
+    check.description = "add description"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {}
+    check.status = 'PASS'
+    check.allow_action = False
+
+    # get skipped users from this static section
+    # if you want to skip more users, append their display titles to this static section as new line
+    skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
+    skip_users = ff_utils.get_metadata(skip_user_static_section_uuid, my_auth)['content'].split('\n')
+    skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
+    # Collect information from data portal
+    all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
+    # skip bots and external devs
+    all_users = [i for i in all_users if i['display_title'] not in skip_users]
+    all_users_with_lab = [i for i in all_users if i.get('lab')]
+    all_labs = ff_utils.search_metadata('/search/?type=Lab', key=my_auth)
+    all_labs = [i for i in all_labs if i['display_title'] not in skip_lab_display_title]
+    all_grants = ff_utils.search_metadata('/search/?type=Award', key=my_auth)
+    # print some details
+    print(len(all_labs), '- all labs in scope')
+    print(len(all_grants), '- all grantsin scope')
+    print(len(all_users), '- all usersin scope')
+    print(len(all_users_with_lab), '- all users in scope with lab')
+
+    # narrow users to 4DN users
+    fdn_users = []
+    for a_user in all_users_with_lab:
+        labs = []
+        awards = []
+        labs = a_user.get('submits_for', [])
+        labs.append(a_user['lab'])
+        # skip users from test labs
+        if a_user['lab']['display_title'] in skip_lab_display_title:
+            continue
+        for a_lab in labs:
+            awards.extend(i['uuid'] for i in a_lab.get('awards', []))
+        awards = [i['viewing_group'] for i in all_grants if i['uuid'] in awards]
+        if '4DN' in awards or 'NOFIC' in awards:
+            fdn_users.append(a_user)
+    print(len(fdn_users), 'fdn users')
+    return check
+
+    query_base = '/search/?type=NotMyType'
+    q = query_base
+    # print(q)
+    res = ff_utils.search_metadata(q, my_auth)
+    # check if anything in scope
+    if not res:
+        check.status = 'PASS'
+        check.summary = 'All Good!'
+        check.brief_output = ['All Good!']
+        check.full_output = {}
+        return check
+
+    for a_res in res:
+        # do something
+        pass
+
+    check.summary = ""
+    check.full_output = {}
+    check.status = 'WARN'
+    check.allow_action = True
+    return check
+
+
+@action_function()
+def sync_users_oh_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'sync_users_oh_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    # do something
+    for a_res in sync_users_oh_check_result:
+        assert my_auth
+        assert my_env
+        break
+    return action
+
+
 @action_function()
 def patch_hic_summary_tables(connection, **kwargs):
     ''' Update the Hi-C summary tables
@@ -2273,14 +2366,14 @@ def patch_hic_summary_tables(connection, **kwargs):
 
 
 @check_function()
-def replace_me_status(connection, **kwargs):
+def replace_name_status(connection, **kwargs):
     """
-    Use replace function to replace `replace_me` and your check name to have a quick setup
+    Use replace function to replace `replace_name` and your check/action name to have a quick setup
     Keyword arguments:
     """
-    check = CheckResult(connection, 'replace_me_status')
+    check = CheckResult(connection, 'replace_name_status')
     my_auth = connection.ff_keys
-    check.action = "replace_me_start"
+    check.action = "replace_name_start"
     check.description = "add description"
     check.brief_output = []
     check.summary = ""
@@ -2306,8 +2399,12 @@ def replace_me_status(connection, **kwargs):
     res = ff_utils.search_metadata(q, my_auth)
     # check if anything in scope
     if not res:
+        check.status = 'PASS'
         check.summary = 'All Good!'
+        check.brief_output = ['All Good!']
+        check.full_output = {}
         return check
+
     for a_res in res:
         # do something
         pass
@@ -2320,10 +2417,15 @@ def replace_me_status(connection, **kwargs):
 
 
 @action_function()
-def replace_me_start(connection, **kwargs):
+def replace_name_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
-    action = ActionResult(connection, 'replace_me_start')
+    action = ActionResult(connection, 'replace_name_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    replace_me_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    replace_name_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     # do something
+    for a_res in replace_name_check_result:
+        assert my_auth
+        assert my_env
+        break
+    return action
