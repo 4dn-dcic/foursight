@@ -2258,6 +2258,16 @@ def sync_users_oh_status(connection, **kwargs):
     import uuid
     """
     Check users on database and OH google sheet, synchronize them
+    1) Pull all table values, All database users, labs and awards
+    2) If entry inactive in OH, delete person from DCIC, mark inactive for DCIC
+    3) If user exist for OH and DCIC, check values on DCIC database, and update DCIC columns if anything is different from the table.
+    4) If only OH information is available on the table,
+    4.1) skip no email, and skip inactive
+    4.2) check if email exist already on the table, report problem
+    4.3) check if email exist on DCIC database, add DCIC information
+    4.4) if email is not available, find the matching lab, and create new user, add user information to the table
+    4.5) if can not find the lab, report need for new lab creation.
+    5) check for users that are on dcic database, but not on the table, add as new DCIC users.
     """
     check = CheckResult(connection, 'sync_users_oh_status')
     my_auth = connection.ff_keys
@@ -2447,7 +2457,7 @@ def sync_users_oh_status(connection, **kwargs):
     # Convert table data into an ordered dictionary
     df = pd.DataFrame(table[1:], columns=table[0])
     user_list = df.to_dict(orient='records', into=OrderedDict)
-
+    # keep a tally of all actions that we need to perform
     actions = {'delete_user': [],
                'add_user': [],
                'inactivate_excel': [],
@@ -2455,9 +2465,8 @@ def sync_users_oh_status(connection, **kwargs):
                'patch_excel': {},
                'add_excel': []
                }
+    # keep a list of all problems we encounter
     problem = []
-
-    delete_active = False
     # any user that is not on the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
 
@@ -2502,7 +2511,8 @@ def sync_users_oh_status(connection, **kwargs):
             # does oh have an email, if not do nothing
             if not a_record.get('OH Account Email'):
                 continue
-            # do we have OH email already (we hit this point after creating new users)
+            # do we have OH email already
+            # we hit this point after creating new users on the portal (second time we run this check we add them to excel)
             oh_mail = simple(a_record.get('OH Account Email', ""))
             users = [i for i in fdn_users if simple(i['email']) == oh_mail]
             if users:
