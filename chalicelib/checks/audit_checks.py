@@ -7,18 +7,19 @@ from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
+from .helpers import wrangler_utils
 
 
 STATUS_LEVEL = {
-    'released': 3,
-    'archived': 3,
-    'current': 3,
-    'revoked': 3,
+    'released': 4,
+    'archived': 4,
+    'current': 4,
+    'revoked': 4,
     'released to project': 3,
-    'pre-release': 3,
-    'restricted': 3,
+    'pre-release': 2,
+    'restricted': 4,
     'planned': 2,
-    'archived to project': 2,
+    'archived to project': 3,
     'in review by lab': 1,
     'released to lab': 1,
     'submission in progress': 1,
@@ -190,6 +191,66 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     return check
 
 
+@check_function(days_back=14)
+def expset_opf_unique_files(connection, **kwargs):
+    '''
+    Checks Experiments and Experiment Sets with other_processed_files and looks
+    if any opf is also present within the raw, processed or reference files.
+    '''
+    check = CheckResult(connection, 'expset_opf_unique_files')
+    days_back = kwargs.get('days_back')
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
+    # opfs can be on Exps or ExpSets: search ExpSets for each case and merge results
+    opf_query = ('other_processed_files.files.uuid%21=No+value' +
+                 from_date_query +
+                 '&field=experiments_in_set&field=processed_files&field=other_processed_files')
+    opf_sets = ff_utils.search_metadata(
+        'search/?type=ExperimentSet&' + opf_query, key=connection.ff_keys)
+    opf_exps = ff_utils.search_metadata(
+        'search/?type=ExperimentSet&experiments_in_set.' + opf_query, key=connection.ff_keys)
+    # merge
+    es_list = [expset['@id'] for expset in opf_sets]
+    for expset in opf_exps:
+        if expset['@id'] not in es_list:
+            opf_sets.append(expset)
+
+    errors = {}
+    for expset in opf_exps:
+        # skip sets without experiments
+        if not expset.get('experiments_in_set'):
+            continue
+
+        opfs_id = []  # list opfs @id in the ExpSet and Exps
+        all_files = []  # list all raw, processed and reference files in the ExpSet
+        if expset.get('other_processed_files'):
+            opfs_id.extend([f['@id'] for grp in expset['other_processed_files'] for f in grp.get('files', [])])
+        for exp in expset['experiments_in_set']:
+            if exp.get('other_processed_files'):
+                opfs_id.extend([f['@id'] for grp in exp['other_processed_files'] for f in grp.get('files', [])])
+            all_files.extend([f['@id'] for f in exp.get('files', [])])
+            all_files.extend([f['@id'] for f in exp.get('processed_files', [])])
+            all_files.extend([f['@id'] for f in exp.get('reference_files', [])])
+        all_files.extend([f['@id'] for f in expset.get('processed_files', [])])
+
+        # compare opfs and files lists to find duplicates
+        for opf in opfs_id:
+            if opf in all_files:
+                errors.setdefault(expset['@id'], []).append(opf)
+    if errors:
+        check.status = 'WARN'
+        check.summary = '{} exp sets found with files that are also other_processed_files'.format(len(errors))
+        check.description = ('{} Experiment Sets {}found that have other_processed_files'
+                             ' which are also present in raw, processed or reference files'.format(len(errors), from_text))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No exp sets found with files that are also other_processed_files'
+        check.description = ('No Experiment Sets {}found that have other_processed_files'
+                             ' which are also present in raw, processed or reference files'.format(from_text))
+    check.full_output = errors
+
+    return check
+
+
 @check_function()
 def paired_end_info_consistent(connection, **kwargs):
     '''
@@ -345,6 +406,7 @@ def check_help_page_urls(connection, **kwargs):
     results = help_results
     results = results + [item for item in resource_results if item['@id'] not in [res['@id'] for res in results]]
     sections_w_broken_links = {}
+    addl_exceptions = {}
     timeouts = {}
     for result in results:
         broken_links = []
@@ -383,6 +445,9 @@ def check_help_page_urls(connection, **kwargs):
                 timeouts[result['@id']].append(url)
             except requests.exceptions.SSLError:
                 continue
+            except Exception as e:
+                addl_exceptions.setdefault(result['@id'], {})
+                addl_exceptions[result['@id']][url] = e
         if broken_links:
             sections_w_broken_links[result['@id']] = broken_links
     if sections_w_broken_links:
@@ -396,7 +461,8 @@ def check_help_page_urls(connection, **kwargs):
         check.description = check.summary
     check.full_output = {
         'broken links': sections_w_broken_links,
-        'timed out requests': timeouts
+        'timed out requests': timeouts,
+        'additional exceptions': addl_exceptions
     }
     return check
 
@@ -596,16 +662,21 @@ def check_opf_status_mismatch(connection, **kwargs):
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
             statuses = set([opf_status_dict[f['uuid']] for f in file_list])
-            if len(statuses) > 1:  # status mismatch in opf collection
-                problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
-                if hg_dict.get(title):
-                    problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
+            # import pdb; pdb.set_trace()
+            if not statuses:
+                # to account for empty sections that may not yet contain files
+                pass
+            elif len(statuses) > 1:  # status mismatch in opf collection
+                scores = set([STATUS_LEVEL.get(status, 0) for status in list(statuses)])
+                if len(scores) > 1:
+                    problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
+                    if hg_dict.get(title):
+                        problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
             elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
                 if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
                     problem_dict[title] = {'files': list(statuses)[0],
                                            'higlass_view_config': opf_status_dict[hg_dict[title]]}
-            elif 'release' not in result['status'] and (STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]):
-                # if ExpSet not released, and opf collection has higher status
+            elif STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]:
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
             for f in file_list:
                 if opf_linked_dict.get(f['uuid']):

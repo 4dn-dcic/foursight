@@ -153,8 +153,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }},
         {
         "app_name": "bedtobeddb",
-        'parameters': {"assembly": pairs_assembly},
-        "workflow_uuid": "9d575e99-5ffe-4ea4-b74f-ad40f621cd39",
+        "workflow_uuid": "91049eef-d434-4e16-a1ad-06de73f079dc",
         "config": {'mem': 4, 'cpu': 2, "ebs_size": 10},
         "overwrite_input_extra": True
         },

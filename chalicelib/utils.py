@@ -1,6 +1,5 @@
 # General utils for foursight
 from __future__ import print_function, unicode_literals
-import types
 from datetime import datetime, timedelta
 from dateutil import tz
 import traceback
@@ -11,14 +10,14 @@ import sys
 import os
 import json
 import re
-from importlib import import_module
 from functools import wraps, partial
 from .run_result import CheckResult, ActionResult, BadCheckOrAction
 from .s3_connection import S3Connection
 
 CHECK_DECO = 'check_function'
 ACTION_DECO = 'action_function'
-CHECK_TIMEOUT = 880  # in seconds. set to less than lambda limit (900 s)
+CHECK_TIMEOUT = 870  # in seconds. set to less than lambda limit (900 s)
+POLL_INTERVAL = 10  # check child process every 10 seconds
 
 # compare strings in both python 2 and python 3
 # in other files, compare with utils.basestring
@@ -110,6 +109,18 @@ def handle_kwargs(kwargs, default_kwargs):
     return kwargs
 
 
+def pid_is_alive(pid):
+    """
+    Returns True if pid is still alive
+    """
+    try:
+        os.kill(pid, 0)  # do not send a signal, just error check
+    except OSError:
+        return False
+    else:
+        return True
+
+
 def check_function(*default_args, **default_kwargs):
     """
     Import decorator, used to decorate all checks.
@@ -127,23 +138,27 @@ def check_function(*default_args, **default_kwargs):
         def wrapper(*args, **kwargs):
             start_time = time.time()
             kwargs = handle_kwargs(kwargs, default_kwargs)
-            partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': True,
-                        'start_time': start_time, 'connection': args[0]}
-            signal.signal(signal.SIGALRM, partial(timeout_handler, partials))
-            signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
-            try:
-                check = func(*args, **kwargs)
-                check.validate()
-            except Exception as e:
-                # connection should be the first (and only) positional arg
-                check = CheckResult(args[0], func.__name__)
-                check.status = 'ERROR'
-                check.description = 'Check failed to run. See full output.'
-                check.full_output = traceback.format_exc().split('\n')
-            signal.alarm(0)
-            kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
-            check.kwargs = kwargs
-            return check.store_result()
+            parent_pid = os.getpid()
+            child_pid = os.fork()
+            if child_pid != 0:  # we are the parent who will execute the check
+                try:
+                    check = func(*args, **kwargs)
+                    check.validate()
+                except Exception as e:
+                    # connection should be the first (and only) positional arg
+                    check = CheckResult(args[0], func.__name__)
+                    check.status = 'ERROR'
+                    check.description = 'Check failed to run. See full output.'
+                    check.full_output = traceback.format_exc().split('\n')
+                kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
+                check.kwargs = kwargs
+                os.kill(child_pid, signal.SIGKILL)  # we finished, so kill child
+                return check.store_result()
+            else:  # we are the child who handles the timeout
+                partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': True,
+                            'start_time': start_time, 'connection': args[0]}
+                do_timeout(parent_pid, partials)
+
         wrapper.check_decorator = CHECK_DECO
         return wrapper
     return check_deco
@@ -166,25 +181,29 @@ def action_function(*default_args, **default_kwargs):
         def wrapper(*args, **kwargs):
             start_time = time.time()
             kwargs = handle_kwargs(kwargs, default_kwargs)
-            partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': False,
-                        'start_time': start_time, 'connection': args[0]}
-            signal.signal(signal.SIGALRM, partial(timeout_handler, partials))
-            signal.alarm(CHECK_TIMEOUT)  # run time allowed in seconds
-            try:
-                if 'check_name' not in kwargs or 'called_by' not in kwargs:
-                    raise BadCheckOrAction('Action requires check_name and called_by in its kwargs.')
-                action = func(*args, **kwargs)
-                action.validate()
-            except Exception as e:
-                # connection should be the first (and only) positional arg
-                action = ActionResult(args[0], func.__name__)
-                action.status = 'FAIL'
-                action.description = 'Action failed to run. See output.'
-                action.output = traceback.format_exc().split('\n')
-            signal.alarm(0)
-            kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
-            action.kwargs = kwargs
-            return action.store_result()
+            parent_pid = os.getpid()
+            child_pid = os.fork()
+            if child_pid != 0:  # we are the parent who will execute the check
+                try:
+                    if 'check_name' not in kwargs or 'called_by' not in kwargs:
+                        raise BadCheckOrAction('Action requires check_name and called_by in its kwargs.')
+                    action = func(*args, **kwargs)
+                    action.validate()
+                except Exception as e:
+                    # connection should be the first (and only) positional arg
+                    action = ActionResult(args[0], func.__name__)
+                    action.status = 'FAIL'
+                    action.description = 'Action failed to run. See output.'
+                    action.output = traceback.format_exc().split('\n')
+                kwargs['runtime_seconds'] = round(time.time() - start_time, 2)
+                action.kwargs = kwargs
+                os.kill(child_pid, signal.SIGKILL)  # we finished, so kill child
+                return action.store_result()
+            else:  # we are the child who handles the timeout
+                partials = {'name': func.__name__, 'kwargs': kwargs, 'is_check': False,
+                            'start_time': start_time, 'connection': args[0]}
+                do_timeout(parent_pid, partials)
+
         wrapper.check_decorator = ACTION_DECO
         return wrapper
     return action_deco
@@ -202,7 +221,29 @@ class BadCheckSetup(Exception):
         super().__init__(message)
 
 
-def timeout_handler(partials, signum, frame):
+def do_timeout(parent_pid, partials):
+    """ Wrapper for below method that handles:
+            1. Polling across the CHECK_TIMEOUT at POLL_INTERVAL
+            2. Exiting if we succeeded (the parent process died)
+            3. Killing the parent if it timed out
+            4. Invoking the timeout handler if it timed out
+
+        :arg parent_pid: parent pid to check on/kill if necessary
+        :arg partials: partial result to be passed to timeout handler if necessary
+    """
+    for t in range(CHECK_TIMEOUT // POLL_INTERVAL):  # Divide CHECK_TIMEOUT into POLL_INTERVAL slices
+        time.sleep(POLL_INTERVAL)
+        if not pid_is_alive(parent_pid):
+            sys.exit(0)
+
+    # We have timed out. Kill the parent and invoke the timeout handler.
+    # NOTE: Timeouts in Pytest will trigger undefined behavior since the parent is Pytest, not the thing
+    # executing the check. Execute Pytest with --forked option to override this.
+    os.kill(parent_pid, signal.SIGTERM)
+    timeout_handler(partials)
+
+
+def timeout_handler(partials, signum=None, frame=None):
     """
     Custom handler for signal that stores the current check
     or action with the appropriate information and then exits using sys.exit
@@ -214,7 +255,6 @@ def timeout_handler(partials, signum, frame):
         result = ActionResult(partials['connection'], partials['name'])
         result.status = 'FAIL'
     result.description = 'AWS lambda execution reached the time limit. Please see check/action code.'
-    signal.alarm(0)
     kwargs = partials['kwargs']
     kwargs['runtime_seconds'] = round(time.time() - partials['start_time'], 2)
     result.kwargs = kwargs
@@ -442,3 +482,18 @@ def store_json(rel, fname, data):
     path = os.path.join(os.path.dirname(rel), fname)
     with open(path, 'w+') as f:
         return json.dump(data, f)
+
+
+def cat_indices(client):
+    """ Wrapper function for the ES API _cat/indices so that the result returned is comprehensible.
+
+        :param client: es client to use
+        :returns: 2-tuple lists of header, rows
+    """
+    if not client:
+        return [], []
+    indices = client.cat.indices(v=True).split('\n')
+    split_indices = [ind.split() for ind in indices]
+    headers = split_indices.pop(0)  # first row is header
+    return headers, split_indices
+

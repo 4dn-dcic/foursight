@@ -4,7 +4,8 @@ from operator import itemgetter
 from . import wfrset_cgap_utils
 import json
 lambda_limit = wfrset_cgap_utils.lambda_limit
-
+# use wf_dict in workflow version check to make sure latest version and workflow uuid matches
+wf_dict = wfrset_cgap_utils.wf_dict
 # check at the end
 # check extract_file_info has 4 arguments
 
@@ -24,31 +25,31 @@ workflow_details = {
     },
     "workflow_bwa-mem_no_unzip-check": {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_add-readgroups-check": {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_merge-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_picard-MarkDuplicates-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_sort-bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_gatk-BaseRecalibrator": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_gatk-ApplyBQSR-check": {
         "run_time": 12,
-        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v9", "v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # defunct step 8
     "workflow_index-sorted-bam": {
@@ -57,94 +58,229 @@ workflow_details = {
     },
     "workflow_granite-mpileupCounts": {
         "run_time": 12,
-        "accepted_versions": ["v14", "v15", "v16"]
+        "accepted_versions": ["v14", "v15", "v16", "v17"]
     },
     # new step 8
     'workflow_gatk-HaplotypeCaller': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # step 9
     'workflow_granite-mpileupCounts': {
         "run_time": 12,
-        "accepted_versions": ["v14", "v15", "v16"]
+        "accepted_versions": ["v14", "v15", "v16", "v17"]
     },
     # step 10
     'cgap-bamqc': {
         "run_time": 12,
-        "accepted_versions": ["v2"]
+        "accepted_versions": ["v2", "v3"]
     },
     # # PART II
     # part II step 1
     'workflow_gatk-CombineGVCFs': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # part II step 2
     'workflow_gatk-GenotypeGVCFs-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16", "v17"]
     },
     # part III step 3
     'workflow_gatk-VQSR-check': {
         "run_time": 12,
-        "accepted_versions": ["v10", "v11", "v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v10", "v11", "v12", "v13"]
     },
     "workflow_qcboard-bam": {
         "run_time": 12,
-        "accepted_versions": ["v9"]
+        "accepted_versions": ["v3"]
     },
     "workflow_cram2fastq": {
         "run_time": 12,
-        "accepted_versions": ["v12", "v13", "v15", "v16"]
+        "accepted_versions": ["v12", "v13", "v15", "v16", "v17"]
     },
     "workflow_cram2bam-check": {
         "run_time": 12,
-        "accepted_versions": ["v13", "v15", "v16"]
+        "accepted_versions": ["v13", "v15", "v16", "v17"]
+    },
+    "workflow_vep-parallel": {
+        "run_time": 12,
+        "accepted_versions": ["v17"]
+    },
+    "workflow_mutanno-micro-annot-check": {
+        "run_time": 12,
+        "accepted_versions": ["v17"]
     },
     # Part III
     "workflow_granite-rckTar": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
-    },
-    "workflow_mutanno-micro-annot-check": {
-        "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_granite-filtering-check": {
         "run_time": 12,
-        "accepted_versions": ['v16']
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_granite-novoCaller-rck-check": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_granite-comHet-check": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v16", "v17"]
     },
     "workflow_mutanno-annot-check": {
         "run_time": 12,
-        "accepted_versions": ["v16"]
+        "accepted_versions": ["v17"]
     },
     "bamsnap": {
         "run_time": 12,
-        "accepted_versions": ["v14", "v15", "v16"]
+        "accepted_versions": ["v17"]
     },
     "workflow_granite-qcVCF": {
         "run_time": 12,
-        "accepted_versions": ["v2"]
+        "accepted_versions": ["v2", "v3"]
+    },
+    "workflow_peddy": {
+        "run_time": 12,
+        "accepted_versions": ["v3"]
     }
 }
 
 
-def check_workflow_version(workflows):
+# Reference Files (should be @id)
+bwa_index = {'human': '/files-reference/GAPFI4U1HXIY/'}
+
+
+def remove_parents_without_sample(samples_pedigree):
+    individuals = [i['individual'] for i in samples_pedigree]
+    for a_member in samples_pedigree:
+        parents = a_member['parents']
+        new_parents = [i for i in parents if i in individuals]
+        a_member['parents'] = new_parents
+    return samples_pedigree
+
+
+def analyze_pedigree(samples_pedigree_json, all_samples):
+    """extract pedigree for qc for trio (father/mother/proband) or proband
+    - input samples accession list
+    - qc pedigree
+    - run mode (trio or proband_only)
+    - error (expected empty)
+    """
+    # remove parent ids that are not in the sample_pedigree as individual
+    samples_pedigree = remove_parents_without_sample(samples_pedigree_json)
+    # Define run Mode: Trio or Proband only
+    # order samples by father/mother/proband
+    run_mode = ""
+    error = ""
+    input_samples = []
+    qc_pedigree = []  # used by vcfqc
+    # trio analysis
+    if len(all_samples) > 2:
+        for member in ['father', 'mother', 'proband']:
+            sample_info = [i for i in samples_pedigree if i.get('relationship') == member]
+            if not sample_info:
+                break
+            member_qc_pedigree = {
+                'gender': sample_info[0].get('sex', ''),
+                'individual': sample_info[0].get('individual', ''),
+                'parents': sample_info[0].get('parents', []),
+                'sample_name': sample_info[0].get('sample_name', '')
+                }
+            qc_pedigree.append(member_qc_pedigree)
+            input_samples.append(sample_info[0]['sample_accession'])
+        if len(input_samples) != 3:
+            error = 'does not have mother father proband info'
+            return "", "", "", error
+        run_mode = 'trio'
+    # if there are only 2 or less members, go for proband only
+    else:
+        sample_info = [i for i in samples_pedigree if i.get('relationship') == 'proband']
+        if not sample_info:
+            error = 'does not have proband info'
+            return "", "", "", error
+        input_samples.append(sample_info[0]['sample_accession'])
+        member_qc_pedigree = {
+            'gender': sample_info[0].get('sex', ''),
+            'individual': sample_info[0].get('individual', ''),
+            'parents': sample_info[0].get('parents', []),
+            'sample_name': sample_info[0].get('sample_name', '')
+            }
+        qc_pedigree.append(member_qc_pedigree)
+        run_mode = 'proband_only'
+    # remove parents from mother and father (temporary fix until vcfqc V4 is in production)
+    qc_pedigree = remove_parents_without_sample(qc_pedigree)
+    return input_samples, qc_pedigree, run_mode, error
+
+
+def get_bamsnap_parameters(samples_pedigree, all_samples):
+    """collect bam @ids and titles for all samples in the sample_procesing item
+    used by bamsnap
+    start with proband, and continue with close relatives
+    - args: samples and samples_pedigree fields of sample_processing
+    - returns: 2 lists, collected bams and titles
+    """
+
+    def get_summary(a_role_info, all_samples):
+        """given a samples pedigree item and all samples information (from samples pedigree)
+        return a summary for bamsnap"""
+        relation = a_role_info['relationship']
+        sample_acc = a_role_info['sample_accession']
+        sample_name = a_role_info.get('sample_name', '')
+        sample_title = "{} ({})".format(sample_name, relation)
+        # get sample info from samples field
+        sample_info = [i for i in all_samples if sample_acc in i['@id']][0]
+        bams = [i['@id'] for i in sample_info['processed_files'] if i['display_title'].endswith('bam')]
+        if not bams:
+            raise ValueError('can not locate bam file on sample {} to be used by bamsnap'.format(sample_acc))
+        bam = bams[0]
+        return {'bam': bam, 'title': sample_title, 'accession': sample_acc}
+
+    # remove parent ids that are not in the sample_pedigree as individual
+    samples_pedigree = remove_parents_without_sample(samples_pedigree)
+    summary = []
+
+    for member in ['proband', 'mother', 'father', 'brother', 'sister', 'sibling', 'half-brother', 'half-sister', 'half-sibling']:
+        # if multiple relationships of same type are in the family they will have enumeration in the relationships
+        # ie brother, brother II
+        role_pedigree_infos = [i for i in samples_pedigree if i.get('relationship', '').split(' ')[0] == member]
+        if not role_pedigree_infos:
+            continue
+        for a_role_pedigree in role_pedigree_infos:
+            sample_summary = get_summary(a_role_pedigree, all_samples)
+            summary.append(sample_summary)
+    # for family members not listed on primary relations, get same information and continue appending
+    all_sample_accs = [i['@id'].split('/')[2] for i in all_samples]
+    seen_sample_accs = [i['accession'] for i in summary]
+    remaining_samples = [i for i in all_sample_accs if i not in seen_sample_accs]
+
+    for a_sample_acc in remaining_samples:
+        a_role_pedigree = [i for i in samples_pedigree if i['sample_accession'] == a_sample_acc][0]
+        sample_summary = get_summary(a_role_pedigree, all_samples)
+        summary.append(sample_summary)
+    bams = [i['bam'] for i in summary]
+    titles = [i['title'] for i in summary]
+    return bams, titles
+
+
+def check_latest_workflow_version(workflows):
+    """Some sanity checks for workflow versions
+    expectations:
+     - All workflows that we are currently active should be listed both on
+       cgap_utils.py (workflow_details) and wfrset_cgap_utils.py (wf_dict)
+     - The lastest workflow version on foursight (workflow_details) should be carried by the
+       latest released workflow item on the data portal.
+       If a new version is released on the portal, we need it to be on foursight too, if not stop the check.
+       If a new version is decleared on foursight, it should be released on the portal, if not stop the check.
+    """
     errors = []
     for a_wf in workflows:
         wf_name = a_wf['app_name']
-        # make sure the workflow is in our control list
+        # make sure the workflow is in our control list on cgap_utils.py
         if wf_name not in workflow_details:
-            errors.append(wf_name + ' not in worflow_details')
+            continue
+        # make sure the workflow is in our settings list on wfrset_cgap_utils.py
+        if wf_name not in [i['app_name'] for i in wf_dict]:
             continue
         wf_info = workflow_details[wf_name]
         versions = wf_info['accepted_versions']
@@ -153,34 +289,28 @@ def check_workflow_version(workflows):
         # sometimes there are 2 or more workflows with same app name
         # and the old one might not have the latest version
         # look for all wfs with same name and make sure the latest version is on one
-        all_wf_versions = [i.get('app_version', '') for i in workflows if i['app_name'] == wf_name]
-        # make sure all versions are in accepted
-        for a_version in all_wf_versions:
-            if a_version not in versions:
-                err = '{} version {} is not in accepted versions {})'.format(wf_name,
-                                                                             a_version,
-                                                                             str(versions))
-                errors.append(err)
+        same_wf_name_workflows = [i for i in workflows if i['app_name'] == wf_name]
+        all_wf_versions = [i.get('app_version', '') for i in same_wf_name_workflows]
         # make sure the latest is also on one of the wfrs
         if last_version not in all_wf_versions:
-            err = '{} version {} is not on any wf app_version)'.format(wf_name,
-                                                                       last_version)
+            err = '{} version {} is not on any wf app_version)'.format(wf_name, last_version)
             errors.append(err)
-    return errors
-
-
-# accepted versions for completed pipelines
-# accepted_versions = {
-#     'WGS':  ["WGS_Pipeline_V8"]
-#     }
-
-# Reference Files
-bwa_index = {'human': 'GAPFI4U1HXIY'}
-
-# chr_size = {"human": "4DNFI823LSII",
-#             "mouse": "4DNFI3UBJ3HZ",
-#             "fruit-fly": '4DNFIBEEN92C',
-#             "chicken": "4DNFIQFZW4DX"}
+            continue
+        # fist item on same_wf_name_workflows should be the latest released workflow, check if we added that to foursight
+        last_wf_version_on_portal = all_wf_versions[0]
+        if last_wf_version_on_portal not in all_wf_versions:
+            err = '{} version {} is not decleared on foursight)'.format(wf_name, last_wf_version_on_portal)
+            errors.append(err)
+            continue
+        # check if the lastest version workflow uuids is correct on wfr_dict (wfrset_cgap_utils.py)
+        latest_workflow_uuid = [i['uuid'] for i in same_wf_name_workflows if i['app_version'] == last_version][0]
+        wf_dict_item = [i['workflow_uuid'] for i in wf_dict if i['app_name'] == wf_name][0]
+        if latest_workflow_uuid != wf_dict_item:
+            err = '{} item on wf_dict does not have the latest workflow uuid'.format(wf_name)
+            errors.append(err)
+            continue
+    # return unique errors
+    return list(set(errors))
 
 
 def check_qcs_on_files(file_meta, all_qcs):
@@ -207,14 +337,176 @@ def check_qcs_on_files(file_meta, all_qcs):
     return failed_qcs
 
 
+def order_input_dictionary(input_file_dict):
+    """Keep the order of file_arg keys in dictionary, but if the value is a list of files
+    order them to be able to compare them"""
+    ordered_input = {}
+    for an_input_arg in input_file_dict:
+        if isinstance(input_file_dict[an_input_arg], (list, tuple)):
+            ordered_input[an_input_arg] = sorted(input_file_dict[an_input_arg])
+        else:
+            ordered_input[an_input_arg] = input_file_dict[an_input_arg]
+    return ordered_input
+
+
+def collect_input_files_from_input_dictionary(input_file_dict):
+    """Collect all @ids from the input file dictionary"""
+    all_inputs = []
+    for an_input_arg in input_file_dict:
+        if an_input_arg == 'additional_file_parameters':
+            continue
+        if isinstance(input_file_dict[an_input_arg], (list, tuple)):
+            all_inputs.extend(input_file_dict[an_input_arg])
+        else:
+            all_inputs.append(input_file_dict[an_input_arg])
+    return all_inputs
+
+
+def collect_inputs_from_workflow_run(wfr_resp):
+    """Given a wfr item in embedded frame, collect input files as a list of @ids"""
+    input_files = []
+    inputs = wfr_resp['input_files']
+    for an_input in inputs:
+        if an_input.get('value'):
+            input_files.append(an_input['value']['@id'])
+    return input_files
+
+
+def remove_duplicate_need_runs(need_runs_dictionary):
+    """In rare cases, the same run can be triggered by two different sample_processings
+    example is a quad analyzed for 2 different probands. In this case you want a single
+    combineGVCF step, but 2 sample_processings will be generated trying to run same job,
+    identify and remove duplicates, used by PartII
+    input_structure:
+    [{"sample_processing_id": [
+            # list of items per run
+            ["step_id",  # name for the run
+             ["workflow_app_name", "organism", "additional_parameters"],  # run settings
+             {"input_arg1": ["file_id1", "file_id2"], "input_arg2": "file_id3"},  # run input files
+             "GAPFI1RGV5US_GAPFIOASB96R_GAPFIVPH2MVG_GAPFICMTHU2P"  # all input files going in the run
+             ]]}]
+    """
+    # keep a track of sorted runs
+    sorted_runs = []
+    unique_needs_runs_dictionary = []
+
+    for an_item in need_runs_dictionary:
+        for an_sp_id in an_item:
+            keep_runs = []
+            all_runs = an_item[an_sp_id]
+            for a_run in all_runs:
+                # sort input files
+                run_setttings = a_run[1]
+                input_files = a_run[2]
+                ordered_input = order_input_dictionary(input_files)
+                # get elements that should be unique and store as string
+                run_info = str(run_setttings) + str(ordered_input)
+                if run_info in sorted_runs:
+                    continue
+                else:
+                    keep_runs.append(a_run)
+                    sorted_runs.append(run_info)
+            if keep_runs:
+                unique_needs_runs_dictionary.append({an_sp_id: keep_runs})
+    return unique_needs_runs_dictionary
+
+
+def filter_wfrs_with_input_and_tag(all_wfr_items, app_name, input_file_dict, tag, match_all_input=True):
+    """given an input file dictionary and list of workflow_run items, filter wfrs
+    for input files that match the input file dictionary. If a filter tag is given
+    also filter for workflow_runs that have the given filter_tag in tags field
+    -- args
+    all_wfr_items: all workflow run items collected from ES
+    step_name: workflow_app_name
+    input_file_dict: all input files
+    tag: if filter should look for a tag (ie sample_processing uuid) on wfr
+    match_all_input: (Bool) True by default. Looks for exact match between input file dict and the workflowrun
+    # TODO: for combine GVCF, we need to implement the False case, where we utilize the partial match
+    """
+    # filter workflows for workflow_name, the ones with same input files, and if exist, tags
+    # filtering with input - important for steps like combine gVCF there same input file
+    #                        might have multiple runs of same type with different input
+    #                        combinations, coming from different sample_procesing items.
+    # filtering with tag - for some steps, even if the input files are the same,
+    #                      you need to run different versions for different sample processing items
+    #                      (ie 2 quads made up of the same samples with different probands.)
+
+    # filter for app_name
+    wfrs_with_app_name = [i for i in all_wfr_items if i['display_title'].startswith(app_name)]
+    # filter for tag
+    if tag:
+        wfrs_with_tag = [i for i in wfrs_with_app_name if tag in i.get('tags', [])]
+    else:
+        wfrs_with_tag = wfrs_with_app_name
+    # filter for input files
+    # collect input files
+    input_files = collect_input_files_from_input_dictionary(input_file_dict)
+    # check for workflows with same inputs
+    filtered_wfrs = []
+    for a_wfr in wfrs_with_tag:
+        # get all input files from the workflow item
+        wfr_inputs = collect_inputs_from_workflow_run(a_wfr)
+        # expectation is exact match of input files, if so pass the filter
+        if match_all_input:
+            if sorted(wfr_inputs) == sorted(input_files):
+                filtered_wfrs.append(a_wfr)
+        # if input files are contained by the wfr input files, pass the filter
+        else:
+            if all(file in wfr_inputs for file in input_files):
+                filtered_wfrs.append(a_wfr)
+    return filtered_wfrs
+
+
+def check_input_structure_at_id(input_file_dict):
+    """Check all input file strings and make sure they are @id format."""
+    all_inputs = []
+    error = ''
+    for an_input_arg in input_file_dict:
+        # skip the parameter key
+        if an_input_arg == 'additional_file_parameters':
+            continue
+        inputs = input_file_dict[an_input_arg]
+        # if the input is array
+        if isinstance(inputs, list) or isinstance(inputs, tuple):
+            all_inputs.extend(inputs)
+        else:
+            all_inputs.append(inputs)
+    for an_input in all_inputs:
+        if an_input.count('/') != 3:
+            error += an_input + ' '
+    if error:
+        error += 'files are not @ids, foursight needs update'
+        return [error, ]
+    else:
+        return []
+
+
 def stepper(library, keep,
-            step_tag, sample_tag, new_step_input_file,
+            step_tag, new_step_input_file,
             input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input={}, organism='human', no_output=False):
+            additional_input=None, organism='human', no_output=False, tag=''):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
     It will also check for failed qcs on input files.
-    new_step_output_arg= can be str or list, will return str or list of @id for output files with given argument(s)"""
+    - args
+      -library:   dictionary with keys files/wfrs/qcs that contain all related items
+      -keep:      tracking run progress with keys running/problematic_run/missing_run
+      -step_tag:  informative summary used in the output (ie step name + input file accession)
+      -new_step_input_file:  files to check for qc and get attribution from
+      -input_file_dict:      all files and arguments used in the wfr
+      -new_step_name:        workflow app_name
+      -new_step_output_arg:  can be str or list, will return str or list of @id for output files with given argument(s)
+      -additional_input:     overwrite or add to final json, example {"parameters": {'key': 'value'}, "config": {"key": "value"}}
+      -organism:    by default human, used for adding genome assembly
+      -no_output:   default False, should be True for workflows that don't produce an output file (ie QC runs)
+      -tag:         if used, filter workflow_run items for the ones which have this as a tag, or add the tag when creating runs
+                    (used for distinguishing sample_processing specific steps even when input files are the same (ie micro annotation))
+    - returns
+        - keep : same as input, with addition from this check
+        - step_status : a short summary of this functions result (complete, running, no complete run)
+    """
+    if not additional_input:
+        additional_input = {}
     step_output = ''
     # unpack library
     all_files = library['files']
@@ -224,6 +516,9 @@ def stepper(library, keep,
     running = keep['running']
     problematic_run = keep['problematic_run']
     missing_run = keep['missing_run']
+
+    # make sure input files are @ids, if not foursight needs an update, report it as error
+    at_id_errors = check_input_structure_at_id(input_file_dict)
 
     # Lets get the repoinse from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
@@ -243,19 +538,29 @@ def stepper(library, keep,
         if errors:
             qc_errors.extend(errors)
         name_tag = new_step_input_file.split('/')[2]
+    # if there are @id errors return it
+    if at_id_errors:
+        problematic_run.append([step_tag + ' foursight error', at_id_errors])
+        step_status = "no complete run, foursight error"
     # if there are qc errors, return with qc qc_errors
-    # TEMP PIECE FOR V13 PART I - don't check qc on step4
-    if step_tag == 'step4':
-        qc_errors = []
-    if qc_errors:
+    elif qc_errors:
         problematic_run.append([step_tag + ' input file qc error', qc_errors])
         step_status = "no complete run, qc error"
     # if no qc problem, go on with the run check
     else:
+        # filter workflows for the ones with same input files, and if exist, tags
+        # filtering with input - important for steps like combine gVCF there same input file
+        #                        might have multiple runs of same type with different input
+        #                        combinations, coming from different sample_procesing items.
+        # filtering with tag - for some steps, even if the input files are the same,
+        #                      you need to run different versions for different sample processing items
+        #                      (ie 2 quads made up of the same samples with different probands.)
+        filtered_wfrs = filter_wfrs_with_input_and_tag(all_wfrs, new_step_name, input_file_dict, tag=tag)
+
         if no_output:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=filtered_wfrs, md_qc=True)
         else:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=filtered_wfrs)
         step_status = step_result['status']
         # if successful
         input_file_accession = input_resp['accession']
@@ -271,12 +576,18 @@ def stepper(library, keep,
             pass
         # if still running
         elif step_status == 'running':
-            running.append([step_tag, sample_tag, input_file_accession])
+            running.append([step_tag, input_file_accession])
         # if run is not successful
         elif step_status.startswith("no complete run, too many"):
-            problematic_run.append([step_tag, sample_tag, input_file_accession])
+            problematic_run.append([step_tag, input_file_accession])
         else:
-            # add step 4
+            # add missing run
+            # if there is a tag, pass it to the workflow_run metadata
+            if tag:
+                if not additional_input.get('wfr_meta'):
+                    additional_input['wfr_meta'] = {'tags': [tag, ]}
+                else:
+                    additional_input['wfr_meta']['tags'] = [tag, ]
             missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
 
     keep['running'] = running
@@ -285,20 +596,29 @@ def stepper(library, keep,
     return keep, step_status, step_output
 
 
-def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
+def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs='not given', versions=None, md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
     does not have any file_format output, so they will simply return 'complete'
+    Can be run in two modes
+     - Search through given wfr library on all_wfrs parameter, dont give any key
+     - Search on the database without a given library (all_wfrs = not given and there should be a key) used by qcs
     args:
      emb_file: embedded frame file info
      wfr_name: base name without version
      key: authorization
      all_wfrs : all releated wfrs in embedded frame
+                to distinguish
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
     """
+    # sanity checks
+    # we need key if all wfrs is not supplied (it can even be empty list but needs to be provided)
+    if not key and all_wfrs == 'not given':
+        raise ValueError('library or key is required for get_wfr_out function')
+
     error_at_failed_runs = 1
     # you should provide key or all_wfrs
     # assert key or all_wfrs
@@ -312,9 +632,18 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     workflows = emb_file.get('workflow_run_inputs', [])
     wfr = {}
     run_status = 'did not run'
-
-    my_workflows = [i for i in workflows if i['display_title'].startswith(wfr_name)]
+    wfrs_on_file = [i for i in workflows if i['display_title'].startswith(wfr_name)]
+    # if all_wfrs is not given, get workflows from the file
+    if all_wfrs == 'not given':
+        my_workflows = wfrs_on_file
+    # otherwise, limit the workflows to the ones from all_wfrs
+    else:
+        library_uuids = [i['uuid'] for i in all_wfrs]
+        my_workflows = [i for i in wfrs_on_file if i['uuid'] in library_uuids]
     if not my_workflows:
+        return {'status': "no workflow on file"}
+    # if all_wfrs were given and there were no wfrs, it means that prefiltering did not return any
+    if not key and not all_wfrs:
         return {'status': "no workflow on file"}
 
     for a_wfr in my_workflows:
@@ -336,10 +665,10 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     same_type_wfrs = [i for i in my_workflows if i['run_type'] == wfr_name]
     last_wfr = same_type_wfrs[0]
     # get metadata for the last wfr
-    if all_wfrs:
-        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
-    else:
+    if all_wfrs == 'not given':
         wfr = ff_utils.get_metadata(last_wfr['uuid'], key)
+    else:
+        wfr = [i for i in all_wfrs if i['uuid'] == last_wfr['uuid']][0]
     run_duration = last_wfr['run_hours']
     run_status = wfr['run_status']
 
@@ -453,13 +782,18 @@ def start_missing_run(run_info, auth, env):
     inputs = run_info[2]
     name_tag = run_info[3]
     # find file to use for attribution
+    attr_file = ''
     for attr_key in attr_keys:
         if attr_key in inputs:
             attr_file = inputs[attr_key]
             if isinstance(attr_file, list):
                 attr_file = attr_file[0]
             break
-    # use pony_dev
+    if not attr_file:
+        possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
+        error_message = ('one of these argument names {} which carry the input file -not the references-'
+                         ' should be added to att_keys dictionary on foursight cgap_utils.py function start_missing_run').format(possible_keys)
+        raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_cgap_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env)
@@ -480,6 +814,11 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
     my_s3_util = s3Utils(env=env)
     out_bucket = my_s3_util.outfile_bucket
+    # shorten long name_tags
+    # they get combined with workflow name, and total should be less then 80
+    # (even less since repeats need unique names)
+    if len(run_name) > 30:
+        run_name = run_name[:30] + '...'
     """Creates the trigger json that is used by foufront endpoint.
     """
     input_json['input_files'] = all_inputs
@@ -697,3 +1036,30 @@ def is_there_my_qc_metric(file_meta, qc_metric_name, my_auth):
         if qc_metric_name not in qc_results['display_title']:
             return False
     return True
+
+
+def fetch_wfr_associated(wfr_info):
+    """Given wfr embedded frame, find associated output files and qcs"""
+    wfr_as_list = []
+    wfr_as_list.append(wfr_info['uuid'])
+    if wfr_info.get('output_files'):
+        for o in wfr_info['output_files']:
+            if o.get('value'):
+                wfr_as_list.append(o['value']['uuid'])
+            elif o.get('value_qc'):
+                wfr_as_list.append(o['value_qc']['uuid'])
+    if wfr_info.get('output_quality_metrics'):
+        for qc in wfr_info['output_quality_metrics']:
+            if qc.get('value'):
+                wfr_as_list.append(qc['value']['uuid'])
+    if wfr_info.get('quality_metric'):
+        wfr_as_list.append(wfr_info['quality_metric']['uuid'])
+    return list(set(wfr_as_list))
+
+
+def string_to_list(string):
+    "Given a string that is either comma separated values, or a python list, parse to list"
+    for a_sep in "'\":[] ":
+        values = string.replace(a_sep, ",")
+    values = [i.strip() for i in values.split(',') if i]
+    return values

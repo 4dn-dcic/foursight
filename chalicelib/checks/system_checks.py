@@ -1,7 +1,8 @@
 from __future__ import print_function, unicode_literals
 from ..utils import (
     check_function,
-    basestring
+    basestring,
+    cat_indices
 )
 from ..run_result import CheckResult
 from dcicutils import (
@@ -10,6 +11,8 @@ from dcicutils import (
     beanstalk_utils,
     env_utils
 )
+from dcicutils.misc_utils import Retry
+import re
 import requests
 import json
 import datetime
@@ -18,32 +21,37 @@ import time
 
 
 # XXX: put into utils?
-CGAP_TEST_CLUSTER = 'search-cgap-testing-ud3ggpjj7x6vclx62nmzymyzfi.us-east-1.es.amazonaws.com:80'
-FF_TEST_CLUSTER = 'search-fourfront-testing-hjozudm7pq5wwlssx2pjlsyz7y.us-east-1.es.amazonaws.com:80'
+CGAP_TEST_CLUSTER = 'search-cgap-testing-6-8-vo4mdkmkshvmyddc65ux7dtaou.us-east-1.es.amazonaws.com:443'
+FF_TEST_CLUSTER = 'search-fourfront-testing-6-8-kncqa2za2r43563rkcmsvgn2fq.us-east-1.es.amazonaws.com:443'
 TEST_ES_CLUSTERS = [
     CGAP_TEST_CLUSTER,
     FF_TEST_CLUSTER
 ]
-DELETE_REQUEST_TIMEOUT = 30  # wildcard delete could take time, default is 10
+BUILD_INDICES_REGEX = re.compile('^[0-9]')  # build indices are prefixed by numbers
 
 
-def wipe_build_indices(connection, es_url):
+def wipe_build_indices(es_url, check):
     """ Wipes all number-prefixed indices on the given es_url. Be careful not to run while
         builds are running as this will cause them to fail.
     """
-    check = CheckResult(connection, 'wipe_build_indices')
     check.status = 'PASS'
     check.summary = check.description = 'Wiped all test indices on url: %s' % es_url
     client = es_utils.create_es_client(es_url, True)
     full_output = []
-    for i in range(1, 10):  # delete all number prefixed indices 0-9
+    _, indices = cat_indices(client)  # index name is index 2 in row
+    for index in indices:
         try:
-            resp = client.indices.delete(index=str(i) + '*',
-                                         request_timeout=DELETE_REQUEST_TIMEOUT)
-        except Exception as e:
-            full_output.append({'acknowledged': True, 'error': str(e)})
-        else:
-            full_output.append(resp)
+            index_name = index[2]
+        except IndexError:  # empty [] sometimes returned by API call
+            continue
+        if re.match(BUILD_INDICES_REGEX, index_name) is not None:
+            try:
+                resp = Retry.retrying(client.indices.delete, retries_allowed=3)(index=index_name)
+            except Exception as e:
+                full_output.append({'acknowledged': True, 'error': str(e)})
+            else:
+                full_output.append(resp)
+
     if any(output['acknowledged'] is not True for output in full_output):
         check.status = 'FAIL'
         check.summary = check.description = 'Failed to wipe all test indices, see full output'
@@ -54,13 +62,15 @@ def wipe_build_indices(connection, es_url):
 @check_function()
 def wipe_cgap_build_indices(connection, **kwargs):
     """ Wipes build indices for CGAP (on cgap-testing) """
-    return wipe_build_indices(connection, CGAP_TEST_CLUSTER)
+    check = CheckResult(connection, 'wipe_cgap_build_indices')
+    return wipe_build_indices(CGAP_TEST_CLUSTER, check)
 
 
 @check_function()
 def wipe_ff_build_indices(connection, **kwargs):
     """ Wipes build (number prefixed) indices (on fourfront-testing) """
-    return wipe_build_indices(connection, FF_TEST_CLUSTER)
+    check = CheckResult(connection, 'wipe_ff_build_indices')
+    return wipe_build_indices(FF_TEST_CLUSTER, check)
 
 
 @check_function()
@@ -863,6 +873,16 @@ def check_long_running_ec2s(connection, **kwargs):
                 flag_instance = True
             else:
                 flag_instance = False
+            # see if long running instances are associated with a deleted WFR
+            if flag_instance and inst_name and created < warn_time:
+                search_url = 'search/?type=WorkflowRunAwsem&awsem_job_id='
+                search_url += '&awsem_job_id='.join([name[6:] for name in inst_name if name.startswith('awsem-')])
+                wfrs = ff_utils.search_metadata(search_url, key=connection.ff_keys)
+                if wfrs:
+                    ec2_log['active workflow runs'] = [wfr['@id'] for wfr in wfrs]
+                deleted_wfrs = ff_utils.search_metadata(search_url + '&status=deleted', key=connection.ff_keys)
+                if deleted_wfrs:
+                    ec2_log['deleted workflow runs'] = [wfr['@id'] for wfr in deleted_wfrs]
             # always add record to full_output; add to brief_output if
             # the instance is flagged based on 'Name' tag
             if created < fail_time:

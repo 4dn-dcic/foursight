@@ -69,7 +69,7 @@ workflow_details = {
     },
     "bedtobeddb": {
         "run_time": 24,
-        "accepted_versions": ["v2"]
+        "accepted_versions": ["v2", "v3"]
     },
     "encode-chipseq-aln-chip": {
         "run_time": 200,
@@ -260,7 +260,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
          "fruit-fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
                        },
          "chicken": {"HindIII": '/files-reference/4DNFITPCJFWJ/'
-                     }
+                     },
+         "zebrafish": {'MboI': '/files-reference/4DNFI6OUDFWL/'
+                       }
          }
 
 
@@ -275,7 +277,8 @@ re_kmer = {"human": '/files-reference/4DNFIDMVPFSO/',
 max_size = {"human": None,
             "mouse": 8.2,
             "fruit-fly": 7.5,
-            "chicken": 8.2}
+            "chicken": 8.2,
+            "zebrafish": 7.9}
 
 # Restriction enzyme recognition site length`
 re_nz_sizes = {"HindIII": "6",
@@ -596,37 +599,6 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         if rename:
             template['rename'] = template['object_key'].replace(change_from, change_to)
     return template
-
-
-def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
-    time.sleep(load_wait)
-    all_inputs = []
-    for arg, files in input_files.items():
-        inp = extract_file_info(files, arg, auth, env)
-        all_inputs.append(inp)
-    # tweak to get bg2bw working
-    all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
-    my_s3_util = s3Utils(env=env)
-    out_bucket = my_s3_util.outfile_bucket
-    """Creates the trigger json that is used by foufront endpoint.
-    """
-    input_json['input_files'] = all_inputs
-    input_json['output_bucket'] = out_bucket
-    input_json["_tibanna"] = {
-        "env": env,
-        "run_type": input_json['app_name'],
-        "run_id": run_name}
-    input_json['step_function_name'] = 'tibanna_pony'
-    input_json['public_postrun_json'] = True
-    if mount:
-        for a_file in input_json['input_files']:
-            a_file['mount'] = True
-    try:
-        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
-        url = json.loads(e['input'])['_tibanna']['url']
-        return url
-    except Exception as e:
-        return str(e)
 
 
 def build_exp_type_query(exp_type, kwargs):
@@ -1244,8 +1216,24 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
 
 
 def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
-    """If move to pc is set to true, if the exp_set or exp status is not released/to project
-    it will move the files to processed_files"""
+    """Function to update experiment and experiment set metadata for pipeline completions
+    and output files.
+    Parameters
+    ----------
+    patch_data: (dict) example format:
+                {
+                'patch_opf': [
+                    ['set_acc', ['file1', 'file2']],
+                    ['exp_acc', ['file3', 'file4']]
+                    ]
+                'add_tag': [['exp_acc', 'completed_pipeline_tag']]
+                }
+    pipeline_type: (str) key for titles dictionary for setting the opf title
+    move_to_pc: (bool) If False, processing results go to other_processed_files field
+                If True:
+                   If set/exp is released/to project processing results go to other_processed_files field
+                   If set/exp is in other status, processing results go to processed_files field
+    """
     titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
@@ -1320,6 +1308,38 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     new_tags = list(set(existing_tags + [new_tag]))
     ff_utils.patch_metadata({'completed_processes': new_tags}, set_acc, auth)
     return log
+
+
+def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
+    time.sleep(load_wait)
+    all_inputs = []
+    for arg, files in input_files.items():
+        inp = extract_file_info(files, arg, auth, env)
+        all_inputs.append(inp)
+    # tweak to get bg2bw working
+    all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
+    my_s3_util = s3Utils(env=env)
+    out_bucket = my_s3_util.outfile_bucket
+    """Creates the trigger json that is used by foufront endpoint.
+    """
+    input_json['input_files'] = all_inputs
+    input_json['output_bucket'] = out_bucket
+    input_json["_tibanna"] = {
+        "env": env,
+        "run_type": input_json['app_name'],
+        "run_id": run_name}
+    input_json['step_function_name'] = 'tibanna_pony'
+    input_json['public_postrun_json'] = True
+    if mount:
+        for a_file in input_json['input_files']:
+            a_file['mount'] = True
+
+    try:
+        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
+        url = json.loads(e['input'])['_tibanna']['url']
+        return url
+    except Exception as e:
+        return str(e)
 
 
 def start_missing_run(run_info, auth, env):
