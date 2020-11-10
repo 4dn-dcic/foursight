@@ -852,7 +852,8 @@ def new_or_updated_items(connection, **kwargs):
                             # full_output[modifier][labname][itype].setdefault(modlabel, {'search': '', 'accessions': []})
                             if full_output[modifier][labname][itype][modlabel] == 'None' or not full_output[modifier][labname][itype][modlabel].get('search'):
                                 searchdate, _ = date.split('T')
-                                modsearch = '{server}search/?q=last_modified.date_modified:[{date} TO *]&type={itype}&lab.uuid={lab}&last_modified.modified_by.uuid={mod}status=in review by lab'.format(
+                                modsearch = ('{server}search/?q=last_modified.date_modified:[{date} TO *]'
+                                             '&type={itype}&lab.uuid={lab}&last_modified.modified_by.uuid={mod}status=in review by lab').format(
                                     server=connection.ff_server, date=searchdate, itype=itype, lab=labuuid, mod=item_info.get('last_modified.modified_by.uuid')
                                 )
                                 full_output[modifier][labname][itype][modlabel] = {'search': modsearch}
@@ -1314,7 +1315,7 @@ def patch_assay_subclass_short(connection, **kwargs):
 
 def semver2int(semver):
     v = [num for num in semver.lstrip('v').split('.')]
-    for i in range(1,len(v)):
+    for i in range(1, len(v)):
         if len(v[i]) == 1:
             v[i] = '0' + v[i]
     return float(''.join([v[0] + '.'] + v[1:]))
@@ -1429,12 +1430,12 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     time.sleep(wait)
     query = '/search/?file_type=chromatin states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
-    for re in res:
-        if not re.get('higlass_defaults'):
-            if not re.get('tags'):
-                check.full_output['problematic_files'][re['accession']] = 'missing state tag'
+    for a_res in res:
+        if not a_res.get('higlass_defaults'):
+            if not a_res.get('tags'):
+                check.full_output['problematic_files'][a_res['accession']] = 'missing state tag'
             else:
-                check.full_output['to_add'][re['accession']] = re["tags"]
+                check.full_output['to_add'][a_res['accession']] = a_res["tags"]
 
     if check.full_output['to_add']:
         check.status = 'WARN'
@@ -1515,16 +1516,16 @@ def check_for_strandedness_consistency(connection, **kwargs):
     target_experiments = []  # the experiments that we are interested in (fastqs with beta actin count tag)
 
     # Filtering the experiments target experiments
-    for re in res:
-        if re.get("strandedness"):
-            strandedness_meta = re['strandedness']
+    for a_res in res:
+        if a_res.get("strandedness"):
+            strandedness_meta = a_res['strandedness']
         else:
             strandedness_meta = 'missing'
 
-        exp_info = {'meta': re, 'files': [], 'tag': strandedness_meta}
+        exp_info = {'meta': a_res, 'files': [], 'tag': strandedness_meta}
 
         # verify that the files in the experiment have the beta-actin count info
-        for a_re_file in re['files']:
+        for a_re_file in a_res['files']:
             if a_re_file['file_format']['display_title'] == 'fastq':
                 file_meta = ff_utils.get_metadata(a_re_file['accession'], connection.ff_keys)
                 file_meta_keys = file_meta.keys()
@@ -1558,18 +1559,18 @@ def check_for_strandedness_consistency(connection, **kwargs):
                 #  Calculate forward, reversed or unstranded
                 strandedness_report = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
                 if "unknown" in strandedness_report['calculated_strandedness']:
-                    problematic['fastqs_unmatch_strandedness'].append({'exp':target_exp['meta']['accession'],
-                                                                        'strandedness_info': strandedness_report})
+                    problematic['fastqs_unmatch_strandedness'].append({'exp': target_exp['meta']['accession'],
+                                                                       'strandedness_info': strandedness_report})
                     problm = True
                 elif strandedness_report['calculated_strandedness'] == "zero":
-                    problematic['fastqs_zero_count_both_strands'].append({'exp':target_exp['meta']['accession'],
+                    problematic['fastqs_zero_count_both_strands'].append({'exp': target_exp['meta']['accession'],
                                                                           'strandedness_info': strandedness_report})
                     problm = True
                 elif target_exp['tag'] != strandedness_report['calculated_strandedness']:
                     problematic['inconsistent_strandedness'].append({'exp': target_exp['meta']['accession'],
-                                                                    'strandedness_metadata': target_exp['tag'],
-                                                                    'calculated_strandedness': strandedness_report['calculated_strandedness'],
-                                                                    'files': strandedness_report['files']})
+                                                                     'strandedness_metadata': target_exp['tag'],
+                                                                     'calculated_strandedness': strandedness_report['calculated_strandedness'],
+                                                                     'files': strandedness_report['files']})
                     problm = True
                 else:
                     missing_consistent_tag.append(target_exp['meta']['accession'])
@@ -1579,7 +1580,7 @@ def check_for_strandedness_consistency(connection, **kwargs):
         check.status = 'WARN'
         check.description = 'Problematic experiments need to be addressed'
         msg = str(len(missing_consistent_tag) + len(problematic['fastqs_unmatch_strandedness']) + len(problematic['fastqs_zero_count_both_strands']) +
-                len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
+                  len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
         check.brief_output.append(msg)
 
         if problematic['fastqs_zero_count_both_strands']:
@@ -2077,7 +2078,7 @@ def grouped_with_file_relation_consistency(connection, **kwargs):
         check.description = "{} files are missing 'grouped with' relationships".format(len(missing))
         check.allow_action = True
         check.action_message = ("DO NOT RUN if relations need to be removed! "
-            "This action will attempt to patch {} items by adding the missing 'grouped with' relations".format(len(to_patch)))
+                                "This action will attempt to patch {} items by adding the missing 'grouped with' relations".format(len(to_patch)))
     else:
         check.status = 'PASS'
         check.summary = check.description = "All 'grouped with' file relationships are consistent"
