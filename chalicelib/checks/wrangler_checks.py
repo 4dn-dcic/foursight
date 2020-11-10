@@ -17,6 +17,11 @@ from fuzzywuzzy import fuzz
 import boto3
 from .helpers import wrangler_utils
 from collections import Counter
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
+import pandas as pd
+from collections import OrderedDict
+import uuid
 
 # use a random number to stagger checks
 random_wait = 20
@@ -2249,13 +2254,53 @@ def check_hic_summary_tables(connection, **kwargs):
     return check
 
 
+@action_function()
+def patch_hic_summary_tables(connection, **kwargs):
+    ''' Update the Hi-C summary tables
+    '''
+    action = ActionResult(connection, 'patch_hic_summary_tables')
+    check_res = action.get_associated_check_result(kwargs)
+    sections_to_patch = check_res['full_output']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    for item in sections_to_patch.values():
+        try:
+            ff_utils.patch_metadata({"body": item['body']}, item['alias'], key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({item['alias']: str(e)})
+        else:
+            action_logs['patch_success'].append(item['alias'])
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+def get_oh_google_sheet():
+    # GET KEY FROM S3 To Access
+    # TODO: encrypt the key same as foursight key and use same function to fetch it
+    s3 = boto3.resource('s3')
+    obj = s3.Object('elasticbeanstalk-fourfront-webprod-system', 'DCICjupgoogle.json')
+    cont = obj.get()['Body'].read().decode()
+    key_dict = json.loads(cont)
+    SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, SCOPES)
+    gc = gspread.authorize(creds)
+    # Get the google sheet information
+    book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
+    sheet_name = 'AllMembers_Testing_Updates'
+    book = gc.open_by_key(book_id)
+    worksheet = book.worksheet(sheet_name)
+    table = worksheet.get_all_values()
+    # Convert table data into an ordered dictionary
+    df = pd.DataFrame(table[1:], columns=table[0])
+    user_list = df.to_dict(orient='records', into=OrderedDict)
+    return user_list
+
+
 @check_function()
 def sync_users_oh_status(connection, **kwargs):
-    from oauth2client.service_account import ServiceAccountCredentials
-    import gspread
-    import pandas as pd
-    from collections import OrderedDict
-    import uuid
     """
     Check users on database and OH google sheet, synchronize them
     1) Pull all table values, All database users, labs and awards
@@ -2268,6 +2313,9 @@ def sync_users_oh_status(connection, **kwargs):
     4.4) if email is not available, find the matching lab, and create new user, add user information to the table
     4.5) if can not find the lab, report need for new lab creation.
     5) check for users that are on dcic database, but not on the table, add as new DCIC users.
+
+    If a new user needs to be created, it will be first created on the portal, and second time
+    the check runs, it will be added to the excel (to prevent problems with un-synchronized actions)
     """
     check = CheckResult(connection, 'sync_users_oh_status')
     my_auth = connection.ff_keys
@@ -2438,25 +2486,6 @@ def sync_users_oh_status(connection, **kwargs):
         if '4DN' in awards or 'NOFIC' in awards:
             fdn_users.append(a_user)
     print(len(fdn_users), 'fdn users')
-
-    # GET KEY FROM S3 To Access
-    # TODO: encrypt the key same as foursight key and use same function to fetch it
-    s3 = boto3.resource('s3')
-    obj = s3.Object('elasticbeanstalk-fourfront-webprod-system', 'DCICjupgoogle.json')
-    cont = obj.get()['Body'].read().decode()
-    key_dict = json.loads(cont)
-    SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, SCOPES)
-    gc = gspread.authorize(creds)
-    # Get the google sheet information
-    book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
-    sheet_name = 'AllMembers_Testing_Updates'
-    book = gc.open_by_key(book_id)
-    worksheet = book.worksheet(sheet_name)
-    table = worksheet.get_all_values()
-    # Convert table data into an ordered dictionary
-    df = pd.DataFrame(table[1:], columns=table[0])
-    user_list = df.to_dict(orient='records', into=OrderedDict)
     # keep a tally of all actions that we need to perform
     actions = {'delete_user': [],
                'add_user': [],
@@ -2467,9 +2496,10 @@ def sync_users_oh_status(connection, **kwargs):
                }
     # keep a list of all problems we encounter
     problem = []
+    # get oh google sheet
+    user_list = get_oh_google_sheet()
     # any user that is not on the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
-
     # iterate over records and compare
     for a_record in user_list:
         # does the item have a dcic uuid
@@ -2558,28 +2588,18 @@ def sync_users_oh_status(connection, **kwargs):
             actions['add_excel'].append(new_record)
     print(actions)
 
-    return check
+    # do we need action
+    for a_key in actions:
+        if actions[a_key]:
+            check.status = 'WARN'
+            check.allow_action = True
+            check.summary += 'There are actions pending. '
 
-    query_base = '/search/?type=NotMyType'
-    q = query_base
-    # print(q)
-    res = ff_utils.search_metadata(q, my_auth)
-    # check if anything in scope
-    if not res:
-        check.status = 'PASS'
-        check.summary = 'All Good!'
-        check.brief_output = ['All Good!']
-        check.full_output = {}
-        return check
+    if problem:
+        check.status = 'WARN'
+        check.summary += 'There are problems.'
 
-    for a_res in res:
-        # do something
-        pass
-
-    check.summary = ""
-    check.full_output = {}
-    check.status = 'WARN'
-    check.allow_action = True
+    check.full_output = {'actions': actions, 'problems': problem}
     return check
 
 
@@ -2590,34 +2610,12 @@ def sync_users_oh_start(connection, **kwargs):
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    user_list = get_oh_google_sheet()
     # do something
     for a_res in sync_users_oh_check_result:
         assert my_auth
         assert my_env
         break
-    return action
-
-
-@action_function()
-def patch_hic_summary_tables(connection, **kwargs):
-    ''' Update the Hi-C summary tables
-    '''
-    action = ActionResult(connection, 'patch_hic_summary_tables')
-    check_res = action.get_associated_check_result(kwargs)
-    sections_to_patch = check_res['full_output']
-    action_logs = {'patch_success': [], 'patch_failure': []}
-    for item in sections_to_patch.values():
-        try:
-            ff_utils.patch_metadata({"body": item['body']}, item['alias'], key=connection.ff_keys)
-        except Exception as e:
-            action_logs['patch_failure'].append({item['alias']: str(e)})
-        else:
-            action_logs['patch_success'].append(item['alias'])
-    if action_logs['patch_failure']:
-        action.status = 'FAIL'
-    else:
-        action.status = 'DONE'
-    action.output = action_logs
     return action
 
 
