@@ -2623,6 +2623,7 @@ def sync_users_oh_start(connection, **kwargs):
             pass
             # TODO: Do we want to check if user has any trace on the portal
             # TODO: Do we want to email the user
+            # TODO: take out viewing group from users to be deleted instead of deleting them.
             # ff_utils.patch_metadata({'status': 'deleted'}, a_user, my_auth)
 
     # update google sheet
@@ -2636,19 +2637,19 @@ def sync_users_oh_start(connection, **kwargs):
     gs_write = []
 
     rows = user_list[0].keys()
-    # update dcic user info
+    # update dcic user info on excel
     update_set = actions['update_excel']
     for a_record in user_list:
         dcic_uuid = a_record['DCIC UUID']
         if dcic_uuid in update_set:
             a_record.update(update_set[dcic_uuid])
-    # patch user info with dcic information
+    # patch user info with dcic information for existing OH info
     patch_set = actions['patch_excel']
     for a_record in user_list:
         oh_mail = a_record['OH Account Email']
         if oh_mail in patch_set:
             a_record.update(patch_set[oh_mail])
-    # add new lines
+    # add new lines for new users
     for new_line in actions['add_excel']:
         temp = OrderedDict((key, "") for key in rows)
         temp.update(new_line)
@@ -2669,6 +2670,7 @@ def sync_users_oh_start(connection, **kwargs):
             col = c + 1
             gs_write.append(gspread.models.Cell(row, col, line[key]))
     # #Write the cells to the worksheet
+    worksheet.update_cells(gs_write)
     # the return value from this operation will look like this
     # {'spreadsheetId': '1Zhkjwu8uDznG0kKqJF-EwSLzXMrdaCTSzz68V_n-l6U',
     # 'updatedCells': 10944,
@@ -2676,7 +2678,6 @@ def sync_users_oh_start(connection, **kwargs):
     # 'updatedRange': "'test updates'!A1:R608",
     # 'updatedRows': 608}
     # TODO: maybe we can use it to add more infor to action message
-    worksheet.update_cells(gs_write)
     return action
 
 
