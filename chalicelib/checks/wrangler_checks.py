@@ -2292,11 +2292,7 @@ def get_oh_google_sheet():
     sheet_name = 'AllMembers_Testing_Updates'
     book = gc.open_by_key(book_id)
     worksheet = book.worksheet(sheet_name)
-    table = worksheet.get_all_values()
-    # Convert table data into an ordered dictionary
-    df = pd.DataFrame(table[1:], columns=table[0])
-    user_list = df.to_dict(orient='records', into=OrderedDict)
-    return user_list
+    return worksheet
 
 
 @check_function()
@@ -2453,6 +2449,7 @@ def sync_users_oh_status(connection, **kwargs):
 
     # get skipped users from this static section
     # if you want to skip more users, append their display titles to this static section as new line
+    # TODO: add skip information on the user items
     skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
     skip_users = ff_utils.get_metadata(skip_user_static_section_uuid, my_auth)['content'].split('\n')
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
@@ -2497,7 +2494,11 @@ def sync_users_oh_status(connection, **kwargs):
     # keep a list of all problems we encounter
     problem = []
     # get oh google sheet
-    user_list = get_oh_google_sheet()
+    worksheet = get_oh_google_sheet()
+    table = worksheet.get_all_values()
+    # Convert table data into an ordered dictionary
+    df = pd.DataFrame(table[1:], columns=table[0])
+    user_list = df.to_dict(orient='records', into=OrderedDict)
     # any user that is not on the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
     # iterate over records and compare
@@ -2513,10 +2514,8 @@ def sync_users_oh_status(connection, **kwargs):
                 user = users[0]
                 # is user inactivated on OH
                 if a_record.get('OH Active/Inactive') == '0':
-                    # in active on OH, delete it
+                    # delete the user, and in the next round, inactivate it
                     actions['delete_user'].append(a_record['DCIC UUID'])
-                    actions['inactivate_excel'].append([a_record['DCIC UUID'],
-                                                       {'DCIC Active/Inactive': "0"}])
                 else:
                     # user exist on excel and on our database
                     # any new info?
@@ -2532,6 +2531,7 @@ def sync_users_oh_status(connection, **kwargs):
                         actions['inactivate_excel'].append([a_record['DCIC UUID'],
                                                            {'DCIC Active/Inactive': "0"}])
                 except:
+                    # if we purge users in the future, we might hit this point without an actual problem
                     problem.append(['Can not find previously assigned 4DN uuid', a_record['DCIC UUID']])
         # if we did not assign a uuid
         else:
@@ -2608,14 +2608,73 @@ def sync_users_oh_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     action = ActionResult(connection, 'sync_users_oh_start')
     my_auth = connection.ff_keys
-    my_env = connection.ff_env
     sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    actions = sync_users_oh_check_result['actions']
     user_list = get_oh_google_sheet()
-    # do something
-    for a_res in sync_users_oh_check_result:
-        assert my_auth
-        assert my_env
-        break
+    # add users
+    if actions.get('add_user'):
+        for a_user in actions['add_user']:
+            ff_utils.post_metadata(a_user, 'user', my_auth)
+    # delete users
+    if actions.get('delete_user'):
+        for a_user in actions['add_user']:
+            pass
+            # TODO: Do we want to check if user has any trace on the portal
+            # TODO: Do we want to email the user
+            # ff_utils.patch_metadata({'status': 'deleted'}, a_user, my_auth)
+
+    # update google sheet
+    # we will create a modified version of the full stack and write on google sheet at once
+    worksheet = get_oh_google_sheet()
+    table = worksheet.get_all_values()
+    # Convert table data into an ordered dictionary
+    df = pd.DataFrame(table[1:], columns=table[0])
+    user_list = df.to_dict(orient='records', into=OrderedDict)
+    # generate records to write
+    gs_write = []
+
+    rows = user_list[0].keys()
+    # update dcic user info
+    update_set = actions['update_excel']
+    for a_record in user_list:
+        dcic_uuid = a_record['DCIC UUID']
+        if dcic_uuid in update_set:
+            a_record.update(update_set[dcic_uuid])
+    # patch user info with dcic information
+    patch_set = actions['patch_excel']
+    for a_record in user_list:
+        oh_mail = a_record['OH Account Email']
+        if oh_mail in patch_set:
+            a_record.update(patch_set[oh_mail])
+    # add new lines
+    for new_line in actions['add_excel']:
+        temp = OrderedDict((key, "") for key in rows)
+        temp.update(new_line)
+        user_list.append(temp)
+
+    # Writting the data to the list gs_write
+    row = 1
+    for r, line in enumerate(user_list):
+        row = r + 1
+        # write columns
+        if row == 1:
+            for c, key in enumerate(line):
+                col = c + 1
+                gs_write.append(gspread.models.Cell(row, col, key))
+        row = r + 2
+        # write values
+        for c, key in enumerate(line):
+            col = c + 1
+            gs_write.append(gspread.models.Cell(row, col, line[key]))
+    # #Write the cells to the worksheet
+    # the return value from this operation will look like this
+    # {'spreadsheetId': '1Zhkjwu8uDznG0kKqJF-EwSLzXMrdaCTSzz68V_n-l6U',
+    # 'updatedCells': 10944,
+    # 'updatedColumns': 18,
+    # 'updatedRange': "'test updates'!A1:R608",
+    # 'updatedRows': 608}
+    # TODO: maybe we can use it to add more infor to action message
+    worksheet.update_cells(gs_write)
     return action
 
 
