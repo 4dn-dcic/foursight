@@ -2278,7 +2278,6 @@ def replace_me_status(connection, **kwargs):
     Use replace function to replace `replace_me` and your check name to have a quick setup
     Keyword arguments:
     """
-    start = datetime.utcnow()
     check = CheckResult(connection, 'replace_me_status')
     my_auth = connection.ff_keys
     check.action = "replace_me_start"
@@ -2328,4 +2327,3 @@ def replace_me_start(connection, **kwargs):
     my_env = connection.ff_env
     replace_me_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     # do something
-    return action
