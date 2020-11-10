@@ -99,72 +99,72 @@ def elastic_search_space(connection, **kwargs):
     return check
 
 
-@check_function()
-def elastic_beanstalk_health(connection, **kwargs):
-    """
-    Check both environment health and health of individual instances
-    """
-    check = CheckResult(connection, 'elastic_beanstalk_health')
-    full_output = {}
-    eb_client = boto3.client('elasticbeanstalk')
-    resp = eb_client.describe_environment_health(
-        EnvironmentName=connection.ff_env,
-        AttributeNames=['All']
-    )
-    resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
-        return check
-    full_output['status'] = resp.get('Status')
-    full_output['environment_name'] = resp.get('EnvironmentName')
-    full_output['color'] = resp.get('Color')
-    full_output['health_status'] = resp.get('HealthStatus')
-    full_output['causes'] = resp.get('Causes')
-    full_output['instance_health'] = []
-    # now look at the individual instances
-    resp = eb_client.describe_instances_health(
-        EnvironmentName=connection.ff_env,
-        AttributeNames=['All']
-    )
-    resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
-        return check
-    instances_health = resp.get('InstanceHealthList', [])
-    for instance in instances_health:
-        inst_info = {}
-        inst_info['deploy_status'] = instance['Deployment']['Status']
-        inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
-        # get version deployment time
-        application_versions = eb_client.describe_application_versions(
-            ApplicationName='4dn-web',
-            VersionLabels=[inst_info['deploy_version']]
-        )
-        deploy_info = application_versions['ApplicationVersions'][0]
-        inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['id'] = instance['InstanceId']
-        inst_info['color'] = instance['Color']
-        inst_info['health'] = instance['HealthStatus']
-        inst_info['causes'] = instance.get('causes', [])
-        full_output['instance_health'].append(inst_info)
-    if full_output['color'] == 'Grey':
-        check.status = 'WARN'
-        check.summary = check.description = 'EB environment is updating'
-    elif full_output['color'] == 'Yellow':
-        check.status = 'WARN'
-        check.summary = check.description = 'EB environment is compromised; requests may fail'
-    elif full_output['color'] == 'Red':
-        check.status = 'FAIL'
-        check.summary = check.description = 'EB environment is degraded; requests are likely to fail'
-    else:
-        check.summary = check.description = 'EB environment seems healthy'
-        check.status = 'PASS'
-    check.full_output = full_output
-    return check
+# @check_function()
+# def elastic_beanstalk_health(connection, **kwargs):
+#     """
+#     Check both environment health and health of individual instances
+#     """
+#     check = CheckResult(connection, 'elastic_beanstalk_health')
+#     full_output = {}
+#     eb_client = boto3.client('elasticbeanstalk')
+#     resp = eb_client.describe_environment_health(
+#         EnvironmentName=connection.ff_env,
+#         AttributeNames=['All']
+#     )
+#     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+#     if resp_status >= 400:
+#         check.status = 'ERROR'
+#         check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
+#         return check
+#     full_output['status'] = resp.get('Status')
+#     full_output['environment_name'] = resp.get('EnvironmentName')
+#     full_output['color'] = resp.get('Color')
+#     full_output['health_status'] = resp.get('HealthStatus')
+#     full_output['causes'] = resp.get('Causes')
+#     full_output['instance_health'] = []
+#     # now look at the individual instances
+#     resp = eb_client.describe_instances_health(
+#         EnvironmentName=connection.ff_env,
+#         AttributeNames=['All']
+#     )
+#     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+#     if resp_status >= 400:
+#         check.status = 'ERROR'
+#         check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
+#         return check
+#     instances_health = resp.get('InstanceHealthList', [])
+#     for instance in instances_health:
+#         inst_info = {}
+#         inst_info['deploy_status'] = instance['Deployment']['Status']
+#         inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
+#         # get version deployment time
+#         application_versions = eb_client.describe_application_versions(
+#             ApplicationName='4dn-web',
+#             VersionLabels=[inst_info['deploy_version']]
+#         )
+#         deploy_info = application_versions['ApplicationVersions'][0]
+#         inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['id'] = instance['InstanceId']
+#         inst_info['color'] = instance['Color']
+#         inst_info['health'] = instance['HealthStatus']
+#         inst_info['causes'] = instance.get('causes', [])
+#         full_output['instance_health'].append(inst_info)
+#     if full_output['color'] == 'Grey':
+#         check.status = 'WARN'
+#         check.summary = check.description = 'EB environment is updating'
+#     elif full_output['color'] == 'Yellow':
+#         check.status = 'WARN'
+#         check.summary = check.description = 'EB environment is compromised; requests may fail'
+#     elif full_output['color'] == 'Red':
+#         check.status = 'FAIL'
+#         check.summary = check.description = 'EB environment is degraded; requests are likely to fail'
+#     else:
+#         check.summary = check.description = 'EB environment seems healthy'
+#         check.status = 'PASS'
+#     check.full_output = full_output
+#     return check
 
 
 @check_function()
@@ -345,159 +345,159 @@ def fourfront_performance_metrics(connection, **kwargs):
     return check
 
 
-@check_function(time_limit=480)
-def secondary_queue_deduplication(connection, **kwargs):
-    from ..utils import get_stage_info
-    check = CheckResult(connection, 'secondary_queue_deduplication')
-    # maybe handle this in check_setup.json
-    if get_stage_info()['stage'] != 'prod':
-        check.full_output = 'Will not run on dev foursight.'
-        check.status = 'PASS'
-        return check
-
-    client = boto3.client('sqs')
-    sqs_res = client.get_queue_url(
-        QueueName=connection.ff_env + '-secondary-indexer-queue'
-    )
-    queue_url = sqs_res['QueueUrl']
-    # get approx number of messages
-    attrs = client.get_queue_attributes(
-        QueueUrl=queue_url,
-        AttributeNames=['ApproximateNumberOfMessages']
-    )
-    visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
-    starting_count = int(visible)
-    time_limit = kwargs['time_limit']
-    t0 = time.time()
-    sent = 0
-    deleted = 0
-    deduplicated = 0
-    total_msgs = 0
-    replaced = 0
-    repeat_replaced = 0
-    problem_msgs = []
-    elapsed = round(time.time() - t0, 2)
-    failed = []
-    seen_uuids = set()
-    # this is a bit of a hack -- send maximum sid with every message we replace
-    # get the maximum sid at the start of deduplication and update it if we
-    # encounter a higher sid
-    max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
-                                               auth=connection.ff_keys).json()
-    if max_sid_resp['status'] != 'success':
-        check.status = 'FAIL'
-        check.summary = 'Could not retrieve max_sid from the server'
-        return check
-    max_sid = max_sid_resp['max_sid']
-
-    exit_reason = 'out of time'
-    dedup_msg = 'FS dedup uuid: %s' % kwargs['uuid']
-    while elapsed < time_limit:
-        # end if we are spinning our wheels replacing the same uuids
-        if (replaced + repeat_replaced) >= starting_count:
-            exit_reason = 'starting uuids fully covered'
-            break
-        send_uuids = set()
-        to_send = []
-        to_delete = []
-        recieved = client.receive_message(
-            QueueUrl=queue_url,
-            MaxNumberOfMessages=10,  # batch size for all sqs ops
-            WaitTimeSeconds=1  # 1 second of long polling
-        )
-        batch = recieved.get("Messages", [])
-        if not batch:
-            exit_reason = 'no messages left'
-            break
-        for msg in batch:
-            try:
-                msg_body = json.loads(msg['Body'])
-            except json.JSONDecodeError:
-                problem_msgs.append(msg['Body'])
-                continue
-            total_msgs += 1
-            msg_uuid = msg_body['uuid']
-            # update max_sid with message sid if applicable
-            if msg_body.get('sid') is not None and msg_body['sid'] > max_sid:
-                max_sid = msg_body['sid']
-            msg_body['sid'] = max_sid
-            to_process = {
-                'Id': msg['MessageId'],
-                'ReceiptHandle': msg['ReceiptHandle']
-            }
-            # every item gets deleted; original uuids get re-sent
-            to_delete.append(to_process)
-            if msg_uuid in seen_uuids and msg_body.get('fs_detail', '') != dedup_msg:
-                deduplicated += 1
-            else:
-                # don't increment replaced count if we've seen the item before
-                if msg_uuid not in seen_uuids:
-                    replaced += 1
-                else:
-                    repeat_replaced += 1
-                time.sleep(0.0001)  # slight sleep for time-based Id
-                # add foursight uuid stamp
-                msg_body['fs_detail'] = dedup_msg
-                # add a slight delay to recycled messages, so that they are
-                # not available for consumption for 2 seconds
-                send_info = {
-                    'Id': str(int(time.time() * 1000000)),
-                    'MessageBody': json.dumps(msg_body),
-                    'DelaySeconds': 2
-                }
-                to_send.append(send_info)
-                seen_uuids.add(msg_uuid)
-                send_uuids.add(msg_uuid)
-        if to_send:
-            res = client.send_message_batch(
-                QueueUrl=queue_url,
-                Entries=to_send
-            )
-            # undo deduplication if errors are detected
-            res_failed = res.get('Failed', [])
-            failed.extend(res_failed)
-            if res_failed:
-                # handle conservatively on error and don't delete
-                for uuid in send_uuids:
-                    if uuid in seen_uuids:
-                        seen_uuids.remove(uuid)
-                        replaced -= 1
-                continue
-            sent += len(to_send)
-        if to_delete:
-            res = client.delete_message_batch(
-                QueueUrl=queue_url,
-                Entries=to_delete
-            )
-            failed.extend(res.get('Failed', []))
-            deleted += len(to_delete)
-        elapsed = round(time.time() - t0, 2)
-
-    check.full_output = {
-        'total_messages_covered': total_msgs,
-        'uuids_covered': len(seen_uuids),
-        'deduplicated': deduplicated,
-        'replaced': replaced,
-        'repeat_replaced': repeat_replaced,
-        'time': elapsed,
-        'problem_messages': problem_msgs,
-        'exit_reason': exit_reason
-    }
-    # these are some standard things about the result that should always be true
-    if replaced != len(seen_uuids) or (deduplicated + replaced + repeat_replaced) != total_msgs:
-        check.status = 'FAIL'
-        check.summary = 'Message totals do not add up. Report to Carl'
-    if failed:
-        if check.status != 'FAIL':
-            check.status = 'WARN'
-            check.summary = 'Queue deduplication encountered an error'
-        check.full_output['failed'] = failed
-    else:
-        check.status = 'PASS'
-        check.summary = 'Removed %s duplicates from %s secondary queue' % (deduplicated, connection.ff_env)
-    check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
-
-    return check
+# @check_function(time_limit=480)
+# def secondary_queue_deduplication(connection, **kwargs):
+#     from ..utils import get_stage_info
+#     check = CheckResult(connection, 'secondary_queue_deduplication')
+#     # maybe handle this in check_setup.json
+#     if get_stage_info()['stage'] != 'prod':
+#         check.full_output = 'Will not run on dev foursight.'
+#         check.status = 'PASS'
+#         return check
+#
+#     client = boto3.client('sqs')
+#     sqs_res = client.get_queue_url(
+#         QueueName=connection.ff_env + '-secondary-indexer-queue'
+#     )
+#     queue_url = sqs_res['QueueUrl']
+#     # get approx number of messages
+#     attrs = client.get_queue_attributes(
+#         QueueUrl=queue_url,
+#         AttributeNames=['ApproximateNumberOfMessages']
+#     )
+#     visible = attrs.get('Attributes', {}).get('ApproximateNumberOfMessages', '0')
+#     starting_count = int(visible)
+#     time_limit = kwargs['time_limit']
+#     t0 = time.time()
+#     sent = 0
+#     deleted = 0
+#     deduplicated = 0
+#     total_msgs = 0
+#     replaced = 0
+#     repeat_replaced = 0
+#     problem_msgs = []
+#     elapsed = round(time.time() - t0, 2)
+#     failed = []
+#     seen_uuids = set()
+#     # this is a bit of a hack -- send maximum sid with every message we replace
+#     # get the maximum sid at the start of deduplication and update it if we
+#     # encounter a higher sid
+#     max_sid_resp = ff_utils.authorized_request(connection.ff_server + 'max-sid',
+#                                                auth=connection.ff_keys).json()
+#     if max_sid_resp['status'] != 'success':
+#         check.status = 'FAIL'
+#         check.summary = 'Could not retrieve max_sid from the server'
+#         return check
+#     max_sid = max_sid_resp['max_sid']
+#
+#     exit_reason = 'out of time'
+#     dedup_msg = 'FS dedup uuid: %s' % kwargs['uuid']
+#     while elapsed < time_limit:
+#         # end if we are spinning our wheels replacing the same uuids
+#         if (replaced + repeat_replaced) >= starting_count:
+#             exit_reason = 'starting uuids fully covered'
+#             break
+#         send_uuids = set()
+#         to_send = []
+#         to_delete = []
+#         recieved = client.receive_message(
+#             QueueUrl=queue_url,
+#             MaxNumberOfMessages=10,  # batch size for all sqs ops
+#             WaitTimeSeconds=1  # 1 second of long polling
+#         )
+#         batch = recieved.get("Messages", [])
+#         if not batch:
+#             exit_reason = 'no messages left'
+#             break
+#         for msg in batch:
+#             try:
+#                 msg_body = json.loads(msg['Body'])
+#             except json.JSONDecodeError:
+#                 problem_msgs.append(msg['Body'])
+#                 continue
+#             total_msgs += 1
+#             msg_uuid = msg_body['uuid']
+#             # update max_sid with message sid if applicable
+#             if msg_body.get('sid') is not None and msg_body['sid'] > max_sid:
+#                 max_sid = msg_body['sid']
+#             msg_body['sid'] = max_sid
+#             to_process = {
+#                 'Id': msg['MessageId'],
+#                 'ReceiptHandle': msg['ReceiptHandle']
+#             }
+#             # every item gets deleted; original uuids get re-sent
+#             to_delete.append(to_process)
+#             if msg_uuid in seen_uuids and msg_body.get('fs_detail', '') != dedup_msg:
+#                 deduplicated += 1
+#             else:
+#                 # don't increment replaced count if we've seen the item before
+#                 if msg_uuid not in seen_uuids:
+#                     replaced += 1
+#                 else:
+#                     repeat_replaced += 1
+#                 time.sleep(0.0001)  # slight sleep for time-based Id
+#                 # add foursight uuid stamp
+#                 msg_body['fs_detail'] = dedup_msg
+#                 # add a slight delay to recycled messages, so that they are
+#                 # not available for consumption for 2 seconds
+#                 send_info = {
+#                     'Id': str(int(time.time() * 1000000)),
+#                     'MessageBody': json.dumps(msg_body),
+#                     'DelaySeconds': 2
+#                 }
+#                 to_send.append(send_info)
+#                 seen_uuids.add(msg_uuid)
+#                 send_uuids.add(msg_uuid)
+#         if to_send:
+#             res = client.send_message_batch(
+#                 QueueUrl=queue_url,
+#                 Entries=to_send
+#             )
+#             # undo deduplication if errors are detected
+#             res_failed = res.get('Failed', [])
+#             failed.extend(res_failed)
+#             if res_failed:
+#                 # handle conservatively on error and don't delete
+#                 for uuid in send_uuids:
+#                     if uuid in seen_uuids:
+#                         seen_uuids.remove(uuid)
+#                         replaced -= 1
+#                 continue
+#             sent += len(to_send)
+#         if to_delete:
+#             res = client.delete_message_batch(
+#                 QueueUrl=queue_url,
+#                 Entries=to_delete
+#             )
+#             failed.extend(res.get('Failed', []))
+#             deleted += len(to_delete)
+#         elapsed = round(time.time() - t0, 2)
+#
+#     check.full_output = {
+#         'total_messages_covered': total_msgs,
+#         'uuids_covered': len(seen_uuids),
+#         'deduplicated': deduplicated,
+#         'replaced': replaced,
+#         'repeat_replaced': repeat_replaced,
+#         'time': elapsed,
+#         'problem_messages': problem_msgs,
+#         'exit_reason': exit_reason
+#     }
+#     # these are some standard things about the result that should always be true
+#     if replaced != len(seen_uuids) or (deduplicated + replaced + repeat_replaced) != total_msgs:
+#         check.status = 'FAIL'
+#         check.summary = 'Message totals do not add up. Report to Carl'
+#     if failed:
+#         if check.status != 'FAIL':
+#             check.status = 'WARN'
+#             check.summary = 'Queue deduplication encountered an error'
+#         check.full_output['failed'] = failed
+#     else:
+#         check.status = 'PASS'
+#         check.summary = 'Removed %s duplicates from %s secondary queue' % (deduplicated, connection.ff_env)
+#     check.description = 'Items on %s secondary queue were deduplicated. Started with approximately %s items; replaced %s items and removed %s duplicates. Covered %s unique uuids. Took %s seconds.' % (connection.ff_env, starting_count, replaced, deduplicated, len(seen_uuids), elapsed)
+#
+#     return check
 
 
 @check_function()
@@ -535,15 +535,15 @@ def clean_up_travis_queues(connection, **kwargs):
     return check
 
 
-@check_function()
-def manage_old_filebeat_logs(connection, **kwargs):
-    # import curator
-    check = CheckResult(connection, 'manage_old_filebeat_logs')
-
-    # temporary -- disable this check
-    check.status = 'PASS'
-    check.description = 'Not currently running this check'
-    return check
+# @check_function()
+# def manage_old_filebeat_logs(connection, **kwargs):
+#     # import curator
+#     check = CheckResult(connection, 'manage_old_filebeat_logs')
+#
+#     # temporary -- disable this check
+#     check.status = 'PASS'
+#     check.description = 'Not currently running this check'
+#     return check
 
     # check.status = "WARNING"
     # check.description = "not able to get data from ES"

@@ -416,7 +416,8 @@ def generate_exp_set_report(curr_res, prev_res, **kwargs):
 
 #### CHECKS / ACTIONS #####
 
-@check_function()
+# TODO: This check has been removed from the schedule and should be revisited and refactored
+# @check_function()
 def experiment_set_reporting_data(connection, **kwargs):
     """
     Get a snapshot of all experiment sets, their experiments, and files of
@@ -618,7 +619,8 @@ def _old_data_release_updates(connection, **kwargs):
     return check
 
 
-@check_function(start_date=None, end_date=None, update_tag='DISCARD', tag_filter=None, project_filter='4DN', is_internal=False)
+# TODO: This check has been removed from the schedule and should be revisited and refactored
+# @check_function(start_date=None, end_date=None, update_tag='DISCARD', tag_filter=None, project_filter='4DN', is_internal=False)
 def data_release_updates(connection, **kwargs):
     """ TODO: New version of this check - for now, does nothing - see old version above. """
     check = CheckResult(connection, 'data_release_updates')
@@ -627,7 +629,8 @@ def data_release_updates(connection, **kwargs):
     return check
 
 
-@action_function
+# TODO: This action has been removed from the schedule and should be revisited and refactored
+# @action_function
 def publish_data_release_updates(connection, **kwargs):
     """ TODO: This action probably needs rewriting as well as it based on the OLD data_release_updates check. """
     action = ActionResult(connection, 'publish_data_release_updates')

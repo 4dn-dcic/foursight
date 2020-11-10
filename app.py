@@ -32,9 +32,9 @@ foursight_cron_by_schedule = {
     'prod': {
         'ten_min_checks': Cron('0/10', '*', '*', '*', '?', '*'),
         'thirty_min_checks': Cron('0/30', '*', '*', '*', '?', '*'),
-        'hourly_checks_1': Cron('0', '0/1', '*', '*', '?', '*'),
-        'hourly_checks_2': Cron('20', '0/1', '*', '*', '?', '*'),
-        'hourly_checks_3': Cron('40', '0/1', '*', '*', '?', '*'),
+        'hourly_checks_1': Cron('5', '0/1', '*', '*', '?', '*'),
+        'hourly_checks_2': Cron('25', '0/1', '*', '*', '?', '*'),
+        'hourly_checks_3': Cron('45', '0/1', '*', '*', '?', '*'),
         'morning_checks_1': Cron('0', '6', '*', '*', '?', '*'),
         'morning_checks_2': Cron('0', '7', '*', '*', '?', '*'),
         'morning_checks_3': Cron('0', '8', '*', '*', '?', '*'),
