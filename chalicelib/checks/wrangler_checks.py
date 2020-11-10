@@ -2299,6 +2299,7 @@ def get_oh_google_sheet():
 @check_function()
 def sync_users_oh_status(connection, **kwargs):
     """
+    # TODO: ask oh to use 'OH First Name', 'OH Last Name', 'OH Grant', 'OH Lab' fields
     Check users on database and OH google sheet, synchronize them
     1) Pull all table values, All database users, labs and awards
     2) If entry inactive in OH, delete person from DCIC, mark inactive for DCIC
