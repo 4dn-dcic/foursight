@@ -2253,6 +2253,7 @@ def check_hic_summary_tables(connection, **kwargs):
 def sync_users_oh_status(connection, **kwargs):
     from oauth2client.service_account import ServiceAccountCredentials
     import gspread
+    import pandas as pd
     """
     Use replace function to replace `sync_users_oh` and your check name to have a quick setup
     Keyword arguments:
@@ -2302,6 +2303,30 @@ def sync_users_oh_status(connection, **kwargs):
         if '4DN' in awards or 'NOFIC' in awards:
             fdn_users.append(a_user)
     print(len(fdn_users), 'fdn users')
+
+    # GET KEY FROM S3 To Access
+    # TODO: encrypt the key same as foursight key and use same function to fetch it
+    s3 = boto3.resource('s3')
+    obj = s3.Object('elasticbeanstalk-fourfront-webprod-system', 'DCICjupgoogle.json')
+    cont = obj.get()['Body'].read().decode()
+    key_dict = json.loads(cont)
+    SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, SCOPES)
+    gc = gspread.authorize(creds)
+    # Get the google sheet information
+    book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
+    sheet_name = 'AllMembers_Testing_Updates'
+    book = gc.open_by_key(book_id)
+    worksheet = book.worksheet(sheet_name)
+    table = worksheet.get_all_values()
+    ##Convert table data into an ordered dictionary
+    df = pd.DataFrame(table[1:], columns=table[0])
+    user_list = df.to_dict(orient='records', into=OrderedDict)
+
+
+
+
+
     return check
 
     query_base = '/search/?type=NotMyType'
