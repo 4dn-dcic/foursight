@@ -1356,6 +1356,22 @@
             }
         }
     },
+    "long_running_wfrs_status" : {
+        "title": "x) Long Running Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "margi_status": {
         "title": "h) MARGI",
         "group": "Pipeline checks",
@@ -1779,6 +1795,22 @@
                     "kwargs": {
                         "primary": true
                     }
+                }
+            }
+        }
+    },
+    "problematic_wfrs_status" : {
+        "title": "x) Errored Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "cgap": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                },
+                "cgapwolf": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
