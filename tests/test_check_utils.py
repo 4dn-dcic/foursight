@@ -113,7 +113,7 @@ class TestCheckUtils():
         assert (title == check_utils.CHECK_SETUP['indexing_progress']['title'])
 
     def test_get_check_schedule(self):
-        schedule = check_utils.get_check_schedule('morning_checks')
+        schedule = check_utils.get_check_schedule('morning_checks_1')
         assert (len(schedule) > 0)
         for env in schedule:
             assert (isinstance(schedule[env], list))
@@ -121,15 +121,15 @@ class TestCheckUtils():
                 assert len(check_info) == 3
 
         # test with conditions
-        schedule_cond1 = check_utils.get_check_schedule('morning_checks', conditions=['put_env'])
+        schedule_cond1 = check_utils.get_check_schedule('morning_checks_1', conditions=['put_env'])
         assert (0 < len(schedule_cond1) < len(schedule))
         # test with conditions that don't exist (ALL must match)
-        schedule_cond2 = check_utils.get_check_schedule('morning_checks',
+        schedule_cond2 = check_utils.get_check_schedule('morning_checks_1',
                                                         conditions=['put_env', 'fake_condition'])
         assert (len(schedule_cond2) == 0)
 
     def test_get_checks_within_schedule(self):
-        checks_in_sched = check_utils.get_checks_within_schedule('morning_checks')
+        checks_in_sched = check_utils.get_checks_within_schedule('morning_checks_1')
         assert (len(checks_in_sched) > 0)
         checks_in_sched = check_utils.get_checks_within_schedule('not_a_real_schedule')
         assert (len(checks_in_sched) == 0)
