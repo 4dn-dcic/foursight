@@ -121,10 +121,10 @@ class TestCheckUtils():
                 assert len(check_info) == 3
 
         # test with conditions
-        schedule_cond1 = check_utils.get_check_schedule('morning_checks_1', conditions=['put_env'])
+        schedule_cond1 = check_utils.get_check_schedule('hourly_checks_1', conditions=['put_env'])
         assert (0 < len(schedule_cond1) < len(schedule))
         # test with conditions that don't exist (ALL must match)
-        schedule_cond2 = check_utils.get_check_schedule('morning_checks_1',
+        schedule_cond2 = check_utils.get_check_schedule('hourly_checks_1',
                                                         conditions=['put_env', 'fake_condition'])
         assert (len(schedule_cond2) == 0)
 
