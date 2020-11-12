@@ -287,62 +287,62 @@ def staging_deployment(connection, **kwargs):
     return check
 
 
-@check_function()
-def fourfront_performance_metrics(connection, **kwargs):
-    check = CheckResult(connection, 'fourfront_performance_metrics')
-    full_output = {}  # contains ff_env, env_health, deploy_version, num instances, and performance
-    performance = {}  # keyed by check_url
-    # get information from elastic_beanstalk_health
-    eb_check = CheckResult(connection, 'elastic_beanstalk_health')
-    eb_info = eb_check.get_primary_result()['full_output']
-    full_output['ff_env'] = connection.ff_env
-    full_output['env_health'] = eb_info.get('health_status', 'Unknown')
-    # get deploy version from the first instance
-    full_output['deploy_version'] = eb_info.get('instance_health', [{}])[0].get('deploy_version', 'Unknown')
-    full_output['num_instances'] = len(eb_info.get('instance_health', []))
-    check_urls = [
-        'counts',
-        'joint-analysis-plans',
-        'bar_plot_aggregations/type=ExperimentSetReplicate&experimentset_type=replicate/?field=experiments_in_set.experiment_type',
-        'browse/?type=ExperimentSetReplicate&experimentset_type=replicate',
-        'experiment-set-replicates/4DNESIE5R9HS/',
-        'experiment-set-replicates/4DNESIE5R9HS/?datastore=database',
-        'experiment-set-replicates/4DNESQWI9K2F/',
-        'experiment-set-replicates/4DNESQWI9K2F/?datastore=database',
-        'workflow-runs-awsem/ba50d240-5312-4aa7-b600-6b18d8230311/',
-        'workflow-runs-awsem/ba50d240-5312-4aa7-b600-6b18d8230311/?datastore=database',
-        'files-fastq/4DNFIX75FSJM/',
-        'files-fastq/4DNFIX75FSJM/?datastore=database'
-    ]
-    for check_url in check_urls:
-        performance[check_url] = {}
-        try:
-            # set timeout really high
-            ff_resp = ff_utils.authorized_request(connection.ff_server + check_url,
-                                                  auth=connection.ff_keys, timeout=1000)
-        except Exception as e:
-            performance[check_url]['error'] = str(e)
-        if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
-            x_stats = ff_resp.headers['X-stats']
-            if not isinstance(x_stats, basestring):
-                performance[check_url]['error'] = 'Stats response is not a string.'
-                continue
-            # X-stats in form: 'db_count=148&db_time=1215810&es_count=4& ... '
-            split_stats = x_stats.strip().split('&')
-            parse_stats = [stat.split('=') for stat in split_stats]
-            # stats can be strings or integers
-            for stat in parse_stats:
-                if not len(stat) == 2:
-                    continue
-                try:
-                    performance[check_url][stat[0]] = int(stat[1])
-                except ValueError:
-                    performance[check_url][stat[0]] = stat[1]
-            performance[check_url]['error'] = ''
-    check.status = 'PASS'
-    full_output['performance'] = performance
-    check.full_output = full_output
-    return check
+# @check_function()
+# def fourfront_performance_metrics(connection, **kwargs):
+#     check = CheckResult(connection, 'fourfront_performance_metrics')
+#     full_output = {}  # contains ff_env, env_health, deploy_version, num instances, and performance
+#     performance = {}  # keyed by check_url
+#     # get information from elastic_beanstalk_health
+#     eb_check = CheckResult(connection, 'elastic_beanstalk_health')
+#     eb_info = eb_check.get_primary_result()['full_output']
+#     full_output['ff_env'] = connection.ff_env
+#     full_output['env_health'] = eb_info.get('health_status', 'Unknown')
+#     # get deploy version from the first instance
+#     full_output['deploy_version'] = eb_info.get('instance_health', [{}])[0].get('deploy_version', 'Unknown')
+#     full_output['num_instances'] = len(eb_info.get('instance_health', []))
+#     check_urls = [
+#         'counts',
+#         'joint-analysis-plans',
+#         'bar_plot_aggregations/type=ExperimentSetReplicate&experimentset_type=replicate/?field=experiments_in_set.experiment_type',
+#         'browse/?type=ExperimentSetReplicate&experimentset_type=replicate',
+#         'experiment-set-replicates/4DNESIE5R9HS/',
+#         'experiment-set-replicates/4DNESIE5R9HS/?datastore=database',
+#         'experiment-set-replicates/4DNESQWI9K2F/',
+#         'experiment-set-replicates/4DNESQWI9K2F/?datastore=database',
+#         'workflow-runs-awsem/ba50d240-5312-4aa7-b600-6b18d8230311/',
+#         'workflow-runs-awsem/ba50d240-5312-4aa7-b600-6b18d8230311/?datastore=database',
+#         'files-fastq/4DNFIX75FSJM/',
+#         'files-fastq/4DNFIX75FSJM/?datastore=database'
+#     ]
+#     for check_url in check_urls:
+#         performance[check_url] = {}
+#         try:
+#             # set timeout really high
+#             ff_resp = ff_utils.authorized_request(connection.ff_server + check_url,
+#                                                   auth=connection.ff_keys, timeout=1000)
+#         except Exception as e:
+#             performance[check_url]['error'] = str(e)
+#         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
+#             x_stats = ff_resp.headers['X-stats']
+#             if not isinstance(x_stats, basestring):
+#                 performance[check_url]['error'] = 'Stats response is not a string.'
+#                 continue
+#             # X-stats in form: 'db_count=148&db_time=1215810&es_count=4& ... '
+#             split_stats = x_stats.strip().split('&')
+#             parse_stats = [stat.split('=') for stat in split_stats]
+#             # stats can be strings or integers
+#             for stat in parse_stats:
+#                 if not len(stat) == 2:
+#                     continue
+#                 try:
+#                     performance[check_url][stat[0]] = int(stat[1])
+#                 except ValueError:
+#                     performance[check_url][stat[0]] = stat[1]
+#             performance[check_url]['error'] = ''
+#     check.status = 'PASS'
+#     full_output['performance'] = performance
+#     check.full_output = full_output
+#     return check
 
 
 # @check_function(time_limit=480)

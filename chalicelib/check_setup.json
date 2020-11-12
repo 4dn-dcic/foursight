@@ -1060,25 +1060,6 @@
             }
         }
     },
-    "fourfront_performance_metrics": {
-        "title": "Fourfront performance metrics",
-        "conditions": [
-            "put_env"
-        ],
-        "group": "System checks",
-        "schedule": {
-            "morning_checks_3": {
-                "data": {
-                    "dependencies": [
-                        "elastic_beanstalk_health"
-                    ],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "gold_biosamples": {
         "title": "Gold Biosamples",
         "group": "Badge checks",
@@ -1365,7 +1346,7 @@
         "title": "Item counts by type",
         "group": "Metadata checks",
         "schedule": {
-            "hourly_checks_2": {
+            "hourly_checks_1": {
                 "all": {
                     "dependencies": [],
                     "kwargs": {
@@ -2196,7 +2177,7 @@
         "title": "Yellow Flag Biosamples",
         "group": "Badge checks",
         "schedule": {
-            "morning_checks_4": {
+            "morning_checks_2": {
                 "data": {
                     "dependencies": [],
                     "kwargs": {
