@@ -14,7 +14,6 @@ from itertools import chain
 from dateutil import tz
 from base64 import b64decode
 from dcicutils import ff_utils
-from dcicutils.env_utils import is_cgap_env, is_cgap_server
 from .fs_connection import FSConnection
 from .run_result import CheckResult, ActionResult
 from .check_utils import (
@@ -42,7 +41,6 @@ from .utils import (
 from .s3_connection import S3Connection
 
 FOURFRONT_FAVICON = 'https://data.4dnucleome.org/static/img/favicon-fs.ico'
-CGAP_FAVICON = 'https://cgap.hms.harvard.edu/static/img/favicon-fs.ico'
 LAMBDA_MAX_BODY_SIZE = 5500000  # 6Mb is the "real" threshold
 
 jin_env = Environment(
@@ -186,11 +184,7 @@ def get_favicon(server):
         res = requests.head(favicon)
         return res.status_code == 200
 
-    if is_cgap_server(server):
-        favicon = CGAP_FAVICON  # want full HTTPS, so hard-coded in
-    else:
-        favicon = FOURFRONT_FAVICON  # *should* always be valid, so reasonable fallback
-    return favicon if favicon_is_valid(favicon) else FOURFRONT_FAVICON
+    return FOURFRONT_FAVICON  # *should* always be valid, so reasonable fallback
 
 
 def get_domain_and_context(request_dict):
@@ -378,8 +372,6 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
     view_envs = environments.keys() if environ == 'all' else [e.strip() for e in environ.split(',')]
     for this_environ in view_envs:
         try:
-            if is_cgap_env(this_environ) and not is_admin:  # no view permissions for non-admins on CGAP
-                continue
             connection = init_connection(this_environ, _environments=environments)
         except Exception:
             connection = None
@@ -403,7 +395,7 @@ def view_foursight(environ, is_admin=False, domain="", context="/"):
                 'groups': grouped_results
             })
     # prioritize these environments
-    env_order = ['data', 'staging', 'webdev', 'hotseat', 'cgap']
+    env_order = ['data', 'staging', 'webdev', 'hotseat']
     total_envs = sorted(total_envs, key=lambda v: env_order.index(v['environment']) if v['environment'] in env_order else 9999)
     template = jin_env.get_template('view_groups.html')
     # get queue information
@@ -884,13 +876,10 @@ def queue_scheduled_checks(sched_environ, schedule_name, conditions=None):
     """
     queue = get_sqs_queue()
     if schedule_name is not None:
-        if sched_environ not in ['all', 'all_4dn'] and sched_environ not in list_environments():
+        if sched_environ not in ['all'] and sched_environ not in list_environments():
             print('-RUN-> %s is not a valid environment. Cannot queue.' % sched_environ)
             return
-        sched_environs = list_environments() if sched_environ in ['all', 'all_4dn'] else [sched_environ]
-        # remove any environments with 'cgap' if all_4dn
-        if sched_environ == 'all_4dn':
-            sched_environs = [env for env in sched_environ if 'cgap' not in env]
+        sched_environs = list_environments() if sched_environ in ['all'] else [sched_environ]
         check_schedule = get_check_schedule(schedule_name, conditions)
         if not check_schedule:
             print('-RUN-> %s is not a valid schedule. Cannot queue.' % schedule_name)
@@ -898,9 +887,6 @@ def queue_scheduled_checks(sched_environ, schedule_name, conditions=None):
         for environ in sched_environs:
             # add the run info from 'all' as well as this specific environ
             check_vals = copy.copy(check_schedule.get('all', []))
-            # also add 'all_4dn' if we are in a non-cgap environment
-            if 'cgap' not in environ:
-                check_vals.extend(check_schedule.get('all_4dn', []))
             check_vals.extend(check_schedule.get(environ, []))
             send_sqs_messages(queue, environ, check_vals)
     runner_input = {'sqs_url': queue.url}
