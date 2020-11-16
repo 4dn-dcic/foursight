@@ -79,7 +79,7 @@ def validate_check_setup(check_setup):
     """
     found_checks = {}
     all_check_strings = get_check_strings()
-    all_environments = list_environments() + ['all', 'all_4dn']
+    all_environments = list_environments() + ['all']
     # validate all checks
     for check_string in all_check_strings:
         check_mod, check_name = check_string.split('/')
@@ -272,8 +272,7 @@ def get_grouped_check_results(connection):
         # make sure this environment displays this check
         used_envs = [env for sched in setup_info['schedule'].values() for env in sched]
         used_envs.extend(setup_info.get('display', []))
-        if (connection.fs_env in used_envs or 'all' in used_envs or
-            ('all_4dn' in used_envs and 'cgap' not in connection.fs_env)):
+        if (connection.fs_env in used_envs or 'all' in used_envs):
             group = setup_info['group']
             if group not in grouped_results:
                 grouped_results[group] = {}
