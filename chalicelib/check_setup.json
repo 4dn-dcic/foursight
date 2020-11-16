@@ -117,7 +117,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -129,7 +129,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -141,7 +141,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -166,7 +166,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": ["expset_opfsets_unique_titles"]
                 }
@@ -178,7 +178,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -230,7 +230,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -242,7 +242,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -254,7 +254,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -266,7 +266,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -302,7 +302,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -314,7 +314,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -338,7 +338,7 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -568,7 +568,7 @@
         "group": "Static headers checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
