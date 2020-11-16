@@ -30,7 +30,7 @@ class ESConnection(AbstractConnection):
     """
     ESConnection is a handle to a remote ElasticSearch instance on AWS.
     All Foursight connections make use of the same ES instance but have separate
-    indices for each one, such as 'foursight-dev-cgap', 'foursight-dev-data' etc
+    indices for each one, such as 'foursight-dev-data' etc
 
     ESConnection is intended to work with only a single index.
 
