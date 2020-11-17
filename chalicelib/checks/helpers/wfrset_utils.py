@@ -231,8 +231,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         },
         {
         "app_name": "compartments-caller",
-        "workflow_uuid": "",
-        "parameters": {"binsize": -1, "contact_type": 100000},
+        "workflow_uuid": "d07fa5d4-8721-403e-89b5-e8f323ac9ece",
+        "parameters": {"binsize": 250000, "contact_type": "cis"},
+        "config": {'mem': 4, 'cpu': 1, 'ebs_size': '1.1x', 'EBS_optimized': 'false'},
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,

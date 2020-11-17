@@ -145,7 +145,7 @@ workflow_details = {
     },
     'compartments-caller': {
                 "run_time": 200,
-                "accepted_versions": ['v1.1']
+                "accepted_versions": ['v1.2']
     }
 }
 
@@ -212,7 +212,7 @@ accepted_versions = {
 # Accepted versions for feature calling pipelines
 feature_calling_accepted_versions = {
     'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"],
-    'compartments': ["compartments_v1.1"]
+    'compartments': ["compartments_v1.2"]
 }
 # Reference Files
 bwa_index = {"human": "4DNFIZQZ39L9",
@@ -309,11 +309,11 @@ states_file_type = {
 
 
 # GC% content reference files (compartments pipeline)
-gc_content_ref = {"human": "",
-                  "mouse": "",
-                  "fruit-fly": "",
-                  "chicken": "",
-                  "zebrafish": ""}
+gc_content_ref = {"human": "/files-processed/4DNFI6YAKCOE/"}
+#                   "mouse": "",
+                  # "fruit-fly": "",
+                  # "chicken": "",
+                  # "zebrafish": ""}
 
 
 def check_indexing(check, connection):
@@ -1241,7 +1241,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
               'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
               'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files",
-              'compartments': "Compartments calls - Preliminary Files"}
+              'compartments': "Compartments Signals - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']

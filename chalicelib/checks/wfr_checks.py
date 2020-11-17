@@ -2228,9 +2228,8 @@ def compartments_caller_status(connection, **kwargs):
     exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
     feature = 'compartments'
     contact_type = 'cis'
-    binsize = ''
-    # minimum number of reads in the mcool file (100M)
-    reads_cutoff = 100000000
+    binsize = 250000
+
     # completion tag
     tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
     # check indexing queue
@@ -2242,18 +2241,17 @@ def compartments_caller_status(connection, **kwargs):
     # Build the first query, experiments that have run the hic pipeline. add date and lab if available
     query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
 
-    # filter expSets by the total number of reads in the mcoolfile (found in the combined-pairs file qc)
-    query += '&processed_files.file_format.display_title=pairs'
-    query += f'&processed_files.quality_metric.Total reads.from={reads_cutoff}'
-
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
+    print(len(res))
 
     if not res:
         check.summary = 'All Good!'
         return check
 
     for a_res in res:
+        if a_res['accession'] == '4DNESWST3UBH':
+            continue
         running = []
         completed = {'patch_opf': [], 'add_tag': []}
         missing_run = []
@@ -2268,18 +2266,15 @@ def compartments_caller_status(connection, **kwargs):
         elif workflow_status_report['status'].startswith("no complete run, too many"):
             problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif workflow_status_report['status'] != 'complete':
-            enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
             organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
-            gc_content_file = wfr_utils.gc_content_ref[organism]
-            re_enz_size = wfr_utils.re_nz_sizes[enz]
-            if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
-                binsize = 5000
-            if int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
-                binsize = 10000
-            overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
-            inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
-            missing_run.append(['step1', ['compartments-caller', organism, overwrite],
-                                inp_f, a_res['accession']])
+            try:
+                gc_content_file = wfr_utils.gc_content_ref[organism]
+                overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
+                inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
+                missing_run.append(['step1', ['compartments-caller', organism, overwrite],
+                                    inp_f, a_res['accession']])
+            except:
+                problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
         else:
             patch_data = [workflow_status_report['bwfile']]
             completed['patch_opf'].append([a_res['accession'], patch_data])
@@ -2293,6 +2288,8 @@ def compartments_caller_status(connection, **kwargs):
             assert not running
             assert not missing_run
             check.full_output['completed_runs'].append(completed)
+        if problematic_run:
+            check.full_output['problematic_runs'].append({a_res['accession']: problematic_run})
 
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
@@ -2315,7 +2312,7 @@ def compartments_caller_status(connection, **kwargs):
 def compartments_caller_start(connection, **kwargs):
     """Start compartments caller runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = ActionResult(connection, 'insulation_scores_and_boundaries_start')
+    action = ActionResult(connection, 'compartments_caller_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     insu_and_boun_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
@@ -2326,7 +2323,7 @@ def compartments_caller_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='insulation_scores_and_boundaries')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='compartments')
     return action
 
 ###################################
