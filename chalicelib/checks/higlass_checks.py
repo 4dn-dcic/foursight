@@ -1494,7 +1494,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
                 if title not in action_logs['failed_to_create_viewconf'][accession]:
                     action_logs['failed_to_create_viewconf'][accession][title] = {}
 
-                action_logs['failed_to_create_viewconf'][accession][title] = post_viewconf_results["error"]
+                action_logs['failed_to_create_viewconf'][accession][title] = higlass_item_results["error"]
                 continue
 
             # If the filegroup title is not in the ExpSet other_processed_files section, make it now
@@ -1850,7 +1850,7 @@ def patch_file_higlass_uid(connection, **kwargs):
     start_time = time.time()
     time_expired = False
 
-    
+
 
     # Files to register is organized by filetype.
     to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
@@ -1900,7 +1900,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 continue
 
             # Call the Flask server component on the Higlass server to copy beddb files
-            # from S3 to the local file system. Using mounted versions of these files is very slow. 
+            # from S3 to the local file system. Using mounted versions of these files is very slow.
             if payload['filetype'] == 'beddb':
                 copy_res = requests.post(
                     higlass_server + ':8005/cp/' + payload["filepath"]
