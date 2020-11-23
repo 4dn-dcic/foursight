@@ -2009,9 +2009,9 @@ def bam_re_status(connection, **kwargs):
     # check if they were processed with an acceptable enzyme
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = [  # "AluI",
-                          "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
-                          "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII"  # added patterns in action
-                          ]
+        "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
+        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII"  # added patterns in action
+    ]
     # make a new list of files to work on
     filtered_res = []
     # make a list of skipped files
@@ -2275,6 +2275,9 @@ def long_running_wfrs_fdn_status(connection, **kwargs):
     return check
 
 
+PROTECTED_STATUSES = ["released", "released to project", "current", "archived", "archived to project"]
+
+
 @action_function()
 def long_running_wfrs_fdn_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
@@ -2285,7 +2288,7 @@ def long_running_wfrs_fdn_start(connection, **kwargs):
     status_protected = 0
     for a_wfr in long_running_wfrs_fdn_check_result:
         # don't deleted if item is in protected statuses
-        if a_wfr['wfr_status'] in ['shared', 'current']:
+        if a_wfr['wfr_status'] in PROTECTED_STATUSES:
             status_protected += 1
         else:
             deleted_wfrs += 1
@@ -2319,7 +2322,7 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
     check.full_output = {'report_only': [], 'cleanup': []}
     check.status = 'PASS'
     check.allow_action = False
-    # find all runs thats status is not complete or error
+    # find all errored runs
     q = '/search/?type=WorkflowRun&run_status=error'
     errored_wfrs = ff_utils.search_metadata(q, my_auth)
     # if a comma separated list of uuids is given, limit the result to them
@@ -2418,7 +2421,7 @@ def problematic_wfrs_fdn_start(connection, **kwargs):
     status_protected = 0
     for a_wfr in problematic_wfrs_fdn_check_result['cleanup']:
         # don't deleted if item is in protected statuses
-        if a_wfr['wfr_status'] in ['shared', 'current']:
+        if a_wfr['wfr_status'] in PROTECTED_STATUSES:
             status_protected += 1
         else:
             deleted_wfrs += 1
