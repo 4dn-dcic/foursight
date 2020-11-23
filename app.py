@@ -45,17 +45,17 @@ foursight_cron_by_schedule = {
         'deployment_checks': end_of_day_on_weekdays()
     },
     'dev': {
-        'ten_min_checks': Cron('0/10', '*', '*', '*', '?', '*'),
-        'thirty_min_checks': Cron('0/30', '*', '*', '*', '?', '*'),
-        'hourly_checks_1': Cron('0', '0/1', '*', '*', '?', '*'),
-        'hourly_checks_2': Cron('20', '0/1', '*', '*', '?', '*'),
-        'hourly_checks_3': Cron('40', '0/1', '*', '*', '?', '*'),
-        'morning_checks_1': Cron('0', '6', '*', '*', '?', '*'),
-        'morning_checks_2': Cron('0', '7', '*', '*', '?', '*'),
-        'morning_checks_3': Cron('0', '8', '*', '*', '?', '*'),
-        'morning_checks_4': Cron('0', '9', '*', '*', '?', '*'),
-        'monday_checks': Cron('0', '10', '?', '*', '2', '*'),
-        'monthly_checks': Cron('0', '10', '1', '*', '?', '*'),
+        'ten_min_checks': effectively_never(),
+        'thirty_min_checks': effectively_never(),
+        'hourly_checks_1': effectively_never(),
+        'hourly_checks_2': effectively_never(),
+        'hourly_checks_3': effectively_never(),
+        'morning_checks_1': effectively_never(),
+        'morning_checks_2': effectively_never(),
+        'morning_checks_3': effectively_never(),
+        'morning_checks_4': effectively_never(),
+        'monday_checks': effectively_never(),
+        'monthly_checks': effectively_never(),
         'manual_checks': effectively_never(),
         'deployment_checks': end_of_day_on_weekdays()  # disabled, see schedule below
     }
