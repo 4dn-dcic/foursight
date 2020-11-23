@@ -1363,30 +1363,6 @@
             }
         }
     },
-    "problematic_wfrs_fdn_status" : {
-        "title": "x) Errored Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "long_running_wfrs_fdn_status" : {
-        "title": "x) Long Running Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "elastic_search_space" : {
         "title": "ES Disk Space Check",
         "group": "Elasticsearch checks",
