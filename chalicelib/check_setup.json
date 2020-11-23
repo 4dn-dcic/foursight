@@ -117,7 +117,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -129,7 +129,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -141,7 +141,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -166,7 +166,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": ["expset_opfsets_unique_titles"]
                 }
@@ -178,7 +178,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -230,7 +230,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -242,7 +242,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -254,7 +254,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -266,7 +266,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -302,7 +302,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -314,7 +314,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -338,7 +338,7 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -553,10 +553,6 @@
                 "webdev": {
                     "kwargs": {"primary": true},
                     "dependencies": []
-                },
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
                 }
             }
         }
@@ -572,7 +568,7 @@
         "group": "Static headers checks",
         "schedule": {
             "morning_checks": {
-                "all_4dn": {
+                "all": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -931,10 +927,6 @@
         "schedule": {
             "monday_checks": {
                 "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "cgap": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1395,150 +1387,6 @@
             }
         }
     },
-    "md5runCGAP_status" : {
-        "title": "a) md5 runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "fastqcCGAP_status" : {
-        "title": "b) fastqc runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "cgap_status" : {
-        "title": "c) CGAP pipeline Part I",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "cgapS2_status" : {
-        "title": "d) CGAP pipeline Part II",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "cgapS3_status" : {
-        "title": "d) CGAP pipeline Part III",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "ingest_vcf_status" : {
-        "title": "d) CGAP trigger VCF ingestion",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "cram_status" : {
-        "title": "e) CGAP pipeline cram2fastq",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true, "queue_action": "prod"},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "problematic_wfrs_status" : {
-        "title": "x) Errored Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "long_running_wfrs_status" : {
-        "title": "x) Long Running Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "cgap": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "cgapwolf": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
     "elastic_search_space" : {
         "title": "ES Disk Space Check",
         "group": "Elasticsearch checks",
@@ -1566,9 +1414,6 @@
                 },
                 "mastertest": {
                     "kwargs": {"primary": true}
-                },
-                "cgapdev": {
-                    "kwargs": {"primary": true}
                 }
             }
         }
@@ -1577,7 +1422,7 @@
         "title": "Wipe Checks Older Than One Month",
         "group": "System checks",
         "schedule": {},
-        "display": ["staging", "webdev", "mastertest", "hotseat", "cgapdev"]
+        "display": ["staging", "webdev", "mastertest", "hotseat"]
     },
     "states_files_without_higlass_defaults": {
         "title": "states files without higlass_defaults",
@@ -1706,19 +1551,6 @@
             }
         }
     },
-    "deploy_cgap_production": {
-        "title": "Deploy CGAP-portal master to the cgap production environment",
-        "group": "Deployment Checks",
-        "schedule": {
-            "deployment_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "deploy_ff_staging": {
         "title": "Deploy Fourfront master to staging.4dnucleome.org",
         "group": "Deployment Checks",
@@ -1752,19 +1584,6 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
-                }
-            }
-        }
-    },
-    "wipe_cgap_build_indices": {
-        "title": "Wipe CGAP build indices",
-        "group": "System checks",
-        "schedule": {
-             "morning_checks": {
-                "cgap": {
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }

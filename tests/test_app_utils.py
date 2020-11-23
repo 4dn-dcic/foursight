@@ -100,7 +100,7 @@ class TestAppUtils():
         with mock.patch('chalicelib.app_utils.get_jwt', return_value='token'):
             with mock.patch('jwt.decode', return_value=payload1):
                 # test authenticating on more than one env
-                auth = app_utils.check_authorization({}, env='mastertest,cgap-dev')
+                auth = app_utils.check_authorization({}, env='mastertest')
             assert auth
         # build a 'request header' that just consists of the context we would expect
         # to see if authenticating from localhost

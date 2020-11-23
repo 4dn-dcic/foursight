@@ -117,7 +117,7 @@ class TestUtils():
         """
         Sanity test for s3 utils for all envs
         """
-        environments = [env for env in app_utils.init_environments() if 'cgap' not in env]
+        environments = [env for env in app_utils.init_environments()]
         for env in environments:
             conn = app_utils.init_connection(env)
             s3_obj = s3_utils.s3Utils(env=conn.ff_env)

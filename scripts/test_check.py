@@ -7,7 +7,7 @@ sys.path.append('..')
 import app
 
 EPILOG = __doc__
-ENVS = ['mastertest', 'hotseat', 'webdev', 'staging', 'cgap', 'data']
+ENVS = ['mastertest', 'hotseat', 'webdev', 'staging', 'data']
 STAGES = ['dev', 'prod']
 
 

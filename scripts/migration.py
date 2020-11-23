@@ -15,7 +15,7 @@ from chalicelib.es_connection import ESConnection
 # This script reall just refactors the functionality in RunResult.delete_results
 # and calls the migration check in es_checks.py.
 
-ENVS = ['mastertest', 'hotseat', 'webdev', 'staging', 'cgap', 'data']
+ENVS = ['mastertest', 'hotseat', 'webdev', 'staging', 'data']
 STAGES = ['dev', 'prod']
 ONE_WEEK_AGO = datetime.datetime.utcnow() - datetime.timedelta(days=7)
 MIGRATE = False # set this option based on what you want to do
