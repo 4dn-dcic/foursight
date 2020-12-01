@@ -7,6 +7,7 @@ from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
+import datetime
 from .helpers import wrangler_utils
 
 
@@ -1074,3 +1075,38 @@ def restrict_hela(connection, **kwargs):
         action.status = 'DONE'
     action.output = action_logs
     return action
+
+
+@check_function(days_delay=14)
+def external_submission_but_missing_dbxrefs(connection, **kwargs):
+    ''' Check if items with external_submission also have dbxrefs.
+    When exporting metadata for submission to an external repository,
+    external_submission is patched. After some time (delay), the corresponsing
+    dbxref should also have been received and patched.
+    '''
+    check = CheckResult(connection, 'external_submission_but_missing_dbxrefs')
+    delay = kwargs.get('days_delay')
+    try:
+        delay = int(delay)
+    except (ValueError, TypeError):
+        delay = 14
+    date_now = datetime.datetime.now(datetime.timezone.utc)
+    days_diff = datetime.timedelta(days=delay)
+    to_date = datetime.datetime.strftime(date_now - days_diff, "%Y-%m-%d %H:%M")
+
+    query = ('search/?type=Item&dbxrefs=No+value' +
+             '&external_submission.date_exported.to=' + to_date)
+    items = ff_utils.search_metadata(query + '&field=dbxrefs&field=external_submission', key=connection.ff_keys)
+    if items:
+        check.status = 'WARN'
+        check.summary = 'Items missing dbxrefs found'
+        check.description = '{} items exported for external submission more than {} days ago but still without dbxrefs'.format(len(items), delay)
+
+    else:
+        check.status = 'PASS'
+        check.summary = 'No items missing dbxrefs found'
+        check.description = 'All items exported for external submission more than {} days ago have dbxrefs'.format(delay)
+    check.brief_output = [i['@id'] for i in items]
+    check.full_output = items
+
+    return check
