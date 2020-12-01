@@ -1106,6 +1106,6 @@ def external_submission_but_missing_dbxrefs(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No items missing dbxrefs found'
         check.description = 'All items exported for external submission more than {} days ago have dbxrefs'.format(delay)
-    check.full_output = [(i['@id'], i['external_submission']) for i in items]
+    check.full_output = [{i['@id']: i['external_submission']} for i in items]
 
     return check
