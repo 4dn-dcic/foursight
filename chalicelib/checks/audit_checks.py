@@ -1081,7 +1081,7 @@ def restrict_hela(connection, **kwargs):
 def external_submission_but_missing_dbxrefs(connection, **kwargs):
     ''' Check if items with external_submission also have dbxrefs.
     When exporting metadata for submission to an external repository,
-    external_submission is patched. After some time (delay), the corresponsing
+    external_submission is patched. After some time (delay), the corresponding
     dbxref should also have been received and patched.
     '''
     check = CheckResult(connection, 'external_submission_but_missing_dbxrefs')
