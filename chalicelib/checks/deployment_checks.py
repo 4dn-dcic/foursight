@@ -11,11 +11,11 @@ from dcicutils.ff_utils import get_metadata
 from dcicutils.deployment_utils import EBDeployer
 from dcicutils.beanstalk_utils import compute_ff_stg_env
 from dcicutils.env_utils import (
-    FF_ENV_INDEXER, CGAP_ENV_INDEXER, is_fourfront_env, is_cgap_env,
+    FF_ENV_INDEXER, CGAP_ENV_INDEXER, is_fourfront_env,
 
 )
 from dcicutils.beanstalk_utils import (
-    compute_cgap_prd_env, compute_ff_prd_env, beanstalk_info, is_indexing_finished
+    compute_ff_prd_env, beanstalk_info, is_indexing_finished
 )
 
 
@@ -155,7 +155,7 @@ def provision_indexer_environment(connection, **kwargs):
         else:
             return EBDeployer.deploy_indexer(e, version)
 
-    if is_cgap_env(env) or is_fourfront_env(env):
+    if is_fourfront_env(env):
         success = _deploy_indexer(env, application_version)
         if success:
             check.status = 'PASS'
@@ -193,10 +193,7 @@ def _deploy_application_to_beanstalk(connection, **kwargs):
     if application_version_name is None:  # if not specified, use branch+timestamp
         application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
 
-    if repo is not None:  # NOTE: if you specify this, assume a CGAP deployment
-        repo_location = clone_repo_to_temporary_dir(repo, name='cgap-portal')
-    else:
-        repo_location = clone_repo_to_temporary_dir()
+    repo_location = clone_repo_to_temporary_dir()
 
     try:
         packaging_was_successful = EBDeployer.build_application_version(repo_location, application_version_name,
@@ -264,18 +261,4 @@ def deploy_ff_staging(connection, **kwargs):
         env_to_deploy=compute_ff_stg_env(),
         application_name="Fourfront",
         check='deploy_ff_staging',
-        **kwargs)
-
-
-@check_function()
-def deploy_cgap_production(connection, **kwargs):
-    """ Deploys CGAP portal master to production environment.
-        Eventually, this ought to be deprecated in favor of a staging deploy.
-    """
-    return deploy_env(
-        connection,
-        env_to_deploy=compute_cgap_prd_env(),
-        application_name="CGAP Portal",
-        check='deploy_cgap_production',
-        repo='https://github.com/dbmi-bgm/cgap-portal.git',
         **kwargs)
