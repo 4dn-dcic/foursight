@@ -2452,6 +2452,7 @@ def sync_users_oh_status(connection, **kwargs):
     # get skipped users from this static section
     # if you want to skip more users, append their display titles to this static section as new line
     # TODO: add skip information on the user items
+    # Users we do not have oh to have, they are in static section
     skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
     skip_users = ff_utils.get_metadata(skip_user_static_section_uuid, my_auth)['content'].split('\n')
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
