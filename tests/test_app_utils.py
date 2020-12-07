@@ -83,11 +83,12 @@ class TestAppUtils():
         auth = app_utils.check_authorization({})
         assert not auth
 
+    @pytest.mark.integratedx
     def test_check_jwt_authorization(self):
         """ Tests same functionality as above except with a valid jwt """
         from unittest import mock
         payload1 = {
-            "email": "carl_vitzthum@hms.harvard.edu",
+            "email": "william_ronchetti@hms.harvard.edu",
             "email_verified": True,
             "sub": "1234567890",
             "name": "Dummy",
