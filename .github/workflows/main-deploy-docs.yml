@@ -19,5 +19,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       - name: Docs
+        env:
+          DOCS_TOKEN: ${{ secrets.DOCS_TOKEN }}
         run: curl -X POST -d "branches=master" -d "token=$DOCS_TOKEN" https://readthedocs.org/api/v2/webhook/foursight/99531/ 
 
