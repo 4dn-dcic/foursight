@@ -11,7 +11,7 @@ update:
 	poetry update
 
 test:
-	pytest -vv --cov chalicelib tests -m not integratedx
+	pytest -vv --cov chalicelib tests
 
 info:
 	@: $(info Here are some 'make' options:)

@@ -40,4 +40,4 @@ jobs:
         env:
           S3_ENCRYPT_KEY: ${{ secrets.S3_ENCRYPT_KEY }}
           DEV_SECRET: ${{ secrets.DEV_SECRET }}
-        run: poetry run pytest -vv tests
+        run: poetry run pytest -vv tests -m not integratedx
