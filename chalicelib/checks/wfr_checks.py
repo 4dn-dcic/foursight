@@ -1,15 +1,18 @@
 from datetime import datetime
-from ..utils import (
-    check_function,
-    action_function,
-)
-from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 from dcicutils import s3Utils
 from .helpers import wfr_utils
 from .helpers import wfrset_utils
+from foursight_core.checks.helpers.wfr_utils import (
+    check_runs_without_output,
+    lambda_limit
+)
 
-lambda_limit = wfr_utils.lambda_limit
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
 
 
 @check_function()
@@ -233,7 +236,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start)
+    check = check_runs_without_output(res, check, 'fastqc', my_auth, start)
     return check
 
 
@@ -307,7 +310,7 @@ def pairsqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
+    check = check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
     return check
 
 
@@ -420,7 +423,7 @@ def bg2bw_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
+    check = check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
     return check
 
 
@@ -528,7 +531,7 @@ def bed2beddb_status(connection, **kwargs):
     if not res_all:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
+    check = check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
     if missing:
         check.full_output['missing_assembly'] = missing
         msg = str(len(missing)) + ' files missing genome assembly'
@@ -1568,7 +1571,7 @@ def bed2multivec_status(connection, **kwargs):
         check.status = 'WARN'
         return check
 
-    check = wfr_utils.check_runs_without_output(healthy_res, check, 'bedtomultivec', my_auth, start)
+    check = check_runs_without_output(healthy_res, check, 'bedtomultivec', my_auth, start)
     if prb_res:
         check.full_output['prob_files'] = [{'missing tag': [i[0]['accession'] for i in prb_res if i[1] == 'missing_tag'],
                                             'invalid tag': [i[0]['accession'] for i in prb_res if i[1] == 'invalid_tag']}]
@@ -1826,7 +1829,7 @@ def bamqc_status(connection, **kwargs):
         return check
     check.summary = '{} files need a bamqc'. format(len(res))
     check.status = 'WARN'
-    check = wfr_utils.check_runs_without_output(res, check, 'bamqc', my_auth, start)
+    check = check_runs_without_output(res, check, 'bamqc', my_auth, start)
     return check
 
 
@@ -2028,7 +2031,7 @@ def bam_re_status(connection, **kwargs):
             if nz not in missing_nz:
                 missing_nz.append(nz)
 
-    check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
+    check = check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
         skipped_files = str(len(res) - len(filtered_res))
         nzs = ', '.join(missing_nz)
@@ -2229,7 +2232,7 @@ def template_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'template', my_auth, start)
+    check = check_runs_without_output(res, check, 'template', my_auth, start)
     return check
 
 

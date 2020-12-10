@@ -1,15 +1,18 @@
-from __future__ import print_function, unicode_literals
-from ..utils import (
-    check_function,
-    action_function,
-    parse_datetime_to_utc
+from foursight_core.checks.helpers.sys_utils import (
+    parse_datetime_to_utc,
 )
-from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 from .helpers.google_utils import GoogleAPISyncer
 import copy
 import itertools
 import datetime
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
+
 
 #### HELPER FUNCTIONS ####
 

@@ -4,19 +4,22 @@ import shutil
 import datetime
 import tempfile
 from git import Repo
-
-from ..run_result import CheckResult, ActionResult
-from ..utils import check_function, action_function
 from dcicutils.ff_utils import get_metadata
 from dcicutils.deployment_utils import EBDeployer
 from dcicutils.beanstalk_utils import compute_ff_stg_env
 from dcicutils.env_utils import (
-    FF_ENV_INDEXER, CGAP_ENV_INDEXER, is_fourfront_env,
-
+    FF_ENV_INDEXER, is_fourfront_env,
 )
 from dcicutils.beanstalk_utils import (
     compute_ff_prd_env, beanstalk_info, is_indexing_finished
 )
+from ..vars import FOURSIGHT_PREFIX, DEV_ENV
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
 
 
 def try_to_describe_indexer_env(env):
@@ -69,7 +72,7 @@ def indexer_server_status(connection, **kwargs):
     check = CheckResult(connection, 'indexer_server_status')
     check.action = 'terminate_indexer_server'
     env = kwargs.get('env')
-    indexer_env = FF_ENV_INDEXER if is_fourfront_env(env) else CGAP_ENV_INDEXER
+    indexer_env = FF_ENV_INDEXER
     description = try_to_describe_indexer_env(indexer_env)  # verify an indexer is online
     if description is None:
         check.status = 'PASS'  # could have been terminated
@@ -144,10 +147,7 @@ def provision_indexer_environment(connection, **kwargs):
         return check
 
     def _deploy_indexer(e, version):
-        if is_fourfront_env(e):
-            description = try_to_describe_indexer_env(FF_ENV_INDEXER)
-        else:
-            description = try_to_describe_indexer_env(CGAP_ENV_INDEXER)
+        description = try_to_describe_indexer_env(FF_ENV_INDEXER)
         if description is not None:
             check.status = 'ERROR'
             check.summary = 'Tried to spin up indexer env for %s when one already exists for this portal' % e

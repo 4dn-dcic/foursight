@@ -26,9 +26,6 @@ Check Documentation
 .. automodule:: chalicelib.checks.system_checks
   :members:
 
-.. automodule:: chalicelib.checks.wfr_cgap_checks
-  :members:
-
 .. automodule:: chalicelib.checks.wfr_checks
   :members:
 

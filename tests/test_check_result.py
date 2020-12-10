@@ -1,12 +1,14 @@
 from conftest import *
 
+
 class TestCheckResult():
-    # use a fake check name and store on mastertest
+    # use a fake check name and store on DEV_ENV
     check_name = 'test_only_check'
     # another fake check, with only ERROR results
     error_check_name = 'test_only_error_check'
-    environ = 'mastertest' # hopefully this is up
-    connection = app_utils.init_connection(environ)
+    environ = DEV_ENV  # hopefully this is up
+    app_utils_obj = app_utils.AppUtils()
+    connection = app_utils_obj.init_connection(environ)
 
     @pytest.mark.flaky(max_runs=4) # very flaky for some reason
     @pytest.mark.parametrize('use_es', [True, False])
@@ -84,6 +86,7 @@ class TestCheckResult():
             error_check.get_closest_result(diff_hours=0, diff_mins=0)
         assert ('Could not find closest non-ERROR result' in str(exc.value))
 
+    @pytest.mark.flaky
     @pytest.mark.parametrize('use_es', [True, False])
     def test_get_result_history(self, use_es):
         """
