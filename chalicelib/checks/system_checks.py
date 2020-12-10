@@ -320,7 +320,7 @@ def fourfront_performance_metrics(connection, **kwargs):
             performance[check_url]['error'] = str(e)
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
             x_stats = ff_resp.headers['X-stats']
-            if not isinstance(x_stats, basestring):
+            if not isinstance(x_stats, str):
                 performance[check_url]['error'] = 'Stats response is not a string.'
                 continue
             # X-stats in form: 'db_count=148&db_time=1215810&es_count=4& ... '
@@ -516,7 +516,7 @@ def clean_up_travis_queues(connection, **kwargs):
                 creation = queue.attributes['CreatedTimestamp']
             except sqs_client.exceptions.QueueDoesNotExist:
                 continue
-            if isinstance(creation, basestring):
+            if isinstance(creation, str):
                 creation = float(creation)
             dt_creation = datetime.datetime.utcfromtimestamp(creation)
             queue_age = datetime.datetime.utcnow() - dt_creation
