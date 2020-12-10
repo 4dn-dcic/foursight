@@ -26,7 +26,14 @@ Foursight is under active development and features will likely change.
 API Documentation
 -----------------
 
-Foursight uses autodoc to generate documentation for both the core chalicelib and checks. You can find the autodocs in the ``Chalicelib API Documentation`` and ``Check Documentation`` files.
+Foursight uses autodoc to generate documentation for both the core chalicelib and checks. You can find the autodocs in the ``Check Documentation`` files.
+
+
+Foursight-core
+--------------
+
+For the rest of the documentation, see `Foursight-core documentation <https://foursight-core.readthedocs.io/en/latest/>`_.
+
 
 *Contents*
 
@@ -41,5 +48,4 @@ Foursight uses autodoc to generate documentation for both the core chalicelib an
    elasticsearch
    development_notes
    development_tips
-   modules
    check_modules

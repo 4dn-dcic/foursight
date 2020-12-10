@@ -1,11 +1,13 @@
 from conftest import *
 
+
 class TestESConnection():
-    environ = 'mastertest'
-    conn = app_utils.init_connection(environ)
+    environ = DEV_ENV
+    app_utils_obj = app_utils.AppUtils()
+    conn = app_utils_obj.init_connection(environ)
     index = 'unit_test_index'
     try:
-        es = es_connection.ESConnection(index)
+        es = es_connection.ESConnection(index, host=HOST)
         es.delete_index(index)
     except:
         es = None # tests should be marked as skip
@@ -30,7 +32,7 @@ class TestESConnection():
         """
         assert self.es.test_connection()
         self.es.create_index(self.index)
-        check = utils.load_json(__file__, 'test_checks/check1.json')
+        check = self.es.load_json(__file__, 'test_checks/check1.json')
         uuid = self.uuid(check)
         self.es.put_object(uuid, check)
         obj = self.es.get_object(uuid)
@@ -48,9 +50,9 @@ class TestESConnection():
         """
         self.es.create_index(self.index)
         assert self.es.index_exists(self.index)
-        check1 = utils.load_json(__file__, 'test_checks/check1.json')
-        check2 = utils.load_json(__file__, 'test_checks/check2.json')
-        check3 = utils.load_json(__file__, 'test_checks/check3.json')
+        check1 = self.es.load_json(__file__, 'test_checks/check1.json')
+        check2 = self.es.load_json(__file__, 'test_checks/check2.json')
+        check3 = self.es.load_json(__file__, 'test_checks/check3.json')
         self.es.put_object(self.uuid(check1), check1)
         self.es.put_object(self.uuid(check2), check2)
         self.es.refresh_index()
@@ -75,13 +77,13 @@ class TestESConnection():
         """
         self.es.create_index(self.index)
         assert not self.es.index_exists('i_dont_exist')
-        check1 = utils.load_json(__file__, 'test_checks/check1.json')
+        check1 = self.es.load_json(__file__, 'test_checks/check1.json')
         self.es.put_object(self.uuid(check1), check1)
         assert not self.es.put_object(self.uuid(check1), check1)
         self.es.refresh_index()
         assert len(self.es.list_all_keys_w_prefix('page_children_routes')) == 1
         assert len(self.es.list_all_keys_w_prefix('pag3_children_routes')) == 0
-        fail_check = utils.load_json(__file__, 'test_checks/fail_check.json')
+        fail_check = self.es.load_json(__file__, 'test_checks/fail_check.json')
         assert not self.es.put_object(self.uuid(fail_check), fail_check)
         assert self.es.delete_index(self.index)
 
@@ -90,10 +92,10 @@ class TestESConnection():
         Indexes some items, checks that we get them when we use history search
         """
         self.es.create_index(self.index)
-        check1 = utils.load_json(__file__, 'test_checks/check1.json')
-        check2 = utils.load_json(__file__, 'test_checks/check2.json')
-        check3 = utils.load_json(__file__, 'test_checks/check3.json')
-        check4 = utils.load_json(__file__, 'test_checks/check4.json')
+        check1 = self.es.load_json(__file__, 'test_checks/check1.json')
+        check2 = self.es.load_json(__file__, 'test_checks/check2.json')
+        check3 = self.es.load_json(__file__, 'test_checks/check3.json')
+        check4 = self.es.load_json(__file__, 'test_checks/check4.json')
         self.es.put_object(self.uuid(check1), check1)
         self.es.put_object(self.uuid(check2), check2)
         self.es.put_object(self.uuid(check3), check3)
@@ -110,10 +112,10 @@ class TestESConnection():
     def test_get_checks(self, type):
         """ Indexes some items, get primary result """
         self.es.create_index(self.index)
-        check1 = utils.load_json(__file__, 'test_checks/check1.json')
-        check2 = utils.load_json(__file__, 'test_checks/check2.json')
-        check3 = utils.load_json(__file__, 'test_checks/check3.json')
-        check4 = utils.load_json(__file__, 'test_checks/check4.json')
+        check1 = self.es.load_json(__file__, 'test_checks/check1.json')
+        check2 = self.es.load_json(__file__, 'test_checks/check2.json')
+        check3 = self.es.load_json(__file__, 'test_checks/check3.json')
+        check4 = self.es.load_json(__file__, 'test_checks/check4.json')
         self.es.put_object(self.uuid(check1), check1)
         self.es.put_object(self.uuid(check2), check2)
         self.es.put_object('page_children_routes/' + type + '.json', check3)
