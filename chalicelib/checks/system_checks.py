@@ -1,23 +1,28 @@
-from __future__ import print_function, unicode_literals
-from ..utils import (
-    check_function,
-    basestring,
-    cat_indices
-)
-from ..run_result import CheckResult
-from dcicutils import (
-    ff_utils,
-    es_utils,
-    beanstalk_utils,
-    env_utils
-)
-from dcicutils.misc_utils import Retry
 import re
 import requests
 import json
 import datetime
 import boto3
 import time
+import geocoder
+from dcicutils.misc_utils import Retry
+from foursight_core.stage import Stage
+from foursight_core.checks.helpers.sys_utils import (
+    parse_datetime_to_utc,
+    cat_indices
+)
+from dcicutils import (
+    ff_utils,
+    es_utils,
+    beanstalk_utils,
+    env_utils
+)
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
 
 
 # XXX: put into utils?
@@ -338,10 +343,9 @@ def fourfront_performance_metrics(connection, **kwargs):
 
 @check_function(time_limit=480)
 def secondary_queue_deduplication(connection, **kwargs):
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
@@ -497,10 +501,9 @@ def clean_up_travis_queues(connection, **kwargs):
     Clean up old sqs queues based on the name ("travis-job")
     and the creation date. Only run on data for now
     """
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
-    if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
+    if connection.fs_env != 'data' or Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
         return check
     sqs_client = boto3.client('sqs')
@@ -585,9 +588,8 @@ def manage_old_filebeat_logs(connection, **kwargs):
 
 @check_function()
 def snapshot_rds(connection, **kwargs):
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'snapshot_rds')
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
     rds_name = 'fourfront-production' if (env_utils.is_fourfront_env(connection.ff_env) and env_utils.is_stg_or_prd_env(connection.ff_env)) else connection.ff_env
@@ -617,11 +619,9 @@ def process_download_tracking_items(connection, **kwargs):
     - If the user_agent looks to be a bot, set status=deleted
     - Change unused range query items to status=deleted
     """
-    from ..utils import get_stage_info, parse_datetime_to_utc
-    import geocoder
     check = CheckResult(connection, 'process_download_tracking_items')
     # maybe handle this in check_setup.json
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
@@ -749,8 +749,6 @@ def purge_download_tracking_items(connection, **kwargs):
     adapted; as it is, already handles recording for any number of item types.
     Ensure search includes limit, field=uuid, and status=deleted
     """
-    from ..utils import get_stage_info
-    from ..app_utils import init_connection
     check = CheckResult(connection, 'purge_download_tracking_items')
 
     # Don't run if staging deployment is running
@@ -758,13 +756,14 @@ def purge_download_tracking_items(connection, **kwargs):
     # XXX: Removing for now as we find the check can never run without this
     # if the staging deploy takes long enough or errors
     # if connection.fs_env == 'data':
-    #     staging_conn = init_connection('staging')
+    #     from ..app_utils import AppUtils
+    #     staging_conn = AppUtils().init_connection('staging')
     #     staging_deploy = CheckResult(staging_conn, 'staging_deployment').get_primary_result()
     #     if staging_deploy['status'] != 'PASS':
     #         check.summary = 'Staging deployment is running - skipping'
     #         return check
 
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
 
@@ -816,9 +815,8 @@ def check_long_running_ec2s(connection, **kwargs):
     (FAIL) if any contain any strings from `flag_names` in their
     names, or if they have no name.
     """
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'check_long_running_ec2s')
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
 

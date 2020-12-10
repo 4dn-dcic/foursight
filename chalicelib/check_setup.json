@@ -1624,5 +1624,17 @@
                 }
             }
         }
+    },
+    "external_submission_but_missing_dbxrefs": {
+        "title": "Items with external_submission but missing dbxrefs",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
