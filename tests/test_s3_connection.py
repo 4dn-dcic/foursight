@@ -1,8 +1,10 @@
 from conftest import *
 
+
 class TestS3Connection():
-    environ = 'mastertest'
-    conn = app_utils.init_connection(environ)
+    environ = DEV_ENV
+    app_utils_obj = app_utils.AppUtils()
+    conn = app_utils_obj.init_connection(environ)
 
     def test_s3_conn_fields(self):
         s3_conn = self.conn.connections['s3']
@@ -12,7 +14,7 @@ class TestS3Connection():
 
     def test_test_s3_conn_methods(self):
         # clean up after yourself
-        test_s3_conn = s3_connection.S3Connection('foursight-test-s3')
+        test_s3_conn = s3_connection.S3Connection(FOURSIGHT_PREFIX + '-test-s3')
         test_key = 'test/' + ff_utils.generate_rand_accession()
         test_value = {'abc': 123}
         assert (test_s3_conn.status_code != 404)

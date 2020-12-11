@@ -1,10 +1,12 @@
 import time
 import datetime
-from ..run_result import CheckResult, ActionResult
-from ..utils import (
-    check_function,
-    action_function,
-)
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
+
 
 @check_function()
 def elasticsearch_s3_count_diff(connection, **kwargs):

@@ -1739,6 +1739,44 @@
     "repsets_have_bio_reps": {
         "title": "Replicate experiment sets with replicate number issues",
         "group": "Badge checks",
+          "schedule": {
+            "morning_checks_3": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "problematic_wfrs_fdn_status" : {
+        "title": "x) Errored Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "long_running_wfrs_fdn_status" : {
+        "title": "x) Long Running Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "elastic_search_space" : {
+        "title": "ES Disk Space Check",
+        "group": "Elasticsearch checks",
         "schedule": {
             "morning_checks_3": {
                 "all": {
@@ -2028,6 +2066,18 @@
                     "kwargs": {
                         "primary": true
                     }
+                }
+            }
+        }
+    },
+    "external_submission_but_missing_dbxrefs": {
+        "title": "Items with external_submission but missing dbxrefs",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }

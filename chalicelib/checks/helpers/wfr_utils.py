@@ -4,13 +4,17 @@ import random
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
-from . import wfrset_utils
 
-lambda_limit = wfrset_utils.lambda_limit
-random_wait = wfrset_utils.random_wait
-load_wait = wfrset_utils.load_wait
-# check at the end
-# check extract_file_info has 4 arguments
+from foursight_core.checks.helpers.wfr_utils import (
+    lambda_limit,
+    check_runs_without_output
+)
+from .wfrset_utils import (
+    step_settings,
+)
+load_wait = 8
+random_wait = 20
+
 
 # wfr_name, accepted versions, expected run time # wfr_name, accepted versions,
 workflow_details = {
@@ -1346,7 +1350,7 @@ def start_missing_run(run_info, auth, env):
                 else:
                     break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
-    settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
+    settings = step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
     return url
 
@@ -1769,3 +1773,30 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
     return check
+
+
+def string_to_list(string):
+    "Given a string that is either comma separated values, or a python list, parse to list"
+    for a_sep in "'\":[] ":
+        values = string.replace(a_sep, ",")
+    values = [i.strip() for i in values.split(',') if i]
+    return values
+
+
+def fetch_wfr_associated(wfr_info):
+    """Given wfr embedded frame, find associated output files and qcs"""
+    wfr_as_list = []
+    wfr_as_list.append(wfr_info['uuid'])
+    if wfr_info.get('output_files'):
+        for o in wfr_info['output_files']:
+            if o.get('value'):
+                wfr_as_list.append(o['value']['uuid'])
+            elif o.get('value_qc'):
+                wfr_as_list.append(o['value_qc']['uuid'])
+    if wfr_info.get('output_quality_metrics'):
+        for qc in wfr_info['output_quality_metrics']:
+            if qc.get('value'):
+                wfr_as_list.append(qc['value']['uuid'])
+    if wfr_info.get('quality_metric'):
+        wfr_as_list.append(wfr_info['quality_metric']['uuid'])
+    return list(set(wfr_as_list))
