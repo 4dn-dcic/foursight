@@ -1198,7 +1198,7 @@
             }
         }
     },
-    "long_running_wfrs_status" : {
+    "long_running_wfrs_fdn_status" : {
         "title": "x) Long Running Runs",
         "group": "Pipeline checks",
         "schedule": {
@@ -1619,7 +1619,7 @@
             }
         }
     },
-    "problematic_wfrs_status" : {
+    "problematic_wfrs_fdn_status" : {
         "title": "x) Errored Runs",
         "group": "Pipeline checks",
         "schedule": {
