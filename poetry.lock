@@ -223,7 +223,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "0.1.3b1"
+version = "0.1.3"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -636,7 +636,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "soupsieve"
-version = "2.0.1"
+version = "2.1"
 description = "A modern CSS selector implementation for Beautiful Soup."
 category = "main"
 optional = false
@@ -761,7 +761,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6,<3.7"
-content-hash = "da3985d2cba5848841d473cf22fcd4e1793641888396534e2710c731db0132bb"
+content-hash = "9a8b1927793fd5027373bb9258d03ed5d27e5e0bd1629fda2431ec76085789c2"
 
 [metadata.files]
 atomicwrites = [
@@ -874,8 +874,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight_core-0.1.3b1-py3-none-any.whl", hash = "sha256:5b6605664670a810c210d9354624d302f9089cf6692510660808bc0391e332c3"},
-    {file = "foursight_core-0.1.3b1.tar.gz", hash = "sha256:7feccd292efd5bb6b85ee8a5f241a40fc2cda5fa0feb461eeab66038154e305d"},
+    {file = "foursight_core-0.1.3-py3-none-any.whl", hash = "sha256:63d54cefe528a76ab72c013510a8c1af00e1c9ab6d58f2ea804c0126413050b4"},
+    {file = "foursight_core-0.1.3.tar.gz", hash = "sha256:3861fde97a26fae1ca1b01acc6b5972f3925cfface8bd260e2ba90897653dd49"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1080,8 +1080,8 @@ smmap = [
     {file = "smmap-3.0.4.tar.gz", hash = "sha256:9c98bbd1f9786d22f14b3d4126894d56befb835ec90cef151af566c7e19b5d24"},
 ]
 soupsieve = [
-    {file = "soupsieve-2.0.1-py3-none-any.whl", hash = "sha256:1634eea42ab371d3d346309b93df7870a88610f0725d47528be902a0d95ecc55"},
-    {file = "soupsieve-2.0.1.tar.gz", hash = "sha256:a59dc181727e95d25f781f0eb4fd1825ff45590ec8ff49eadfd7f1a537cc0232"},
+    {file = "soupsieve-2.1-py3-none-any.whl", hash = "sha256:4bb21a6ee4707bf43b61230e80740e71bfe56e55d1f1f50924b087bb2975c851"},
+    {file = "soupsieve-2.1.tar.gz", hash = "sha256:6dc52924dc0bc710a5d16794e6b3480b2c7c08b07729505feab2b2c16661ff6e"},
 ]
 structlog = [
     {file = "structlog-19.2.0-py2.py3-none-any.whl", hash = "sha256:6640e6690fc31d5949bc614c1a630464d3aaa625284aeb7c6e486c3010d73e12"},
