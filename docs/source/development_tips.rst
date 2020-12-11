@@ -134,3 +134,23 @@ Or scheduling with a CRON expression... for more info, `see here <http://docs.aw
    @app.schedule(Cron(0, 10, '*', '*', '?', '*'))
    def daily_checks(event):
        queue_scheduled_checks('all', 'daily_checks')
+
+Setting up a schedule for manual checks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In some cases you may not want your check to run on a CRON type schedule but still want it available on the UI to be run manually.  There are two ways to do this, one that is more explicit and the recommended approach and the other that is less verbose but perhaps less clear.
+
+* The explicit method is to use the ``manual_checks`` schedule set up in exactly the same way as any of the other schedules.  This schedule is set to run effectively never by setting the CRON in the app to Feb 31st.
+* The other method is to leave the schedule empty but include the ``display`` property and list the environments that you wish the check to appear. eg.
+
+.. code-block::
+
+   {
+       "my_first_check": {
+           "title": "My first check",
+           "group": "Awesome test checks",
+           "schedule": {},
+           "display": ["data", "staging"]
+       }
+
+This check will show up in the production and staging UI displays and can be queued manually when logged in.

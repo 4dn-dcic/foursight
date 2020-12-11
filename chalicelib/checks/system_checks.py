@@ -63,72 +63,72 @@ def elastic_search_space(connection, **kwargs):
     return check
 
 
-@check_function()
-def elastic_beanstalk_health(connection, **kwargs):
-    """
-    Check both environment health and health of individual instances
-    """
-    check = CheckResult(connection, 'elastic_beanstalk_health')
-    full_output = {}
-    eb_client = boto3.client('elasticbeanstalk')
-    resp = eb_client.describe_environment_health(
-        EnvironmentName=connection.ff_env,
-        AttributeNames=['All']
-    )
-    resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
-        return check
-    full_output['status'] = resp.get('Status')
-    full_output['environment_name'] = resp.get('EnvironmentName')
-    full_output['color'] = resp.get('Color')
-    full_output['health_status'] = resp.get('HealthStatus')
-    full_output['causes'] = resp.get('Causes')
-    full_output['instance_health'] = []
-    # now look at the individual instances
-    resp = eb_client.describe_instances_health(
-        EnvironmentName=connection.ff_env,
-        AttributeNames=['All']
-    )
-    resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
-        return check
-    instances_health = resp.get('InstanceHealthList', [])
-    for instance in instances_health:
-        inst_info = {}
-        inst_info['deploy_status'] = instance['Deployment']['Status']
-        inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
-        # get version deployment time
-        application_versions = eb_client.describe_application_versions(
-            ApplicationName='4dn-web',
-            VersionLabels=[inst_info['deploy_version']]
-        )
-        deploy_info = application_versions['ApplicationVersions'][0]
-        inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['id'] = instance['InstanceId']
-        inst_info['color'] = instance['Color']
-        inst_info['health'] = instance['HealthStatus']
-        inst_info['causes'] = instance.get('causes', [])
-        full_output['instance_health'].append(inst_info)
-    if full_output['color'] == 'Grey':
-        check.status = 'WARN'
-        check.summary = check.description = 'EB environment is updating'
-    elif full_output['color'] == 'Yellow':
-        check.status = 'WARN'
-        check.summary = check.description = 'EB environment is compromised; requests may fail'
-    elif full_output['color'] == 'Red':
-        check.status = 'FAIL'
-        check.summary = check.description = 'EB environment is degraded; requests are likely to fail'
-    else:
-        check.summary = check.description = 'EB environment seems healthy'
-        check.status = 'PASS'
-    check.full_output = full_output
-    return check
+# @check_function()
+# def elastic_beanstalk_health(connection, **kwargs):
+#     """
+#     Check both environment health and health of individual instances
+#     """
+#     check = CheckResult(connection, 'elastic_beanstalk_health')
+#     full_output = {}
+#     eb_client = boto3.client('elasticbeanstalk')
+#     resp = eb_client.describe_environment_health(
+#         EnvironmentName=connection.ff_env,
+#         AttributeNames=['All']
+#     )
+#     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+#     if resp_status >= 400:
+#         check.status = 'ERROR'
+#         check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
+#         return check
+#     full_output['status'] = resp.get('Status')
+#     full_output['environment_name'] = resp.get('EnvironmentName')
+#     full_output['color'] = resp.get('Color')
+#     full_output['health_status'] = resp.get('HealthStatus')
+#     full_output['causes'] = resp.get('Causes')
+#     full_output['instance_health'] = []
+#     # now look at the individual instances
+#     resp = eb_client.describe_instances_health(
+#         EnvironmentName=connection.ff_env,
+#         AttributeNames=['All']
+#     )
+#     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+#     if resp_status >= 400:
+#         check.status = 'ERROR'
+#         check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
+#         return check
+#     instances_health = resp.get('InstanceHealthList', [])
+#     for instance in instances_health:
+#         inst_info = {}
+#         inst_info['deploy_status'] = instance['Deployment']['Status']
+#         inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
+#         # get version deployment time
+#         application_versions = eb_client.describe_application_versions(
+#             ApplicationName='4dn-web',
+#             VersionLabels=[inst_info['deploy_version']]
+#         )
+#         deploy_info = application_versions['ApplicationVersions'][0]
+#         inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['id'] = instance['InstanceId']
+#         inst_info['color'] = instance['Color']
+#         inst_info['health'] = instance['HealthStatus']
+#         inst_info['causes'] = instance.get('causes', [])
+#         full_output['instance_health'].append(inst_info)
+#     if full_output['color'] == 'Grey':
+#         check.status = 'WARN'
+#         check.summary = check.description = 'EB environment is updating'
+#     elif full_output['color'] == 'Yellow':
+#         check.status = 'WARN'
+#         check.summary = check.description = 'EB environment is compromised; requests may fail'
+#     elif full_output['color'] == 'Red':
+#         check.status = 'FAIL'
+#         check.summary = check.description = 'EB environment is degraded; requests are likely to fail'
+#     else:
+#         check.summary = check.description = 'EB environment seems healthy'
+#         check.status = 'PASS'
+#     check.full_output = full_output
+#     return check
 
 
 @check_function()
@@ -251,7 +251,7 @@ def staging_deployment(connection, **kwargs):
     return check
 
 
-@check_function()
+#@check_function()
 def fourfront_performance_metrics(connection, **kwargs):
     check = CheckResult(connection, 'fourfront_performance_metrics')
     full_output = {}  # contains ff_env, env_health, deploy_version, num instances, and performance
@@ -309,7 +309,7 @@ def fourfront_performance_metrics(connection, **kwargs):
     return check
 
 
-@check_function(time_limit=480)
+#@check_function(time_limit=480)
 def secondary_queue_deduplication(connection, **kwargs):
     check = CheckResult(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
@@ -497,15 +497,15 @@ def clean_up_travis_queues(connection, **kwargs):
     return check
 
 
-@check_function()
-def manage_old_filebeat_logs(connection, **kwargs):
-    # import curator
-    check = CheckResult(connection, 'manage_old_filebeat_logs')
-
-    # temporary -- disable this check
-    check.status = 'PASS'
-    check.description = 'Not currently running this check'
-    return check
+# @check_function()
+# def manage_old_filebeat_logs(connection, **kwargs):
+#     # import curator
+#     check = CheckResult(connection, 'manage_old_filebeat_logs')
+#
+#     # temporary -- disable this check
+#     check.status = 'PASS'
+#     check.description = 'Not currently running this check'
+#     return check
 
     # check.status = "WARNING"
     # check.description = "not able to get data from ES"

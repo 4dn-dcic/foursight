@@ -23,6 +23,7 @@ def end_of_day_on_weekdays():
     """ Cron schedule that runs at 6pm EST (22:00 UTC) on weekdays. Used for deployments. """
     return Cron('0', '22', '?', '*', 'MON-FRI', '*')
 
+
 # this dictionary defines the CRON schedules for the dev and prod foursight
 # stagger them to reduce the load on Fourfront. Times are UTC
 # info: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
@@ -31,26 +32,30 @@ foursight_cron_by_schedule = {
     'prod': {
         'ten_min_checks': Cron('0/10', '*', '*', '*', '?', '*'),
         'thirty_min_checks': Cron('0/30', '*', '*', '*', '?', '*'),
-        'hourly_checks': Cron('0', '0/1', '*', '*', '?', '*'),
-        'hourly_checks_2': Cron('15', '0/1', '*', '*', '?', '*'),
-        'early_morning_checks': Cron('0', '8', '*', '*', '?', '*'),
-        'morning_checks': Cron('0', '10', '*', '*', '?', '*'),
-        'morning_checks_2': Cron('15', '10', '*', '*', '?', '*'),
-        'monday_checks': Cron('0', '9', '?', '*', '2', '*'),
-        'monthly_checks': Cron('0', '9', '1', '*', '?', '*'),
+        'hourly_checks_1': Cron('5', '0/1', '*', '*', '?', '*'),
+        'hourly_checks_2': Cron('25', '0/1', '*', '*', '?', '*'),
+        'hourly_checks_3': Cron('45', '0/1', '*', '*', '?', '*'),
+        'morning_checks_1': Cron('0', '6', '*', '*', '?', '*'),
+        'morning_checks_2': Cron('0', '7', '*', '*', '?', '*'),
+        'morning_checks_3': Cron('0', '8', '*', '*', '?', '*'),
+        'morning_checks_4': Cron('0', '9', '*', '*', '?', '*'),
+        'monday_checks': Cron('0', '10', '?', '*', '2', '*'),
+        'monthly_checks': Cron('0', '10', '1', '*', '?', '*'),
         'manual_checks': effectively_never(),
         'deployment_checks': end_of_day_on_weekdays()
     },
     'dev': {
-        'ten_min_checks': Cron('5/10', '*', '*', '*', '?', '*'),
-        'thirty_min_checks': Cron('15/30', '*', '*', '*', '?', '*'),
-        'hourly_checks': Cron('30', '0/1', '*', '*', '?', '*'),
-        'hourly_checks_2': Cron('45', '0/1', '*', '*', '?', '*'),
-        'early_morning_checks': Cron('0', '8', '*', '*', '?', '*'),
-        'morning_checks': Cron('30', '10', '*', '*', '?', '*'),
-        'morning_checks_2': Cron('45', '10', '*', '*', '?', '*'),
-        'monday_checks': Cron('30', '9', '?', '*', '2', '*'),
-        'monthly_checks': Cron('30', '9', '1', '*', '?', '*'),
+        'ten_min_checks': effectively_never(),
+        'thirty_min_checks': effectively_never(),
+        'hourly_checks_1': effectively_never(),
+        'hourly_checks_2': effectively_never(),
+        'hourly_checks_3': effectively_never(),
+        'morning_checks_1': effectively_never(),
+        'morning_checks_2': effectively_never(),
+        'morning_checks_3': effectively_never(),
+        'morning_checks_4': effectively_never(),
+        'monday_checks': effectively_never(),
+        'monthly_checks': effectively_never(),
         'manual_checks': effectively_never(),
         'deployment_checks': end_of_day_on_weekdays()  # disabled, see schedule below
     }
@@ -67,9 +72,9 @@ def thirty_min_checks(event):
     app_utils_obj.queue_scheduled_checks('all', 'thirty_min_checks')
 
 
-@app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks'])
-def hourly_checks(event):
-    app_utils_obj.queue_scheduled_checks('all', 'hourly_checks')
+@app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks_1'])
+def hourly_checks_1(event):
+    app_utils_obj.queue_scheduled_checks('all', 'hourly_checks_1')
 
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks_2'])
@@ -77,19 +82,29 @@ def hourly_checks_2(event):
     app_utils_obj.queue_scheduled_checks('all', 'hourly_checks_2')
 
 
-@app.schedule(foursight_cron_by_schedule[STAGE]['early_morning_checks'])
-def early_morning_checks(event):
-    app_utils_obj.queue_scheduled_checks('all', 'early_morning_checks')
+@app.schedule(foursight_cron_by_schedule[STAGE]['hourly_checks_3'])
+def hourly_checks_3(event):
+    app_utils_obj.queue_scheduled_checks('all', 'hourly_checks_3')
 
 
-@app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks'])
-def morning_checks(event):
-    app_utils_obj.queue_scheduled_checks('all', 'morning_checks')
+@app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks_1'])
+def morning_checks_1(event):
+    app_utils_obj.queue_scheduled_checks('all', 'morning_checks_1')
 
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks_2'])
 def morning_checks_2(event):
     app_utils_obj.queue_scheduled_checks('all', 'morning_checks_2')
+
+
+@app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks_3'])
+def morning_checks_3(event):
+    app_utils_obj.queue_scheduled_checks('all', 'morning_checks_3')
+
+
+@app.schedule(foursight_cron_by_schedule[STAGE]['morning_checks_4'])
+def morning_checks_4(event):
+    app_utils_obj.queue_scheduled_checks('all', 'morning_checks_4')
 
 
 @app.schedule(foursight_cron_by_schedule[STAGE]['monday_checks'])
