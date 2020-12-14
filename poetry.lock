@@ -90,7 +90,7 @@ python-versions = "*"
 
 [[package]]
 name = "chalice"
-version = "1.21.5"
+version = "1.21.6"
 description = "Microframework"
 category = "dev"
 optional = false
@@ -770,7 +770,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6,<3.7"
-content-hash = "87be790c1e396a223794a9984a59189e50befe7789f2060edd7fe3298e35b637"
+content-hash = "7f201a5e7c4cba4dfb3d02a44d77dd3f9b950d4a8afec9243b9a60aabdd582a0"
 
 [metadata.files]
 atomicwrites = [
@@ -807,8 +807,8 @@ certifi = [
     {file = "certifi-2020.12.5.tar.gz", hash = "sha256:1a4995114262bffbc2413b159f2a1a480c969de6e6eb13ee966d470af86af59c"},
 ]
 chalice = [
-    {file = "chalice-1.21.5-py2.py3-none-any.whl", hash = "sha256:c86e9697e09c325932456052fa17c247d047be5bd9a0653dd3ad633a43b2abc2"},
-    {file = "chalice-1.21.5.tar.gz", hash = "sha256:73149f6a71aa1310f3d000110a915164a72f1d2dc7cd4d37d18a952b0e0c78ac"},
+    {file = "chalice-1.21.6-py2.py3-none-any.whl", hash = "sha256:cb7e85a3306b391318a6a758c7637d7fd588ac18cb8f4a196e1a1f964223aa06"},
+    {file = "chalice-1.21.6.tar.gz", hash = "sha256:b7a17583e0553caa0e44d23186b4aad069f7665c24a473104d1f04e62cc4cb07"},
 ]
 chardet = [
     {file = "chardet-3.0.4-py2.py3-none-any.whl", hash = "sha256:fc323ffcaeaed0e0a02bf4d117757b98aed530d9ed4531e3e15460124c106691"},
