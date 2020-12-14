@@ -30,7 +30,7 @@ foursight-core = "0.1.5"
 #foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 
 [tool.poetry.dev-dependencies]
-chalice = "^1.21.0"
+chalice = "^1.21.6"
 pytest = "5.1.2"
 pytest-cov = "2.7.1"
 flaky = "3.6.1"
