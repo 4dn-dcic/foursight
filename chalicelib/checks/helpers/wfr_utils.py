@@ -311,7 +311,7 @@ states_file_type = {
 # GC% content reference files (compartments pipeline)
 gc_content_ref = {"human": "/files-reference/4DNFI7MCA4R6/",
                   "mouse": "/files-reference/4DNFIOFXJOUA",
-                  "fruit-fly": "/files-reference/4DNFID6KQ941",
+                  'fruit fly': "/files-reference/4DNFID6KQ941",
                   "chicken": "/files-reference/4DNFI19V162N",
                   "zebrafish": "/files-reference/4DNFIHEHIZ3P"}
 

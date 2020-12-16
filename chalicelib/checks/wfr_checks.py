@@ -2130,6 +2130,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         return check
 
     for a_res in res:
+        skip = False
         running = []
         completed = {'patch_opf': [], 'add_tag': []}
         missing_run = []
@@ -2137,8 +2138,14 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         for pfile in a_res['processed_files']:
             if pfile['file_format']['display_title'] == 'mcool':
                 file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                # Skip problematic mcools files for now, until qc metrics for mcools are in place
+                if file_meta.get('tags'):
+                    if 'skip_domain_callers' in file_meta['tags']:
+                        skip = True
+                        continue
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
-
+        if skip:
+            continue
         if insu_and_boun_report['status'] == 'running':
             running.append(pfile['accession'])
         elif insu_and_boun_report['status'].startswith("no complete run, too many"):
@@ -2240,6 +2247,7 @@ def compartments_caller_status(connection, **kwargs):
 
     # Build the first query, experiments that have run the hic pipeline. add date and lab if available
     query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
+    print(query)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -2250,8 +2258,6 @@ def compartments_caller_status(connection, **kwargs):
         return check
 
     for a_res in res:
-        if a_res['accession'] == '4DNESWST3UBH':
-            continue
         running = []
         completed = {'patch_opf': [], 'add_tag': []}
         missing_run = []
@@ -2259,8 +2265,14 @@ def compartments_caller_status(connection, **kwargs):
         for pfile in a_res['processed_files']:
             if pfile['file_format']['display_title'] == 'mcool':
                 file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                # Skip problematic mcools files for now, until qc metrics for mcools are in place
+                if file_meta.get('tags'):
+                    if 'skip_domain_callers' in file_meta['tags']:
+                        skip = True
+                        continue
                 workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
-
+        if skip:
+            continue
         if workflow_status_report['status'] == 'running':
             running.append(pfile['accession'])
         elif workflow_status_report['status'].startswith("no complete run, too many"):
