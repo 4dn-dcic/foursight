@@ -1171,7 +1171,7 @@
         }
     },
     "insulation_scores_and_boundaries_status": {
-        "title": "l) insulation scores and boundaries",
+        "title": "m) insulation scores and boundaries",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks_1": {
