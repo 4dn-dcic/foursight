@@ -2086,7 +2086,7 @@
         "title": "m) Compartments",
         "group": "Pipeline checks",
         "schedule": {
-            "hourly_checks_1": {
+            "hourly_checks_2": {
                 "data": {
                     "dependencies": [],
                     "kwargs": {

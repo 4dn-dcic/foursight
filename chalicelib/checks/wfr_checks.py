@@ -2124,7 +2124,6 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
     query += '&processed_files.file_format.display_title=pairs'
     query += f'&processed_files.quality_metric.Total reads.from={reads_cutoff}'
 
-    print(query)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
 
@@ -2149,20 +2148,21 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
         if skip:
             continue
-        if insu_and_boun_report['status'] == 'running':
+        elif insu_and_boun_report['status'] == 'running':
             running.append(pfile['accession'])
         elif insu_and_boun_report['status'].startswith("no complete run, too many"):
             problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif insu_and_boun_report['status'] != 'complete':
             enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
             organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
-            if enz != "MNase" and enz not in wfr_utils.re_nz_sizes:
-                check.full_output['problematic_runs'].append({a_res['accession']: ['%s missing enz site length' % (enz)]})
-                continue
-            if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
-                re_enz_size = "4"
-            else:
-                re_enz_size = wfr_utils.re_nz_sizes[enz]
+            re_enz_size = wfr_utils.re_nz_sizes.get(enz)
+            if not re_enz_size:
+                if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
+                    re_enz_size = "4"
+                else:
+                    check.full_output['problematic_runs'].append({a_res['accession']: ['%s missing enz site length' % (enz)]})
+                    continue
+
             if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
                 binsize = 5000
             if int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
@@ -2507,20 +2507,20 @@ def compartments_caller_status(connection, **kwargs):
                 workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
         if skip:
             continue
-        if workflow_status_report['status'] == 'running':
+        elif workflow_status_report['status'] == 'running':
             running.append(pfile['accession'])
         elif workflow_status_report['status'].startswith("no complete run, too many"):
             problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif workflow_status_report['status'] != 'complete':
             organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
-            try:
-                gc_content_file = wfr_utils.gc_content_ref[organism]
+            gc_content_file = wfr_utils.gc_content_ref.get(organism)
+            if not gc_content_file:
+                problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
+            else:
                 overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
                 inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
                 missing_run.append(['step1', ['compartments-caller', organism, overwrite],
                                     inp_f, a_res['accession']])
-            except:
-                problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
         else:
             patch_data = [workflow_status_report['bwfile']]
             completed['patch_opf'].append([a_res['accession'], patch_data])
