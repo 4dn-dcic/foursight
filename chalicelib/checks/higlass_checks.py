@@ -1,16 +1,17 @@
-from __future__ import print_function, unicode_literals
 from datetime import datetime, timedelta
-from ..utils import (
-    check_function,
-    action_function,
-)
-from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import requests
 import json
 import time
 import uuid
 from copy import deepcopy
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
+
 
 def get_reference_files(connection):
     """

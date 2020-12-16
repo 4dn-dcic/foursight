@@ -1,23 +1,26 @@
-from __future__ import print_function, unicode_literals
-from ..utils import (
-    check_function,
-    basestring,
-    cat_indices
+import requests
+import json
+import datetime
+import boto3
+import time
+import geocoder
+from foursight_core.stage import Stage
+from foursight_core.checks.helpers.sys_utils import (
+    parse_datetime_to_utc,
+    wipe_build_indices
 )
-from ..run_result import CheckResult
 from dcicutils import (
     ff_utils,
     es_utils,
     beanstalk_utils,
     env_utils
 )
-from dcicutils.misc_utils import Retry
-import re
-import requests
-import json
-import datetime
-import boto3
-import time
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
 
 
 # XXX: put into utils?
@@ -25,36 +28,6 @@ FF_TEST_CLUSTER = 'search-fourfront-testing-6-8-kncqa2za2r43563rkcmsvgn2fq.us-ea
 TEST_ES_CLUSTERS = [
     FF_TEST_CLUSTER
 ]
-BUILD_INDICES_REGEX = re.compile('^[0-9]')  # build indices are prefixed by numbers
-
-
-def wipe_build_indices(es_url, check):
-    """ Wipes all number-prefixed indices on the given es_url. Be careful not to run while
-        builds are running as this will cause them to fail.
-    """
-    check.status = 'PASS'
-    check.summary = check.description = 'Wiped all test indices on url: %s' % es_url
-    client = es_utils.create_es_client(es_url, True)
-    full_output = []
-    _, indices = cat_indices(client)  # index name is index 2 in row
-    for index in indices:
-        try:
-            index_name = index[2]
-        except IndexError:  # empty [] sometimes returned by API call
-            continue
-        if re.match(BUILD_INDICES_REGEX, index_name) is not None:
-            try:
-                resp = Retry.retrying(client.indices.delete, retries_allowed=3)(index=index_name)
-            except Exception as e:
-                full_output.append({'acknowledged': True, 'error': str(e)})
-            else:
-                full_output.append(resp)
-
-    if any(output['acknowledged'] is not True for output in full_output):
-        check.status = 'FAIL'
-        check.summary = check.description = 'Failed to wipe all test indices, see full output'
-    check.full_output = full_output
-    return check
 
 
 @check_function()
@@ -90,72 +63,72 @@ def elastic_search_space(connection, **kwargs):
     return check
 
 
-@check_function()
-def elastic_beanstalk_health(connection, **kwargs):
-    """
-    Check both environment health and health of individual instances
-    """
-    check = CheckResult(connection, 'elastic_beanstalk_health')
-    full_output = {}
-    eb_client = boto3.client('elasticbeanstalk')
-    resp = eb_client.describe_environment_health(
-        EnvironmentName=connection.ff_env,
-        AttributeNames=['All']
-    )
-    resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
-        return check
-    full_output['status'] = resp.get('Status')
-    full_output['environment_name'] = resp.get('EnvironmentName')
-    full_output['color'] = resp.get('Color')
-    full_output['health_status'] = resp.get('HealthStatus')
-    full_output['causes'] = resp.get('Causes')
-    full_output['instance_health'] = []
-    # now look at the individual instances
-    resp = eb_client.describe_instances_health(
-        EnvironmentName=connection.ff_env,
-        AttributeNames=['All']
-    )
-    resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
-    if resp_status >= 400:
-        check.status = 'ERROR'
-        check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
-        return check
-    instances_health = resp.get('InstanceHealthList', [])
-    for instance in instances_health:
-        inst_info = {}
-        inst_info['deploy_status'] = instance['Deployment']['Status']
-        inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
-        # get version deployment time
-        application_versions = eb_client.describe_application_versions(
-            ApplicationName='4dn-web',
-            VersionLabels=[inst_info['deploy_version']]
-        )
-        deploy_info = application_versions['ApplicationVersions'][0]
-        inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
-        inst_info['id'] = instance['InstanceId']
-        inst_info['color'] = instance['Color']
-        inst_info['health'] = instance['HealthStatus']
-        inst_info['causes'] = instance.get('causes', [])
-        full_output['instance_health'].append(inst_info)
-    if full_output['color'] == 'Grey':
-        check.status = 'WARN'
-        check.summary = check.description = 'EB environment is updating'
-    elif full_output['color'] == 'Yellow':
-        check.status = 'WARN'
-        check.summary = check.description = 'EB environment is compromised; requests may fail'
-    elif full_output['color'] == 'Red':
-        check.status = 'FAIL'
-        check.summary = check.description = 'EB environment is degraded; requests are likely to fail'
-    else:
-        check.summary = check.description = 'EB environment seems healthy'
-        check.status = 'PASS'
-    check.full_output = full_output
-    return check
+# @check_function()
+# def elastic_beanstalk_health(connection, **kwargs):
+#     """
+#     Check both environment health and health of individual instances
+#     """
+#     check = CheckResult(connection, 'elastic_beanstalk_health')
+#     full_output = {}
+#     eb_client = boto3.client('elasticbeanstalk')
+#     resp = eb_client.describe_environment_health(
+#         EnvironmentName=connection.ff_env,
+#         AttributeNames=['All']
+#     )
+#     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+#     if resp_status >= 400:
+#         check.status = 'ERROR'
+#         check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
+#         return check
+#     full_output['status'] = resp.get('Status')
+#     full_output['environment_name'] = resp.get('EnvironmentName')
+#     full_output['color'] = resp.get('Color')
+#     full_output['health_status'] = resp.get('HealthStatus')
+#     full_output['causes'] = resp.get('Causes')
+#     full_output['instance_health'] = []
+#     # now look at the individual instances
+#     resp = eb_client.describe_instances_health(
+#         EnvironmentName=connection.ff_env,
+#         AttributeNames=['All']
+#     )
+#     resp_status = resp.get('ResponseMetadata', {}).get('HTTPStatusCode', None)
+#     if resp_status >= 400:
+#         check.status = 'ERROR'
+#         check.description = 'Could not establish a connection to AWS (status %s).' % resp_status
+#         return check
+#     instances_health = resp.get('InstanceHealthList', [])
+#     for instance in instances_health:
+#         inst_info = {}
+#         inst_info['deploy_status'] = instance['Deployment']['Status']
+#         inst_info['deploy_version'] = instance['Deployment']['VersionLabel']
+#         # get version deployment time
+#         application_versions = eb_client.describe_application_versions(
+#             ApplicationName='4dn-web',
+#             VersionLabels=[inst_info['deploy_version']]
+#         )
+#         deploy_info = application_versions['ApplicationVersions'][0]
+#         inst_info['version_deployed_at'] = datetime.datetime.strftime(deploy_info['DateCreated'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['instance_deployed_at'] = datetime.datetime.strftime(instance['Deployment']['DeploymentTime'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['instance_launced_at'] = datetime.datetime.strftime(instance['LaunchedAt'], "%Y-%m-%dT%H:%M:%S")
+#         inst_info['id'] = instance['InstanceId']
+#         inst_info['color'] = instance['Color']
+#         inst_info['health'] = instance['HealthStatus']
+#         inst_info['causes'] = instance.get('causes', [])
+#         full_output['instance_health'].append(inst_info)
+#     if full_output['color'] == 'Grey':
+#         check.status = 'WARN'
+#         check.summary = check.description = 'EB environment is updating'
+#     elif full_output['color'] == 'Yellow':
+#         check.status = 'WARN'
+#         check.summary = check.description = 'EB environment is compromised; requests may fail'
+#     elif full_output['color'] == 'Red':
+#         check.status = 'FAIL'
+#         check.summary = check.description = 'EB environment is degraded; requests are likely to fail'
+#     else:
+#         check.summary = check.description = 'EB environment seems healthy'
+#         check.status = 'PASS'
+#     check.full_output = full_output
+#     return check
 
 
 @check_function()
@@ -278,7 +251,7 @@ def staging_deployment(connection, **kwargs):
     return check
 
 
-@check_function()
+#@check_function()
 def fourfront_performance_metrics(connection, **kwargs):
     check = CheckResult(connection, 'fourfront_performance_metrics')
     full_output = {}  # contains ff_env, env_health, deploy_version, num instances, and performance
@@ -315,7 +288,7 @@ def fourfront_performance_metrics(connection, **kwargs):
             performance[check_url]['error'] = str(e)
         if ff_resp and hasattr(ff_resp, 'headers') and 'X-stats' in ff_resp.headers:
             x_stats = ff_resp.headers['X-stats']
-            if not isinstance(x_stats, basestring):
+            if not isinstance(x_stats, str):
                 performance[check_url]['error'] = 'Stats response is not a string.'
                 continue
             # X-stats in form: 'db_count=148&db_time=1215810&es_count=4& ... '
@@ -336,12 +309,11 @@ def fourfront_performance_metrics(connection, **kwargs):
     return check
 
 
-@check_function(time_limit=480)
+#@check_function(time_limit=480)
 def secondary_queue_deduplication(connection, **kwargs):
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'secondary_queue_deduplication')
     # maybe handle this in check_setup.json
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
@@ -497,10 +469,9 @@ def clean_up_travis_queues(connection, **kwargs):
     Clean up old sqs queues based on the name ("travis-job")
     and the creation date. Only run on data for now
     """
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'clean_up_travis_queues')
     check.status = 'PASS'
-    if connection.fs_env != 'data' or get_stage_info()['stage'] != 'prod':
+    if connection.fs_env != 'data' or Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on the data environment for Foursight prod'
         return check
     sqs_client = boto3.client('sqs')
@@ -513,7 +484,7 @@ def clean_up_travis_queues(connection, **kwargs):
                 creation = queue.attributes['CreatedTimestamp']
             except sqs_client.exceptions.QueueDoesNotExist:
                 continue
-            if isinstance(creation, basestring):
+            if isinstance(creation, str):
                 creation = float(creation)
             dt_creation = datetime.datetime.utcfromtimestamp(creation)
             queue_age = datetime.datetime.utcnow() - dt_creation
@@ -526,15 +497,15 @@ def clean_up_travis_queues(connection, **kwargs):
     return check
 
 
-@check_function()
-def manage_old_filebeat_logs(connection, **kwargs):
-    # import curator
-    check = CheckResult(connection, 'manage_old_filebeat_logs')
-
-    # temporary -- disable this check
-    check.status = 'PASS'
-    check.description = 'Not currently running this check'
-    return check
+# @check_function()
+# def manage_old_filebeat_logs(connection, **kwargs):
+#     # import curator
+#     check = CheckResult(connection, 'manage_old_filebeat_logs')
+#
+#     # temporary -- disable this check
+#     check.status = 'PASS'
+#     check.description = 'Not currently running this check'
+#     return check
 
     # check.status = "WARNING"
     # check.description = "not able to get data from ES"
@@ -585,9 +556,8 @@ def manage_old_filebeat_logs(connection, **kwargs):
 
 @check_function()
 def snapshot_rds(connection, **kwargs):
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'snapshot_rds')
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
     rds_name = 'fourfront-production' if (env_utils.is_fourfront_env(connection.ff_env) and env_utils.is_stg_or_prd_env(connection.ff_env)) else connection.ff_env
@@ -617,11 +587,9 @@ def process_download_tracking_items(connection, **kwargs):
     - If the user_agent looks to be a bot, set status=deleted
     - Change unused range query items to status=deleted
     """
-    from ..utils import get_stage_info, parse_datetime_to_utc
-    import geocoder
     check = CheckResult(connection, 'process_download_tracking_items')
     # maybe handle this in check_setup.json
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.full_output = 'Will not run on dev foursight.'
         check.status = 'PASS'
         return check
@@ -749,8 +717,6 @@ def purge_download_tracking_items(connection, **kwargs):
     adapted; as it is, already handles recording for any number of item types.
     Ensure search includes limit, field=uuid, and status=deleted
     """
-    from ..utils import get_stage_info
-    from ..app_utils import init_connection
     check = CheckResult(connection, 'purge_download_tracking_items')
 
     # Don't run if staging deployment is running
@@ -758,13 +724,14 @@ def purge_download_tracking_items(connection, **kwargs):
     # XXX: Removing for now as we find the check can never run without this
     # if the staging deploy takes long enough or errors
     # if connection.fs_env == 'data':
-    #     staging_conn = init_connection('staging')
+    #     from ..app_utils import AppUtils
+    #     staging_conn = AppUtils().init_connection('staging')
     #     staging_deploy = CheckResult(staging_conn, 'staging_deployment').get_primary_result()
     #     if staging_deploy['status'] != 'PASS':
     #         check.summary = 'Staging deployment is running - skipping'
     #         return check
 
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
 
@@ -816,9 +783,8 @@ def check_long_running_ec2s(connection, **kwargs):
     (FAIL) if any contain any strings from `flag_names` in their
     names, or if they have no name.
     """
-    from ..utils import get_stage_info
     check = CheckResult(connection, 'check_long_running_ec2s')
-    if get_stage_info()['stage'] != 'prod':
+    if Stage.is_stage_prod() is False:
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
 
