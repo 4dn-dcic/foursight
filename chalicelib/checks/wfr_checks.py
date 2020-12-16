@@ -2132,6 +2132,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         return check
 
     for a_res in res:
+        skip = False
         running = []
         completed = {'patch_opf': [], 'add_tag': []}
         missing_run = []
@@ -2139,16 +2140,29 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         for pfile in a_res['processed_files']:
             if pfile['file_format']['display_title'] == 'mcool':
                 file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                # Skip problematic mcools files for now, until qc metrics for mcools are in place
+                if file_meta.get('tags'):
+                    if 'skip_domain_callers' in file_meta['tags']:
+                        skip = True
+                        continue
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
-
-        if insu_and_boun_report['status'] == 'running':
+        if skip:
+            continue
+        elif insu_and_boun_report['status'] == 'running':
             running.append(pfile['accession'])
         elif insu_and_boun_report['status'].startswith("no complete run, too many"):
             problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif insu_and_boun_report['status'] != 'complete':
             enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
             organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
-            re_enz_size = wfr_utils.re_nz_sizes[enz]
+            re_enz_size = wfr_utils.re_nz_sizes.get(enz)
+            if not re_enz_size:
+                if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
+                    re_enz_size = "4"
+                else:
+                    check.full_output['problematic_runs'].append({a_res['accession']: ['%s missing enz site length' % (enz)]})
+                    continue
+
             if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
                 binsize = 5000
             if int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
@@ -2170,7 +2184,8 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
             assert not running
             assert not missing_run
             check.full_output['completed_runs'].append(completed)
-
+        if problematic_run:
+            check.full_output['problematic_runs'].append({a_res['accession']: problematic_run})
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
     if check.full_output['needs_runs']:
@@ -2190,7 +2205,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
 
 @action_function(start_runs=True, patch_completed=True)
 def insulation_scores_and_boundaries_start(connection, **kwargs):
-    """Start template runs by sending compiled input_json to run_workflow endpoint"""
+    """Start insulation scores and boundaries caller runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
     action = ActionResult(connection, 'insulation_scores_and_boundaries_start')
     my_auth = connection.ff_keys
@@ -2437,6 +2452,125 @@ def problematic_wfrs_fdn_start(connection, **kwargs):
     action.status = 'DONE'
     return action
 
+
+@check_function()
+def compartments_caller_status(connection, **kwargs):
+    """Calls compartments on mcool files produced by the Hi-C pipeline"""
+
+    check = CheckResult(connection, 'compartments_caller_status')
+    my_auth = connection.ff_keys
+    check.action = "compartments_caller_start"
+    check.description = ""
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
+    feature = 'compartments'
+    contact_type = 'cis'
+    binsize = 250000
+
+    # completion tag
+    tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
+    # check indexing queue
+
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+
+    # Build the first query, experiments that have run the hic pipeline. add date and lab if available
+    query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
+    print(query)
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    print(len(res))
+
+    if not res:
+        check.summary = 'All Good!'
+        return check
+
+    for a_res in res:
+        running = []
+        completed = {'patch_opf': [], 'add_tag': []}
+        missing_run = []
+        problematic_run = []
+        for pfile in a_res['processed_files']:
+            if pfile['file_format']['display_title'] == 'mcool':
+                file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                # Skip problematic mcools files for now, until qc metrics for mcools are in place
+                if file_meta.get('tags'):
+                    if 'skip_domain_callers' in file_meta['tags']:
+                        skip = True
+                        continue
+                workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
+        if skip:
+            continue
+        elif workflow_status_report['status'] == 'running':
+            running.append(pfile['accession'])
+        elif workflow_status_report['status'].startswith("no complete run, too many"):
+            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
+        elif workflow_status_report['status'] != 'complete':
+            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+            gc_content_file = wfr_utils.gc_content_ref.get(organism)
+            if not gc_content_file:
+                problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
+            else:
+                overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
+                inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
+                missing_run.append(['step1', ['compartments-caller', organism, overwrite],
+                                    inp_f, a_res['accession']])
+        else:
+            patch_data = [workflow_status_report['bwfile']]
+            completed['patch_opf'].append([a_res['accession'], patch_data])
+            completed['add_tag'] = [a_res['accession'], tag]
+
+        if running:
+            check.full_output['running_runs'].append({a_res['accession']: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({a_res['accession']: missing_run})
+        if completed.get('add_tag'):
+            assert not running
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+        if problematic_run:
+            check.full_output['problematic_runs'].append({a_res['accession']: problematic_run})
+
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.allow_action = True
+        check.status = 'WARN'
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.allow_action = True
+        check.status = 'WARN'
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def compartments_caller_start(connection, **kwargs):
+    """Start compartments caller runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'compartments_caller_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    insu_and_boun_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = insu_and_boun_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = insu_and_boun_check_result.get('completed_runs')
+
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='compartments')
+    return action
 
 ###################################
 ###################################

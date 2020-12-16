@@ -1171,7 +1171,7 @@
         }
     },
     "insulation_scores_and_boundaries_status": {
-        "title": "l) insulation scores and boundaries",
+        "title": "m) insulation scores and boundaries",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks_1": {
@@ -2078,6 +2078,20 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
+                }
+            }
+        }
+    },
+    "compartments_caller_status": {
+        "title": "m) Compartments",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
                 }
             }
         }

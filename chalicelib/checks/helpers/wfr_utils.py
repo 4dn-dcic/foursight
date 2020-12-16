@@ -146,6 +146,10 @@ workflow_details = {
     'insulation-scores-and-boundaries-caller': {
             "run_time": 200,
             "accepted_versions": ['v1']
+    },
+    'compartments-caller': {
+                "run_time": 200,
+                "accepted_versions": ['v1.2']
     }
 }
 
@@ -211,7 +215,8 @@ accepted_versions = {
 
 # Accepted versions for feature calling pipelines
 feature_calling_accepted_versions = {
-    'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"]
+    'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"],
+    'compartments': ["compartments_v1.2"]
 }
 # Reference Files
 bwa_index = {"human": "4DNFIZQZ39L9",
@@ -305,6 +310,14 @@ states_file_type = {
             'num_states': 9
             }
         }
+
+
+# GC% content reference files (compartments pipeline)
+gc_content_ref = {"human": "/files-reference/4DNFI7MCA4R6/",
+                  "mouse": "/files-reference/4DNFIOFXJOUA",
+                  'fruit fly': "/files-reference/4DNFID6KQ941",
+                  "chicken": "/files-reference/4DNFI19V162N",
+                  "zebrafish": "/files-reference/4DNFIHEHIZ3P"}
 
 
 def check_indexing(check, connection):
@@ -1231,7 +1244,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
               'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
-              'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files"}
+              'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files",
+              'compartments': "Compartments Signals - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
