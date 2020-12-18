@@ -1,3 +1,4 @@
+import os
 from foursight_core.checks.helpers.sys_utils import (
     parse_datetime_to_utc,
 )
@@ -668,18 +669,14 @@ def sync_google_analytics_data(connection, **kwargs):
 
     TODO: No use case yet, but we could accept start_date and end_date here & maybe in action eventually.
     '''
-
-    from ..utils import get_stage_info
-
     check = CheckResult(connection, 'sync_google_analytics_data')
 
-    if get_stage_info()['stage'] != 'prod':
+    if os.environ.get('chalice_stage', 'dev') != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
 
-
     recent_passing_run = False
-    recent_runs = check.get_result_history(0, 20, after_date = datetime.datetime.now() - datetime.timedelta(hours=3)) # Any runs of this type in last 3 hours.
+    recent_runs = check.get_result_history(0, 20, after_date=datetime.datetime.now() - datetime.timedelta(hours=3))
     for run in recent_runs:
         # recent_runs is a list of lists. [status, None, kwargdict]
         # Status is at index 0.
