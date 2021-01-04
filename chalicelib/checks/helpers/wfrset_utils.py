@@ -1,8 +1,3 @@
-# Step Settings
-lambda_limit = 750
-load_wait = 8
-random_wait = 20
-
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
@@ -217,6 +212,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "insulation-scores-and-boundaries-caller",
         "workflow_uuid": "dc9efc2d-baa5-4304-b72b-14610d8d5fc4",
         "parameters": {"binsize": -1, "windowsize": 100000},
+        "config": {'mem': 32},
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,
@@ -227,6 +223,18 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'file_type': 'boundaries',
                 'description': 'Boundaries calls on Hi-C contact matrices'}
             }
+        },
+        {
+        "app_name": "compartments-caller",
+        "workflow_uuid": "d07fa5d4-8721-403e-89b5-e8f323ac9ece",
+        "parameters": {"binsize": 250000, "contact_type": "cis"},
+        "config": {'mem': 4, 'cpu': 1, 'ebs_size': '1.1x', 'EBS_optimized': 'false'},
+        'custom_pf_fields': {
+            'bwfile': {
+                'genome_assembly': genome,
+                'file_type': 'compartments',
+                'description': 'Compartments signals on Hi-C contact matrices'}
+            },
         },
         {
         "app_name": "rna-strandedness",
