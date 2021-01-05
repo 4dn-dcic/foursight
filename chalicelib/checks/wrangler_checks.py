@@ -2419,7 +2419,7 @@ def sync_users_oh_status(connection, **kwargs):
                 score = s
         if score > 73:
             lab = [i['@id'] for i in all_labs if i['display_title'] == best][0]
-        return lab
+        return lab, score
 
     def create_user_from_oh_info(a_record, all_labs, all_grants):
         """will change based on oh column names"""
@@ -2447,8 +2447,8 @@ def sync_users_oh_status(connection, **kwargs):
             return user_info
 
         # find lab, assign @id
-        user_info['lab'] = find_lab(a_record, all_labs)
-        return user_info
+        user_info['lab'], lab_score = find_lab(a_record, all_labs)
+        return user_info, lab_score
 
     # get skipped users from this static section
     # if you want to skip more users, append their display titles to this static section as new line
@@ -2621,7 +2621,12 @@ def sync_users_oh_start(connection, **kwargs):
             ff_utils.post_metadata(a_user, 'user', my_auth)
     # delete users
     if actions.get('delete_user'):
-        for a_user in actions['add_user']:
+        for a_user in actions['delete_user']:
+            # Delete the user permissions: submits_for, groups, viewing_groups and lab.
+            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=submits_for')
+            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=lab')
+            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=viewing_groups')
+            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=groups')
             pass
             # TODO: Do we want to check if user has any trace on the portal
             # TODO: Do we want to email the user
