@@ -2289,7 +2289,8 @@ def get_oh_google_sheet():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, SCOPES)
     gc = gspread.authorize(creds)
     # Get the google sheet information
-    book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
+    # book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
+    book_id = '19qd1A3Hqz1ELvH_3ob9xLruWUdjHeJ1FNqGziiJfdkw' # This is for testing only, use above
     # TODO: change to AllMembers
     sheet_name = 'AllMembers_Testing_Updates'
     book = gc.open_by_key(book_id)
@@ -2427,8 +2428,10 @@ def sync_users_oh_status(connection, **kwargs):
         if not a_record.get('OH Account Email'):
             return
         user_info['email'] = simple(a_record['OH Account Email'])
-        user_info['first_name'] = a_record['DCIC First Name']
-        user_info['last_name'] = a_record['DCIC Last Name']
+        # user_info['first_name'] = a_record['DCIC First Name']
+        # user_info['last_name'] = a_record['DCIC Last Name']
+        user_info['first_name'] = a_record['OH First Name']
+        user_info['last_name'] = a_record['OH Last Name']
         user_info['job_title'] = a_record['OH Role']
         if not user_info['job_title']:
             user_info['job_title'] = 'Lab Associate'
@@ -2455,7 +2458,8 @@ def sync_users_oh_status(connection, **kwargs):
     # TODO: add skip information on the user items
     # Users we do not have oh to have, they are in static section
     skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
-    skip_users = ff_utils.get_metadata(skip_user_static_section_uuid, my_auth)['content'].split('\n')
+    #skip_users = ff_utils.get_metadata(skip_user_static_section_uuid, my_auth)['content'].split('\n')
+    skip_users = [] #this is for testing only
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
     # Collect information from data portal
     all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
@@ -2563,7 +2567,7 @@ def sync_users_oh_status(connection, **kwargs):
                     actions['patch_excel'][a_record['OH Account Email']] = updates
             # time to create a new account
             else:
-                user_data = create_user_from_oh_info(a_record, all_labs, all_grants)
+                user_data, lab_score = create_user_from_oh_info(a_record, all_labs, all_grants)
                 if not user_data.get('lab'):
                     add_awards = [i['uuid'] for i in all_grants if a_record['OH Grant'] in i['@id']]
                     if add_awards:
@@ -2573,11 +2577,11 @@ def sync_users_oh_status(connection, **kwargs):
                     problem.append(['cannot find the lab', a_record['OH Lab'], add_award])
                     continue
                 actions['add_user'].append(user_data)
-                updates = compare_record(a_record, user_data, all_labs, all_grants, new=True)
-                updates
-                if updates:
-                    updates['DCIC Active/Inactive'] = '1'
-                    actions['patch_excel'][a_record['OH Account Email']] = updates
+                # updates = compare_record(a_record, user_data, all_labs, all_grants, new=True)
+                # updates
+                # if updates:
+                #     updates['DCIC Active/Inactive'] = '1'
+                #     actions['patch_excel'][a_record['OH Account Email']] = updates
 
     all_patching_uuids = [v['DCIC UUID'] for k, v in actions['patch_excel'].items() if v.get('DCIC UUID')]
     # skip the total
@@ -2597,7 +2601,7 @@ def sync_users_oh_status(connection, **kwargs):
         if actions[a_key]:
             check.status = 'WARN'
             check.allow_action = True
-            check.summary += 'There are actions pending. '
+            check.summary = 'There are actions pending. '
 
     if problem:
         check.status = 'WARN'
