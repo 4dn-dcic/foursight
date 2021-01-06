@@ -17,7 +17,7 @@ You can also run a local deployment of the dev application by running 'chalice l
 Automatic deployments
 ---------------------
 
-The Github repository for Chalice is outfitted with Github Actions and can be deployed when code is merged into the production branch by running the action available from the `Action <https://github.com/4dn-dcic/foursight/actions>`_ tab on GitHub.
+The Github repository for Chalice is outfitted with Github Actions and can be deployed when code is merged into the master branch by running the action available from the `Action <https://github.com/4dn-dcic/foursight/actions>`_ tab on GitHub.
 
 Running tests
 -------------

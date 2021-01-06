@@ -154,10 +154,11 @@ In some cases you may not want your check to run on a CRON type schedule but sti
 
    {
       "my_first_check": {
-      "title": "My first check",
-      "group": "Awesome test checks",
-      "schedule": {},
-      "display": ["data", "staging"]
-   }
+        "title": "My first check",
+        "group": "Awesome test checks",
+        "schedule": {},
+        "display": ["data", "staging"]
+      }
+    }
 
 This check will show up in the production and staging UI displays and can be queued manually when logged in.
