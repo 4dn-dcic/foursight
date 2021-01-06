@@ -20,7 +20,7 @@ Testing tips
 Manual testing of your check
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Let's assume that you've already finished steps 1 through 3 in the list above (these are pretty much covered in the getting started and checks documentation). For step 4, it is recommended that you go into a local Python interpreter and run your check directly to ensure that it provides the output you want. Below is some code run from the root directory of this project that will outline manual testing of the ``items_created_in_the_past_day`` check contained within the ``wrangler_checks`` check module. The code below is run from the Python interpreter.
+Let's assume that you've already finished steps 1 through 3 in the list above (these are pretty much covered in the getting started and checks documentation). For step 4, it is recommended that you copy and modify the jupyter notebook ``LocalTest.ipynb`` that is included in the top level of the foursight repository.  Alternative go into a local Python interpreter and run your check directly to ensure that it provides the output you want. Below is some code run from the root directory of this project that will outline manual testing of the ``items_created_in_the_past_day`` check contained within the ``wrangler_checks`` check module. The code below is run from the Python interpreter.
 
 .. code-block:: python
 
@@ -28,12 +28,15 @@ Let's assume that you've already finished steps 1 through 3 in the list above (t
    # set the stage for foursight - currently 'dev' is the default
    # NOTE: you probably want to change this to 'prod' to get a result posted to s3 (see below)
    >>> app.set_stage('prod')
+   # get the utility object that holds the methods and/or classes you will need to run your check and get results
+   >>> apputil = app.app_utils_obj
    # create a Foursight connection to the 'mastertest' environment
-   >>> connection = app.init_connection('mastertest')
-   # run your check using the run_check_or_action utility
+   >>> connection = apputils.init_connection('mastertest')
+   # run your check using the run_check_or_action utility that is a method of the CheckHandler class That
+   # itself is an attribute of the CheckUtils object
    # args are: FS connection object, string check name, dict of kwargs to run with
    # it could be useful to add a break point within your check function to see what's happening
-   >>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {})
+   >>> apputils.check_handler.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {})
    # some possible output:
    {'name': 'items_created_in_the_past_day', 'title': 'Items Created In The Past Day',
    'description': 'No items have been created in the past day.', 'status': 'PASS',
@@ -41,7 +44,7 @@ Let's assume that you've already finished steps 1 through 3 in the list above (t
    'admin_output': None, 'ff_link': None}
 
    # you can also run with kwargs...
-   >>> app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
+   >>> apputils.check_handler.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'item_type': 'File'})
 
 It's important to note that if you return the ``check`` at the end of your function, then the result will always get written to S3. In this case, it is probably best to not overwrite the primary check result when testing (which is the one shown on the Foursight UI). Since running a check will always overwrite the ``latest`` result, you can test safely by omitting the ``primary=True`` key word argument and fetching those results with ``get_latest_result`` method of your check result.
 
@@ -50,10 +53,10 @@ To overwrite the primary check result, you must set the ``primary=True`` key wor
 .. code-block:: python
 
    # will overwrite the latest result for items_created_in_the_past_day, which won't display on the UI
-   app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {})
+   apputils.check_handler.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {})
 
    # will overwrite the latest + primary results for items_created_in_the_past_day and display it on the UI
-   app.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'primary': True})
+   apputils.check_handler.run_check_or_action(connection, 'wrangler_checks/items_created_in_the_past_day', {'primary': True})
 
 If writing any results to S3 is not desirable during your testing, either insert a break point before that function or not return the check result.
 
@@ -81,15 +84,17 @@ Actions function very similarly to checks when run individually. In fact, testin
 .. code-block:: python
 
    >>> import app
+   # get the utility object that holds the methods and/or classes you will need to run your check and get results
+   >>> apputil = app.app_utils_obj
    # create a Foursight connection to the 'mastertest' environment
-   >>> connection = app.init_connection('mastertest')
-   >>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'check_name': None, 'called_by': None})
+   >>> connection = apputils.init_connection('mastertest')
+   >>> apputils.check_handler.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'check_name': None, 'called_by': None})
    # some possible output:
    {'name': 'patch_file_size','description': None, 'status': 'DONE',
    'uuid': '2018-01-16T19:14:34.025445', 'output': [] ...}
 
    # you can also run with kwargs...
-   >>> app.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'check_name': 'some_check_name', 'called_by': 'some_uuid', 'some_arg': 'some_value'})
+   >>> apputils.check_handler.run_check_or_action(connection, 'wrangler_checks/patch_file_size', {'check_name': 'some_check_name', 'called_by': 'some_uuid', 'some_arg': 'some_value'})
 
 Manual testing of your schedule
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -101,9 +106,11 @@ Let's say you want to run a whole schedule and not an individual check. To test 
 .. code-block:: python
 
    >>> import app
+   # get the utility object that holds the methods and/or classes you will need to run your check and get results
+   >>> apputil = app.app_utils_obj
    # queue_scheduled_checks takes the environment name directly (not connection)
    # runs async; to see the results, see the Foursight UI, S3, or use Foursight API
-   >>> app.queue_scheduled_checks('mastertest', 'morning_checks')
+   >>> apputil.queue_scheduled_checks('mastertest', 'morning_checks')
 
 Some other testing notes
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,14 +150,14 @@ In some cases you may not want your check to run on a CRON type schedule but sti
 * The explicit method is to use the ``manual_checks`` schedule set up in exactly the same way as any of the other schedules.  This schedule is set to run effectively never by setting the CRON in the app to Feb 31st.
 * The other method is to leave the schedule empty but include the ``display`` property and list the environments that you wish the check to appear. eg.
 
-.. code-block::
+.. code-block:: JSON
 
    {
-       "my_first_check": {
-           "title": "My first check",
-           "group": "Awesome test checks",
-           "schedule": {},
-           "display": ["data", "staging"]
-       }
+      "my_first_check": {
+      "title": "My first check",
+      "group": "Awesome test checks",
+      "schedule": {},
+      "display": ["data", "staging"]
+   }
 
 This check will show up in the production and staging UI displays and can be queued manually when logged in.

@@ -51,7 +51,7 @@ Getting the check set up
 
 Before we write an action, we should set up a check to work with it. Let's write a stupid check that doesn't do anything useful- it will store a list of randomly generated integers in a list and store it as the ``full_output``.
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def make_random_test_nums(connection, **kwargs):
@@ -69,7 +69,7 @@ The associated check
 
 As stated earlier, all actions run from the UI are guaranteed to have the ``check_name`` and ``called_by`` kwargs; if they don't, they will not run. These allow you to easily get the dictionary data that corresponds to the JSON of the associated check result using the ``get_associated_check_result`` method of the action.
 
-.. code-block::
+.. code-block:: python
 
    <inside an action, so kwargs are available>
        action = ActionResult(connection, 'make_random_test_nums')
@@ -80,7 +80,7 @@ Writing the action
 
 Let's write an action that adds up all the numbers in the list within ``full_output`` for the result of the check that called it. It will be decorated with the ``@action_function()`` decorator and will be within one of our defined check module files. Note that actions can take key word arguments (kwargs) just like checks; our example below will demonstrate this with the ``offset`` value. Actions should return the action result object, just like checks return the check result.
 
-.. code-block::
+.. code-block:: python
 
    @action_function(offset=0)
    def add_random_nums(connection, **kwargs):
@@ -104,7 +104,7 @@ Linking the action to the check
 
 Now that we've written both the check and action functions, it's time to create the connection between the two. This is done using two fields on the check result, namely ``action`` and ``allow_action``. Add these lines to the check function that we wrote a little while back.
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def make_random_test_nums(connection, **kwargs):
@@ -129,7 +129,7 @@ Displaying action messages
 
 When executing an action from the UI, a message will be shown before the action is run. Anything can be put in this message and it has a default value of ``'Are you sure you want to run this action?'``. To change this message, set the ``action_message`` field on the check. This should probably happen around the place that ``allow_action`` is set to true. Using our example from above:
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def make_random_test_nums(connection, **kwargs):
