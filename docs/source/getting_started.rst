@@ -18,7 +18,7 @@ Installing dependencies
 
 Before developing with Foursight, you must install the required Python packages and set up your AWS credentials locally. It is best practice to use a virtual environment. Packages can be installed with pip using the following command from the root Foursight directory:
 
-.. code-block::
+.. code-block:: python
 
    pip install -r requirements.txt
 
@@ -36,7 +36,7 @@ The most fundamental unit of Foursight is the check. These encapsulate Python co
 
 Here's a simple check and then we'll go through the details:
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def my_first_check(connection, **kwargs):
