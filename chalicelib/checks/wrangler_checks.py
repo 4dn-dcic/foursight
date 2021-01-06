@@ -2451,7 +2451,9 @@ def sync_users_oh_status(connection, **kwargs):
 
         # find lab, assign @id
         user_info['lab'], lab_score = find_lab(a_record, all_labs)
-        return user_info, lab_score
+        user_info['lab_score'] = lab_score
+        user_info['OH_lab'] = a_record['OH Lab']
+        return user_info
 
     # get skipped users from this static section
     # if you want to skip more users, append their display titles to this static section as new line
@@ -2494,7 +2496,7 @@ def sync_users_oh_status(connection, **kwargs):
     # keep a tally of all actions that we need to perform
     actions = {'delete_user': [],
                'add_user': [],
-               'inactivate_excel': [],
+               'inactivate_excel': {},
                'update_excel': {},
                'patch_excel': {},
                'add_excel': []
@@ -2532,15 +2534,8 @@ def sync_users_oh_status(connection, **kwargs):
                         actions['update_excel'][a_record['DCIC UUID']] = updates
             # we deleted the user
             else:
-                # check if we have a deleted record
-                try:
-                    resp = ff_utils.get_metadata(a_record['DCIC UUID'], my_auth)
-                    if resp['status'] == 'deleted':
-                        actions['inactivate_excel'].append([a_record['DCIC UUID'],
-                                                           {'DCIC Active/Inactive': "0"}])
-                except:
-                    # if we purge users in the future, we might hit this point without an actual problem
-                    problem.append(['Can not find previously assigned 4DN uuid', a_record['DCIC UUID']])
+                # This record should have been already deleted in the first round, set to innactive on excel
+                actions['inactivate_excel'][a_record['DCIC UUID']] = {'DCIC Active/Inactive': "0"}
         # if we did not assign a uuid
         else:
             # did OH say inactive, then do nothing
@@ -2561,13 +2556,13 @@ def sync_users_oh_status(connection, **kwargs):
                     problem_msg = 'NEW OH Line for existing user, {}'.format(user['uuid'])
                     problem.append([problem_msg, oh_mail])
                     continue
-                updates = compare_record(a_record, user, all_labs, all_grants)
+                updates = compare_record(a_record, user, all_labs, all_grants, new=True)
                 if updates:
                     updates['DCIC Active/Inactive'] = '1'
                     actions['patch_excel'][a_record['OH Account Email']] = updates
             # time to create a new account
             else:
-                user_data, lab_score = create_user_from_oh_info(a_record, all_labs, all_grants)
+                user_data = create_user_from_oh_info(a_record, all_labs, all_grants)
                 if not user_data.get('lab'):
                     add_awards = [i['uuid'] for i in all_grants if a_record['OH Grant'] in i['@id']]
                     if add_awards:
@@ -2622,15 +2617,17 @@ def sync_users_oh_start(connection, **kwargs):
     # add users
     if actions.get('add_user'):
         for a_user in actions['add_user']:
+            del a_user['lab_score']
+            del a_user['OH_lab']
             ff_utils.post_metadata(a_user, 'user', my_auth)
     # delete users
     if actions.get('delete_user'):
         for a_user in actions['delete_user']:
             # Delete the user permissions: submits_for, groups, viewing_groups and lab.
-            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=submits_for')
-            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=lab')
-            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=viewing_groups')
-            # ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=groups')
+            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=submits_for')
+            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=lab')
+            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=viewing_groups')
+            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=groups')
             pass
             # TODO: Do we want to check if user has any trace on the portal
             # TODO: Do we want to email the user
@@ -2660,6 +2657,12 @@ def sync_users_oh_start(connection, **kwargs):
         oh_mail = a_record['OH Account Email']
         if oh_mail in patch_set:
             a_record.update(patch_set[oh_mail])
+    # inactivate user from dcic in excel
+    inactivate_set = actions['inactivate_excel']
+    for a_record in user_list:
+        dcic_uuid = a_record['DCIC UUID']
+        if dcic_uuid in inactivate_set:
+            a_record.update(inactivate_set[dcic_uuid])
     # add new lines for new users
     for new_line in actions['add_excel']:
         temp = OrderedDict((key, "") for key in rows)
