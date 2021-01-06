@@ -2451,6 +2451,8 @@ def sync_users_oh_status(connection, **kwargs):
 
         # find lab, assign @id
         user_info['lab'], lab_score = find_lab(a_record, all_labs)
+        # Adding more information to the check to check by eye that the labs indeed correspond to OH labs
+        # It will be removed in the action to create the new user in the portal
         user_info['lab_score'] = lab_score
         user_info['OH_lab'] = a_record['OH Lab']
         return user_info
@@ -2461,7 +2463,7 @@ def sync_users_oh_status(connection, **kwargs):
     # Users we do not have oh to have, they are in static section
     skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
     #skip_users = ff_utils.get_metadata(skip_user_static_section_uuid, my_auth)['content'].split('\n')
-    skip_users = [] #this is for testing only
+    skip_users = []  # this temporary for testing only
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
     # Collect information from data portal
     all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
