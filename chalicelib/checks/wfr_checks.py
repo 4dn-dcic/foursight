@@ -531,7 +531,8 @@ def bed2beddb_status(connection, **kwargs):
     if not res_all:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
+
+    check = check_runs_without_output(res_all, check, 'bedtobeddb', wfr_utils.workflow_details, my_auth, start)
     if missing:
         check.full_output['missing_assembly'] = missing
         msg = str(len(missing)) + ' files missing genome assembly'
