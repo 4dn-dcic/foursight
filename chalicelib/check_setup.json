@@ -672,6 +672,20 @@
             }
         }
     },
+    "compartments_caller_status": {
+        "title": "m) Compartments",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "consistent_replicate_info": {
         "title": "Replicate Experiment Sets with inconsistent replicate information",
         "group": "Badge checks",
@@ -749,6 +763,7 @@
             "morning_checks_1": {
                 "all": {
                     "kwargs": {
+                        "dependencies": [],
                         "primary": true
                     }
                 }
@@ -851,6 +866,18 @@
                     "kwargs": {
                         "primary": true
                     }
+                }
+            }
+        }
+    },
+    "external_submission_but_missing_dbxrefs": {
+        "title": "Items with external_submission but missing dbxrefs",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -1198,16 +1225,12 @@
             }
         }
     },
-    "long_running_wfrs_fdn_status" : {
+    "long_running_wfrs_fdn_status": {
         "title": "x) Long Running Runs",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks_2": {
-                "": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1619,16 +1642,12 @@
             }
         }
     },
-    "problematic_wfrs_fdn_status" : {
+    "problematic_wfrs_fdn_status": {
         "title": "x) Errored Runs",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks_1": {
-                "": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1740,44 +1759,6 @@
         "title": "Replicate experiment sets with replicate number issues",
         "group": "Badge checks",
           "schedule": {
-            "morning_checks_3": {
-                "all": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "problematic_wfrs_fdn_status" : {
-        "title": "x) Errored Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "long_running_wfrs_fdn_status" : {
-        "title": "x) Long Running Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "elastic_search_space" : {
-        "title": "ES Disk Space Check",
-        "group": "Elasticsearch checks",
-        "schedule": {
             "morning_checks_3": {
                 "all": {
                     "dependencies": [],
@@ -2062,32 +2043,6 @@
                     }
                 },
                 "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "external_submission_but_missing_dbxrefs": {
-        "title": "Items with external_submission but missing dbxrefs",
-        "group": "Audit checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "compartments_caller_status": {
-        "title": "m) Compartments",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks_2": {
-                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
