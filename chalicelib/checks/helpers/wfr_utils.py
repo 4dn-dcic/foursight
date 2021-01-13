@@ -7,6 +7,7 @@ from operator import itemgetter
 
 from foursight_core.checks.helpers.wfr_utils import (
     lambda_limit,
+    get_wfr_out,
     check_runs_without_output
 )
 from .wfrset_utils import (
@@ -394,7 +395,7 @@ def extract_nz_chr(acc, auth):
     # return result if both exist
     return nz_num, chrsize, max_distance
 
-
+# This function will be replaced by the foursight-core function
 def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
@@ -760,7 +761,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
             'f_size': str(f_size)+'GB'}
     return file_dict, refs
 
-
+# This function will be replaced by the foursight-core function
 def check_runs_without_output(res, check, run_name, my_auth, start):
     """Common processing for checks that are running on files and not producing output files
     like qcs ones producing extra files"""
@@ -883,7 +884,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             part2 = 'ready'
             for pair in exp_files[exp]:
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'bwa-mem', workflow_details, all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     exp_bams.append(step1_result['out_bam'])
@@ -910,7 +911,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step2s = []
             for bam in exp_bams:
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
-                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', workflow_details, all_wfrs=all_wfrs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -953,7 +954,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', workflow_details, all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
@@ -1088,7 +1089,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 part2 = 'ready'
                 input_bam = ""
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', workflow_details, all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     input_bam = step1_result['out_bam']
@@ -1114,7 +1115,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                     continue
 
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == input_bam][0]
-                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', workflow_details, all_wfrs=all_wfrs)
                 # if successful
                 if step2_result['status'] == 'complete':
                     exp_margi_files.append(step2_result['out_pairs'])
@@ -1159,7 +1160,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', workflow_details, all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('out_mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
@@ -1475,7 +1476,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
                 elif paired == 'No':
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
-                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', workflow_details, all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     all_files.extend([step1_result['filtered_sorted_deduped_bam'],
@@ -1663,7 +1664,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             elif paired == 'No':
                 pars['rna.endedness'] = 'single'
                 input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0]][0]
-            step1_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
+            step1_result = get_wfr_out(input_resp, app_name, workflow_details, all_wfrs=all_wfrs)
 
             # if successful
             if step1_result['status'] == 'complete':
@@ -1720,7 +1721,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         # run step2 if step1 s are complete
         else:
             step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
-            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', workflow_details, all_wfrs=all_wfrs, md_qc=True)
 
             # if successful
             if step2_result['status'] == 'complete':

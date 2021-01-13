@@ -5,6 +5,7 @@ from .helpers import wfr_utils
 from .helpers import wfrset_utils
 from foursight_core.checks.helpers.wfr_utils import (
     check_runs_without_output,
+    get_wfr_out,
     lambda_limit
 )
 
@@ -14,6 +15,8 @@ from foursight_core.checks.helpers.wfr_utils import (
 # that requires initialization with foursight prefix.
 from .helpers.confchecks import *
 
+# get workflow details dictionary
+workflow_details = wfr_utils.workflow_details
 
 @check_function()
 def md5run_status_extra_file(connection, **kwargs):
@@ -113,7 +116,7 @@ def md5run_status(connection, **kwargs):
         if not head_info:
             no_s3_file.append(file_id)
             continue
-        md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
+        md5_report = get_wfr_out(a_file, "md5", workflow_details, key=my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
         elif md5_report['status'].startswith("no complete run, too many"):
@@ -236,7 +239,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'fastqc', my_auth, start)
+    check = check_runs_without_output(res, check, 'fastqc', workflow_details, my_auth, start)
     return check
 
 
@@ -310,7 +313,7 @@ def pairsqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
+    check = check_runs_without_output(res, check, 'pairsqc-single', workflow_details, my_auth, start)
     return check
 
 
@@ -423,7 +426,7 @@ def bg2bw_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
+    check = check_runs_without_output(res, check, 'bedGraphToBigWig', workflow_details, my_auth, start)
     return check
 
 
@@ -532,7 +535,7 @@ def bed2beddb_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    check = check_runs_without_output(res_all, check, 'bedtobeddb', wfr_utils.workflow_details, my_auth, start)
+    check = check_runs_without_output(res_all, check, 'bedtobeddb', workflow_details, my_auth, start)
     if missing:
         check.full_output['missing_assembly'] = missing
         msg = str(len(missing)) + ' files missing genome assembly'
@@ -1572,7 +1575,7 @@ def bed2multivec_status(connection, **kwargs):
         check.status = 'WARN'
         return check
 
-    check = check_runs_without_output(healthy_res, check, 'bedtomultivec', my_auth, start)
+    check = check_runs_without_output(healthy_res, check, 'bedtomultivec', workflow_details, my_auth, start)
     if prb_res:
         check.full_output['prob_files'] = [{'missing tag': [i[0]['accession'] for i in prb_res if i[1] == 'missing_tag'],
                                             'invalid tag': [i[0]['accession'] for i in prb_res if i[1] == 'invalid_tag']}]
@@ -1665,7 +1668,7 @@ def rna_strandedness_status(connection, **kwargs):
     missing_run = []
 
     for a_file in targets:
-        strandedness_report = wfr_utils.get_wfr_out(a_file, "rna-strandedness", key=my_auth, versions='v2', md_qc=True)
+        strandedness_report = get_wfr_out(a_file, "rna-strandedness", workflow_details, key=my_auth, versions='v2', md_qc=True)
         if strandedness_report['status'] == 'running':
             running.append(a_file['accession'])
         elif strandedness_report['status'] != 'complete':
@@ -1830,7 +1833,7 @@ def bamqc_status(connection, **kwargs):
         return check
     check.summary = '{} files need a bamqc'. format(len(res))
     check.status = 'WARN'
-    check = check_runs_without_output(res, check, 'bamqc', my_auth, start)
+    check = check_runs_without_output(res, check, 'bamqc', workflow_details, my_auth, start)
     return check
 
 
@@ -1914,8 +1917,9 @@ def fastq_first_line_status(connection, **kwargs):
     missing_run = []
 
     print('About to check for workflow runs for each file')
+
     for a_file in targets:
-        fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
+        fastq_formatqc_report = get_wfr_out(a_file, "fastq-first-line", workflow_details, key=my_auth, md_qc=True)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
         elif fastq_formatqc_report['status'] != 'complete':
@@ -2032,7 +2036,7 @@ def bam_re_status(connection, **kwargs):
             if nz not in missing_nz:
                 missing_nz.append(nz)
 
-    check = check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
+    check = check_runs_without_output(filtered_res, check, 're_checker_workflow', workflow_details, my_auth, start)
     if missing_nz:
         skipped_files = str(len(res) - len(filtered_res))
         nzs = ', '.join(missing_nz)
@@ -2146,7 +2150,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                     if 'skip_domain_callers' in file_meta['tags']:
                         skip = True
                         continue
-                insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
+                insu_and_boun_report = get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", workflow_details, key=my_auth)
         if skip:
             continue
         elif insu_and_boun_report['status'] == 'running':
@@ -2241,8 +2245,7 @@ def long_running_wfrs_fdn_status(connection, **kwargs):
     check.full_output = []
     check.status = 'PASS'
     check.allow_action = False
-    # get workflow run limits
-    workflow_details = wfr_utils.workflow_details
+
     # find all runs thats status is not complete or error
     q = '/search/?type=WorkflowRun&run_status!=complete&run_status!=error'
     running_wfrs = ff_utils.search_metadata(q, my_auth)
@@ -2505,7 +2508,7 @@ def compartments_caller_status(connection, **kwargs):
                     if 'skip_domain_callers' in file_meta['tags']:
                         skip = True
                         continue
-                workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
+                workflow_status_report = get_wfr_out(file_meta, "compartments-caller", workflow_details, key=my_auth)
         if skip:
             continue
         elif workflow_status_report['status'] == 'running':
@@ -2599,7 +2602,7 @@ def template_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'template', my_auth, start)
+    check = check_runs_without_output(res, check, 'template', workflow_details, my_auth, start)
     return check
 
 
