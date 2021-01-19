@@ -80,6 +80,8 @@ Creating a schedule
 
 To get your checks running on a CRON or rate schedule, the current method is to add the desired schedule at the top of app.py. ``queue_check_group`` will cause your checks to be added to an AWS SQS queue that will kick of asynchronous lambdas that will run them. The numbers of currently running and pending checks are displayed at the top of the Foursight UI. The code below defines a ``morning_checks`` schedule that will be used in the following steps.
 
+**WARNING**: If you remove a CRON or RATE schedule - foursight does not currently delete the lambda that is created.  Therefore, if you do remove a CRON from the scheduling mapping you need to delete the corresponding lambda from AWS. The lambdas have names like ``foursight-dev-hourly_checks_1`` or ``foursight-prod-monthly_checks``.  Failure to delete lambdas that should no longer be used can lead to increased load and unwanted costs.
+
 .. code-block::
 
    @app.schedule(Cron(0, 11, '*', '*', '?', '*'))
