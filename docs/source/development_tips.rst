@@ -142,6 +142,9 @@ Or scheduling with a CRON expression... for more info, `see here <http://docs.aw
    def daily_checks(event):
        queue_scheduled_checks('all', 'daily_checks')
 
+
+**WARNING**: If you remove a CRON or RATE schedule - foursight does not currently delete the lambda that is created.  Therefore, if you do remove a CRON from the scheduling mapping you need to delete the corresponding lambda from AWS. The lambdas have names like ``foursight-dev-hourly_checks_1`` or ``foursight-prod-monthly_checks``.  Failure to delete lambdas that should no longer be used can lead to increased load and unwanted costs.
+
 Setting up a schedule for manual checks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
