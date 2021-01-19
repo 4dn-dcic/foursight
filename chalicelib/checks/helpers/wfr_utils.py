@@ -4,16 +4,11 @@ import random
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
+from . import wfrset_utils
 
-from foursight_core.checks.helpers.wfr_utils import (
-    lambda_limit,
-    check_runs_without_output
-)
-from .wfrset_utils import (
-    step_settings,
-)
-load_wait = 8
-random_wait = 20
+lambda_limit = wfrset_utils.lambda_limit
+random_wait = wfrset_utils.random_wait
+load_wait = wfrset_utils.load_wait
 
 
 # wfr_name, accepted versions, expected run time # wfr_name, accepted versions,
@@ -1364,7 +1359,7 @@ def start_missing_run(run_info, auth, env):
                 else:
                     break
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
-    settings = step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
+    settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
     return url
 

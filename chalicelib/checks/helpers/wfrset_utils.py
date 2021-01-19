@@ -1,3 +1,8 @@
+# Step Settings
+lambda_limit = 750
+load_wait = 8
+random_wait = 20
+
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
