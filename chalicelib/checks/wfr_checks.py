@@ -56,7 +56,7 @@ def md5run_status(connection, **kwargs):
     start = datetime.utcnow()
     check = CheckResult(connection, 'md5run_status')
     my_auth = connection.ff_keys
-    check.action = "md5run_start"
+    # check.action = "md5run_start"
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
@@ -158,7 +158,7 @@ def md5run_status(connection, **kwargs):
     return check
 
 
-@action_function(start_missing=True, start_not_switched=True)
+# @action_function(start_missing=True, start_not_switched=True)
 def md5run_start(connection, **kwargs):
     """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
