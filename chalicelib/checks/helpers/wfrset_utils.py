@@ -100,7 +100,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'imargi-processing-fastq',
         'workflow_uuid': '7eedaaa8-4c2e-4c71-9d9a-04f05ab1becf',
-        'config': {'mem': 8, 'cpu': 4, 'ebs_size': '10x', 'EBS_optimized': 'true'},
+        'config': {'mem': 8, 'cpu': 4, 'ebs_size': '12x', 'EBS_optimized': 'true'},
         'parameters': {"nThreads": 4},
         'custom_pf_fields': {
             'out_bam': {
