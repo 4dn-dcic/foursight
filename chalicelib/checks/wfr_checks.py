@@ -1896,14 +1896,8 @@ def fastq_first_line_status(connection, **kwargs):
     # The search
     print('About to query ES for files')
     res = ff_utils.search_metadata(query, key=my_auth)
-    targets = []
 
-    print('About to check metadata field for each result in the search')
-    for re in res:
-        if not re.get('file_first_line'):
-            targets.append(re)
-
-    if not targets:
+    if not res:
         check.summary = "All good!"
         return check
 
@@ -1911,7 +1905,7 @@ def fastq_first_line_status(connection, **kwargs):
     missing_run = []
 
     print('About to check for workflow runs for each file')
-    for a_file in targets:
+    for a_file in res:
         fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
