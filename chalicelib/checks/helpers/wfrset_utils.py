@@ -325,7 +325,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "fastq-first-line",
         "workflow_uuid": "93a1a931-d55d-4623-adfb-0fa735daf6ae",
         "overwrite_input_extra": False,
-        'config': {'mem': 0.5, 'cpu': 1}
+        'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro"}
         },
         {
         "app_name": "re_checker_workflow",
