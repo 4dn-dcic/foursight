@@ -244,7 +244,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "rna-strandedness",
         "workflow_uuid": "af97597e-877a-40b7-b211-98ec0cfb17b4",
-        'config': {'mem': 0.5, 'cpu': 1, 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
+        'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro", 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
         },
 
         # RNA SEQ
