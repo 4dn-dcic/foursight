@@ -361,7 +361,12 @@ def repsets_have_bio_reps(connection, **kwargs):
             else:
                 audit_key = RELEASED_KEY
 
+            # check if single biological replicate
             if len(rep_dict.keys()) == 1:
+                many_replicates = '/static-sections/85520ecd-8df0-4d29-bd78-d8efa1f12ecf/'
+                # this header labels an ExpSet with many replicates, but only one present in the database (typically imaging datasets)
+                if many_replicates in result.get('static_headers', []):  # skip false positive
+                    continue
                 audits[audit_key]['single_biorep'].append(result['@id'])
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
