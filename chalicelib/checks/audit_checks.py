@@ -216,7 +216,7 @@ def expset_opf_unique_files(connection, **kwargs):
             opf_sets.append(expset)
 
     errors = {}
-    for expset in opf_exps:
+    for expset in opf_sets:
         # skip sets without experiments
         if not expset.get('experiments_in_set'):
             continue
