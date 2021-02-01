@@ -6,10 +6,10 @@ def calculate_qc_metric_rnaseq(file_uuid, key):
     with quality_metric summary'''
     res = ff_utils.get_metadata(file_uuid, key=key)
     qc_uuid = res['quality_metric']['uuid']
-    qc_list = ff_utils.get_metadata(qc_uuid, key=key)
+    quality_metric = ff_utils.get_metadata(qc_uuid, key=key)
     qc_summary = []
 
-    for qcs_item in qc_list.get('quality_metric_summary', []):
+    for qcs_item in quality_metric.get('quality_metric_summary', []):
         qc_summary.append(qcs_item)
     res = ff_utils.patch_metadata({'quality_metric_summary': qc_summary}, file_uuid, key=key)
     return res
