@@ -128,8 +128,7 @@
                 "data": {
                     "dependencies": [],
                     "kwargs": {
-                        "primary": true,
-                        "queue_action": "prod"
+                        "primary": true
                     }
                 }
             }
