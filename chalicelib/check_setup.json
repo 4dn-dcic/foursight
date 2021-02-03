@@ -1102,7 +1102,7 @@
         "title": "RNA-seq tsv/bam files without quality metric summary",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks_4": {
+            "manual_checks": {
                 "data": {
                     "dependencies": [],
                     "kwargs": {
