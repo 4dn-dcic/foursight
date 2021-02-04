@@ -355,7 +355,7 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=False)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -2369,7 +2369,10 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
 
     for a_wfr in errored_wfrs:
         wfr_type, time_info = a_wfr['display_title'].split(' run ')
-        wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        if len(wfr_type.strip().split(' ')) == 2:
+            wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        else:
+            wfr_type_base, wfr_version, tag = wfr_type.strip().split(' ')
         run_type = wfr_type_base.strip()
         # categorize
         desc = a_wfr.get('description', '')
