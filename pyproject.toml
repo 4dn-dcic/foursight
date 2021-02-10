@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "1.4.19"
+version = "1.4.21"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -31,7 +31,7 @@ foursight-core = "0.1.5"
 pytest = "5.1.2"
 
 [tool.poetry.dev-dependencies]
-chalice = "^1.21.6"
+chalice = "^1.22.1"
 pytest-cov = "2.7.1"
 flaky = "3.6.1"
 
