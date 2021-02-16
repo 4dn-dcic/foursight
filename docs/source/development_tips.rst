@@ -29,7 +29,7 @@ Let's assume that you've already finished steps 1 through 3 in the list above (t
    # NOTE: you probably want to change this to 'prod' to get a result posted to s3 (see below)
    >>> app.set_stage('prod')
    # get the utility object that holds the methods and/or classes you will need to run your check and get results
-   >>> apputil = app.app_utils_obj
+   >>> apputils = app.app_utils_obj
    # create a Foursight connection to the 'mastertest' environment
    >>> connection = apputils.init_connection('mastertest')
    # run your check using the run_check_or_action utility that is a method of the CheckHandler class That
