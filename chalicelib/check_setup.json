@@ -832,7 +832,9 @@
         "schedule": {
             "thirty_min_checks": {
                 "all": {
-                    "dependencies": [],
+                    "dependencies": [
+                        "expset_opfsets_unique_titles"
+                    ],
                     "kwargs": {
                         "primary": true
                     }
