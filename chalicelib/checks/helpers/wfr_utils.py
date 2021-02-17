@@ -250,7 +250,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/',
                    'AluI': '/files-reference/4DNFIN4DB5O8/',
                    'DdeI': '/files-reference/4DNFI4YGL4RE/',
-                   'DdeI and DpnII': '/files-reference/4DNFIS1FCRRK/'
+                   'DdeI and DpnII': '/files-reference/4DNFIS1FCRRK/',
+                   'MseI': '/files-reference/4DNFIMD6BNQ8/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
