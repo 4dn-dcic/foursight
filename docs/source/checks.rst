@@ -240,8 +240,8 @@ For example, let's use the check that we've been demonstrating over the past cou
 .. code-block:: JSON
 
    {
-       'Experiment': [ ... ],
-       'Biosample': [ ... ]
+       "Experiment": [ ... ],
+       "Biosample": [ ... ]
    }
 
 To achieve this, we will use manipulate the ``item_type`` key word argument and initialize the check running for ``Biosample`` with the results of the previous check that used ``Experiment``. All we need to do is change a couple lines from the ``items_created_in_the_past_day`` check that we defined above
