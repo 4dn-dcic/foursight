@@ -48,8 +48,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         },
         {
         'app_name': 'pairsqc-single',
-        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3',
-        "config": {"ebs_size": 10}
+        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3'
     },
         {
         'app_name': 'bwa-mem',
