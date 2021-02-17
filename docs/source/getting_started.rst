@@ -56,7 +56,7 @@ In the body of the check, the first thing to do is initialize a CheckResult obje
 
 The CheckResult has a number of fields that can be set, namely: ``status``\ , ``summary``\ , ``description``\ , ``full_output``\ , and ``brief_output`` (and a few others). These are the displayed values for the check. With the exception of status, they are all flexible and can be set to any value you choose within your check. Status must be one of: ``PASS``\ , ``WARN``\ , ``FAIL``\ , ``ERROR``\ , or ``IGNORE``. These fields determine how the check is displayed. ``full_output`` is generally considered the entire output of the check that you care about, whereas ``brief_output`` is the output relevant to the final status of the check. Consider the revised check, below:
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def my_first_check(connection, **kwargs):
@@ -82,7 +82,7 @@ To get your checks running on a CRON or rate schedule, the current method is to 
 
 **WARNING**: If you remove a CRON or RATE schedule - foursight does not currently delete the lambda that is created.  Therefore, if you do remove a CRON from the scheduling mapping you need to delete the corresponding lambda from AWS. The lambdas have names like ``foursight-dev-hourly_checks_1`` or ``foursight-prod-monthly_checks``.  Failure to delete lambdas that should no longer be used can lead to increased load and unwanted costs.
 
-.. code-block::
+.. code-block:: python
 
    @app.schedule(Cron(0, 11, '*', '*', '?', '*'))
    def morning_checks(event):
@@ -95,7 +95,7 @@ Adding checks to check_setup
 
 Let's say we've created two checks in the system_checks.py check module, named ``my_first_check`` and ``my_second_check``. To get these checks to run, we must create an entry for them in check_setup.json. For this example, we already have a schedule named ``morning_checks`` which was set up in the previous step. The first step is to add empty object entries in check_setup.json with keys that are EXACTLY equal to the names of our check functions. To these , add a string title and group. The group can be any string and is used to organize the checks on the UI.
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "my_first_check": {
@@ -110,7 +110,7 @@ Let's say we've created two checks in the system_checks.py check module, named `
 
 Now we need to add the schedule. Include a new key in each check entry called ``schedule`` and, under that, key another object with the names of the Foursight environments that you want the checks to run on. In this example, we use ``all``\ , which means the checks will run on every environment. Recall that ``morning_checks`` is the name of the schedule with a CRON that causes it to run at 6:00 am EST every day.
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "my_first_check": {
@@ -135,7 +135,7 @@ Now we need to add the schedule. Include a new key in each check entry called ``
 
 Almost there! The last step is to add the parameters to the schedule for running the checks. In the innermost object in our JSON (currently keyed by ``all``\ ), we can specify dependencies that must be required for the check to run. This allows you to order the runs the checks within a schedule. So, if we wanted to ensure that ``my_second_check`` doesn't run until ``my_first_check`` is finished, we can leverage the ``dependencies`` field of ``my_second_check``. This field is simply a list of other check names that we the check to depend on. If you have no dependencies to specify, you may omit the field. Here is such a setup:
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "my_first_check": {
@@ -162,7 +162,7 @@ Almost there! The last step is to add the parameters to the schedule for running
 
 Lastly, you can also add specific key word arguments (\ ``kwargs``\ ) for running each check in each schedule/environment combination. If you do not specify ``kwargs``\ , the default ones for the check will be used. Arguments are input as an object under the ``kwargs`` at the same level that ``id`` and ``dependencies`` are defined. Let's say we wrote our ``my_first_check`` function to use a keyword called ``my_arg`` and we want to give it different values for running on the ``data`` and ``staging`` environments (both under the ``morning_checks`` schedule). The code below achieves this.
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "my_first_check": {
@@ -189,7 +189,7 @@ Using the UI
 
 The easiest way to interact with Foursight is through the UI, which allows viewing and running of checks. Here is `production Foursight <https://foursight.4dnucleome.org/view/all>`_ and here is `development Foursight <https://kpqxwgx646.execute-api.us-east-1.amazonaws.com/api/view/all>`_. Checks are presented in groups, as specified in ``check_setup.json``. Opening any group by clicking on it presents information on individual checks, which be further examined by clicking on the check title. If you have administrator privileges, you can log into your account and queue checks for running directly from the page. When doing this, you can adjust key word arguments for the check directly on the UI; this allows a high level of flexibility, including the choice to not overwrite the primary record for the check by setting ``primary`` to something else besides ``True``. Please note that running any checks requires either administrator privileges or a special authorization code.
 
-For any individual check on the /view/ page, you can access the past history of the checks on the /history/ page: ``https://foursight.4dnucleome.org/history/<environ>/<check>``. This will give a paginated list of past runs for that check or action and displauy the status and key word arguments used to run the check. From there, individual results can be viewed in JSON format if you are logged in as admin.
+For any individual check on the /view/ page, you can access the past history of the checks on the /history/ page: ``https://foursight.4dnucleome.org/history/<environ>/<check>``. This will give a paginated list of past runs for that check or action and display the status and key word arguments used to run the check. From there, individual results can be viewed in JSON format if you are logged in as admin.
 
 Foursight API basics
 --------------------
