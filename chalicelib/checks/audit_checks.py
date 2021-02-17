@@ -42,7 +42,7 @@ def biosource_cell_line_value(connection, **kwargs):
     '''
     check = CheckResult(connection, 'biosource_cell_line_value')
 
-    cell_line_types = ["primary cell", "primary cell line", "immortalized cell line",
+    cell_line_types = ["primary cell line", "immortalized cell line",
                        "in vitro differentiated cells", "induced pluripotent stem cell line",
                        "stem cell", "stem cell derived cell line"]
     biosources = ff_utils.search_metadata('search/?type=Biosource&frame=object',
