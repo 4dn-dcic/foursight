@@ -42,24 +42,21 @@ def biosource_cell_line_value(connection, **kwargs):
     '''
     check = CheckResult(connection, 'biosource_cell_line_value')
 
-    cell_line_types = ["primary cell line", "immortalized cell line",
-                       "in vitro differentiated cells", "induced pluripotent stem cell line",
-                       "stem cell", "stem cell derived cell line"]
-    biosources = ff_utils.search_metadata('search/?type=Biosource&frame=object',
-                                          key=connection.ff_keys, page_limit=200)
+    cell_line_types = ["primary cell", "primary cell line", "immortalized cell line",
+                       "induced pluripotent stem cell", "stem cell", "stem cell derived cell line"]
+    biosources = ff_utils.search_metadata(
+        'search/?type=Biosource&cell_line.display_title=No+value&frame=object' +
+        ''.join(['&biosource_type=' + c for c in cell_line_types]),
+        key=connection.ff_keys)
     missing = []
     for biosource in biosources:
-        # check if the biosource type is a cell/cell line
-        if biosource.get('biosource_type') and biosource.get('biosource_type') in cell_line_types:
-            # append if cell_line field is missing
-            if not biosource.get('cell_line'):
-                missing.append({'uuid': biosource['uuid'],
-                                '@id': biosource['@id'],
-                                'biosource_type': biosource.get('biosource_type'),
-                                'description': biosource.get('description'),
-                                'error': 'Missing cell_line metadata'})
+        missing.append({'uuid': biosource['uuid'],
+                        '@id': biosource['@id'],
+                        'biosource_type': biosource.get('biosource_type'),
+                        'description': biosource.get('description'),
+                        'error': 'Missing cell_line OntologyTerm'})
     check.full_output = missing
-    check.brief_output = [item['uuid'] for item in missing]
+    check.brief_output = [item['@id'] for item in missing]
     if missing:
         check.status = 'WARN'
         check.summary = 'Cell line biosources found missing cell_line metadata'
