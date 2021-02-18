@@ -412,7 +412,7 @@ def check_help_page_urls(connection, **kwargs):
         urls = []
         if result.get('options', {}).get('filetype') == 'md':
             # look for markdown links - e.g. [text](link)
-            links = re.findall('\[[^\]]+\]\([^\)]+\)', body)
+            links = re.findall(r'\[[^\]]+\]\([^\)]+\)', body)
             for link in links:
                 # test only link part of match (not text part, even if it looks like a link)
                 idx = link.index(']')
@@ -421,7 +421,7 @@ def check_help_page_urls(connection, **kwargs):
                 # remove these from body so body can be checked for other types of links
                 body = body[:body.index(link)] + body[body.index(link)+len(link):]
         # looks for links starting with http (full) or / (relative) inside parentheses or brackets
-        urls += re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', body)
+        urls += re.findall(r'[\(|\[|=]["]*(http[^\s\)\]"]+|/[^\s\)\]"]+)[\)|\]|"]', body)
         for url in urls:
             if url.startswith('mailto'):
                 continue
@@ -445,7 +445,7 @@ def check_help_page_urls(connection, **kwargs):
                 continue
             except Exception as e:
                 addl_exceptions.setdefault(result['@id'], {})
-                addl_exceptions[result['@id']][url] = e
+                addl_exceptions[result['@id']][url] = str(e)
         if broken_links:
             sections_w_broken_links[result['@id']] = broken_links
     if sections_w_broken_links:
