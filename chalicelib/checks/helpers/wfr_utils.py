@@ -612,6 +612,9 @@ def build_exp_type_query(exp_type, kwargs):
     # for some cases we don't have a defined complete processing tag
     if versions:
         pre_query += "".join(["&completed_processes!=" + i for i in versions])
+
+    # skip non processable experiment sets
+    pre_query += "&completed_processes!=processing_skipped"
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
