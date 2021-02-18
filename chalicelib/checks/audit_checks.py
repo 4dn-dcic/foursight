@@ -43,23 +43,20 @@ def biosource_cell_line_value(connection, **kwargs):
     check = CheckResult(connection, 'biosource_cell_line_value')
 
     cell_line_types = ["primary cell", "primary cell line", "immortalized cell line",
-                       "in vitro differentiated cells", "induced pluripotent stem cell line",
-                       "stem cell", "stem cell derived cell line"]
-    biosources = ff_utils.search_metadata('search/?type=Biosource&frame=object',
-                                          key=connection.ff_keys, page_limit=200)
+                       "induced pluripotent stem cell", "stem cell", "stem cell derived cell line"]
+    biosources = ff_utils.search_metadata(
+        'search/?type=Biosource&cell_line.display_title=No+value&frame=object' +
+        ''.join(['&biosource_type=' + c for c in cell_line_types]),
+        key=connection.ff_keys)
     missing = []
     for biosource in biosources:
-        # check if the biosource type is a cell/cell line
-        if biosource.get('biosource_type') and biosource.get('biosource_type') in cell_line_types:
-            # append if cell_line field is missing
-            if not biosource.get('cell_line'):
-                missing.append({'uuid': biosource['uuid'],
-                                '@id': biosource['@id'],
-                                'biosource_type': biosource.get('biosource_type'),
-                                'description': biosource.get('description'),
-                                'error': 'Missing cell_line metadata'})
+        missing.append({'uuid': biosource['uuid'],
+                        '@id': biosource['@id'],
+                        'biosource_type': biosource.get('biosource_type'),
+                        'description': biosource.get('description'),
+                        'error': 'Missing cell_line OntologyTerm'})
     check.full_output = missing
-    check.brief_output = [item['uuid'] for item in missing]
+    check.brief_output = [item['@id'] for item in missing]
     if missing:
         check.status = 'WARN'
         check.summary = 'Cell line biosources found missing cell_line metadata'
@@ -415,7 +412,7 @@ def check_help_page_urls(connection, **kwargs):
         urls = []
         if result.get('options', {}).get('filetype') == 'md':
             # look for markdown links - e.g. [text](link)
-            links = re.findall('\[[^\]]+\]\([^\)]+\)', body)
+            links = re.findall(r'\[[^\]]+\]\([^\)]+\)', body)
             for link in links:
                 # test only link part of match (not text part, even if it looks like a link)
                 idx = link.index(']')
@@ -424,7 +421,7 @@ def check_help_page_urls(connection, **kwargs):
                 # remove these from body so body can be checked for other types of links
                 body = body[:body.index(link)] + body[body.index(link)+len(link):]
         # looks for links starting with http (full) or / (relative) inside parentheses or brackets
-        urls += re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', body)
+        urls += re.findall(r'[\(|\[|=]["]*(http[^\s\)\]"]+|/[^\s\)\]"]+)[\)|\]|"]', body)
         for url in urls:
             if url.startswith('mailto'):
                 continue
@@ -448,7 +445,7 @@ def check_help_page_urls(connection, **kwargs):
                 continue
             except Exception as e:
                 addl_exceptions.setdefault(result['@id'], {})
-                addl_exceptions[result['@id']][url] = e
+                addl_exceptions[result['@id']][url] = str(e)
         if broken_links:
             sections_w_broken_links[result['@id']] = broken_links
     if sections_w_broken_links:
