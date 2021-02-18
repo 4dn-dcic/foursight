@@ -445,7 +445,7 @@ def check_help_page_urls(connection, **kwargs):
                 continue
             except Exception as e:
                 addl_exceptions.setdefault(result['@id'], {})
-                addl_exceptions[result['@id']][url] = e
+                addl_exceptions[result['@id']][url] = str(e)
         if broken_links:
             sections_w_broken_links[result['@id']] = broken_links
     if sections_w_broken_links:
