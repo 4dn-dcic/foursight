@@ -479,7 +479,7 @@ def check_search_urls(connection, **kwargs):
     for result in results:
         body = result.get('body', '')
         # search links for search or browse pages, either explicit or relative
-        urls = re.findall(r'[\(\[=]["]*(?:[^\s\)\]]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]]+|/)((?:browse|search)/\?[^\s\)\]]+)[\)\]"]', body)
+        urls = re.findall(r'[\(\[=]["]*(?:[^\s\)\]"]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]"]+|/)((?:browse|search)/\?[^\s\)\]"]+)[\)\]"]', body)
         if urls:
             for url in urls:
                 url = url.replace('&amp;', '&')  # replace HTML &amp;
