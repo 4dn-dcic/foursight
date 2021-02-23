@@ -421,7 +421,7 @@ def check_help_page_urls(connection, **kwargs):
                 # remove these from body so body can be checked for other types of links
                 body = body[:body.index(link)] + body[body.index(link)+len(link):]
         # looks for links starting with http (full) or / (relative) inside parentheses or brackets
-        urls += re.findall(r'[\(|\[|=]["]*(http[^\s\)\]"]+|/[^\s\)\]"]+)[\)|\]|"]', body)
+        urls += re.findall(r'[\(\[=]["]*(http[^\s\)\]"]+|/[^\s\)\]"]+)[\)\]"]', body)
         for url in urls:
             if url.startswith('mailto'):
                 continue
@@ -479,9 +479,10 @@ def check_search_urls(connection, **kwargs):
     for result in results:
         body = result.get('body', '')
         # search links for search or browse pages, either explicit or relative
-        urls = re.findall(r'[\(|\[|=]["]*(?:[^\s\)\]]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]]+|/)((?:browse|search)/\?[^\s\)\]]+)[\)|\]|"]', body)
+        urls = re.findall(r'[\(\[=]["]*(?:[^\s\)\]"]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]"]+|/)((?:browse|search)/\?[^\s\)\]"]+)[\)\]"]', body)
         if urls:
             for url in urls:
+                url = url.replace('&amp;', '&')  # replace HTML &amp;
                 url = re.sub(r'&limit=[^&]*|limit=[^&]*&?', '', url)  # remove limit if present
                 q_results = ff_utils.search_metadata(url + '&limit=1&field=@id', key=connection.ff_keys)
                 if len(q_results) == 0:
