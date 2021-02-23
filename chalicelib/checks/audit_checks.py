@@ -482,7 +482,7 @@ def check_search_urls(connection, **kwargs):
         urls = re.findall(r'[\(\[=]["]*(?:[^\s\)\]]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]]+|/)((?:browse|search)/\?[^\s\)\]]+)[\)\]"]', body)
         if urls:
             for url in urls:
-                # url = url.replace('&amp;', '&')  # replace HTML &amp;
+                url = url.replace('&amp;', '&')  # replace HTML &amp;
                 url = re.sub(r'&limit=[^&]*|limit=[^&]*&?', '', url)  # remove limit if present
                 q_results = ff_utils.search_metadata(url + '&limit=1&field=@id', key=connection.ff_keys)
                 if len(q_results) == 0:
