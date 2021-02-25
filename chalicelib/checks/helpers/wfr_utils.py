@@ -614,7 +614,7 @@ def build_exp_type_query(exp_type, kwargs):
         pre_query += "".join(["&completed_processes!=" + i for i in versions])
 
     # skip non processable experiment sets
-    pre_query += "&completed_processes!=processing_skipped"
+    pre_query += "&tags!=skip_processing"
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -685,7 +685,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
         file_dict[exp['accession']] = []
         if not organisms:
             biosample = exp['biosample']
-            organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
+            organisms = list(set([bs['individual'].get('organism', {}).get('name') for bs in biosample['biosource']]))
             assert len(organisms) == 1
         exp_files = exp['files']
         enzyme = exp.get('digestion_enzyme')
@@ -854,6 +854,14 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
+
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
             set_summary += "| skipped - no chrsize/bwa"
@@ -1055,6 +1063,12 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
             set_summary += "| skipped - no usable file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
             continue
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
@@ -1455,6 +1469,12 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
             set_summary += "| skipped - no chrsize/bwa"
@@ -1599,7 +1619,12 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
-
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
         if organism not in ['mouse', 'human']:
             msg = 'No reference file for ' + organism
             set_summary += "| " + msg
