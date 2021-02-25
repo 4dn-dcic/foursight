@@ -45,7 +45,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5',
         "config": {
             "ebs_size": 10,
-            "instance_type": 't3.micro',
+            "instance_type": 't3.small',
             'EBS_optimized': True
             }
         },
