@@ -685,7 +685,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
         file_dict[exp['accession']] = []
         if not organisms:
             biosample = exp['biosample']
-            organisms = list(set([bs['individual'].get('organism', {}).get('name') for bs in biosample['biosource']]))
+            organisms = list(set([bs.get('individual', {}).get('organism', {}).get('name') for bs in biosample['biosource']]))
             assert len(organisms) == 1
         exp_files = exp['files']
         enzyme = exp.get('digestion_enzyme')
@@ -847,7 +847,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['enzyme']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
@@ -1057,7 +1057,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'], type='MARGI')
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['enzyme']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
@@ -1462,7 +1462,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
         paired = refs['pairing']
-        set_summary = " - ".join([set_acc, refs['organism'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
@@ -1611,7 +1611,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
         paired = refs['pairing']
         organism = refs['organism']
-        set_summary = " - ".join([set_acc, organism, refs['f_size']])
+        set_summary = " - ".join([set_acc, str(organism), str(refs['f_size'])])
 
         # if no files were found
         if all(not value for value in exp_files.values()):
