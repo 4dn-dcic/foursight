@@ -1636,13 +1636,14 @@ def rna_strandedness_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
+    problematic = []
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query (RNA-seq experiments)
-    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
-             '&status=pre-release&status=released&status=released to project')
+    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.individual.organism.name!=No+value'
+             '&status=pre-release&status=released&tags!=skip_processing')
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -1653,13 +1654,20 @@ def rna_strandedness_status(connection, **kwargs):
                 file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
                 file_meta_keys = file_meta.keys()
                 if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
-                    targets.append(file_meta)
-    if not targets:
+                    org = re['biosample']['biosource'][0]['individual']['organism']['name']
+                    kmer_file = wfr_utils.re_kmer.get(org)
+                    if kmer_file:
+                        targets.append(file_meta)
+                    else:
+                        problematic.append([file_meta['accession'], 'missing re_kmer reference file for %s'%(org)])
+
+    if not targets and not problematic:
         check.summary = "All good!"
         return check
 
     running = []
     missing_run = []
+    check.summary = ""
 
     for a_file in targets:
         strandedness_report = wfr_utils.get_wfr_out(a_file, "rna-strandedness", key=my_auth, versions='v2', md_qc=True)
@@ -1669,17 +1677,23 @@ def rna_strandedness_status(connection, **kwargs):
             missing_run.append(a_file['accession'])
 
     if running:
-        check.summary = 'Some files are running rna_strandedness run'
+        check.summary += '|' + str(len(running)) + ' running'
         msg = str(len(running)) + ' files are still running rna_strandedness run.'
         check.brief_output.append(msg)
         check.full_output['files_running_rna_strandedness_run'] = running
 
     if missing_run:
-        check.summary = 'Some files are missing rna_strandedness run'
+        check.summary += '|' + str(len(missing_run)) + ' missing'
         msg = str(len(missing_run)) + ' file(s) lack a successful rna_strandedness run'
         check.brief_output.append(msg)
         check.full_output['files_without_rna_strandedness_run'] = missing_run
         check.allow_action = True
+        check.status = 'WARN'
+    if problematic:
+        check.summary += '|' + str(len(problematic)) + ' skipped'
+        msg = str(len(problematic)) + ' file(s) skipped - missing re_kmer reference file'
+        check.brief_output.append(msg)
+        check.full_output['problematic_files'] = problematic
         check.status = 'WARN'
 
     return check
