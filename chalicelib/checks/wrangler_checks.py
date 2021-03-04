@@ -2461,13 +2461,15 @@ def sync_users_oh_status(connection, **kwargs):
     # if you want to skip more users, append their display titles to this static section as new line
     # TODO: add skip information on the user items
     # Users we do not have oh to have, they are in static section
-    skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
-    #skip_users = ff_utils.get_metadata(skip_user_static_section_uuid, my_auth)['content'].split('\n')
+    #skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
+    skip_users_meta = ff_utils.get_metadata('/search/?type=User&tags=skip_oh_synchronization', my_auth)
+    skip_users = [i['display_title'] for i in skip_users_meta]
     skip_users = []  # this temporary for testing only
+    skip_users_uuid = [i['uuid'] for i in skip_users_meta]
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
     # Collect information from data portal
     all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
-    # skip bots and external devs
+    # skip bots, external devs and DCIC members
     all_users = [i for i in all_users if i['display_title'] not in skip_users]
     all_users_with_lab = [i for i in all_users if i.get('lab')]
     all_labs = ff_utils.search_metadata('/search/?type=Lab', key=my_auth)
@@ -2517,6 +2519,9 @@ def sync_users_oh_status(connection, **kwargs):
     for a_record in user_list:
         # does the item have a dcic uuid
         if a_record.get('DCIC UUID'):
+            # skip if in skip users list
+            if a_record['DCIC UUID'] in skip_users_uuid:
+                continue
             # skip if we deleted already
             if a_record.get('DCIC Active/Inactive') == '0':
                 continue
