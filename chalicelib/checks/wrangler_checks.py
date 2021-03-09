@@ -2338,6 +2338,8 @@ def sync_users_oh_status(connection, **kwargs):
         a_record['DCIC First Name'] = user['first_name']
         a_record['DCIC Last Name'] = user['last_name']
         a_record['DCIC Account Email'] = user['email']
+        a_record['DCIC Contact Email'] = user.get('preferred_email', "")
+
         # Role based award and labs
         if a_record['DCIC Role'] == "External Scientific Adviser":
             a_record['DCIC Lab'] = ''
@@ -2362,7 +2364,7 @@ def sync_users_oh_status(connection, **kwargs):
             lab_name = lab_converter[lab_name]
         a_record['DCIC Lab'] = lab_name
         if lab_name == 'Peter Park, HMS':
-            a_record['DCIC Grant'] = 'DCIC - Park (1U01CA200059-01)'
+            a_record['DCIC Grant'] = 'DCIC - Park (2U01CA200059-06)'
             return a_record, []
         # add award
         user_awards = [i['uuid'] for i in user_lab['awards']]
@@ -2381,8 +2383,8 @@ def sync_users_oh_status(connection, **kwargs):
                     except:
                         last = "no_PI"
                     award_tag = '{} - {} ({})'.format(tag, last, an_award['name'])
-                if award_tag == 'DCIC - DCIC (1U01CA200059-01)':
-                    award_tag = 'DCIC - Park (1U01CA200059-01)'
+                if award_tag == 'DCIC - DCIC (2U01CA200059-06)':
+                    award_tag = 'DCIC - Park (2U01CA200059-06)'
                 award_tags.append(award_tag)
         a_record['DCIC Grant'] = award_tags[0]
         return a_record, award_tags
@@ -2462,9 +2464,9 @@ def sync_users_oh_status(connection, **kwargs):
     # TODO: add skip information on the user items
     # Users we do not have oh to have, they are in static section
     #skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
-    skip_users_meta = ff_utils.get_metadata('/search/?type=User&tags=skip_oh_synchronization', my_auth)
+    skip_users_meta = ff_utils.search_metadata('/search/?type=User&tags=skip_oh_synchronization', my_auth)
     skip_users = [i['display_title'] for i in skip_users_meta]
-    skip_users = []  # this temporary for testing only
+    # skip_users = []  # this temporary for testing only
     skip_users_uuid = [i['uuid'] for i in skip_users_meta]
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
     # Collect information from data portal
@@ -2596,7 +2598,7 @@ def sync_users_oh_status(connection, **kwargs):
             new_record, alt_awards = generate_record(a_user, all_labs, all_grants)
             new_record['DCIC Active/Inactive'] = '1'
             actions['add_excel'].append(new_record)
-    print(actions)
+    # print(actions)
 
     # do we need action
     for a_key in actions:
@@ -2626,6 +2628,7 @@ def sync_users_oh_start(connection, **kwargs):
         for a_user in actions['add_user']:
             del a_user['lab_score']
             del a_user['OH_lab']
+            a_user['viewing_groups'] = ["4DN"]
             ff_utils.post_metadata(a_user, 'user', my_auth)
     # delete users
     if actions.get('delete_user'):
