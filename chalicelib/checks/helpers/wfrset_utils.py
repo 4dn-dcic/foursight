@@ -35,14 +35,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     wf_dict = [{
         'app_name': 'md5',
         'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
-        "config": {"ebs_size": 10}
+        "config": {"ebs_size": 10,
+                   "instance_type": 't3.small',
+                   'EBS_optimized': True
+                  }
     },
         {
         'app_name': 'fastqc',
         'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5',
         "config": {
             "ebs_size": 10,
-            "instance_type": 't3.micro',
+            "instance_type": 't3.small',
             'EBS_optimized': True
             }
         },
@@ -378,11 +381,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     if not template.get('parameters'):
         template['parameters'] = {}
-    if template.get('custom_pf_fields'):
-        for a_file in template['custom_pf_fields']:
-            template['custom_pf_fields'][a_file].update(attribution)
-    template['wfr_meta'] = attribution
-    template['custom_qc_fields'] = attribution
+    template['common_fields'] = attribution
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:

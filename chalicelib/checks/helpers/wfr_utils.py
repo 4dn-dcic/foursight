@@ -289,7 +289,8 @@ re_nz_sizes = {"HindIII": "6",
                "BspHI": "6",
                "DdeI and DpnII": "4",
                "DdeI": "4",
-               "NcoI_MspI_BspHI": "4"  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
+               "NcoI_MspI_BspHI": "4",  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
+               "MseI": "4"
                }
 
 mapper = {'human': 'GRCh38',

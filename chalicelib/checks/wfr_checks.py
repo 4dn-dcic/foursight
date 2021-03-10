@@ -1993,9 +1993,9 @@ def bam_re_status(connection, **kwargs):
     check.full_output = {}
     check.status = 'PASS'
     # check indexing queue
-    check, skip = wfr_utils.check_indexing(check, connection)
-    if skip:
-        return check
+    # check, skip = wfr_utils.check_indexing(check, connection)
+    # if skip:
+    #     return check
     # Build the query (skip to be uploaded by workflow)
     exp_types = ['in+situ+Hi-C',
                  'Dilution+Hi-C',
@@ -2019,7 +2019,7 @@ def bam_re_status(connection, **kwargs):
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = [  # "AluI",
         "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
-        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII"  # added patterns in action
+        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII", "MseI"  # added patterns in action
     ]
     # make a new list of files to work on
     filtered_res = []
@@ -2065,7 +2065,9 @@ def bam_re_start(connection, **kwargs):
         "MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
         "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
                                                 "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
-                                                "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}}}
+                                                "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}},
+        "MseI": {"motif": {"regex": "TTATA"}}}
+
     if kwargs.get('start_missing_run'):
         targets.extend(bam_re_check_result.get('files_without_run', []))
     if kwargs.get('start_missing_meta'):
