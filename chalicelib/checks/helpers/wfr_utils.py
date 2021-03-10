@@ -603,7 +603,7 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
 
 def build_exp_type_query(exp_type, kwargs):
     assert exp_type in accepted_versions
-    statuses = ['pre-release', 'released', 'released to project', 'in review by lab']
+    statuses = ['pre-release', 'released', 'released to project']
     versions = accepted_versions[exp_type]
     # Build the query
     pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
