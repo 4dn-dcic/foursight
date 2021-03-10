@@ -1643,7 +1643,7 @@ def rna_strandedness_status(connection, **kwargs):
         return check
     # Build the query (RNA-seq experiments)
     query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.individual.organism.name!=No+value'
-             '&status=pre-release&status=released&tags!=skip_processing')
+             '&status=pre-release&status=released&status=released to project&tags!=skip_processing')
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
