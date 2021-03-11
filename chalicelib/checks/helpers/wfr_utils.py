@@ -613,6 +613,9 @@ def build_exp_type_query(exp_type, kwargs):
     # for some cases we don't have a defined complete processing tag
     if versions:
         pre_query += "".join(["&completed_processes!=" + i for i in versions])
+
+    # skip non processable experiment sets
+    pre_query += "&tags!=skip_processing"
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -672,6 +675,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
     fastq_files = [i for i in fastq_files if i['file_format']['file_format'] == 'fastq']
     file_dict = {}
     refs = {}
+
     # check pairing for the first file, and assume all same
     paired = ""
     rep_resp = my_rep_set['experiments_in_set']
@@ -683,8 +687,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
         file_dict[exp['accession']] = []
         if not organisms:
             biosample = exp['biosample']
-            organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
-            assert len(organisms) == 1
+            organisms = list(set([bs.get('individual', {}).get('organism', {}).get('name') for bs in biosample['biosource']]))
         exp_files = exp['files']
         enzyme = exp.get('digestion_enzyme')
         if enzyme:
@@ -722,6 +725,8 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
     # get the organism
     if len(list(set(organisms))) == 1:
         organism = organisms[0]
+    elif len(list(set(organisms))) > 1:
+        organism = "multiple organisms"
     else:
         organism = None
 
@@ -748,6 +753,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
             enz_file = None
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
+
     refs = {'pairing': paired,
             'organism': organism,
             'enzyme': enz,
@@ -845,13 +851,27 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['enzyme']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
+
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
+            continue
+
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
             set_summary += "| skipped - no chrsize/bwa"
@@ -1047,12 +1067,24 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'], type='MARGI')
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['enzyme']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
             continue
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
@@ -1446,12 +1478,24 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
         paired = refs['pairing']
-        set_summary = " - ".join([set_acc, refs['organism'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
             continue
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
@@ -1589,7 +1633,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
         paired = refs['pairing']
         organism = refs['organism']
-        set_summary = " - ".join([set_acc, organism, refs['f_size']])
+        set_summary = " - ".join([set_acc, str(organism), str(refs['f_size'])])
 
         # if no files were found
         if all(not value for value in exp_files.values()):
@@ -1597,7 +1641,18 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
-
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
+            continue
         if organism not in ['mouse', 'human']:
             msg = 'No reference file for ' + organism
             set_summary += "| " + msg
