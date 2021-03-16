@@ -672,6 +672,20 @@
             }
         }
     },
+    "compartments_caller_status": {
+        "title": "m) Compartments",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "consistent_replicate_info": {
         "title": "Replicate Experiment Sets with inconsistent replicate information",
         "group": "Badge checks",
@@ -749,6 +763,7 @@
             "morning_checks_1": {
                 "all": {
                     "kwargs": {
+                        "dependencies": [],
                         "primary": true
                     }
                 }
@@ -851,6 +866,18 @@
                     "kwargs": {
                         "primary": true
                     }
+                }
+            }
+        }
+    },
+    "external_submission_but_missing_dbxrefs": {
+        "title": "Items with external_submission but missing dbxrefs",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
                 }
             }
         }
@@ -990,107 +1017,6 @@
             }
         }
     },
-    "identify_files_without_qc_summary_bam": {
-        "title": "Bam files from Hi-C pipeline without quality metric summary",
-        "group": "Metadata checks",
-        "schedule": {
-            "morning_checks_4": {
-                "data": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "webdev": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "identify_files_without_qc_summary_bb": {
-        "title": "Bigbed files without quality metric summary",
-        "group": "Metadata checks",
-        "schedule": {
-            "morning_checks_1": {
-                "data": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "webdev": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "identify_files_without_qc_summary_bed": {
-        "title": "Bed files without quality metric summary",
-        "group": "Metadata checks",
-        "schedule": {
-            "morning_checks_2": {
-                "data": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "webdev": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "identify_files_without_qc_summary_pairs": {
-        "title": "Pairs files without quality metric summary",
-        "group": "Metadata checks",
-        "schedule": {
-            "morning_checks_3": {
-                "data": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true,
-                        "queue_action": "prod"
-                    }
-                },
-                "webdev": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "identify_files_without_qc_summary_rnaseq": {
-        "title": "RNA-seq tsv/bam files without quality metric summary",
-        "group": "Metadata checks",
-        "schedule": {
-            "morning_checks_4": {
-                "data": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "webdev": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "in_situ_chia_pet_status": {
         "title": "d) in situ ChIA-PET",
         "group": "Pipeline checks",
@@ -1198,16 +1124,12 @@
             }
         }
     },
-    "long_running_wfrs_fdn_status" : {
+    "long_running_wfrs_fdn_status": {
         "title": "x) Long Running Runs",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks_2": {
-                "": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1619,16 +1541,12 @@
             }
         }
     },
-    "problematic_wfrs_fdn_status" : {
+    "problematic_wfrs_fdn_status": {
         "title": "x) Errored Runs",
         "group": "Pipeline checks",
         "schedule": {
             "hourly_checks_1": {
-                "": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                },
-                "": {
+                "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
                 }
@@ -1750,44 +1668,6 @@
             }
         }
     },
-    "problematic_wfrs_fdn_status" : {
-        "title": "x) Errored Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "long_running_wfrs_fdn_status" : {
-        "title": "x) Long Running Runs",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "elastic_search_space" : {
-        "title": "ES Disk Space Check",
-        "group": "Elasticsearch checks",
-        "schedule": {
-            "morning_checks_3": {
-                "all": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "rna_seq_status": {
         "title": "i) RNA-seq",
         "group": "Pipeline checks",
@@ -1796,7 +1676,8 @@
                 "data": {
                     "dependencies": [],
                     "kwargs": {
-                        "primary": true
+                        "primary": true,
+                        "queue_action": "prod"
                     }
                 }
             }
@@ -2062,32 +1943,6 @@
                     }
                 },
                 "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "external_submission_but_missing_dbxrefs": {
-        "title": "Items with external_submission but missing dbxrefs",
-        "group": "Audit checks",
-        "schedule": {
-            "morning_checks": {
-                "data": {
-                    "kwargs": {"primary": true},
-                    "dependencies": []
-                }
-            }
-        }
-    },
-    "compartments_caller_status": {
-        "title": "m) Compartments",
-        "group": "Pipeline checks",
-        "schedule": {
-            "hourly_checks_2": {
-                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true

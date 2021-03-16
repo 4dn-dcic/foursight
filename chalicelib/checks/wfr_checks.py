@@ -3,16 +3,14 @@ from dcicutils import ff_utils
 from dcicutils import s3Utils
 from .helpers import wfr_utils
 from .helpers import wfrset_utils
-from foursight_core.checks.helpers.wfr_utils import (
-    check_runs_without_output,
-    lambda_limit
-)
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
 # individually - they're now part of class Decorators in foursight-core::decorators
 # that requires initialization with foursight prefix.
 from .helpers.confchecks import *
+
+lambda_limit = wfr_utils.lambda_limit
 
 
 @check_function()
@@ -236,7 +234,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'fastqc', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start)
     return check
 
 
@@ -310,7 +308,7 @@ def pairsqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
     return check
 
 
@@ -357,7 +355,7 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=False)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -423,7 +421,7 @@ def bg2bw_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
     return check
 
 
@@ -531,7 +529,7 @@ def bed2beddb_status(connection, **kwargs):
     if not res_all:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
     if missing:
         check.full_output['missing_assembly'] = missing
         msg = str(len(missing)) + ' files missing genome assembly'
@@ -1071,7 +1069,7 @@ def trac_loop_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -1126,7 +1124,7 @@ def plac_seq_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
     return action
 
 
@@ -1571,7 +1569,7 @@ def bed2multivec_status(connection, **kwargs):
         check.status = 'WARN'
         return check
 
-    check = check_runs_without_output(healthy_res, check, 'bedtomultivec', my_auth, start)
+    check = wfr_utils.check_runs_without_output(healthy_res, check, 'bedtomultivec', my_auth, start)
     if prb_res:
         check.full_output['prob_files'] = [{'missing tag': [i[0]['accession'] for i in prb_res if i[1] == 'missing_tag'],
                                             'invalid tag': [i[0]['accession'] for i in prb_res if i[1] == 'invalid_tag']}]
@@ -1638,13 +1636,14 @@ def rna_strandedness_status(connection, **kwargs):
     check.brief_output = []
     check.full_output = {}
     check.status = 'PASS'
+    problematic = []
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query (RNA-seq experiments)
-    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq'
-             '&status=pre-release&status=released&status=released to project')
+    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.individual.organism.name!=No+value'
+             '&status=pre-release&status=released&status=released to project&tags!=skip_processing')
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -1655,13 +1654,20 @@ def rna_strandedness_status(connection, **kwargs):
                 file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
                 file_meta_keys = file_meta.keys()
                 if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
-                    targets.append(file_meta)
-    if not targets:
+                    org = re['biosample']['biosource'][0]['individual']['organism']['name']
+                    kmer_file = wfr_utils.re_kmer.get(org)
+                    if kmer_file:
+                        targets.append(file_meta)
+                    else:
+                        problematic.append([file_meta['accession'], 'missing re_kmer reference file for %s'%(org)])
+
+    if not targets and not problematic:
         check.summary = "All good!"
         return check
 
     running = []
     missing_run = []
+    check.summary = ""
 
     for a_file in targets:
         strandedness_report = wfr_utils.get_wfr_out(a_file, "rna-strandedness", key=my_auth, versions='v2', md_qc=True)
@@ -1671,17 +1677,23 @@ def rna_strandedness_status(connection, **kwargs):
             missing_run.append(a_file['accession'])
 
     if running:
-        check.summary = 'Some files are running rna_strandedness run'
+        check.summary += '|' + str(len(running)) + ' running'
         msg = str(len(running)) + ' files are still running rna_strandedness run.'
         check.brief_output.append(msg)
         check.full_output['files_running_rna_strandedness_run'] = running
 
     if missing_run:
-        check.summary = 'Some files are missing rna_strandedness run'
+        check.summary += '|' + str(len(missing_run)) + ' missing'
         msg = str(len(missing_run)) + ' file(s) lack a successful rna_strandedness run'
         check.brief_output.append(msg)
         check.full_output['files_without_rna_strandedness_run'] = missing_run
         check.allow_action = True
+        check.status = 'WARN'
+    if problematic:
+        check.summary += '|' + str(len(problematic)) + ' skipped'
+        msg = str(len(problematic)) + ' file(s) skipped - missing re_kmer reference file'
+        check.brief_output.append(msg)
+        check.full_output['problematic_files'] = problematic
         check.status = 'WARN'
 
     return check
@@ -1829,7 +1841,7 @@ def bamqc_status(connection, **kwargs):
         return check
     check.summary = '{} files need a bamqc'. format(len(res))
     check.status = 'WARN'
-    check = check_runs_without_output(res, check, 'bamqc', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'bamqc', my_auth, start)
     return check
 
 
@@ -1898,14 +1910,8 @@ def fastq_first_line_status(connection, **kwargs):
     # The search
     print('About to query ES for files')
     res = ff_utils.search_metadata(query, key=my_auth)
-    targets = []
 
-    print('About to check metadata field for each result in the search')
-    for re in res:
-        if not re.get('file_first_line'):
-            targets.append(re)
-
-    if not targets:
+    if not res:
         check.summary = "All good!"
         return check
 
@@ -1913,7 +1919,7 @@ def fastq_first_line_status(connection, **kwargs):
     missing_run = []
 
     print('About to check for workflow runs for each file')
-    for a_file in targets:
+    for a_file in res:
         fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
@@ -1987,9 +1993,9 @@ def bam_re_status(connection, **kwargs):
     check.full_output = {}
     check.status = 'PASS'
     # check indexing queue
-    check, skip = wfr_utils.check_indexing(check, connection)
-    if skip:
-        return check
+    # check, skip = wfr_utils.check_indexing(check, connection)
+    # if skip:
+    #     return check
     # Build the query (skip to be uploaded by workflow)
     exp_types = ['in+situ+Hi-C',
                  'Dilution+Hi-C',
@@ -2013,7 +2019,7 @@ def bam_re_status(connection, **kwargs):
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = [  # "AluI",
         "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
-        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII"  # added patterns in action
+        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII", "MseI"  # added patterns in action
     ]
     # make a new list of files to work on
     filtered_res = []
@@ -2031,7 +2037,7 @@ def bam_re_status(connection, **kwargs):
             if nz not in missing_nz:
                 missing_nz.append(nz)
 
-    check = check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
+    check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
         skipped_files = str(len(res) - len(filtered_res))
         nzs = ', '.join(missing_nz)
@@ -2059,7 +2065,9 @@ def bam_re_start(connection, **kwargs):
         "MspI": {"motif": {"regex": "CCGCGG|GGCGCC"}},
         "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
                                                 "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
-                                                "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}}}
+                                                "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}},
+        "MseI": {"motif": {"regex": "TTATA"}}}
+
     if kwargs.get('start_missing_run'):
         targets.extend(bam_re_check_result.get('files_without_run', []))
     if kwargs.get('start_missing_meta'):
@@ -2377,7 +2385,10 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
 
     for a_wfr in errored_wfrs:
         wfr_type, time_info = a_wfr['display_title'].split(' run ')
-        wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        if len(wfr_type.strip().split(' ')) == 2:
+            wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+        else:
+            wfr_type_base, wfr_version, tag = wfr_type.strip().split(' ')
         run_type = wfr_type_base.strip()
         # categorize
         desc = a_wfr.get('description', '')
@@ -2598,7 +2609,7 @@ def template_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = check_runs_without_output(res, check, 'template', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'template', my_auth, start)
     return check
 
 

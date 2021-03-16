@@ -1,3 +1,8 @@
+# Step Settings
+lambda_limit = 750
+load_wait = 8
+random_wait = 20
+
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
@@ -30,21 +35,23 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     wf_dict = [{
         'app_name': 'md5',
         'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
-        "config": {"ebs_size": 10}
+        "config": {"ebs_size": 10,
+                   "instance_type": 't3.small',
+                   'EBS_optimized': True
+                  }
     },
         {
         'app_name': 'fastqc',
         'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5',
         "config": {
             "ebs_size": 10,
-            "instance_type": 't3.micro',
+            "instance_type": 't3.small',
             'EBS_optimized': True
             }
         },
         {
         'app_name': 'pairsqc-single',
-        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3',
-        "config": {"ebs_size": 10}
+        'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3'
     },
         {
         'app_name': 'bwa-mem',
@@ -95,7 +102,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'imargi-processing-fastq',
         'workflow_uuid': '7eedaaa8-4c2e-4c71-9d9a-04f05ab1becf',
-        'config': {'mem': 8, 'cpu': 4, 'ebs_size': '10x', 'EBS_optimized': 'true'},
+        'config': {'mem': 8, 'cpu': 4, 'ebs_size': '12x', 'EBS_optimized': 'true'},
         'parameters': {"nThreads": 4},
         'custom_pf_fields': {
             'out_bam': {
@@ -239,7 +246,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "rna-strandedness",
         "workflow_uuid": "af97597e-877a-40b7-b211-98ec0cfb17b4",
-        'config': {'mem': 0.5, 'cpu': 1, 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
+        'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro", 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
         },
 
         # RNA SEQ
@@ -320,7 +327,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "fastq-first-line",
         "workflow_uuid": "93a1a931-d55d-4623-adfb-0fa735daf6ae",
         "overwrite_input_extra": False,
-        'config': {'mem': 0.5, 'cpu': 1}
+        'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro"}
         },
         {
         "app_name": "re_checker_workflow",
@@ -374,11 +381,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     if not template.get('parameters'):
         template['parameters'] = {}
-    if template.get('custom_pf_fields'):
-        for a_file in template['custom_pf_fields']:
-            template['custom_pf_fields'][a_file].update(attribution)
-    template['wfr_meta'] = attribution
-    template['custom_qc_fields'] = attribution
+    template['common_fields'] = attribution
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:

@@ -2154,7 +2154,7 @@ def check_hic_summary_tables(connection, **kwargs):
             row['Replicate Sets'][exp_type] = row['Replicate Sets'].get(exp_type, 0) + 1
 
             biosample = expset['experiments_in_set'][0]['biosample']
-            row.setdefault('Species', set()).add(biosample['biosource'][0]['individual']['organism']['name'])
+            row.setdefault('Species', set()).add(biosample['biosource'][0].get('individual', {}).get('organism', {}).get('name', 'unknown species'))
 
             if biosample['biosource'][0].get('cell_line'):
                 biosource = biosample['biosource'][0]['cell_line']['display_title']
