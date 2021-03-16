@@ -2289,10 +2289,8 @@ def get_oh_google_sheet():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, SCOPES)
     gc = gspread.authorize(creds)
     # Get the google sheet information
-    # book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
-    book_id = '19qd1A3Hqz1ELvH_3ob9xLruWUdjHeJ1FNqGziiJfdkw' # This is for testing only, use above
-    # TODO: change to AllMembers
-    sheet_name = 'AllMembers_Testing_Updates'
+    book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
+    sheet_name = 'AllMembers'
     book = gc.open_by_key(book_id)
     worksheet = book.worksheet(sheet_name)
     return worksheet
@@ -2385,6 +2383,8 @@ def sync_users_oh_status(connection, **kwargs):
                     award_tag = '{} - {} ({})'.format(tag, last, an_award['name'])
                 if award_tag == 'DCIC - DCIC (2U01CA200059-06)':
                     award_tag = 'DCIC - Park (2U01CA200059-06)'
+                if award_tag == 'DCIC - DCIC (1U01CA200059-01)':
+                    award_tag = 'DCIC - Park (1U01CA200059-01)'
                 award_tags.append(award_tag)
         a_record['DCIC Grant'] = award_tags[0]
         return a_record, award_tags
@@ -2430,8 +2430,6 @@ def sync_users_oh_status(connection, **kwargs):
         if not a_record.get('OH Account Email'):
             return
         user_info['email'] = simple(a_record['OH Account Email'])
-        # user_info['first_name'] = a_record['DCIC First Name']
-        # user_info['last_name'] = a_record['DCIC Last Name']
         user_info['first_name'] = a_record['OH First Name']
         user_info['last_name'] = a_record['OH Last Name']
         user_info['job_title'] = a_record['OH Role']
@@ -2459,24 +2457,20 @@ def sync_users_oh_status(connection, **kwargs):
         user_info['OH_lab'] = a_record['OH Lab']
         return user_info
 
-    # get skipped users from this static section
-    # if you want to skip more users, append their display titles to this static section as new line
-    # TODO: add skip information on the user items
-    # Users we do not have oh to have, they are in static section
-    #skip_user_static_section_uuid = '56986f99-8ebc-4d01-828d-db78b45c0840'
+    # get skipped users with the skip_oh_synchronization tag
+    # if you want to skip more users, append the tag to the user item
     skip_users_meta = ff_utils.search_metadata('/search/?type=User&tags=skip_oh_synchronization', my_auth)
-    skip_users = [i['display_title'] for i in skip_users_meta]
-    # skip_users = []  # this temporary for testing only
+    # skip bots, external devs and DCIC members
     skip_users_uuid = [i['uuid'] for i in skip_users_meta]
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
+
     # Collect information from data portal
     all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
-    # skip bots, external devs and DCIC members
-    all_users = [i for i in all_users if i['display_title'] not in skip_users]
     all_users_with_lab = [i for i in all_users if i.get('lab')]
     all_labs = ff_utils.search_metadata('/search/?type=Lab', key=my_auth)
     all_labs = [i for i in all_labs if i['display_title'] not in skip_lab_display_title]
     all_grants = ff_utils.search_metadata('/search/?type=Award', key=my_auth)
+
     # print some details
     print(len(all_labs), '- all labs in scope')
     print(len(all_grants), '- all grantsin scope')
@@ -2519,7 +2513,6 @@ def sync_users_oh_status(connection, **kwargs):
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
     # iterate over records and compare
     for a_record in user_list:
-        # does the item have a dcic uuid
         if a_record.get('DCIC UUID'):
             # skip if in skip users list
             if a_record['DCIC UUID'] in skip_users_uuid:
@@ -2581,35 +2574,31 @@ def sync_users_oh_status(connection, **kwargs):
                     problem.append(['cannot find the lab', a_record['OH Lab'], add_award])
                     continue
                 actions['add_user'].append(user_data)
-                # updates = compare_record(a_record, user_data, all_labs, all_grants, new=True)
-                # updates
-                # if updates:
-                #     updates['DCIC Active/Inactive'] = '1'
-                #     actions['patch_excel'][a_record['OH Account Email']] = updates
 
     all_patching_uuids = [v['DCIC UUID'] for k, v in actions['patch_excel'].items() if v.get('DCIC UUID')]
     # skip the total
-    skip_list = all_dcic_uuids + all_patching_uuids
+    skip_list = all_dcic_uuids + all_patching_uuids + skip_users_uuid
     remaining_users = [i for i in fdn_users if i['uuid'] not in skip_list]
-    print(len(remaining_users))
+    print(len(remaining_users), 'remaining users')
+
     if remaining_users:
         for a_user in remaining_users:
             # create empty record object
             new_record, alt_awards = generate_record(a_user, all_labs, all_grants)
             new_record['DCIC Active/Inactive'] = '1'
             actions['add_excel'].append(new_record)
-    # print(actions)
 
     # do we need action
+    check.summary = ""
     for a_key in actions:
         if actions[a_key]:
             check.status = 'WARN'
             check.allow_action = True
-            check.summary = 'There are actions pending. '
+        check.summary += '| {} {}'.format(str(len(actions[a_key])), a_key)
 
     if problem:
         check.status = 'WARN'
-        check.summary += 'There are problems.'
+        check.summary += '| %s problems' % (str(len(problem)))
 
     check.full_output = {'actions': actions, 'problems': problem}
     return check
@@ -2623,7 +2612,7 @@ def sync_users_oh_start(connection, **kwargs):
     sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     actions = sync_users_oh_check_result['actions']
     user_list = get_oh_google_sheet()
-    # add users
+    add users
     if actions.get('add_user'):
         for a_user in actions['add_user']:
             del a_user['lab_score']
@@ -2638,11 +2627,6 @@ def sync_users_oh_start(connection, **kwargs):
             ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=lab')
             ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=viewing_groups')
             ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=groups')
-            pass
-            # TODO: Do we want to check if user has any trace on the portal
-            # TODO: Do we want to email the user
-            # TODO: take out viewing group from users to be deleted instead of deleting them.
-            # ff_utils.patch_metadata({'status': 'deleted'}, a_user, my_auth)
 
     # update google sheet
     # we will create a modified version of the full stack and write on google sheet at once
