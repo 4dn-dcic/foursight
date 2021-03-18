@@ -2290,7 +2290,7 @@ def get_oh_google_sheet():
     gc = gspread.authorize(creds)
     # Get the google sheet information
     book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
-    sheet_name = 'AllMembers'
+    sheet_name = 'AllMembers_Final_Test'
     book = gc.open_by_key(book_id)
     worksheet = book.worksheet(sheet_name)
     return worksheet
@@ -2299,16 +2299,15 @@ def get_oh_google_sheet():
 @check_function()
 def sync_users_oh_status(connection, **kwargs):
     """
-    # TODO: ask oh to use 'OH First Name', 'OH Last Name', 'OH Grant', 'OH Lab' fields
     Check users on database and OH google sheet, synchronize them
     1) Pull all table values, All database users, labs and awards
-    2) If entry inactive in OH, delete person from DCIC, mark inactive for DCIC
+    2) If entry inactive in OH, remove user's permissions (lab, viewing_groups, submits_for, groups) from DCIC, mark inactive for DCIC
     3) If user exist for OH and DCIC, check values on DCIC database, and update DCIC columns if anything is different from the table.
     4) If only OH information is available on the table,
     4.1) skip no email, and skip inactive
     4.2) check if email exist already on the table, report problem
     4.3) check if email exist on DCIC database, add DCIC information
-    4.4) if email is not available, find the matching lab, and create new user, add user information to the table
+    4.4) if email is available, find the matching lab, and create new user, add user information to the table
     4.5) if can not find the lab, report need for new lab creation.
     5) check for users that are on dcic database, but not on the table, add as new DCIC users.
 
@@ -2318,7 +2317,7 @@ def sync_users_oh_status(connection, **kwargs):
     check = CheckResult(connection, 'sync_users_oh_status')
     my_auth = connection.ff_keys
     check.action = "sync_users_oh_start"
-    check.description = "add description"
+    check.description = "Synchronize portal and OH user records"
     check.brief_output = []
     check.summary = ""
     check.full_output = {}
@@ -2424,20 +2423,20 @@ def sync_users_oh_status(connection, **kwargs):
             lab = [i['@id'] for i in all_labs if i['display_title'] == best][0]
         return lab, score
 
-    def create_user_from_oh_info(a_record, all_labs, all_grants):
-        """will change based on oh column names"""
+    def create_user_from_oh_info(a_record, all_labs, all_grants, credentials_only=False):
         user_info = {}
         if not a_record.get('OH Account Email'):
             return
-        user_info['email'] = simple(a_record['OH Account Email'])
-        user_info['first_name'] = a_record['OH First Name']
-        user_info['last_name'] = a_record['OH Last Name']
-        user_info['job_title'] = a_record['OH Role']
-        if not user_info['job_title']:
-            user_info['job_title'] = 'Lab Associate'
-        # pre define a uuid so we can already put it on the excel
-        user_uuid = str(uuid.uuid4())
-        user_info['uuid'] = user_uuid
+        if not credentials_only:
+            user_info['email'] = simple(a_record['OH Account Email'])
+            user_info['first_name'] = a_record['OH First Name']
+            user_info['last_name'] = a_record['OH Last Name']
+            user_info['job_title'] = a_record['OH Role']
+            if not user_info['job_title']:
+                user_info['job_title'] = 'Lab Associate'
+            # pre define a uuid so we can already put it on the excel
+            user_uuid = str(uuid.uuid4())
+            user_info['uuid'] = user_uuid
         # predefined cases
         if a_record['OH Grant'] == "External Science Advisor":
             user_info['lab'] = '/labs/esa-lab/'
@@ -2446,11 +2445,14 @@ def sync_users_oh_status(connection, **kwargs):
             user_info['lab'] = '/labs/nih-lab/'
             return user_info
         if a_record['OH Lab'] == 'Peter J. Park':
+            # This would need to be reworked if members of Peter's lab are doing research
+            # It would need to be replaced by /labs/peter-park-lab/
             user_info['lab'] = '/labs/4dn-dcic-lab/'
             return user_info
 
         # find lab, assign @id
         user_info['lab'], lab_score = find_lab(a_record, all_labs)
+        user_info['viewing_groups'] = ["4DN"]
         # Adding more information to the check to check by eye that the labs indeed correspond to OH labs
         # It will be removed in the action to create the new user in the portal
         user_info['lab_score'] = lab_score
@@ -2465,51 +2467,34 @@ def sync_users_oh_status(connection, **kwargs):
     skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
 
     # Collect information from data portal
-    all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
-    all_users_with_lab = [i for i in all_users if i.get('lab')]
     all_labs = ff_utils.search_metadata('/search/?type=Lab', key=my_auth)
     all_labs = [i for i in all_labs if i['display_title'] not in skip_lab_display_title]
     all_grants = ff_utils.search_metadata('/search/?type=Award', key=my_auth)
+    all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
 
-    # print some details
-    print(len(all_labs), '- all labs in scope')
-    print(len(all_grants), '- all grantsin scope')
-    print(len(all_users), '- all usersin scope')
-    print(len(all_users_with_lab), '- all users in scope with lab')
+    # Get 4DN users
+    fdn_users_query = '/search/?type=User&viewing_groups=4DN&viewing_groups=NOFIC'
+    fdn_users_query += "".join(['&lab.display_title!=' + i for i in skip_lab_display_title])
+    fdn_users = ff_utils.search_metadata(fdn_users_query, key=my_auth)
 
-    # narrow users to 4DN users
-    fdn_users = []
-    for a_user in all_users_with_lab:
-        labs = []
-        awards = []
-        labs = a_user.get('submits_for', [])
-        labs.append(a_user['lab'])
-        # skip users from test labs
-        if a_user['lab']['display_title'] in skip_lab_display_title:
-            continue
-        for a_lab in labs:
-            awards.extend(i['uuid'] for i in a_lab.get('awards', []))
-        awards = [i['viewing_group'] for i in all_grants if i['uuid'] in awards]
-        if '4DN' in awards or 'NOFIC' in awards:
-            fdn_users.append(a_user)
-    print(len(fdn_users), 'fdn users')
     # keep a tally of all actions that we need to perform
     actions = {'delete_user': [],
                'add_user': [],
                'inactivate_excel': {},
                'update_excel': {},
                'patch_excel': {},
-               'add_excel': []
+               'add_excel': [],
+               'add_credentials': []
                }
-    # keep a list of all problems we encounter
-    problem = []
+    # keep track of all problems we encounter
+    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}}
     # get oh google sheet
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
     # Convert table data into an ordered dictionary
     df = pd.DataFrame(table[1:], columns=table[0])
     user_list = df.to_dict(orient='records', into=OrderedDict)
-    # any user that is not on the list
+    # all dcic users in the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
     # iterate over records and compare
     for a_record in user_list:
@@ -2517,7 +2502,7 @@ def sync_users_oh_status(connection, **kwargs):
             # skip if in skip users list
             if a_record['DCIC UUID'] in skip_users_uuid:
                 continue
-            # skip if we deleted already
+            # skip if we inactivated it already
             if a_record.get('DCIC Active/Inactive') == '0':
                 continue
             # does it exist in our system with a lab
@@ -2526,7 +2511,7 @@ def sync_users_oh_status(connection, **kwargs):
                 user = users[0]
                 # is user inactivated on OH
                 if a_record.get('OH Active/Inactive') == '0':
-                    # delete the user, and in the next round, inactivate it
+                    # remove the user's permissions in the portal, and in the next round, inactivate it on the excel
                     actions['delete_user'].append(a_record['DCIC UUID'])
                 else:
                     # user exist on excel and on our database
@@ -2549,37 +2534,53 @@ def sync_users_oh_status(connection, **kwargs):
             # do we have OH email already
             # we hit this point after creating new users on the portal (second time we run this check we add them to excel)
             oh_mail = simple(a_record.get('OH Account Email', ""))
-            users = [i for i in fdn_users if simple(i['email']) == oh_mail]
-            if users:
+            users_4dn = [i for i in fdn_users if simple(i['email']) == oh_mail]
+            credentials_only = False  # Whether create account from scratch or add credentials
+            if users_4dn:
                 # is this user already in the excel?
                 # oh created line for an existing user
-                user = users[0]
+                user = users_4dn[0]
                 if user['uuid'] in all_dcic_uuids:
-                    problem_msg = 'NEW OH Line for existing user, {}'.format(user['uuid'])
-                    problem.append([problem_msg, oh_mail])
+                    problem['NEW OH Line for existing user'].append([user['uuid'], oh_mail])
                     continue
                 updates = compare_record(a_record, user, all_labs, all_grants, new=True)
                 if updates:
                     updates['DCIC Active/Inactive'] = '1'
                     actions['patch_excel'][a_record['OH Account Email']] = updates
-            # time to create a new account
+
             else:
-                user_data = create_user_from_oh_info(a_record, all_labs, all_grants)
+                # If the user has an account in the data portal without 4DN credentials, but it is on OH
+                # add the credentials
+                users_all = [i for i in all_users if simple(i['email']) == oh_mail]
+                if users_all:
+                    # skip if it is already pending for the credentials
+                    if users_all[0].get('pending_lab'):
+                        continue
+                    credentials_only = True
+                user_data = create_user_from_oh_info(a_record, all_labs, all_grants, credentials_only=credentials_only)
                 if not user_data.get('lab'):
                     add_awards = [i['uuid'] for i in all_grants if a_record['OH Grant'] in i['@id']]
                     if add_awards:
                         add_award = add_awards[0]
                     else:
                         add_award = a_record['OH Grant']
-                    problem.append(['cannot find the lab', a_record['OH Lab'], add_award])
+                    if a_record['OH Lab'] not in problem['cannot find the lab']:
+                        problem['cannot find the lab'][a_record['OH Lab']] = {'award': '', 'users': []}
+
+                    problem['cannot find the lab'][a_record['OH Lab']]['award'] = add_award
+                    problem['cannot find the lab'][a_record['OH Lab']]['users'].append(a_record['OH UUID'])
                     continue
+                if credentials_only:
+                    user_data['uuid'] = users_all[0]['uuid']
+                    actions['add_credentials'].append(user_data)
+                    continue
+                # if user is not in the data portal create new account
                 actions['add_user'].append(user_data)
 
-    all_patching_uuids = [v['DCIC UUID'] for k, v in actions['patch_excel'].items() if v.get('DCIC UUID')]
+    all_patching_uuids = [v['DCIC UUID'] for v in actions['patch_excel'].values() if v.get('DCIC UUID')]
     # skip the total
     skip_list = all_dcic_uuids + all_patching_uuids + skip_users_uuid
     remaining_users = [i for i in fdn_users if i['uuid'] not in skip_list]
-    print(len(remaining_users), 'remaining users')
 
     if remaining_users:
         for a_user in remaining_users:
@@ -2597,8 +2598,16 @@ def sync_users_oh_status(connection, **kwargs):
         check.summary += '| {} {}'.format(str(len(actions[a_key])), a_key)
 
     if problem:
+        num_problems = 0
+        for k in problem.keys():
+            if k != 'cannot find the lab':
+                num_problems += len(problem[k])
+            else:
+                for key in problem[k].keys():
+                    num_problems += len(problem[k][key]['users'])
+
         check.status = 'WARN'
-        check.summary += '| %s problems' % (str(len(problem)))
+        check.summary += '| %s problems' % (str(num_problems))
 
     check.full_output = {'actions': actions, 'problems': problem}
     return check
@@ -2606,20 +2615,28 @@ def sync_users_oh_status(connection, **kwargs):
 
 @action_function()
 def sync_users_oh_start(connection, **kwargs):
-    """Start runs by sending compiled input_json to run_workflow endpoint"""
     action = ActionResult(connection, 'sync_users_oh_start')
     my_auth = connection.ff_keys
     sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     actions = sync_users_oh_check_result['actions']
     user_list = get_oh_google_sheet()
-    add users
+    # add new users to the data portal
     if actions.get('add_user'):
         for a_user in actions['add_user']:
             del a_user['lab_score']
             del a_user['OH_lab']
-            a_user['viewing_groups'] = ["4DN"]
             ff_utils.post_metadata(a_user, 'user', my_auth)
-    # delete users
+
+    # Add permissions (lab and awards) to existing users in the data portal
+    if actions.get('add_credentials'):
+        for a_user in actions['add_credentials']:
+            user_uuid = a_user['uuid']
+            del a_user['uuid']
+            del a_user['lab_score']
+            del a_user['OH_lab']
+            ff_utils.patch_metadata(a_user, user_uuid, my_auth)
+
+    # remove user's permissions from the data portal
     if actions.get('delete_user'):
         for a_user in actions['delete_user']:
             # Delete the user permissions: submits_for, groups, viewing_groups and lab.
