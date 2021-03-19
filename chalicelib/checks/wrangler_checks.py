@@ -2425,6 +2425,7 @@ def sync_users_oh_status(connection, **kwargs):
 
     def create_user_from_oh_info(a_record, all_labs, all_grants, credentials_only=False):
         user_info = {}
+        user_info['viewing_groups'] = ["4DN"]
         if not a_record.get('OH Account Email'):
             return
         if not credentials_only:
@@ -2437,22 +2438,25 @@ def sync_users_oh_status(connection, **kwargs):
             # pre define a uuid so we can already put it on the excel
             user_uuid = str(uuid.uuid4())
             user_info['uuid'] = user_uuid
+
         # predefined cases
         if a_record['OH Grant'] == "External Science Advisor":
             user_info['lab'] = '/labs/esa-lab/'
+            user_info['lab_score'] = 100
             return user_info
         if a_record['OH Grant'] == "NIH Official":
             user_info['lab'] = '/labs/nih-lab/'
+            user_info['lab_score'] = 100
             return user_info
         if a_record['OH Lab'] == 'Peter J. Park':
             # This would need to be reworked if members of Peter's lab are doing research
             # It would need to be replaced by /labs/peter-park-lab/
             user_info['lab'] = '/labs/4dn-dcic-lab/'
+            user_info['lab_score'] = 100
             return user_info
 
         # find lab, assign @id
         user_info['lab'], lab_score = find_lab(a_record, all_labs)
-        user_info['viewing_groups'] = ["4DN"]
         # Adding more information to the check to check by eye that the labs indeed correspond to OH labs
         # It will be removed in the action to create the new user in the portal
         user_info['lab_score'] = lab_score
@@ -2470,7 +2474,7 @@ def sync_users_oh_status(connection, **kwargs):
     all_labs = ff_utils.search_metadata('/search/?type=Lab', key=my_auth)
     all_labs = [i for i in all_labs if i['display_title'] not in skip_lab_display_title]
     all_grants = ff_utils.search_metadata('/search/?type=Award', key=my_auth)
-    all_users = ff_utils.search_metadata('/search/?type=User', key=my_auth)
+    all_users = ff_utils.search_metadata('/search/?status=current&status=deleted&type=User', key=my_auth)
 
     # Get 4DN users
     fdn_users_query = '/search/?type=User&viewing_groups=4DN&viewing_groups=NOFIC'
@@ -2487,7 +2491,7 @@ def sync_users_oh_status(connection, **kwargs):
                'add_credentials': []
                }
     # keep track of all problems we encounter
-    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}}
+    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}, 'double check lab': []}
     # get oh google sheet
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
@@ -2536,6 +2540,7 @@ def sync_users_oh_status(connection, **kwargs):
             oh_mail = simple(a_record.get('OH Account Email', ""))
             users_4dn = [i for i in fdn_users if simple(i['email']) == oh_mail]
             credentials_only = False  # Whether create account from scratch or add credentials
+
             if users_4dn:
                 # is this user already in the excel?
                 # oh created line for an existing user
@@ -2570,8 +2575,16 @@ def sync_users_oh_status(connection, **kwargs):
                     problem['cannot find the lab'][a_record['OH Lab']]['award'] = add_award
                     problem['cannot find the lab'][a_record['OH Lab']]['users'].append(a_record['OH UUID'])
                     continue
+                if user_data.get('lab_score') < 80:
+                    if credentials_only:
+                        user_data['uuid'] = users_all[0]['uuid']
+                    problem['double check lab'].append(user_data)
+                    continue
+
                 if credentials_only:
                     user_data['uuid'] = users_all[0]['uuid']
+                    if users_all[0]['status'] == 'deleted':
+                        user_data['status'] = 'current'
                     actions['add_credentials'].append(user_data)
                     continue
                 # if user is not in the data portal create new account
@@ -2624,7 +2637,8 @@ def sync_users_oh_start(connection, **kwargs):
     if actions.get('add_user'):
         for a_user in actions['add_user']:
             del a_user['lab_score']
-            del a_user['OH_lab']
+            if a_user.get('OH_lab'):
+                del a_user['OH_lab']
             ff_utils.post_metadata(a_user, 'user', my_auth)
 
     # Add permissions (lab and awards) to existing users in the data portal
@@ -2633,7 +2647,8 @@ def sync_users_oh_start(connection, **kwargs):
             user_uuid = a_user['uuid']
             del a_user['uuid']
             del a_user['lab_score']
-            del a_user['OH_lab']
+            if a_user.get('OH_lab'):
+                del a_user['OH_lab']
             ff_utils.patch_metadata(a_user, user_uuid, my_auth)
 
     # remove user's permissions from the data portal
