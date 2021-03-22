@@ -465,18 +465,53 @@ def check_help_page_urls(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(run_on_uuid_list=None, add_res_to_ignore=False, reset_ignore=False)
 def check_search_urls(connection, **kwargs):
-    '''Check the URLs in static sections that link to a search or browse page.
-    Give a warning if the number of results is 0.
+    '''Check for URLs in static sections that link to a search or browse page
+    and return no results. Keeps a list of items to ignore.
+
+    Args:
+    - run_on_uuid_list: if present, run the check only on these items (list of
+      uuids, comma separated).
+    - add_res_to_ignore: if True, add all results to the ignore list and they
+      will not show up next time (default is False). Use in combination with run_on_uuid_list.
+    - reset_ignore: if True, empty the ignore list (default is False).
+
+    Results:
+    - full_output.result: static sections have URLs to search/browse with 0 results.
+    - full_output.ignore: static sections in the ignore list are not checked by
+      current and future runs of the check. Can be modified by check kwargs.
     '''
     check = CheckResult(connection, 'check_search_urls')
-    search = ('search/?type=StaticSection' +
-              '&status%21=deleted&status%21=draft' +
-              '&field=body')
-    results = ff_utils.search_metadata(search, key=connection.ff_keys)
+
+    # get items to ignore from previous check result, unless reset_ignore is True
+    if kwargs.get('reset_ignore') is True:
+        ignored_sections = []
+    else:
+        last_result = check.get_primary_result()
+        # if last one was fail, find an earlier check with non-FAIL status
+        it = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            it += 1
+            hours = it * 7 * 24  # this is a weekly check, so look for checks with 7 days iteration
+            last_result = check.get_closest_result(diff_hours=hours)
+            if it > 4:
+                check.summary = 'Cannot find a non-fail primary check in the past 4 weeks'
+                check.status = 'ERROR'
+                return check
+        # remove cases previously ignored
+        ignored_sections = last_result['full_output'].get('ignore', [])
+
+    query = 'search/?type=StaticSection&status%21=deleted&status%21=draft'
+    # if check is limited to certain uuids
+    if kwargs.get('run_on_uuid_list'):
+        uuids = kwargs['run_on_uuid_list'].split(',')
+        query += ''.join(['&uuid=' + u.strip() for u in uuids])
+    results = ff_utils.search_metadata(query + '&field=body&field=uuid',
+                                       key=connection.ff_keys)
     problematic_sections = {}
-    for result in results:
+    results_filtered = [r for r in results if r['uuid'] not in ignored_sections]
+    for result in results_filtered:
         body = result.get('body', '')
         # search links for search or browse pages, either explicit or relative
         urls = re.findall(r'[\(\[=]["]*(?:[^\s\)\]"]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]"]+|/)((?:browse|search)/\?[^\s\)\]"]+)[\)\]"]', body)
@@ -484,10 +519,15 @@ def check_search_urls(connection, **kwargs):
             for url in urls:
                 url = url.replace('&amp;', '&')  # replace HTML &amp;
                 url = re.sub(r'&limit=[^&]*|limit=[^&]*&?', '', url)  # remove limit if present
-                q_results = ff_utils.search_metadata(url + '&limit=1&field=@id', key=connection.ff_keys)
+                q_results = ff_utils.search_metadata(url + '&limit=1&field=uuid', key=connection.ff_keys)
                 if len(q_results) == 0:
-                    problematic_sections.setdefault(result['@id'], [])
-                    problematic_sections[result['@id']].append(url)
+                    problematic_sections.setdefault(result['uuid'], [])
+                    problematic_sections[result['uuid']].append(url)
+
+    # move results to ignored if add_res_to_ignore == True
+    if problematic_sections and kwargs.get('add_res_to_ignore') is True:
+        ignored_sections.extend([uuid for uuid in problematic_sections.keys() if uuid not in ignored_sections])
+        problematic_sections = {}
 
     if problematic_sections:
         check.status = 'WARN'
@@ -498,7 +538,7 @@ def check_search_urls(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No empty search links found'
         check.description = check.summary
-    check.full_output = problematic_sections
+    check.full_output = {'result': problematic_sections, 'ignore': ignored_sections}
     return check
 
 
