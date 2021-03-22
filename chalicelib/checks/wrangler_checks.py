@@ -2385,7 +2385,12 @@ def sync_users_oh_status(connection, **kwargs):
                 if award_tag == 'DCIC - DCIC (1U01CA200059-01)':
                     award_tag = 'DCIC - Park (1U01CA200059-01)'
                 award_tags.append(award_tag)
-        a_record['DCIC Grant'] = award_tags[0]
+
+        if award_tags:
+            a_record['DCIC Grant'] = award_tags[0]
+        else:
+            a_record['DCIC Grant'] = 'No Award'
+            a_record['DCIC Grant'] = award_tags[0]
         return a_record, award_tags
 
     def compare_record(existing_record, user, all_labs, all_grants, new=False):
