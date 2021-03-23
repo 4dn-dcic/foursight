@@ -2385,12 +2385,10 @@ def sync_users_oh_status(connection, **kwargs):
                 if award_tag == 'DCIC - DCIC (1U01CA200059-01)':
                     award_tag = 'DCIC - Park (1U01CA200059-01)'
                 award_tags.append(award_tag)
-
-        if award_tags:
+        try:
             a_record['DCIC Grant'] = award_tags[0]
-        else:
-            a_record['DCIC Grant'] = 'No Award'
-            a_record['DCIC Grant'] = award_tags[0]
+        except:
+            a_record['DCIC Grant'] = 'Lab missing 4DN Award'
         return a_record, award_tags
 
     def compare_record(existing_record, user, all_labs, all_grants, new=False):
@@ -2445,7 +2443,17 @@ def sync_users_oh_status(connection, **kwargs):
             user_info['uuid'] = user_uuid
 
         # predefined cases
-        if a_record['OH Grant'] == "External Science Advisor":
+        if not a_record['OH Grant']:
+            if a_record['OH Role'] == "External Science Advisor" or a_record['OH Role'] == "External Program Consultant":
+                user_info['lab'] = '/labs/esa-lab/'
+                user_info['lab_score'] = 100
+                return user_info
+            if a_record['OH Role'] == "NIH Official":
+                user_info['lab'] = '/labs/nih-lab/'
+                user_info['lab_score'] = 100
+                return user_info
+
+        if a_record['OH Grant'] == "External Science Advisor" or a_record['OH Grant'] == "External Program Consultant":
             user_info['lab'] = '/labs/esa-lab/'
             user_info['lab_score'] = 100
             return user_info
@@ -2496,7 +2504,7 @@ def sync_users_oh_status(connection, **kwargs):
                'add_credentials': []
                }
     # keep track of all problems we encounter
-    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}, 'double check lab': []}
+    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}, 'double check lab': [], 'edge cases': []}
     # get oh google sheet
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
@@ -2506,8 +2514,10 @@ def sync_users_oh_status(connection, **kwargs):
     # all dcic users in the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
     # iterate over records and compare
+
     for a_record in user_list:
         if a_record.get('DCIC UUID'):
+
             # skip if in skip users list
             if a_record['DCIC UUID'] in skip_users_uuid:
                 continue
@@ -2516,16 +2526,21 @@ def sync_users_oh_status(connection, **kwargs):
                 continue
             # does it exist in our system with a lab
             users = [i for i in fdn_users if i['uuid'] == a_record['DCIC UUID'].strip()]
+
             if users:
                 user = users[0]
                 # is user inactivated on OH
                 if a_record.get('OH Active/Inactive') == '0':
+
                     # remove the user's permissions in the portal, and in the next round, inactivate it on the excel
                     actions['delete_user'].append(a_record['DCIC UUID'])
                 else:
                     # user exist on excel and on our database
                     # any new info?
                     updates = compare_record(a_record, user, all_labs, all_grants)
+                    if updates.get('DCIC Grant', '') == 'Lab missing 4DN Award':
+                        problem['edge cases'].append([updates['DCIC UUID'], 'Lab missing 4DN Award'])
+                        continue
                     if updates:
                         actions['update_excel'][a_record['DCIC UUID']] = updates
             # we deleted the user
@@ -2554,6 +2569,9 @@ def sync_users_oh_status(connection, **kwargs):
                     problem['NEW OH Line for existing user'].append([user['uuid'], oh_mail])
                     continue
                 updates = compare_record(a_record, user, all_labs, all_grants, new=True)
+                if updates.get('DCIC Grant', '') == 'Lab missing 4DN Award':
+                    problem['edge cases'].append([updates['DCIC UUID'], 'Lab missing 4DN Award'])
+                    continue
                 if updates:
                     updates['DCIC Active/Inactive'] = '1'
                     actions['patch_excel'][a_record['OH Account Email']] = updates
@@ -2596,14 +2614,19 @@ def sync_users_oh_status(connection, **kwargs):
                 actions['add_user'].append(user_data)
 
     all_patching_uuids = [v['DCIC UUID'] for v in actions['patch_excel'].values() if v.get('DCIC UUID')]
+    all_edge_cases_uuids = [i[0] for i in problem['edge cases']]
     # skip the total
-    skip_list = all_dcic_uuids + all_patching_uuids + skip_users_uuid
+    skip_list = all_dcic_uuids + all_patching_uuids + skip_users_uuid + all_edge_cases_uuids
     remaining_users = [i for i in fdn_users if i['uuid'] not in skip_list]
 
     if remaining_users:
         for a_user in remaining_users:
             # create empty record object
             new_record, alt_awards = generate_record(a_user, all_labs, all_grants)
+            if new_record.get('DCIC Grant', '') == 'Lab missing 4DN Award':
+                print(a_user['uuid'])
+                problem['edge cases'].append([new_record['DCIC UUID'], 'Lab missing 4DN Award'])
+                continue
             new_record['DCIC Active/Inactive'] = '1'
             actions['add_excel'].append(new_record)
 
