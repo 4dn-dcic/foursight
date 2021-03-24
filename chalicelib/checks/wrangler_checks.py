@@ -1203,10 +1203,10 @@ def users_with_doppelganger(connection, **kwargs):
     # add if they have any items referencing them
     if cases:
         for a_case in cases:
-            us1_info = ff_utils.get_metadata(a_case['user1'][1] + '@@links', key=connection.ff_keys)
-            item_count_1 = len(us1_info['uuids_linking_to'])
-            us2_info = ff_utils.get_metadata(a_case['user2'][1] + '@@links', key=connection.ff_keys)
-            item_count_2 = len(us2_info['uuids_linking_to'])
+            us1_info = ff_utils.get_metadata('indexing-info?uuid=' + a_case['user1'][1][7:-1], key=connection.ff_keys)
+            item_count_1 = len(us1_info['uuids_invalidated'])
+            us2_info = ff_utils.get_metadata('indexing-info?uuid=' + a_case['user2'][1][7:-1], key=connection.ff_keys)
+            item_count_2 = len(us2_info['uuids_invalidated'])
             add_on = ' ({}/{})'.format(item_count_1, item_count_2)
             a_case['log'] = a_case['log'] + add_on
             a_case['brief'] = a_case['brief'] + add_on
