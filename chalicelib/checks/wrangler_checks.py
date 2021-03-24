@@ -2504,7 +2504,7 @@ def sync_users_oh_status(connection, **kwargs):
                'add_credentials': []
                }
     # keep track of all problems we encounter
-    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}, 'double check lab': [], 'edge cases': []}
+    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}, 'double check lab': [], 'edge cases': [], 'audit checks': []}
     # get oh google sheet
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
@@ -2513,11 +2513,14 @@ def sync_users_oh_status(connection, **kwargs):
     user_list = df.to_dict(orient='records', into=OrderedDict)
     # all dcic users in the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
-    # iterate over records and compare
 
+    # Based on the excel which users should be deleted (remove credentials or inactivate)
+    # This will be used for some audit checks
+    excel_delete_users = [i['DCIC UUID'] for i in user_list if (i.get('DCIC UUID') and i['OH Active/Inactive'] == '0' and i['DCIC Active/Inactive'] != '0')]
+
+    # iterate over records and compare
     for a_record in user_list:
         if a_record.get('DCIC UUID'):
-
             # skip if in skip users list
             if a_record['DCIC UUID'] in skip_users_uuid:
                 continue
@@ -2558,7 +2561,8 @@ def sync_users_oh_status(connection, **kwargs):
             # do we have OH email already
             # we hit this point after creating new users on the portal (second time we run this check we add them to excel)
             oh_mail = simple(a_record.get('OH Account Email', ""))
-            users_4dn = [i for i in fdn_users if simple(i['email']) == oh_mail]
+            other_emails = simple(a_record.get('Other Emails', "")).split(',')
+            users_4dn = [i for i in fdn_users if (simple(i['email']) == oh_mail or i['email'] in other_emails)]
             credentials_only = False  # Whether create account from scratch or add credentials
 
             if users_4dn:
@@ -2629,6 +2633,18 @@ def sync_users_oh_status(connection, **kwargs):
                 continue
             new_record['DCIC Active/Inactive'] = '1'
             actions['add_excel'].append(new_record)
+
+    # some audit check
+    # check for delete users
+    code_delete_users = list(actions['inactivate_excel'].keys()) + actions['delete_user']
+    if len(excel_delete_users) < len(code_delete_users):
+        diff = [i for i in code_delete_users if i not in excel_delete_users]
+        for i in diff:
+            problem['audit checks'].append([i, 'info in data may not be in sync.'])
+            if i in actions['inactivate_excel'].keys():
+                del actions['inactivate_excel'][i]
+            if i in actions['delete_user']:
+                actions['delete_user'].remove(i)
 
     # do we need action
     check.summary = ""
