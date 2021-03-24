@@ -197,7 +197,7 @@ def biorxiv_is_now_published(connection, **kwargs):
     if kwargs.get('uuid_list'):
         suffix = '&'.join(['uuid={}'.format(u) for u in [uid.strip() for uid in kwargs.get('uuid_list').split(',')]])
     else:
-        suffix = 'journal=bioRxiv&journal=bioRxiv+%3A+the+preprint+server+for+biology&type=Publication&status=current&limit=all'
+        suffix = 'journal=bioRxiv&type=Publication&status=current&limit=all'
     # run the check
     search_query = search + suffix
     biorxivs = ff_utils.search_metadata(search_query, key=connection.ff_keys)
