@@ -392,7 +392,107 @@ def extract_nz_chr(acc, auth):
     return nz_num, chrsize, max_distance
 
 
-def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
+def check_qcs_on_files(file_meta, all_qcs):
+    """Go over qc related fields, and check for overall quality score."""
+    def check_qc(file_accession, resp, failed_qcs_list):
+        """format errors and return a errors list."""
+        quality_score = resp.get('overall_quality_status', '')
+        if quality_score.upper() != 'PASS':
+            failed_qcs_list.append([file_accession, resp['display_title'], resp['uuid']])
+        return failed_qcs_list
+
+    failed_qcs = []
+    if not file_meta.get('quality_metric'):
+        return
+    qc_result = [i for i in all_qcs if i['@id'] == file_meta['quality_metric']['@id']][0]
+    if qc_result['display_title'].startswith('QualityMetricQclist'):
+        if not qc_result.get('qc_list'):
+            return
+        for qc in qc_result['qc_list']:
+            qc_resp = [i for i in all_qcs if i['@id'] == qc['@id']][0]
+            failed_qcs = check_qc(file_meta['accession'], qc_resp, failed_qcs)
+    else:
+        failed_qcs = check_qc(file_meta['accession'], qc_result, failed_qcs)
+    return failed_qcs
+
+
+def stepper(library, keep,
+            step_tag, sample_tag, new_step_input_file,
+            input_file_dict,  new_step_name, new_step_output_arg,
+            additional_input={}, organism='human', no_output=False):
+    """This functions packs the core of wfr check, for a given workflow and set of
+    input files, it will return the status of process on these files.
+    It will also check for failed qcs on input files.
+    new_step_output_arg= can be str or list, will return str or list of @id for output files with given argument(s)"""
+    step_output = ''
+    # unpack library
+    all_files = library['files']
+    all_wfrs = library['wfrs']
+    all_qcs = library['qcs']
+    # unpack keep
+    running = keep['running']
+    problematic_run = keep['problematic_run']
+    missing_run = keep['missing_run']
+
+    # Lets get the repoinse from one of the input files that will be used in this step
+    # if it is a list take the first item, if not use it as is
+    # new_step_input_file must be the @id
+    # also check for qc status
+    qc_errors = []
+    if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
+        for an_input in new_step_input_file:
+            input_resp = [i for i in all_files if i['@id'] == an_input][0]
+            errors = check_qcs_on_files(input_resp, all_qcs)
+            if errors:
+                qc_errors.extend(errors)
+        name_tag = '_'.join([i.split('/')[2] for i in new_step_input_file])
+    else:
+        input_resp = [i for i in all_files if i['@id'] == new_step_input_file][0]
+        errors = check_qcs_on_files(input_resp, all_qcs)
+        if errors:
+            qc_errors.extend(errors)
+        name_tag = new_step_input_file.split('/')[2]
+    # if there are qc errors, return with qc qc_errors
+    if qc_errors:
+        problematic_run.append([step_tag + ' input file qc error', qc_errors])
+        step_status = "no complete run, qc error"
+    # if no qc problem, go on with the run check
+    else:
+        if no_output:
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+        else:
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+        step_status = step_result['status']
+        # if successful
+        input_file_accession = input_resp['accession']
+        if step_status == 'complete':
+            if new_step_output_arg:
+                if isinstance(new_step_output_arg, list):
+                    output_list = []
+                    for an_output_arg in new_step_output_arg:
+                        output_list.append(step_result[an_output_arg])
+                    step_output = output_list
+                else:
+                    step_output = step_result[new_step_output_arg]
+            pass
+        # if still running
+        elif step_status == 'running':
+            running.append([step_tag, sample_tag, input_file_accession])
+        # if run is not successful
+        elif step_status.startswith("no complete run, too many"):
+            problematic_run.append([step_tag, sample_tag, input_file_accession])
+        else:
+            # add step 4
+            missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
+
+    keep['running'] = running
+    keep['problematic_run'] = problematic_run
+    keep['missing_run'] = missing_run
+    return keep, step_status, step_output
+
+
+def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
+                md_qc=False, run=None, error_threshold=2):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
@@ -405,10 +505,11 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
+     error_threshold = if there are this many failed runs, don't proceed
     """
     # tag as problematic if problematic runs are this many
     # if there are n failed runs, don't proceed
-    error_at_failed_runs = 2
+    error_at_failed_runs = error_threshold
     # you should provide key or all_wfrs
     assert key or all_wfrs
     if wfr_name not in workflow_details:
