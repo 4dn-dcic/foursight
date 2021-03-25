@@ -38,7 +38,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "config": {"ebs_size": 10,
                    "instance_type": 't3.small',
                    'EBS_optimized': True
-                  }
+                   }
     },
         {
         'app_name': 'fastqc',
@@ -171,23 +171,90 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "config": {'mem': 4, 'cpu': 2, "ebs_size": 30},
         "overwrite_input_extra": True
         },
-        {"app_name": "encode-chipseq",
-         "workflow_uuid": "5b44ce1b-0347-40a6-bc9c-f39fb5d7bce3",
-         'custom_pf_fields': {
-             'chip.sig_fc': {
-                 'genome_assembly': genome,
-                 'file_type': 'intensity values',
-                 'description': 'ChIP-seq signal fold change over control input'},
-             'chip.peak_calls': {
-                 'genome_assembly': genome,
-                 'file_type': 'peaks',
-                 'description': 'ChIP-seq peak calls'},
-             'chip.qc_json': {
-                 'genome_assembly': genome,
-                 'file_type': 'qc',
-                 'description': 'ChIP-seq QC json'}
-         }
-         },
+        {
+            "app_name": "encode-chipseq-aln-chip",
+            "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-chip",
+            "parameters": {},
+            "config": {
+                       "ebs_size": 0,
+                       "ebs_type": "gp2",
+                       "json_bucket": "4dn-aws-pipeline-run-json",
+                       "EBS_optimized": "",
+                       "ebs_iops": "",
+                       "shutdown_min": "now",
+                       "instance_type": "",
+                       "password": "",
+                       "log_bucket": "tibanna-output",
+                       "key_name": "",
+                       "cloudwatch_dashboard": True
+            },
+            'custom_pf_fields': {
+                'chip.first_ta': {
+                    'genome_assembly': genome,
+                    'file_type': 'read positions',
+                    'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline'},
+                'chip.first_ta_xcor': {
+                    'genome_assembly': genome,
+                    'file_type': 'intermediate file',
+                    'description': 'Counts file used only for QC'}
+            }
+        },
+        {
+            "app_name": "encode-chipseq-aln-ctl",
+            "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl",
+            "parameters": {},
+            "config": {
+                "ebs_size": 0,
+                "ebs_type": "gp2",
+                "json_bucket": "4dn-aws-pipeline-run-json",
+                "EBS_optimized": "",
+                "ebs_iops": "",
+                "shutdown_min": 'now',
+                "instance_type": "",
+                "password": "",
+                "log_bucket": "tibanna-output",
+                "key_name": "",
+                "cloudwatch_dashboard": True
+            },
+            'custom_pf_fields': {
+                'chip.first_ta_ctl': {
+                    'genome_assembly': genome,
+                    'file_type': 'read positions',
+                    'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline'}
+            }
+        },
+        {
+            "app_name": "encode-chipseq-postaln",
+            "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-postaln",
+            "parameters": {},
+            "config": {
+                "ebs_size": 0,
+                "ebs_type": "gp2",
+                "json_bucket": "4dn-aws-pipeline-run-json",
+                "EBS_optimized": "",
+                "ebs_iops": "",
+                "shutdown_min": "now",
+                "instance_type": "",
+                "password": "",
+                "log_bucket": "tibanna-output",
+                "key_name": "",
+                "cloudwatch_dashboard": True
+            },
+            'custom_pf_fields': {
+                'chip.optimal_peak': {
+                    'genome_assembly': genome,
+                    'file_type': 'peaks',
+                    'description': 'Peak calls from ENCODE ChIP-Seq Pipeline'},
+                'chip.conservative_peak': {
+                    'genome_assembly': genome,
+                    'file_type': 'conservative peaks',
+                    'description': 'Conservative peak calls from ENCODE ChIP-Seq Pipeline'},
+                'chip.sig_fc': {
+                    'genome_assembly': genome,
+                    'file_type': 'signal fold change',
+                    'description': 'ChIP-seq signal fold change over input control'}
+            }
+        },
         {"app_name": "encode-atacseq",
          "workflow_uuid": "6fb021e9-858c-4561-8ce1-e0adc673e0b5",
          'custom_pf_fields': {

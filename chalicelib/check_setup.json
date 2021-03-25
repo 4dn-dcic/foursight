@@ -598,7 +598,7 @@
             }
         }
     },
-    "chip_seq_status": {
+    "chipseq_status": {
         "title": "g) ChIP-seq",
         "group": "Pipeline checks",
         "schedule": {
