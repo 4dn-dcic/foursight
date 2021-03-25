@@ -2699,10 +2699,7 @@ def sync_users_oh_start(connection, **kwargs):
     if actions.get('delete_user'):
         for a_user in actions['delete_user']:
             # Delete the user permissions: submits_for, groups, viewing_groups and lab.
-            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=submits_for')
-            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=lab')
-            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=viewing_groups')
-            ff_utils.patch_metadata({}, a_user, my_auth, add_on='delete_fields=groups')
+            ff_utils.delete_field(a_user, 'submits_for, lab, viewing_groups, groups', key=my_auth)
 
     # update google sheet
     # we will create a modified version of the full stack and write on google sheet at once
