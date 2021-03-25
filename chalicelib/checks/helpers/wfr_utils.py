@@ -500,27 +500,20 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
 
 def get_attribution(file_json):
     """give file response in embedded frame and extract attribution info"""
+    dciclab = '/labs/4dn-dcic-lab/'
     attributions = {
-        'lab': file_json['lab']['@id'],
-        'award': file_json['award']['@id']
+        'lab': dciclab,
+        'award': '/awards/2U01CA200059-06/'
     }
+    assert file_json.get('lab').get('@id')  # assume this is not really necessary
+    file_lab = file_json['lab']['@id']
     cont_labs = []
     if file_json.get('contributing_labs'):
         cont_labs = [i['@id'] for i in file_json['contributing_labs']]
-    appendFDN = True
-    if attributions['lab'] == '/labs/4dn-dcic-lab/':
-        appendFDN = False
+    if file_lab != dciclab and file_lab not in cont_labs:
+        cont_labs.append(file_lab)
     if cont_labs:
-        if appendFDN:
-            cont_labs.append('/labs/4dn-dcic-lab/')
-            cont_labs = list(set(cont_labs))
         attributions['contributing_labs'] = cont_labs
-    else:
-        if appendFDN:
-            cont_labs = ['/labs/4dn-dcic-lab/']
-            attributions['contributing_labs'] = cont_labs
-        else:
-            pass
     return attributions
 
 
