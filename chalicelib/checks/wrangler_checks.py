@@ -11,6 +11,11 @@ from fuzzywuzzy import fuzz
 import boto3
 from .helpers import wrangler_utils
 from collections import Counter
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
+import pandas as pd
+from collections import OrderedDict
+import uuid
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
@@ -853,7 +858,8 @@ def new_or_updated_items(connection, **kwargs):
                             # full_output[modifier][labname][itype].setdefault(modlabel, {'search': '', 'accessions': []})
                             if full_output[modifier][labname][itype][modlabel] == 'None' or not full_output[modifier][labname][itype][modlabel].get('search'):
                                 searchdate, _ = date.split('T')
-                                modsearch = '{server}search/?q=last_modified.date_modified:[{date} TO *]&type={itype}&lab.uuid={lab}&last_modified.modified_by.uuid={mod}status=in review by lab'.format(
+                                modsearch = ('{server}search/?q=last_modified.date_modified:[{date} TO *]'
+                                             '&type={itype}&lab.uuid={lab}&last_modified.modified_by.uuid={mod}status=in review by lab').format(
                                     server=connection.ff_server, date=searchdate, itype=itype, lab=labuuid, mod=item_info.get('last_modified.modified_by.uuid')
                                 )
                                 full_output[modifier][labname][itype][modlabel] = {'search': modsearch}
@@ -1315,7 +1321,7 @@ def patch_assay_subclass_short(connection, **kwargs):
 
 def semver2int(semver):
     v = [num for num in semver.lstrip('v').split('.')]
-    for i in range(1,len(v)):
+    for i in range(1, len(v)):
         if len(v[i]) == 1:
             v[i] = '0' + v[i]
     return float(''.join([v[0] + '.'] + v[1:]))
@@ -1430,12 +1436,12 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     time.sleep(wait)
     query = '/search/?file_type=chromatin states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
-    for re in res:
-        if not re.get('higlass_defaults'):
-            if not re.get('tags'):
-                check.full_output['problematic_files'][re['accession']] = 'missing state tag'
+    for a_res in res:
+        if not a_res.get('higlass_defaults'):
+            if not a_res.get('tags'):
+                check.full_output['problematic_files'][a_res['accession']] = 'missing state tag'
             else:
-                check.full_output['to_add'][re['accession']] = re["tags"]
+                check.full_output['to_add'][a_res['accession']] = a_res["tags"]
 
     if check.full_output['to_add']:
         check.status = 'WARN'
@@ -1516,16 +1522,16 @@ def check_for_strandedness_consistency(connection, **kwargs):
     target_experiments = []  # the experiments that we are interested in (fastqs with beta actin count tag)
 
     # Filtering the experiments target experiments
-    for re in res:
-        if re.get("strandedness"):
-            strandedness_meta = re['strandedness']
+    for a_res in res:
+        if a_res.get("strandedness"):
+            strandedness_meta = a_res['strandedness']
         else:
             strandedness_meta = 'missing'
 
-        exp_info = {'meta': re, 'files': [], 'tag': strandedness_meta}
+        exp_info = {'meta': a_res, 'files': [], 'tag': strandedness_meta}
 
         # verify that the files in the experiment have the beta-actin count info
-        for a_re_file in re['files']:
+        for a_re_file in a_res['files']:
             if a_re_file['file_format']['display_title'] == 'fastq':
                 file_meta = ff_utils.get_metadata(a_re_file['accession'], connection.ff_keys)
                 file_meta_keys = file_meta.keys()
@@ -1559,18 +1565,18 @@ def check_for_strandedness_consistency(connection, **kwargs):
                 #  Calculate forward, reversed or unstranded
                 strandedness_report = wrangler_utils.calculate_rna_strandedness(target_exp['files'])
                 if "unknown" in strandedness_report['calculated_strandedness']:
-                    problematic['fastqs_unmatch_strandedness'].append({'exp':target_exp['meta']['accession'],
-                                                                        'strandedness_info': strandedness_report})
+                    problematic['fastqs_unmatch_strandedness'].append({'exp': target_exp['meta']['accession'],
+                                                                       'strandedness_info': strandedness_report})
                     problm = True
                 elif strandedness_report['calculated_strandedness'] == "zero":
-                    problematic['fastqs_zero_count_both_strands'].append({'exp':target_exp['meta']['accession'],
+                    problematic['fastqs_zero_count_both_strands'].append({'exp': target_exp['meta']['accession'],
                                                                           'strandedness_info': strandedness_report})
                     problm = True
                 elif target_exp['tag'] != strandedness_report['calculated_strandedness']:
                     problematic['inconsistent_strandedness'].append({'exp': target_exp['meta']['accession'],
-                                                                    'strandedness_metadata': target_exp['tag'],
-                                                                    'calculated_strandedness': strandedness_report['calculated_strandedness'],
-                                                                    'files': strandedness_report['files']})
+                                                                     'strandedness_metadata': target_exp['tag'],
+                                                                     'calculated_strandedness': strandedness_report['calculated_strandedness'],
+                                                                     'files': strandedness_report['files']})
                     problm = True
                 else:
                     missing_consistent_tag.append(target_exp['meta']['accession'])
@@ -1580,7 +1586,7 @@ def check_for_strandedness_consistency(connection, **kwargs):
         check.status = 'WARN'
         check.description = 'Problematic experiments need to be addressed'
         msg = str(len(missing_consistent_tag) + len(problematic['fastqs_unmatch_strandedness']) + len(problematic['fastqs_zero_count_both_strands']) +
-                len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
+                  len(problematic['inconsistent_strandedness'])) + ' experiment(s) need to be addressed'
         check.brief_output.append(msg)
 
         if problematic['fastqs_zero_count_both_strands']:
@@ -2078,7 +2084,7 @@ def grouped_with_file_relation_consistency(connection, **kwargs):
         check.description = "{} files are missing 'grouped with' relationships".format(len(missing))
         check.allow_action = True
         check.action_message = ("DO NOT RUN if relations need to be removed! "
-            "This action will attempt to patch {} items by adding the missing 'grouped with' relations".format(len(to_patch)))
+                                "This action will attempt to patch {} items by adding the missing 'grouped with' relations".format(len(to_patch)))
     else:
         check.status = 'PASS'
         check.summary = check.description = "All 'grouped with' file relationships are consistent"
@@ -2269,4 +2275,554 @@ def patch_hic_summary_tables(connection, **kwargs):
     else:
         action.status = 'DONE'
     action.output = action_logs
+    return action
+
+
+def get_oh_google_sheet():
+    # GET KEY FROM S3 To Access
+    # TODO: encrypt the key same as foursight key and use same function to fetch it
+    s3 = boto3.resource('s3')
+    obj = s3.Object('elasticbeanstalk-fourfront-webprod-system', 'DCICjupgoogle.json')
+    cont = obj.get()['Body'].read().decode()
+    key_dict = json.loads(cont)
+    SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, SCOPES)
+    gc = gspread.authorize(creds)
+    # Get the google sheet information
+    book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
+    sheet_name = 'AllMembers'
+    book = gc.open_by_key(book_id)
+    worksheet = book.worksheet(sheet_name)
+    return worksheet
+
+
+@check_function()
+def sync_users_oh_status(connection, **kwargs):
+    """
+    Check users on database and OH google sheet, synchronize them
+    1) Pull all table values, All database users, labs and awards
+    2) If entry inactive in OH, remove user's permissions (lab, viewing_groups, submits_for, groups) from DCIC, mark inactive for DCIC
+    3) If user exist for OH and DCIC, check values on DCIC database, and update DCIC columns if anything is different from the table.
+    4) If only OH information is available on the table,
+    4.1) skip no email, and skip inactive
+    4.2) check if email exist already on the table, report problem
+    4.3) check if email exist on DCIC database, add DCIC information
+    4.4) if email is available, find the matching lab, and create new user, add user information to the table
+    4.5) if can not find the lab, report need for new lab creation.
+    5) check for users that are on dcic database, but not on the table, add as new DCIC users.
+
+    If a new user needs to be created, it will be first created on the portal, and second time
+    the check runs, it will be added to the excel (to prevent problems with un-synchronized actions)
+    """
+    check = CheckResult(connection, 'sync_users_oh_status')
+    my_auth = connection.ff_keys
+    check.action = "sync_users_oh_start"
+    check.description = "Synchronize portal and OH user records"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {}
+    check.status = 'PASS'
+    check.allow_action = False
+
+    def simple(string):
+        return string.lower().strip()
+
+    def generate_record(user, all_labs, all_grants):
+        """Create excel data from the user info"""
+        a_record = {}
+        a_record['DCIC UUID'] = user['uuid']
+        a_record['DCIC Role'] = user.get('job_title', "")
+        a_record['DCIC First Name'] = user['first_name']
+        a_record['DCIC Last Name'] = user['last_name']
+        a_record['DCIC Account Email'] = user['email']
+        a_record['DCIC Contact Email'] = user.get('preferred_email', "")
+
+        # Role based award and labs
+        if a_record['DCIC Role'] == "External Scientific Adviser":
+            a_record['DCIC Lab'] = ''
+            a_record['DCIC Grant'] = 'External Science Advisor'
+            return a_record, []
+        if a_record['DCIC Role'] == "NIH Official":
+            a_record['DCIC Lab'] = ''
+            a_record['DCIC Grant'] = 'NIH PO Officers'
+            return a_record, []
+        # add lab name
+        # is the user is from response
+        user_lab = ''
+        try:
+            lab_name = user['lab']['display_title']
+            user_lab = [i for i in all_labs if i['display_title'] == lab_name][0]
+        except:
+            # is the user a new one (does not exist on data yet)
+            user_lab = [i for i in all_labs if i['@id'] == user['lab']][0]
+            lab_name = user_lab['display_title']
+        lab_converter = {'4DN DCIC, HMS': 'Peter Park, HMS'}
+        if lab_name in lab_converter:
+            lab_name = lab_converter[lab_name]
+        a_record['DCIC Lab'] = lab_name
+        if lab_name == 'Peter Park, HMS':
+            a_record['DCIC Grant'] = 'DCIC - Park (2U01CA200059-06)'
+            return a_record, []
+        # add award
+        user_awards = [i['uuid'] for i in user_lab['awards']]
+        user_awards = [i for i in all_grants if i['uuid'] in user_awards]
+        award_tags = []
+        for an_award in user_awards:
+            award_tag = ''
+            # find first 4dn grant
+            if an_award.get('viewing_group') in ['4DN', 'NOFIC']:
+                if an_award['display_title'] == 'Associate Member Award':
+                    award_tag = 'Associate Member'
+                else:
+                    tag = an_award['description'].split(':')[0]
+                    try:
+                        last = an_award['pi']['last_name']
+                    except:
+                        last = "no_PI"
+                    award_tag = '{} - {} ({})'.format(tag, last, an_award['name'])
+                if award_tag == 'DCIC - DCIC (2U01CA200059-06)':
+                    award_tag = 'DCIC - Park (2U01CA200059-06)'
+                if award_tag == 'DCIC - DCIC (1U01CA200059-01)':
+                    award_tag = 'DCIC - Park (1U01CA200059-01)'
+                award_tags.append(award_tag)
+        try:
+            a_record['DCIC Grant'] = award_tags[0]
+        except:
+            a_record['DCIC Grant'] = 'Lab missing 4DN Award'
+        return a_record, award_tags
+
+    def compare_record(existing_record, user, all_labs, all_grants, new=False):
+        """Check user response, and compare it to the exising record
+        only report the differences"""
+        updated_record, alt_awards = generate_record(user, all_labs, all_grants)
+        # if this is generated by OH records, find the referenced award
+        if new:
+            if existing_record.get('OH Grant'):
+                oh_grant = existing_record['OH Grant']
+                if oh_grant not in updated_record['DCIC Grant']:
+                    upd_award = [i for i in alt_awards if oh_grant in i]
+                    if upd_award:
+                        updated_record['DCIC Grant'] = upd_award[0]
+        updates = {}
+        for a_key, a_val in updated_record.items():
+            if a_key == 'DCIC Grant':
+                if existing_record.get(a_key) in alt_awards:
+                    continue
+            if existing_record.get(a_key) != a_val:
+                updates[a_key] = a_val
+        return updates
+
+    def find_lab(record, all_labs):
+        lab = ''
+        all_lab_names = [i['display_title'] for i in all_labs]
+        score = 0
+        best = ''
+        for disp in all_lab_names:
+            s = fuzz.token_sort_ratio(record['OH Lab'], disp.split(',')[0])
+            if s > score:
+                best = disp
+                score = s
+        if score > 73:
+            lab = [i['@id'] for i in all_labs if i['display_title'] == best][0]
+        return lab, score
+
+    def create_user_from_oh_info(a_record, all_labs, all_grants, credentials_only=False):
+        user_info = {}
+        user_info['viewing_groups'] = ["4DN"]
+        if not a_record.get('OH Account Email'):
+            return
+        if not credentials_only:
+            user_info['email'] = simple(a_record['OH Account Email'])
+            user_info['first_name'] = a_record['OH First Name']
+            user_info['last_name'] = a_record['OH Last Name']
+            user_info['job_title'] = a_record['OH Role']
+            if not user_info['job_title']:
+                user_info['job_title'] = 'Lab Associate'
+            # pre define a uuid so we can already put it on the excel
+            user_uuid = str(uuid.uuid4())
+            user_info['uuid'] = user_uuid
+
+        # predefined cases
+        if not a_record['OH Grant']:
+            if a_record['OH Role'] == "External Science Advisor" or a_record['OH Role'] == "External Program Consultant":
+                user_info['lab'] = '/labs/esa-lab/'
+                user_info['lab_score'] = 100
+                return user_info
+            if a_record['OH Role'] == "NIH Official":
+                user_info['lab'] = '/labs/nih-lab/'
+                user_info['lab_score'] = 100
+                return user_info
+
+        if a_record['OH Grant'] == "External Science Advisor" or a_record['OH Grant'] == "External Program Consultant":
+            user_info['lab'] = '/labs/esa-lab/'
+            user_info['lab_score'] = 100
+            return user_info
+        if a_record['OH Grant'] == "NIH Official":
+            user_info['lab'] = '/labs/nih-lab/'
+            user_info['lab_score'] = 100
+            return user_info
+        if a_record['OH Lab'] == 'Peter J. Park':
+            # This would need to be reworked if members of Peter's lab are doing research
+            # It would need to be replaced by /labs/peter-park-lab/
+            user_info['lab'] = '/labs/4dn-dcic-lab/'
+            user_info['lab_score'] = 100
+            return user_info
+
+        # find lab, assign @id
+        user_info['lab'], lab_score = find_lab(a_record, all_labs)
+        # Adding more information to the check to check by eye that the labs indeed correspond to OH labs
+        # It will be removed in the action to create the new user in the portal
+        user_info['lab_score'] = lab_score
+        user_info['OH_lab'] = a_record['OH Lab']
+        return user_info
+
+    # get skipped users with the skip_oh_synchronization tag
+    # if you want to skip more users, append the tag to the user item
+    skip_users_meta = ff_utils.search_metadata('/search/?type=User&tags=skip_oh_synchronization', my_auth)
+    # skip bots, external devs and DCIC members
+    skip_users_uuid = [i['uuid'] for i in skip_users_meta]
+    skip_lab_display_title = ['Peter Park, HARVARD', 'DCIC Testing Lab', '4DN Viewing Lab']
+
+    # Collect information from data portal
+    all_labs = ff_utils.search_metadata('/search/?type=Lab', key=my_auth)
+    all_labs = [i for i in all_labs if i['display_title'] not in skip_lab_display_title]
+    all_grants = ff_utils.search_metadata('/search/?type=Award', key=my_auth)
+    all_users = ff_utils.search_metadata('/search/?status=current&status=deleted&type=User', key=my_auth)
+
+    # Get 4DN users
+    fdn_users_query = '/search/?type=User&viewing_groups=4DN&viewing_groups=NOFIC'
+    fdn_users_query += "".join(['&lab.display_title!=' + i for i in skip_lab_display_title])
+    fdn_users = ff_utils.search_metadata(fdn_users_query, key=my_auth)
+
+    # keep a tally of all actions that we need to perform
+    actions = {'delete_user': [],
+               'add_user': [],
+               'inactivate_excel': {},
+               'update_excel': {},
+               'patch_excel': {},
+               'add_excel': [],
+               'add_credentials': []
+               }
+    # keep track of all problems we encounter
+    problem = {'NEW OH Line for existing user': [], 'cannot find the lab': {}, 'double check lab': [], 'edge cases': [], 'audit checks': []}
+    # get oh google sheet
+    worksheet = get_oh_google_sheet()
+    table = worksheet.get_all_values()
+    # Convert table data into an ordered dictionary
+    df = pd.DataFrame(table[1:], columns=table[0])
+    user_list = df.to_dict(orient='records', into=OrderedDict)
+    # all dcic users in the list
+    all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
+
+    # Based on the excel which users should be deleted (remove credentials or inactivate)
+    # This will be used for some audit checks
+    excel_delete_users = [i['DCIC UUID'] for i in user_list if (i.get('DCIC UUID') and i['OH Active/Inactive'] == '0' and i['DCIC Active/Inactive'] != '0')]
+
+    # iterate over records and compare
+    for a_record in user_list:
+        if a_record.get('DCIC UUID'):
+            # skip if in skip users list
+            if a_record['DCIC UUID'] in skip_users_uuid:
+                continue
+            # skip if we inactivated it already
+            if a_record.get('DCIC Active/Inactive') == '0':
+                continue
+            # does it exist in our system with a lab
+            users = [i for i in fdn_users if i['uuid'] == a_record['DCIC UUID'].strip()]
+
+            if users:
+                user = users[0]
+                # is user inactivated on OH
+                if a_record.get('OH Active/Inactive') == '0':
+
+                    # remove the user's permissions in the portal, and in the next round, inactivate it on the excel
+                    actions['delete_user'].append(a_record['DCIC UUID'])
+                else:
+                    # user exist on excel and on our database
+                    # any new info?
+                    updates = compare_record(a_record, user, all_labs, all_grants)
+                    if updates.get('DCIC Grant', '') == 'Lab missing 4DN Award':
+                        problem['edge cases'].append([updates['DCIC UUID'], 'Lab missing 4DN Award'])
+                        continue
+                    if updates:
+                        actions['update_excel'][a_record['DCIC UUID']] = updates
+            # we deleted the user
+            else:
+                # This record should have been already deleted in the first round, set to innactive on excel
+                actions['inactivate_excel'][a_record['DCIC UUID']] = {'DCIC Active/Inactive': "0"}
+        # if we did not assign a uuid
+        else:
+            # did OH say inactive, then do nothing
+            if a_record.get('OH Active/Inactive') == '0':
+                continue
+            # does oh have an email, if not do nothing
+            if not a_record.get('OH Account Email'):
+                continue
+            # do we have OH email already
+            # we hit this point after creating new users on the portal (second time we run this check we add them to excel)
+            oh_mail = simple(a_record.get('OH Account Email', ""))
+            other_emails = simple(a_record.get('Other Emails', "")).split(',')
+            users_4dn = [i for i in fdn_users if (simple(i['email']) == oh_mail or i['email'] in other_emails)]
+            credentials_only = False  # Whether create account from scratch or add credentials
+
+            if users_4dn:
+                # is this user already in the excel?
+                # oh created line for an existing user
+                user = users_4dn[0]
+                if user['uuid'] in all_dcic_uuids:
+                    problem['NEW OH Line for existing user'].append([user['uuid'], oh_mail])
+                    continue
+                updates = compare_record(a_record, user, all_labs, all_grants, new=True)
+                if updates.get('DCIC Grant', '') == 'Lab missing 4DN Award':
+                    problem['edge cases'].append([updates['DCIC UUID'], 'Lab missing 4DN Award'])
+                    continue
+                if updates:
+                    updates['DCIC Active/Inactive'] = '1'
+                    actions['patch_excel'][a_record['OH Account Email']] = updates
+
+            else:
+                # If the user has an account in the data portal without 4DN credentials, but it is on OH
+                # add the credentials
+                users_all = [i for i in all_users if simple(i['email']) == oh_mail]
+                if users_all:
+                    # skip if it is already pending for the credentials
+                    if users_all[0].get('pending_lab'):
+                        continue
+                    credentials_only = True
+                user_data = create_user_from_oh_info(a_record, all_labs, all_grants, credentials_only=credentials_only)
+                if not user_data.get('lab'):
+                    add_awards = [i['uuid'] for i in all_grants if a_record['OH Grant'] in i['@id']]
+                    if add_awards:
+                        add_award = add_awards[0]
+                    else:
+                        add_award = a_record['OH Grant']
+                    if a_record['OH Lab'] not in problem['cannot find the lab']:
+                        problem['cannot find the lab'][a_record['OH Lab']] = {'award': '', 'users': []}
+
+                    problem['cannot find the lab'][a_record['OH Lab']]['award'] = add_award
+                    problem['cannot find the lab'][a_record['OH Lab']]['users'].append(a_record['OH UUID'])
+                    continue
+                if user_data.get('lab_score') < 80:
+                    if credentials_only:
+                        user_data['uuid'] = users_all[0]['uuid']
+                    problem['double check lab'].append(user_data)
+                    continue
+
+                if credentials_only:
+                    user_data['uuid'] = users_all[0]['uuid']
+                    if users_all[0]['status'] == 'deleted':
+                        user_data['status'] = 'current'
+                    actions['add_credentials'].append(user_data)
+                    continue
+                # if user is not in the data portal create new account
+                actions['add_user'].append(user_data)
+
+    all_patching_uuids = [v['DCIC UUID'] for v in actions['patch_excel'].values() if v.get('DCIC UUID')]
+    all_edge_cases_uuids = [i[0] for i in problem['edge cases']]
+    # skip the total
+    skip_list = all_dcic_uuids + all_patching_uuids + skip_users_uuid + all_edge_cases_uuids
+    remaining_users = [i for i in fdn_users if i['uuid'] not in skip_list]
+
+    if remaining_users:
+        for a_user in remaining_users:
+            # create empty record object
+            new_record, alt_awards = generate_record(a_user, all_labs, all_grants)
+            if new_record.get('DCIC Grant', '') == 'Lab missing 4DN Award':
+                print(a_user['uuid'])
+                problem['edge cases'].append([new_record['DCIC UUID'], 'Lab missing 4DN Award'])
+                continue
+            new_record['DCIC Active/Inactive'] = '1'
+            actions['add_excel'].append(new_record)
+
+    # some audit check
+    # check for delete users
+    code_delete_users = list(actions['inactivate_excel'].keys()) + actions['delete_user']
+    if len(excel_delete_users) < len(code_delete_users):
+        diff = [i for i in code_delete_users if i not in excel_delete_users]
+        for i in diff:
+            problem['audit checks'].append([i, 'info in data may not be in sync.'])
+            if i in actions['inactivate_excel'].keys():
+                del actions['inactivate_excel'][i]
+            if i in actions['delete_user']:
+                actions['delete_user'].remove(i)
+
+    # do we need action
+    check.summary = ""
+    for a_key in actions:
+        if actions[a_key]:
+            check.status = 'WARN'
+            check.allow_action = True
+        check.summary += '| {} {}'.format(str(len(actions[a_key])), a_key)
+
+    if problem:
+        num_problems = 0
+        for k in problem.keys():
+            if k != 'cannot find the lab':
+                num_problems += len(problem[k])
+            else:
+                for key in problem[k].keys():
+                    num_problems += len(problem[k][key]['users'])
+
+        check.status = 'WARN'
+        check.summary += '| %s problems' % (str(num_problems))
+
+    check.full_output = {'actions': actions, 'problems': problem}
+    return check
+
+
+@action_function()
+def sync_users_oh_start(connection, **kwargs):
+    action = ActionResult(connection, 'sync_users_oh_start')
+    my_auth = connection.ff_keys
+    sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    actions = sync_users_oh_check_result['actions']
+    user_list = get_oh_google_sheet()
+    # add new users to the data portal
+    if actions.get('add_user'):
+        for a_user in actions['add_user']:
+            del a_user['lab_score']
+            if a_user.get('OH_lab'):
+                del a_user['OH_lab']
+            ff_utils.post_metadata(a_user, 'user', my_auth)
+
+    # Add permissions (lab and awards) to existing users in the data portal
+    if actions.get('add_credentials'):
+        for a_user in actions['add_credentials']:
+            user_uuid = a_user['uuid']
+            del a_user['uuid']
+            del a_user['lab_score']
+            if a_user.get('OH_lab'):
+                del a_user['OH_lab']
+            ff_utils.patch_metadata(a_user, user_uuid, my_auth)
+
+    # remove user's permissions from the data portal
+    if actions.get('delete_user'):
+        for a_user in actions['delete_user']:
+            # Delete the user permissions: submits_for, groups, viewing_groups and lab.
+            ff_utils.delete_field(a_user, 'submits_for, lab, viewing_groups, groups', key=my_auth)
+
+    # update google sheet
+    # we will create a modified version of the full stack and write on google sheet at once
+    worksheet = get_oh_google_sheet()
+    table = worksheet.get_all_values()
+    # Convert table data into an ordered dictionary
+    df = pd.DataFrame(table[1:], columns=table[0])
+    user_list = df.to_dict(orient='records', into=OrderedDict)
+    # generate records to write
+    gs_write = []
+
+    rows = user_list[0].keys()
+    # update dcic user info on excel
+    update_set = actions['update_excel']
+    for a_record in user_list:
+        dcic_uuid = a_record['DCIC UUID']
+        if dcic_uuid in update_set:
+            a_record.update(update_set[dcic_uuid])
+    # patch user info with dcic information for existing OH info
+    patch_set = actions['patch_excel']
+    for a_record in user_list:
+        oh_mail = a_record['OH Account Email']
+        if oh_mail in patch_set:
+            a_record.update(patch_set[oh_mail])
+    # inactivate user from dcic in excel
+    inactivate_set = actions['inactivate_excel']
+    for a_record in user_list:
+        dcic_uuid = a_record['DCIC UUID']
+        if dcic_uuid in inactivate_set:
+            a_record.update(inactivate_set[dcic_uuid])
+    # add new lines for new users
+    for new_line in actions['add_excel']:
+        temp = OrderedDict((key, "") for key in rows)
+        temp.update(new_line)
+        user_list.append(temp)
+
+    # Writting the data to the list gs_write
+    row = 1
+    for r, line in enumerate(user_list):
+        row = r + 1
+        # write columns
+        if row == 1:
+            for c, key in enumerate(line):
+                col = c + 1
+                gs_write.append(gspread.models.Cell(row, col, key))
+        row = r + 2
+        # write values
+        for c, key in enumerate(line):
+            col = c + 1
+            gs_write.append(gspread.models.Cell(row, col, line[key]))
+    # #Write the cells to the worksheet
+    worksheet.update_cells(gs_write)
+    # the return value from this operation will look like this
+    # {'spreadsheetId': '1Zhkjwu8uDznG0kKqJF-EwSLzXMrdaCTSzz68V_n-l6U',
+    # 'updatedCells': 10944,
+    # 'updatedColumns': 18,
+    # 'updatedRange': "'test updates'!A1:R608",
+    # 'updatedRows': 608}
+    # TODO: maybe we can use it to add more infor to action message
+    return action
+
+
+@check_function()
+def replace_name_status(connection, **kwargs):
+    """
+    Use replace function to replace `replace_name` and your check/action name to have a quick setup
+    Keyword arguments:
+    """
+    check = CheckResult(connection, 'replace_name_status')
+    my_auth = connection.ff_keys
+    check.action = "replace_name_start"
+    check.description = "add description"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {}
+    check.status = 'PASS'
+    check.allow_action = False
+
+    # check indexing queue
+    env = connection.ff_env
+    indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
+
+    # if you need to check for indexing queue
+    if indexing_queue:
+        check.status = 'PASS'  # maybe use warn?
+        check.brief_output = ['Waiting for indexing queue to clear']
+        check.summary = 'Waiting for indexing queue to clear'
+        check.full_output = {}
+        return check
+
+    query_base = '/search/?type=NotMyType'
+    q = query_base
+    # print(q)
+    res = ff_utils.search_metadata(q, my_auth)
+    # check if anything in scope
+    if not res:
+        check.status = 'PASS'
+        check.summary = 'All Good!'
+        check.brief_output = ['All Good!']
+        check.full_output = {}
+        return check
+
+    for a_res in res:
+        # do something
+        pass
+
+    check.summary = ""
+    check.full_output = {}
+    check.status = 'WARN'
+    check.allow_action = True
+    return check
+
+
+@action_function()
+def replace_name_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    action = ActionResult(connection, 'replace_name_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    replace_name_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    # do something
+    for a_res in replace_name_check_result:
+        assert my_auth
+        assert my_env
+        break
     return action

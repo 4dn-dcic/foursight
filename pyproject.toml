@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "1.4.38"
+version = "1.4.39"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -9,7 +9,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6,<3.7"
+python = ">=3.6.1,<3.7"
 dcicutils = "^1.8.3"
 click = "^7.1.2"
 PyJWT = "1.5.3"
@@ -29,6 +29,9 @@ foursight-core = "0.1.8"
 # use below for tests but not for deployment
 #foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 pytest = "5.1.2"
+gspread = ">=3.6.0"
+oauth2client = ">=4.1.3"
+pandas = ">=1.1.4"
 
 [tool.poetry.dev-dependencies]
 chalice = "^1.22.1"

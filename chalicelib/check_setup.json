@@ -1950,5 +1950,19 @@
                 }
             }
         }
+    },
+    "sync_users_oh_status": {
+        "title": "Synch Users with OH",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
     }
 }
