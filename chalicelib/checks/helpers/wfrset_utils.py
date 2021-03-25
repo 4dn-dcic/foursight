@@ -172,6 +172,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "overwrite_input_extra": True
         },
         {
+            "app_name": "merge-fastq",
+            "workflow_uuid": "e20ef13d-64d8-4d10-94b1-ed45e7d6a7c2",
+            "parameters": {},
+            'custom_pf_fields': {
+                'fastq': {
+                    'genome_assembly': genome,
+                    'file_type': 'reads',
+                    'description': 'Merged fastq file'}
+            }
+        },
+        {
             "app_name": "encode-chipseq-aln-chip",
             "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-chip",
             "parameters": {},

@@ -47,10 +47,54 @@ def chipseq_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-            assert not running
-            assert not problematic_run
-            assert not missing_run
-            check.full_output['completed_runs'].append(completed)
+    step0_name = 'merge-fastq'
+    step1_name = 'encode-chipseq-aln-chip'
+    step1c_name = 'encode-chipseq-aln-ctl'
+    step2_name = 'encode-chipseq-postaln'
+
+    for a_set in res:
+        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+                                                           store_frame='embedded',
+                                                           add_pc_wfr=True,
+                                                           ignore_field=['experiment_relation',
+                                                                         'biosample_relation',
+                                                                         'references',
+                                                                         'reference_pubs'])
+        now = datetime.utcnow()
+        print(a_set['accession'], (now-start).seconds, len(all_uuids))
+        if (now-start).seconds > lambda_limit:
+            break
+        # are all files uploaded ?
+        all_uploaded = True
+        for a_file in all_items['file_fastq']:
+            if a_file['status'] in ['uploading', 'upload failed']:
+                all_uploaded = False
+
+        if not all_uploaded:
+            final_status = a_set['accession'] + ' skipped, waiting for file upload'
+            print(final_status)
+            check.brief_output.append(final_status)
+            check.full_output['skipped'].append({a_set['accession']: 'files status uploading'})
+            continue
+
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
+        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
+        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+        # some feature to extract from each set
+        control = ""  # True or False (True if set is control)
+        control_set = ""  # None if there are no control experiments or if the set is control
+        target_type = ""  # Histone or TF (or None for control)
+        paired = ""  # single or paired
+        organism = ""
+        replicate_exps = a_set['replicate_exps']
+        replicate_exps = sorted(replicate_exps, key=lambda x: [x['bio_rep_no'], x['tec_rep_no']])
+        # get organism, target and control from the first replicate
+        f_exp = replicate_exps[0]['replicate_exp']['uuid']
+        f_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == f_exp][0]
+        control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, all_items)
+
+        print('ORG:', organism, "CONT:", control, "TARGET:", target_type, "CONT_SET:", control_set)
 
     # complete check values
     check.summary = ""

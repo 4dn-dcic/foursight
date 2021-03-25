@@ -1960,3 +1960,56 @@ def fetch_wfr_associated(wfr_info):
     if wfr_info.get('quality_metric'):
         wfr_as_list.append(wfr_info['quality_metric']['uuid'])
     return list(set(wfr_as_list))
+
+
+def get_chip_info(f_exp_resp, all_items):
+    """Gether the following information from the first experiment in the chip set"""
+    control = ""  # True or False (True if set in scope is control)
+    control_set = ""  # None (if no control exp is set), or the control experiment for the one in scope
+    target_type = ""  # Histone or TF (or None for control)
+    # get target
+    targets = f_exp_resp.get('targeted_factor', [])
+    if targets:
+        # use the tag from the first target, this assumes the rest follows the first one
+        target = targets[0]
+        target_info = [i for i in all_items['bio_feature'] if i['uuid'] == target['uuid']][0]
+        # set to tf default and switch to histone if tagged so
+        target_tags = target_info.get('tags', [])
+        if not target_tags:
+            target_type = None
+        elif 'histone' in target_tags:
+            target_type = 'histone'
+        else:
+            target_type = 'tf'
+    else:
+        target_type = None
+
+    # get organism
+    biosample = f_exp_resp['biosample']
+    organism = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))[0]
+
+    # get control information
+    exp_relation = f_exp_resp.get('experiment_relation')
+    if exp_relation:
+        rel_type = [i['relationship_type'] for i in exp_relation]
+        if 'control for' in rel_type:
+            control = True
+        if 'controlled by' in rel_type:
+            control = False
+            controls = [i['experiment'] for i in exp_relation if i['relationship_type'] == 'controlled by']
+            if len(controls) != 1:
+                print('multiple control experiments')
+            else:
+                cont_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == controls[0]['uuid']][0]
+                cont_exp_info = cont_exp_resp['experiment_sets']
+                control_set = [i['accession'] for i in cont_exp_info if i['@id'].startswith('/experiment-set-replicates/')][0]
+    else:
+        # if no relation is present
+        # set it as if control when the target is None
+        if not target_type:
+            control = True
+        # if there is target, but no relation, treat it as an experiment without control
+        else:
+            control = False
+            control_set = None
+    return control, control_set, target_type, organism
