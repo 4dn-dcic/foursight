@@ -81,6 +81,8 @@ def chipseq_status(connection, **kwargs):
         all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+        set_acc = a_set['accession']
+
         # some feature to extract from each set
         control = ""  # True or False (True if set is control)
         control_set = ""  # None if there are no control experiments or if the set is control
@@ -95,6 +97,27 @@ def chipseq_status(connection, **kwargs):
         control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, all_items)
 
         print('ORG:', organism, "CONT:", control, "TARGET:", target_type, "CONT_SET:", control_set)
+
+        # sanity checks
+        set_summary = " - ".join([set_acc, organism, target_type, control])
+        # if control and also has an AB with target
+        if control and target_type:
+            set_summary += "| error - has target and is control"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: set_summary})
+            continue
+        # can only process mouse and human at the moment
+        if organism not in ['mouse', 'human']:
+            set_summary += "| organism not ready for chip"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: set_summary})
+            continue
+        # if not control, we need a target
+        if not control and not target_type:
+            set_summary += "| missing target type"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: set_summary})
+            continue
 
     # complete check values
     check.summary = ""
