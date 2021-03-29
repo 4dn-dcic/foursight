@@ -57,7 +57,6 @@ def chipseq_status(connection, **kwargs):
     step2_name = 'encode-chipseq-postaln'
 
     for a_set in res:
-
         set_acc = a_set['accession']
         all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
@@ -88,6 +87,9 @@ def chipseq_status(connection, **kwargs):
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
         keep = {'missing_run': [], 'running': [], 'problematic_run': []}
+        # if all completed, patch this info
+        complete = {'patch_opf': [],
+                    'add_tag': []}
         set_acc = a_set['accession']
         # for i in all_items:
         #     print(i, len(all_items[i]))
@@ -149,6 +151,7 @@ def chipseq_status(connection, **kwargs):
                     input_list.append([i[1] for i in exp_files])
                 elif paired == 'single':
                     input_list.append([i[0] for i in exp_files])
+                # collect files for step1 and step1c
                 merged_files = []
                 step0_status = 'complete'
                 merge_enum = 0
@@ -162,8 +165,155 @@ def chipseq_status(connection, **kwargs):
                     keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
                                                                          'step0', s0_tag, merge_case,
                                                                          s0_input_files, step0_name, 'merged_fastq')
-                    if step0_status != 'complete':
+                    if step0_status == 'complete':
+                        merged_files.append(step0_output)
+                    else:
                         ready_for_step1 = False
+
+                if ready_for_step1:
+                    # rewrite exp_files with merged ones
+                    exp_files = [[]]
+                    for a_merged in merged_files:
+                        exp_files[0].append(a_merged)
+            # if step0 was not complete, skip checks for step2
+            if not ready_for_step1:
+                ready_for_step2 = False
+                continue
+
+            # step1 references:
+            input_files = {}
+            if organism == 'human':
+                org = 'hs'
+                input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZQB369V/'
+                input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
+                input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
+                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}}
+            if organism == 'mouse':
+                org = 'mm'
+                input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZ2PWCC2/'
+                input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
+                input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
+                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}}
+            # step1 Parameters
+            parameters = {}
+            parameters["chip.gensz"] = org
+            if paired == 'single':
+                frag_temp = [300]
+                fraglist = frag_temp * len(exp_files)
+                parameters['chip.fraglen'] = fraglist
+                parameters['chip.paired_end'] = False
+            elif paired == 'paired':
+                parameters['chip.paired_end'] = True
+
+            # run step1 for control
+            if control:
+                # control run on tf mode
+                input_files = {'chip.ctl_fastqs': [exp_files]}
+                control_parameters = {
+                    "chip.pipeline_type": 'tf',
+                    "chip.choose_ctl.always_use_pooled_ctl": True,
+                    "chip.bam2ta_ctl.regex_grep_v_ta": "chr[MUE]|random|alt",
+                    "chip.bwa_ctl.cpu": 8,
+                    "chip.merge_fastq_ctl.cpu": 8,
+                    "chip.filter_ctl.cpu": 8,
+                    "chip.bam2ta_ctl.cpu": 8,
+                    "chip.align_only": True
+                }
+                parameters.update(control_parameters)
+
+                s1c_input_files = input_files
+                s1c_tag = exp_id
+                keep, step1c_status, step1c_output = wfr_utils.stepper(library, keep,
+                                                                       'step1c', s1c_tag, exp_files,
+                                                                       s1c_input_files, step1c_name, 'chip.first_ta_ctl',
+                                                                       additional_input={'parameters': parameters})
+                if step1c_status == 'complete':
+                    # accumulate files to patch on experiment
+                    patch_data = [step1c_output]
+                    complete['patch_opf'].append([exp_id, patch_data])
+                else:
+                    # don't patch anything if at least one exp is still missing
+                    ready_for_step2 = False
+                print('step1')
+                print(step1c_status, step1c_output)
+
+            # run step1
+            else:
+                input_files = {'chip.fastqs': [exp_files]}
+                exp_parameters = {
+                    "chip.pipeline_type": target_type,
+                    "chip.choose_ctl.always_use_pooled_ctl": True,
+                    "chip.bam2ta.regex_grep_v_ta": "chr[MUE]|random|alt",
+                    "chip.bwa.cpu": 8,
+                    "chip.merge_fastq.cpu": 8,
+                    "chip.filter.cpu": 8,
+                    "chip.bam2ta.cpu": 8,
+                    "chip.xcor.cpu": 8,
+                    "chip.align_only": True
+                }
+                parameters.update(exp_parameters)
+
+                s1_input_files = input_files
+                s1_tag = exp_id
+                keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
+                                                                     'step1', s1_tag, exp_files,
+                                                                     s1_input_files, step1_name, ['chip.first_ta', 'chip.first_ta_xcor'],
+                                                                     additional_input={'parameters': parameters})
+                if step1_status == 'complete':
+                    # accumulate files to patch on experiment
+                    patch_data = [step1_output]
+                    complete['patch_opf'].append([exp_id, patch_data])
+                    ta.append(step1_output[0])
+                    taxcor.append(step1_output[1])
+                else:
+                    # don't patch anything if at least one exp is still missing
+                    ready_for_step2 = False
+                print('step1')
+                print(step1_status, step1_output)
+
+
+            break
+
+
+
+        print()
+
+        final_status = set_acc  # start the reporting with acc
+        # unpack results
+        missing_run = keep['missing_run']
+        running = keep['running']
+        problematic_run = keep['problematic_run']
+
+        done = False
+
+        if done:
+            final_status += ' completed'
+            # completed = [a_sample['accession'], {'files': result_fastq_files}]
+            # print('COMPLETED', result_fastq_files)
+        else:
+            if missing_run:
+                final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
+            if running:
+                final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
+
+        # add dictionaries to main ones
+        check.brief_output.append(final_status)
+        print(final_status)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if done:
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            # check.full_output['completed_runs'].append(completed)
+        break
 
     # complete check values
     check.summary = ""
