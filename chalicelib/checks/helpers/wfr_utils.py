@@ -771,12 +771,14 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
     refs = {}
 
     # check pairing for the first file, and assume all same
-    paired = ""
+
     rep_resp = my_rep_set['experiments_in_set']
     enzymes = []
     organisms = []
     total_f_size = 0
+    pairing = []  # collect pairing for each experiment and report if they are consistent or not
     for exp in rep_resp:
+        paired = ""
         exp_resp = exp
         file_dict[exp['accession']] = []
         if not organisms:
@@ -810,12 +812,14 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
             if paired == 'No':
                 file_dict[exp_resp['accession']].append(f1)
             elif paired == 'Yes':
+                #
                 relations = file_resp['related_files']
                 paired_files = [relation['file']['@id'] for relation in relations
                                 if relation['relationship_type'] == 'paired with']
                 assert len(paired_files) == 1
                 f2 = paired_files[0]
                 file_dict[exp_resp['accession']].append((f1, f2))
+        pairing.append(paired)
     # get the organism
     if len(list(set(organisms))) == 1:
         organism = organisms[0]
@@ -847,8 +851,12 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
             enz_file = None
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
-
-    refs = {'pairing': paired,
+    # check pairing consistency
+    if len(set(pairing)) == 1:
+        set_pair_status = pairing[0]
+    else:
+        set_pair_status = 'Inconsistent'
+    refs = {'pairing': set_pair_status,
             'organism': organism,
             'enzyme': enz,
             'bwa_ref': bwa,
@@ -2013,3 +2021,42 @@ def get_chip_info(f_exp_resp, all_items):
             control = False
             control_set = None
     return control, control_set, target_type, organism
+
+
+def get_chip_files(exp_resp, all_files):
+    files = []
+    paired = ""
+    exp_files = exp_resp['files']
+    for a_file in exp_files:
+        f_t = []
+        file_resp = [i for i in all_files if i['uuid'] == a_file['uuid']][0]
+        # get pair end no
+        pair_end = file_resp.get('paired_end')
+        if pair_end == '2':
+            paired = 'paired'
+            continue
+        # get paired file
+        paired_with = ""
+        relations = file_resp.get('related_files')
+        if not relations:
+            pass
+        else:
+            for relation in relations:
+                if relation['relationship_type'] == 'paired with':
+                    paired = 'paired'
+                    paired_with = relation['file']['@id']
+        # decide if data is not paired end reads
+        if not paired_with:
+            if not paired:
+                paired = 'single'
+            else:
+                if paired != 'single':
+                    print('inconsistent fastq pair info')
+                    continue
+            f_t.append(file_resp['@id'])
+        else:
+            f2 = [i for i in all_files if i['@id'] == paired_with][0]
+            f_t.append(file_resp['@id'])
+            f_t.append(f2['@id'])
+        files.append(f_t)
+    return files, paired

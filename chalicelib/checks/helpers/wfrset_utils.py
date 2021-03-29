@@ -176,9 +176,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             "workflow_uuid": "e20ef13d-64d8-4d10-94b1-ed45e7d6a7c2",
             "parameters": {},
             'custom_pf_fields': {
-                'fastq': {
+                'merged_fastq': {
                     'genome_assembly': genome,
-                    'file_type': 'reads',
+                    'file_type': 'reads-combined',
                     'description': 'Merged fastq file'}
             }
         },
