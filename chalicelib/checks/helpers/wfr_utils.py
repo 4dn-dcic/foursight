@@ -440,12 +440,23 @@ def stepper(library, keep,
     # also check for qc status
     qc_errors = []
     if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
+        file_accs = []
         for an_input in new_step_input_file:
-            input_resp = [i for i in all_files if i['@id'] == an_input][0]
-            errors = check_qcs_on_files(input_resp, all_qcs)
-            if errors:
-                qc_errors.extend(errors)
-        name_tag = '_'.join([i.split('/')[2] for i in new_step_input_file])
+            # for chip seq we need another level of unwrapping
+            if isinstance(an_input, list) or isinstance(an_input, tuple):
+                for a_nested_input in an_input:
+                    file_accs.append(a_nested_input.split('/')[2])
+                    input_resp = [i for i in all_files if i['@id'] == a_nested_input][0]
+                    errors = check_qcs_on_files(input_resp, all_qcs)
+                    if errors:
+                        qc_errors.extend(errors)
+            else:
+                file_accs.append(an_input.split('/')[2])
+                input_resp = [i for i in all_files if i['@id'] == an_input][0]
+                errors = check_qcs_on_files(input_resp, all_qcs)
+                if errors:
+                    qc_errors.extend(errors)
+        name_tag = '_'.join(file_accs)
     else:
         input_resp = [i for i in all_files if i['@id'] == new_step_input_file][0]
         errors = check_qcs_on_files(input_resp, all_qcs)
@@ -465,6 +476,7 @@ def stepper(library, keep,
         step_status = step_result['status']
         # if successful
         input_file_accession = input_resp['accession']
+        step_status = 'no run'
         if step_status == 'complete':
             if new_step_output_arg:
                 if isinstance(new_step_output_arg, list):
@@ -1461,8 +1473,9 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
-                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
+                 'chip.ctl_fastqs', 'chip.fastqs']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1474,9 +1487,15 @@ def start_missing_run(run_info, auth, env):
                 attr_file = attr_file[0]
                 if isinstance(attr_file, list):
                     attr_file = attr_file[0]
-                    break
+                    if isinstance(attr_file, list):
+                        attr_file = attr_file[0]
+                        break
+                    else:
+                        break
                 else:
                     break
+            else:
+                break
     if not attr_file:
         possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
         error_message = ('one of these argument names {} which carry the input file -not the references-'
