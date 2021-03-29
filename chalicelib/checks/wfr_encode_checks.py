@@ -43,16 +43,22 @@ def chipseq_status(connection, **kwargs):
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
+    print(len(res))
+
     if not res:
         check.summary = 'All Good!'
         return check
-
+    # run step 0 on all experiments with more than 2 sets of files
+    # for control sets, run step1c on each experiment and finish
+    # for non-control sets, run step1 on each experiment, check if control is ready, run step2 on set
     step0_name = 'merge-fastq'
     step1_name = 'encode-chipseq-aln-chip'
     step1c_name = 'encode-chipseq-aln-ctl'
     step2_name = 'encode-chipseq-postaln'
 
     for a_set in res:
+
+        set_acc = a_set['accession']
         all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
@@ -81,13 +87,16 @@ def chipseq_status(connection, **kwargs):
         all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
         library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+        keep = {'missing_run': [], 'running': [], 'problematic_run': []}
         set_acc = a_set['accession']
+        # for i in all_items:
+        #     print(i, len(all_items[i]))
 
         # some feature to extract from each set
         control = ""  # True or False (True if set is control)
         control_set = ""  # None if there are no control experiments or if the set is control
         target_type = ""  # Histone or TF (or None for control)
-        paired = ""  # single or paired
+        paired = ""  # single or paired , checked for each experiment
         organism = ""
         replicate_exps = a_set['replicate_exps']
         replicate_exps = sorted(replicate_exps, key=lambda x: [x['bio_rep_no'], x['tec_rep_no']])
@@ -95,11 +104,9 @@ def chipseq_status(connection, **kwargs):
         f_exp = replicate_exps[0]['replicate_exp']['uuid']
         f_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == f_exp][0]
         control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, all_items)
-
         print('ORG:', organism, "CONT:", control, "TARGET:", target_type, "CONT_SET:", control_set)
-
+        set_summary = " - ".join([set_acc, str(organism), str(target_type), str(control)])
         # sanity checks
-        set_summary = " - ".join([set_acc, organism, target_type, control])
         # if control and also has an AB with target
         if control and target_type:
             set_summary += "| error - has target and is control"
@@ -118,6 +125,45 @@ def chipseq_status(connection, **kwargs):
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: set_summary})
             continue
+        # collect results from step1 runs for step2
+        ta = []
+        taxcor = []
+        ta_cnt = []
+        # track if all experiments completed step0 and step1
+        ready_for_step2 = True
+        for an_exp in replicate_exps:
+            # track if all experiments completed step0
+            ready_for_step1 = True
+            exp_id = an_exp['replicate_exp']['accession']
+            exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp_id][0]
+            exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files)
+            # if there are more then 2 files, we need to merge:
+            print(exp_id, len(exp_files), paired)
+            # if too many input, merge them
+            if len(exp_files) > 2:
+                # exp_files format [[pair1,pair2], [pair1, pair2]]  @id
+                input_list = []
+                if paired == 'paired':
+                    # first add paired end 1s
+                    input_list.append([i[0] for i in exp_files])
+                    input_list.append([i[1] for i in exp_files])
+                elif paired == 'single':
+                    input_list.append([i[0] for i in exp_files])
+                merged_files = []
+                step0_status = 'complete'
+                merge_enum = 0
+                # if paired, need to run merge twice for each end
+                for merge_case in input_list:
+                    merge_enum += 1
+                    all_step0s = []
+                    # RUN STEP 0
+                    s0_input_files = {'input_fastqs': merge_case}
+                    s0_tag = exp_id + '_p' + str(merge_enum)
+                    keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
+                                                                         'step0', s0_tag, merge_case,
+                                                                         s0_input_files, step0_name, 'merged_fastq')
+                    if step0_status != 'complete':
+                        ready_for_step1 = False
 
     # complete check values
     check.summary = ""
