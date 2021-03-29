@@ -2412,11 +2412,12 @@ def sync_users_oh_status(connection, **kwargs):
                 updates[a_key] = a_val
         return updates
 
-    def find_lab(record, all_labs):
+    def find_lab(record, all_labs, all_grants):
         lab = ''
         all_lab_names = [i['display_title'] for i in all_labs]
         score = 0
         best = ''
+        log = []
         for disp in all_lab_names:
             s = fuzz.token_sort_ratio(record['OH Lab'], disp.split(',')[0])
             if s > score:
@@ -2424,7 +2425,15 @@ def sync_users_oh_status(connection, **kwargs):
                 score = s
         if score > 73:
             lab = [i['@id'] for i in all_labs if i['display_title'] == best][0]
-        return lab, score
+        if not lab:
+            oh_grant = record.get('OH Grant', '')
+            grant = [i for i in all_grants if i['name'] == oh_grant]
+            if grant:
+                lab = grant[0].get('pi', {}).get('lab', {}).get('@id', '')
+                score = 100
+                log = ['Assigned via Award', oh_grant, grant[0]['name']]
+
+        return lab, score, log
 
     def create_user_from_oh_info(a_record, all_labs, all_grants, credentials_only=False):
         user_info = {}
@@ -2469,11 +2478,13 @@ def sync_users_oh_status(connection, **kwargs):
             return user_info
 
         # find lab, assign @id
-        user_info['lab'], lab_score = find_lab(a_record, all_labs)
+        user_info['lab'], lab_score, log = find_lab(a_record, all_labs, all_grants)
         # Adding more information to the check to check by eye that the labs indeed correspond to OH labs
         # It will be removed in the action to create the new user in the portal
         user_info['lab_score'] = lab_score
         user_info['OH_lab'] = a_record['OH Lab']
+        user_info['Log'] = log
+
         return user_info
 
     # get skipped users with the skip_oh_synchronization tag
@@ -2683,6 +2694,8 @@ def sync_users_oh_start(connection, **kwargs):
             del a_user['lab_score']
             if a_user.get('OH_lab'):
                 del a_user['OH_lab']
+            if a_user.get('log'):
+                del a_user['log']
             ff_utils.post_metadata(a_user, 'user', my_auth)
 
     # Add permissions (lab and awards) to existing users in the data portal
@@ -2693,6 +2706,8 @@ def sync_users_oh_start(connection, **kwargs):
             del a_user['lab_score']
             if a_user.get('OH_lab'):
                 del a_user['OH_lab']
+            if a_user.get('log'):
+                del a_user['log']
             ff_utils.patch_metadata(a_user, user_uuid, my_auth)
 
     # remove user's permissions from the data portal
