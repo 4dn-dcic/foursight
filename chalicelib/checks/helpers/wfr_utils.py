@@ -643,20 +643,58 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
         change_from = rename[0]
         change_to = rename[1]
     # if it is list of items, change the structure
+    # with chip seq, files might be wrapped in 3 levels of nesting
+    # ToDo: an iterative unwrapper would simplify the code here
     if isinstance(obj_id, list):
         object_key = []
         uuid = []
         buckets = []
+        print('1', obj_id)
         for obj in obj_id:
-            metadata = ff_utils.get_metadata(obj, key=auth)
-            object_key.append(metadata['display_title'])
-            uuid.append(metadata['uuid'])
-            # get the bucket
-            if 'FileProcessed' in metadata['@type']:
-                my_bucket = out_bucket
-            else:  # covers cases of FileFastq, FileReference, FileMicroscopy
-                my_bucket = raw_bucket
-            buckets.append(my_bucket)
+            print('2', obj)
+            if isinstance(obj, (list, tuple)):
+                nested_object_key = []
+                nested_uuid = []
+                for nested_obj in obj:
+                    print('3', nested_obj)
+                    if isinstance(nested_obj, (list, tuple)):
+                        nested_nested_object_key = []
+                        nested_nested_uuid = []
+                        for nested_nested_obj in nested_obj:
+                            print('4', nested_nested_obj)
+                            metadata = ff_utils.get_metadata(nested_nested_obj, key=auth)
+                            nested_nested_object_key.append(metadata['display_title'])
+                            nested_nested_uuid.append(metadata['uuid'])
+                            # get the bucket
+                            if 'FileProcessed' in metadata['@type']:
+                                my_bucket = out_bucket
+                            else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                                my_bucket = raw_bucket
+                            buckets.append(my_bucket)
+                        nested_object_key.append(nested_nested_object_key)
+                        nested_uuid.append(nested_nested_uuid)
+                    else:
+                        metadata = ff_utils.get_metadata(nested_obj, key=auth)
+                        nested_object_key.append(metadata['display_title'])
+                        nested_uuid.append(metadata['uuid'])
+                        # get the bucket
+                        if 'FileProcessed' in metadata['@type']:
+                            my_bucket = out_bucket
+                        else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                            my_bucket = raw_bucket
+                        buckets.append(my_bucket)
+                object_key.append(nested_object_key)
+                uuid.append(nested_uuid)
+            else:
+                metadata = ff_utils.get_metadata(obj, key=auth)
+                object_key.append(metadata['display_title'])
+                uuid.append(metadata['uuid'])
+                # get the bucket
+                if 'FileProcessed' in metadata['@type']:
+                    my_bucket = out_bucket
+                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                    my_bucket = raw_bucket
+                buckets.append(my_bucket)
         # check bucket consistency
         assert len(list(set(buckets))) == 1
         template['object_key'] = object_key
@@ -1434,7 +1472,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     return log
 
 
-def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mount=False):
     all_inputs = []
     # input_files container
     input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
@@ -1464,6 +1502,15 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
     # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
     input_json['step_function_name'] = 'tibanna_zebra'
     input_json['public_postrun_json'] = True
+    if mount:
+        for a_file in input_json['input_files']:
+            a_file['mount'] = True
+
+    # testing
+    json_object = json.dumps(input_json, indent=4)
+    print(json_object)
+    return
+
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
