@@ -618,7 +618,7 @@ def get_attribution(file_json):
     return attributions
 
 
-def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
+def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename=[]):
     """Takes file id, and creates info dict for tibanna"""
     my_s3_util = s3Utils(env=env)
     raw_bucket = my_s3_util.raw_file_bucket
@@ -630,55 +630,30 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     if rename:
         change_from = rename[0]
         change_to = rename[1]
-
     # if it is list of items, change the structure
     if isinstance(obj_id, list):
-        # if it is list of list, change the structure, for RNAseq
-        if isinstance(obj_id[0], list):
-            # will only work with single item in first list (was implemented for RNA seq)
-            assert len(obj_id) == 1
-            object_key = []
-            uuid = []
-            buckets = []
-            for obj in obj_id[0]:
-                metadata = ff_utils.get_metadata(obj, key=auth)
-                object_key.append(metadata['display_title'])
-                uuid.append(metadata['uuid'])
-                # get the bucket
-                if 'FileProcessed' in metadata['@type']:
-                    my_bucket = out_bucket
-                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
-                    my_bucket = raw_bucket
-                buckets.append(my_bucket)
-            # check bucket consistency
-            assert len(list(set(buckets))) == 1
-            template['object_key'] = [object_key]
-            template['uuid'] = [uuid]
-            template['bucket_name'] = buckets[0]
-            if rename:
-                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key'][0]]
-        # if it is just a list
-        else:
-            object_key = []
-            uuid = []
-            buckets = []
-            for obj in obj_id:
-                metadata = ff_utils.get_metadata(obj, key=auth)
-                object_key.append(metadata['display_title'])
-                uuid.append(metadata['uuid'])
-                # get the bucket
-                if 'FileProcessed' in metadata['@type']:
-                    my_bucket = out_bucket
-                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
-                    my_bucket = raw_bucket
-                buckets.append(my_bucket)
-            # check bucket consistency
-            assert len(list(set(buckets))) == 1
-            template['object_key'] = object_key
-            template['uuid'] = uuid
-            template['bucket_name'] = buckets[0]
-            if rename:
-                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        object_key = []
+        uuid = []
+        buckets = []
+        for obj in obj_id:
+            metadata = ff_utils.get_metadata(obj, key=auth)
+            object_key.append(metadata['display_title'])
+            uuid.append(metadata['uuid'])
+            # get the bucket
+            if 'FileProcessed' in metadata['@type']:
+                my_bucket = out_bucket
+            else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                my_bucket = raw_bucket
+            buckets.append(my_bucket)
+        # check bucket consistency
+        assert len(list(set(buckets))) == 1
+        template['object_key'] = object_key
+        template['uuid'] = uuid
+        template['bucket_name'] = buckets[0]
+        if rename:
+            template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        if additional_parameters:
+            template.update(additional_parameters)
 
     # if obj_id is a string
     else:
@@ -693,6 +668,8 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         template['bucket_name'] = my_bucket
         if rename:
             template['rename'] = template['object_key'].replace(change_from, change_to)
+        if additional_parameters:
+            template.update(additional_parameters)
     return template
 
 
@@ -1445,16 +1422,25 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     return log
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
-    time.sleep(load_wait)
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env):
     all_inputs = []
+    # input_files container
+    input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
+    # additional input file parameters
+    input_file_parameters = input_files_and_params.get('additional_file_parameters', {})
     for arg, files in input_files.items():
-        inp = extract_file_info(files, arg, auth, env)
+        additional_params = input_file_parameters.get(arg, {})
+        inp = extract_file_info(files, arg, additional_params, auth, env)
         all_inputs.append(inp)
     # tweak to get bg2bw working
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
     my_s3_util = s3Utils(env=env)
     out_bucket = my_s3_util.outfile_bucket
+    # shorten long name_tags
+    # they get combined with workflow name, and total should be less then 80
+    # (even less since repeats need unique names)
+    if len(run_name) > 30:
+        run_name = run_name[:30] + '...'
     """Creates the trigger json that is used by foufront endpoint.
     """
     input_json['input_files'] = all_inputs
@@ -1463,12 +1449,9 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
-    input_json['step_function_name'] = 'tibanna_pony'
+    # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
+    input_json['step_function_name'] = 'tibanna_zebra'
     input_json['public_postrun_json'] = True
-    if mount:
-        for a_file in input_json['input_files']:
-            a_file['mount'] = True
-
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
         url = json.loads(e['input'])['_tibanna']['url']
@@ -1494,6 +1477,11 @@ def start_missing_run(run_info, auth, env):
                     break
                 else:
                     break
+    if not attr_file:
+        possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
+        error_message = ('one of these argument names {} which carry the input file -not the references-'
+                         ' should be added to att_keys dictionary on foursight cgap_utils.py function start_missing_run').format(possible_keys)
+        raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
