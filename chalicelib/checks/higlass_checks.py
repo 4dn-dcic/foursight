@@ -1672,6 +1672,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             "uuid",
             "extra_files",
             "upload_key",
+            "open_data_url"
         ):
             search_query += "&field=" + new_field
 
@@ -1702,7 +1703,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'uuid': procfile['uuid'],
                 'file_format': procfile['file_format'].get('file_format'),
                 'higlass_uid': procfile.get('higlass_uid'),
-                'genome_assembly': procfile['genome_assembly']
+                'genome_assembly': procfile['genome_assembly'],
+                'open_data_url': procfile.get('open_data_url')  # get it if it has it
             }
 
             file_format = file_info["file_format"]
@@ -1738,7 +1740,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 "raw" : connection.ff_s3.raw_file_bucket,
                 "proc" : connection.ff_s3.outfile_bucket,
             }
-            if not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[file_cat]):
+            if not file_info.get('open_data_url') or not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[file_cat]):
                 not_found_s3.append(file_info)
                 continue
 
