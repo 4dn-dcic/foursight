@@ -255,21 +255,33 @@ def chipseq_status(connection, **kwargs):
 
                 s1_input_files = input_files
                 s1_tag = exp_id
+                # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
                 keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
                                                                      'step1', s1_tag, exp_files,
                                                                      s1_input_files, step1_name, ['chip.first_ta', 'chip.first_ta_xcor'],
                                                                      additional_input={'parameters': parameters})
                 if step1_status == 'complete':
+                    exp_ta_file = step1_output[0]
+                    exp_taxcor_file = step1_output[1]
                     # accumulate files to patch on experiment
-                    patch_data = [step1_output]
+                    patch_data = [exp_ta_file, ]
                     complete['patch_opf'].append([exp_id, patch_data])
-                    ta.append(step1_output[0])
-                    taxcor.append(step1_output[1])
+                    ta.append(exp_ta_file)
+                    taxcor.append(exp_taxcor_file)
                 else:
                     # don't patch anything if at least one exp is still missing
                     ready_for_step2 = False
                 print('step1')
                 print(step1_status, step1_output)
+        # back to set level
+        all_completed = True
+        # is step0 step1 complete
+        if ready_for_step2:
+            # for control, add tag to set, and files to experiments
+            if control:
+                complete['add_tag'] = [set_acc, tag]
+            # for non controls we have to run find control files and runs step2
+            else:
 
 
             break
