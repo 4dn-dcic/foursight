@@ -2425,9 +2425,10 @@ def sync_users_oh_status(connection, **kwargs):
                 score = s
         if score > 73:
             lab = [i['@id'] for i in all_labs if i['display_title'] == best][0]
+
         if not lab:
             oh_grant = record.get('OH Grant', '')
-            grant = [i for i in all_grants if i['name'] == oh_grant]
+            grant = [i for i in all_grants if i['name'].endswith(oh_grant)]
             if grant:
                 lab = grant[0].get('pi', {}).get('lab', {}).get('@id', '')
                 score = 100
