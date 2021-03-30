@@ -1872,29 +1872,33 @@ def patch_file_higlass_uid(connection, **kwargs):
             # Based on the filetype, construct a payload to upload to the higlass server.
             payload = {}
             payload['coordSystem'] = hit['genome_assembly']
+            raw_bucket_types = ['chromsizes', 'beddb']
+            out_bucket_types = ['mcool', 'bg', 'bw', 'bigbed', 'bed']
+            if 'open_data_url' in hit:
+                payload["filepath"] = hit['open_data_url']
+            else:
+                if ftype in raw_bucket_types:
+                    payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
+                elif ftype in out_bucket_types:
+                    payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
+
             if ftype == 'chromsizes':
-                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'chromsizes-tsv'
                 payload['datatype'] = 'chromsizes'
             elif ftype == 'beddb':
-                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'gene-annotation'
             elif ftype == 'mcool':
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'cooler'
                 payload['datatype'] = 'matrix'
             elif ftype in ['bg', 'bw', 'bigbed']:
                 # bigbeds can be registered the same way as bigwigs
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
             elif ftype == 'bed' and hit['upload_key'].endswith(".bed.multires.mv5"):
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'multivec'
                 payload['datatype'] = 'multivec'
             elif ftype == 'bed':
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'bedlike'
             else:
