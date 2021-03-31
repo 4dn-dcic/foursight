@@ -2290,6 +2290,7 @@ def get_oh_google_sheet():
     gc = gspread.authorize(creds)
     # Get the google sheet information
     book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
+    # sheet_name = 'AllMembers'
     sheet_name = 'AllMembers'
     book = gc.open_by_key(book_id)
     worksheet = book.worksheet(sheet_name)
@@ -2427,8 +2428,12 @@ def sync_users_oh_status(connection, **kwargs):
             lab = [i['@id'] for i in all_labs if i['display_title'] == best][0]
 
         if not lab:
-            oh_grant = record.get('OH Grant', '')
-            grant = [i for i in all_grants if i['name'].endswith(oh_grant)]
+            oh_grant = record.get('OH Grant')
+            if oh_grant:
+                grant = [i for i in all_grants if i['name'].endswith(oh_grant)]
+            else:
+                grant = []
+
             if grant:
                 lab = grant[0].get('pi', {}).get('lab', {}).get('@id', '')
                 score = 100
@@ -2603,7 +2608,10 @@ def sync_users_oh_status(connection, **kwargs):
                     credentials_only = True
                 user_data = create_user_from_oh_info(a_record, all_labs, all_grants, credentials_only=credentials_only)
                 if not user_data.get('lab'):
-                    add_awards = [i['uuid'] for i in all_grants if a_record['OH Grant'] in i['@id']]
+                    if a_record['OH Grant']:
+                        add_awards = [i['uuid'] for i in all_grants if a_record['OH Grant'] in i['@id']]
+                    else:
+                        add_awards = []
                     if add_awards:
                         add_award = add_awards[0]
                     else:
@@ -2693,9 +2701,9 @@ def sync_users_oh_start(connection, **kwargs):
     if actions.get('add_user'):
         for a_user in actions['add_user']:
             del a_user['lab_score']
-            if a_user.get('OH_lab'):
+            if 'OH_lab' in a_user:
                 del a_user['OH_lab']
-            if a_user.get('log'):
+            if 'log' in a_user:
                 del a_user['log']
             ff_utils.post_metadata(a_user, 'user', my_auth)
 
@@ -2705,9 +2713,9 @@ def sync_users_oh_start(connection, **kwargs):
             user_uuid = a_user['uuid']
             del a_user['uuid']
             del a_user['lab_score']
-            if a_user.get('OH_lab'):
+            if 'OH_lab' in a_user:
                 del a_user['OH_lab']
-            if a_user.get('log'):
+            if 'log' in a_user:
                 del a_user['log']
             ff_utils.patch_metadata(a_user, user_uuid, my_auth)
 
