@@ -1246,6 +1246,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "transcription - single cell": "Transcription",
         "rna-dna pairwise interactions": "RNA-DNA HiC",
         "fixed sample dna localization": "DNA FISH",
+        "chromatin tracing": "DNA FISH",
         "fixed sample rna localization": "RNA FISH",
         "single particle tracking": "SPT",
         "context-dependent reporter expression": "Reporter Expression",
