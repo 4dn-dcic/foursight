@@ -1853,8 +1853,6 @@ def patch_file_higlass_uid(connection, **kwargs):
     start_time = time.time()
     time_expired = False
 
-
-
     # Files to register is organized by filetype.
     to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
     for ftype, hits in to_be_registered.items():
@@ -1875,7 +1873,10 @@ def patch_file_higlass_uid(connection, **kwargs):
             raw_bucket_types = ['chromsizes', 'beddb']
             out_bucket_types = ['mcool', 'bg', 'bw', 'bigbed', 'bed']
             if 'open_data_url' in hit:
-                payload["filepath"] = hit['open_data_url']
+                od_url = hit.get('open_data_url')
+                # conversion to correct filepath format relies on hardcoded values for expected url format
+                file_path = od_url.replace('.s3.amazonaws.com', '')[8:]
+                payload["filepath"] = file_path
             else:
                 if ftype in raw_bucket_types:
                     payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
