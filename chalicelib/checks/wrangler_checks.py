@@ -2290,7 +2290,6 @@ def get_oh_google_sheet():
     gc = gspread.authorize(creds)
     # Get the google sheet information
     book_id = '1zPfPjm1-QT8XdYtE2CSRA83KOhHfiRWX6rRl8E1ARSw'
-    # sheet_name = 'AllMembers'
     sheet_name = 'AllMembers'
     book = gc.open_by_key(book_id)
     worksheet = book.worksheet(sheet_name)
