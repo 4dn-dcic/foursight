@@ -499,20 +499,6 @@
             }
         }
     },
-    "check_opf_lab_different_than_experiment": {
-        "title": "Opf contributing lab",
-        "group": "Metadata checks",
-        "schedule": {
-            "morning_checks_3": {
-                "data": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "check_opf_status_mismatch": {
         "title": "Experiment Sets containing Other Processed Files with mismatched status",
         "group": "Audit checks",
