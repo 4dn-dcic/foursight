@@ -4,6 +4,7 @@ import requests
 import json
 import time
 import uuid
+from urllib.parse import urlparse
 from copy import deepcopy
 
 # Use confchecks to import decorators object and its methods for each check module
@@ -1747,7 +1748,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 "raw": connection.ff_s3.raw_file_bucket,
                 "proc": connection.ff_s3.outfile_bucket,
             }
-            if 'open_data_url' in file_info:
+            if 'open_data_url' in file_info and file_info['open_data_url'] is not None:
                 if 'is_extra' in file_info:  # reformat the url so it points to extra file
                     file_info['open_data_url'] = '/'.join(file_info['open_data_url'].split('/')[:-2]) + '/' + file_info['upload_key']
                     # 'https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/7c4f27a2-ff7e-4f7a-b3f5-bbe773e68614/4DNFIWSFMDXE.bed.gz'
@@ -1886,10 +1887,12 @@ def patch_file_higlass_uid(connection, **kwargs):
             payload['coordSystem'] = hit['genome_assembly']
             raw_bucket_types = ['chromsizes', 'beddb']
             out_bucket_types = ['mcool', 'bg', 'bw', 'bigbed', 'bed']
-            if 'open_data_url' in hit:
+            if 'open_data_url' in hit and hit.get('open_data_url') is not None:
+                # The expected file path format is: bucket/upload_key
                 od_url = hit.get('open_data_url')
-                # conversion to correct filepath format relies on hardcoded values for expected url format
-                file_path = od_url.replace('.s3.amazonaws.com', '')[8:]
+                url_parsed = urlparse(hit.get('open_data_url'))
+                bucket = url_parsed.netloc.split('.')[0] #subdomain
+                file_path = bucket + url_parsed.path
                 payload["filepath"] = file_path
             else:
                 if ftype in raw_bucket_types:
@@ -1935,6 +1938,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 else:
                     try:
                         err_msg = copy_res.text
+                        action_logs['beddb_copy_failure'][hit['accession']] = err_msg
                     except Exception:
                         err_msg = copy_res.status_code
                         action_logs['beddb_copy_failure'][hit['accession']] = err_msg
