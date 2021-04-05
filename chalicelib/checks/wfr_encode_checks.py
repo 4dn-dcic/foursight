@@ -231,7 +231,7 @@ def chipseq_status(connection, **kwargs):
                                                                        additional_input={'parameters': parameters})
                 if step1c_status == 'complete':
                     # accumulate files to patch on experiment
-                    patch_data = [step1c_output]
+                    patch_data = [step1c_output, ]
                     complete['patch_opf'].append([exp_id, patch_data])
                 else:
                     # don't patch anything if at least one exp is still missing
@@ -351,28 +351,74 @@ def chipseq_status(connection, **kwargs):
                     org = 'hs'
                     s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
                     s2_input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
-                    input_files['additional_file_parameters'] = {"chip.blacklist": {"rename": "4DNFIZ1TGJZR"}}
                 if organism == 'mouse':
                     org = 'mm'
                     s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                     s2_input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
 
+                def rename_chip(input_at_id_list):
+                    # rename bed.gz to tagAlign.gz
+                    renamed = []
+                    for a_file in input_at_id_list:
+                        acc = a_file.split('/')[2]
+                        renamed.append(acc + '.tagAlign.gz')
+                    return renamed
+
+                s2_input_files['additional_file_parameters'] = {}
                 s2_input_files['chip.tas'] = ta
+                s2_input_files['additional_file_parameters']['chip.tas'] = {"rename": rename_chip[ta]}
                 s2_input_files['chip.bam2ta_no_filt_R1.ta'] = taxcor
+                s2_input_files['additional_file_parameters']['chip.bam2ta_no_filt_R1.ta'] = {"rename": rename_chip[taxcor]}
                 if ta_cnt:
                     s2_input_files['chip.ctl_tas'] = ta_cnt
+                    s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip[ta_cnt]}
 
-                #
-                # s2_tag = set_acc
-                # # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-                # keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
-                #                                                      'step2', s2_tag, ..exp_files,
-                #                                                      s2_input_files, step2_name, ['chip.first_ta', 'chip.first_ta_xcor'],
-                #                                                      additional_input={'parameters': parameters})
+                # collect parameters
+                parameters = {}
+                if paired == 'single':
+                    chip_p = False
+                elif paired == 'paired':
+                    chip_p = True
+                if not control_set:
+                    if target_type == 'histone':
+                        set_summary += "| skipped - histone without control needs attention, ie change to tf"
+                        check.brief_output.append(set_summary)
+                        check.full_output['skipped'].append({set_acc: set_summary})
+                        continue
+                run_ids = {'run_name': set_acc,
+                           'desc': a_set.get('description', '')}
+                parameters = {
+                    "chip.pipeline_type": target_type,
+                    "chip.paired_end": chip_p,
+                    "chip.choose_ctl.always_use_pooled_ctl": True,
+                    "chip.qc_report.name": run_ids['run_name'],
+                    "chip.qc_report.desc": run_ids['desc'],
+                    "chip.gensz": org,
+                    "chip.xcor.cpu": 4,
+                    "chip.spp_cpu": 4
+                }
+                if paired == 'single':
+                    frag_temp = [300]
+                    fraglist = frag_temp * len(ta)
+                    parameters['chip.fraglen'] = fraglist
 
-            break
-
-        print()
+                s2_tag = set_acc
+                # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
+                keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                                                                     'step2', s2_tag, ta,
+                                                                     s2_input_files, step2_name,
+                                                                     ['chip.optimal_peak', 'chip.conservative_peak', 'chip.sig_fc'],
+                                                                     additional_input={'parameters': parameters})
+                if step2_status == 'complete':
+                    set_opt_peak = step2_output[0]
+                    set_cons_peak = step2_output[1]
+                    set_sig_fc = step2_output[2]
+                    # accumulate files to patch on experiment
+                    patch_data = [set_opt_peak, set_cons_peak, set_sig_fc]
+                    complete['patch_opf'].append([set_acc, patch_data])
+                    complete['add_tag'] = [set_acc, tag]
+                else:
+                    all_completed = False
 
         # unpack results
         missing_run = keep['missing_run']
