@@ -61,7 +61,7 @@ def chipseq_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
+                                                           ignore_field=[  # 'experiment_relation',
                                                                          'biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])
@@ -104,9 +104,9 @@ def chipseq_status(connection, **kwargs):
         replicate_exps = sorted(replicate_exps, key=lambda x: [x['bio_rep_no'], x['tec_rep_no']])
         # get organism, target and control from the first replicate
         f_exp = replicate_exps[0]['replicate_exp']['uuid']
-        f_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == f_exp][0]
         # have to do another get for control experiments if there is one
-        control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, my_auth)
+        f_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == f_exp][0]
+        control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, all_items)
         print('ORG:', organism, "CONT:", control, "TARGET:", target_type, "CONT_SET:", control_set)
         set_summary = " - ".join([set_acc, str(organism), str(target_type), str(control)])
         # sanity checks
@@ -287,7 +287,7 @@ def chipseq_status(connection, **kwargs):
                         exp_cnt_id = exp_cnt_ids[0]
                         print('controled by set', exp_cnt_id)
                         # have to do a get for the control experiment
-                        exp_cnt_resp = ff_utils.get_metadata(exp_cnt_id, my_auth)
+                        exp_cnt_resp = [i for i in all_items['experiment_seq'] if i['@id'] == exp_cnt_id][0]
                         cont_file = ''
                         # check opf for control file
                         for opf_case in exp_cnt_resp.get('other_processed_files', []):
