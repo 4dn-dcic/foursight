@@ -2113,3 +2113,22 @@ def get_chip_files(exp_resp, all_files):
             f_t.append(f2['@id'])
         files.append(f_t)
     return files, paired
+
+
+def select_best_2(file_list, all_files, all_qcs):
+    scores = []
+    # run it for list with at least 3 elements
+    if len(file_list) < 3:
+        return(file_list)
+
+    for f in file_list:
+        f_resp = [i for i in all_files if i['@id'] == f][0]
+        qc = f_resp['quality_metric']
+        qc_resp = [i for i in all_qcs if i['uuid'] == qc['uuid']][0]
+        try:
+            score = qc_resp['nodup_flagstat_qc'][0]['mapped']
+        except Exception:
+            score = qc_resp['ctl_nodup_flagstat_qc'][0]['mapped']
+        scores.append((score, f))
+    scores = sorted(scores, key=lambda x: -x[0])
+    return [scores[0][1], scores[1][1]]

@@ -314,21 +314,66 @@ def chipseq_status(connection, **kwargs):
                 print('step1')
                 print(step1_status, step1_output, control_ready)
         # back to set level
+        final_status = set_acc  # start the reporting with acc
         all_completed = True
         # is step0 step1 complete
-        if ready_for_step2:
+        if ready_for_step2 and not control_ready:
+                final_status += ' waiting for control experiments to finish processing'
+                all_completed = False
+        elif ready_for_step2:
             # for control, add tag to set, and files to experiments
             if control:
                 complete['add_tag'] = [set_acc, tag]
-            # for non controls we have to run find control files and runs step2
+            # for non controls check for step2
             else:
-                print('at')
+                # this only works with 2 experiments, if 3, pick best 2, if more, skip for now
+                if len(ta) > 3:
+                    set_summary += "| skipped - more then 3 experiments in set, can not process at the moment"
+                    check.brief_output.append(set_summary)
+                    check.full_output['skipped'].append({set_acc: set_summary})
+                    continue
+                if len(ta) > 2:
+                    ta_2 = []
+                    taxcor_2 = []
+                    print('ExperimentSet has 3 experiments, selecting best 2')
+                    ta_2 = wfr_utils.select_best_2(ta, all_files, all_qcs)
+                    # xcor does not have qc, use ta indexes to find the correct files
+                    for ta_f in ta_2:
+                        taxcor_2.append(taxcor[ta.index(ta_f)])
+                    ta = ta_2
+                    taxcor = taxcor_2
+                    # for control files ,also select best2
+                    ta_cnt = wfr_utils.select_best_2(ta_cnt, all_files, all_qcs)
+
+                # collect step2 input files
+                s2_input_files = {}
+                if organism == 'human':
+                    org = 'hs'
+                    s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
+                    s2_input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
+                    input_files['additional_file_parameters'] = {"chip.blacklist": {"rename": "4DNFIZ1TGJZR"}}
+                if organism == 'mouse':
+                    org = 'mm'
+                    s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
+                    s2_input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
+
+                s2_input_files['chip.tas'] = ta
+                s2_input_files['chip.bam2ta_no_filt_R1.ta'] = taxcor
+                if ta_cnt:
+                    s2_input_files['chip.ctl_tas'] = ta_cnt
+
+                #
+                # s2_tag = set_acc
+                # # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
+                # keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                #                                                      'step2', s2_tag, ..exp_files,
+                #                                                      s2_input_files, step2_name, ['chip.first_ta', 'chip.first_ta_xcor'],
+                #                                                      additional_input={'parameters': parameters})
 
             break
 
         print()
 
-        final_status = set_acc  # start the reporting with acc
         # unpack results
         missing_run = keep['missing_run']
         running = keep['running']
