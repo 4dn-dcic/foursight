@@ -22,9 +22,9 @@ def chipseq_status(connection, **kwargs):
     run_time -- assume runs beyond run_time are dead
     """
     start = datetime.utcnow()
-    check = CheckResult(connection, 'in_situ_hic_status')
+    check = CheckResult(connection, 'chipseq_status')
     my_auth = connection.ff_keys
-    check.action = "in_situ_hic_start"
+    check.action = "chipseq_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
@@ -390,12 +390,13 @@ def chipseq_start(connection, **kwargs):
     action = ActionResult(connection, 'chipseq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    chipseq_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    chipseq_check_result = full_output
+    # chipseq_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
         missing_runs = chipseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = chipseq_check_result.get('completed_runs')
-    action = cgap_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
     return action
