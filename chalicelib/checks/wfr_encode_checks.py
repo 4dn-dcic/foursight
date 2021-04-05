@@ -105,7 +105,8 @@ def chipseq_status(connection, **kwargs):
         # get organism, target and control from the first replicate
         f_exp = replicate_exps[0]['replicate_exp']['uuid']
         f_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == f_exp][0]
-        control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, all_items)
+        # have to do another get for control experiments if there is one
+        control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, my_auth)
         print('ORG:', organism, "CONT:", control, "TARGET:", target_type, "CONT_SET:", control_set)
         set_summary = " - ".join([set_acc, str(organism), str(target_type), str(control)])
         # sanity checks
@@ -136,6 +137,7 @@ def chipseq_status(connection, **kwargs):
         for an_exp in replicate_exps:
             # track if all experiments completed step0
             ready_for_step1 = True
+            # track if all control experiments are completed processing
             exp_id = an_exp['replicate_exp']['accession']
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp_id][0]
             exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files)
@@ -158,7 +160,6 @@ def chipseq_status(connection, **kwargs):
                 # if paired, need to run merge twice for each end
                 for merge_case in input_list:
                     merge_enum += 1
-                    all_step0s = []
                     # RUN STEP 0
                     s0_input_files = {'input_fastqs': merge_case}
                     s0_tag = exp_id + '_p' + str(merge_enum)
@@ -234,7 +235,7 @@ def chipseq_status(connection, **kwargs):
                 else:
                     # don't patch anything if at least one exp is still missing
                     ready_for_step2 = False
-                print('step1')
+                print('step1c')
                 print(step1c_status, step1c_output)
 
             # run step1

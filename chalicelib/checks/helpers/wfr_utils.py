@@ -476,7 +476,6 @@ def stepper(library, keep,
         step_status = step_result['status']
         # if successful
         input_file_accession = input_resp['accession']
-        step_status = 'no run'
         if step_status == 'complete':
             if new_step_output_arg:
                 if isinstance(new_step_output_arg, list):
@@ -2024,7 +2023,7 @@ def fetch_wfr_associated(wfr_info):
     return list(set(wfr_as_list))
 
 
-def get_chip_info(f_exp_resp, all_items):
+def get_chip_info(f_exp_resp, my_auth):
     """Gether the following information from the first experiment in the chip set"""
     control = ""  # True or False (True if set in scope is control)
     control_set = ""  # None (if no control exp is set), or the control experiment for the one in scope
@@ -2052,8 +2051,10 @@ def get_chip_info(f_exp_resp, all_items):
 
     # get control information
     exp_relation = f_exp_resp.get('experiment_relation')
+    print('rel', len(exp_relation))
     if exp_relation:
         rel_type = [i['relationship_type'] for i in exp_relation]
+        print(rel_type)
         if 'control for' in rel_type:
             control = True
         if 'controlled by' in rel_type:
@@ -2062,7 +2063,7 @@ def get_chip_info(f_exp_resp, all_items):
             if len(controls) != 1:
                 print('multiple control experiments')
             else:
-                cont_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == controls[0]['uuid']][0]
+                cont_exp_resp = ff_utils.get_metadata(controls[0]['uuid'], my_auth)
                 cont_exp_info = cont_exp_resp['experiment_sets']
                 control_set = [i['accession'] for i in cont_exp_info if i['@id'].startswith('/experiment-set-replicates/')][0]
     else:
