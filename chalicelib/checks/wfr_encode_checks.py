@@ -366,12 +366,12 @@ def chipseq_status(connection, **kwargs):
 
                 s2_input_files['additional_file_parameters'] = {}
                 s2_input_files['chip.tas'] = ta
-                s2_input_files['additional_file_parameters']['chip.tas'] = {"rename": rename_chip[ta]}
+                s2_input_files['additional_file_parameters']['chip.tas'] = {"rename": rename_chip(ta)}
                 s2_input_files['chip.bam2ta_no_filt_R1.ta'] = taxcor
-                s2_input_files['additional_file_parameters']['chip.bam2ta_no_filt_R1.ta'] = {"rename": rename_chip[taxcor]}
+                s2_input_files['additional_file_parameters']['chip.bam2ta_no_filt_R1.ta'] = {"rename": rename_chip(taxcor)}
                 if ta_cnt:
                     s2_input_files['chip.ctl_tas'] = ta_cnt
-                    s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip[ta_cnt]}
+                    s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip(ta_cnt)}
 
                 # collect parameters
                 parameters = {}
