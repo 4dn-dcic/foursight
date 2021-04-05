@@ -138,6 +138,7 @@ def chipseq_status(connection, **kwargs):
             # track if all experiments completed step0
             ready_for_step1 = True
             # track if all control experiments are completed processing
+            control_ready = True
             exp_id = an_exp['replicate_exp']['accession']
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp_id][0]
             exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files)
@@ -269,11 +270,49 @@ def chipseq_status(connection, **kwargs):
                     complete['patch_opf'].append([exp_id, patch_data])
                     ta.append(exp_ta_file)
                     taxcor.append(exp_taxcor_file)
+
+                    # find the control file if there is a control set found
+                    if control_set:
+                        try:
+                            exp_cnt_ids = [i['experiment'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
+                            exp_cnt_ids = [i['@id'] for i in exp_cnt_ids]
+                        except:
+                            control_ready = False
+                            print('Control Relation has problems for this exp', exp_id)
+                            continue
+                        if len(exp_cnt_ids) != 1:
+                            control_ready = False
+                            print('Multiple controls for this exp', exp_id)
+                            continue
+                        exp_cnt_id = exp_cnt_ids[0]
+                        print('controled by set', exp_cnt_id)
+                        # have to do a get for the control experiment
+                        exp_cnt_resp = ff_utils.get_metadata(exp_cnt_id, my_auth)
+                        cont_file = ''
+                        # check opf for control file
+                        for opf_case in exp_cnt_resp.get('other_processed_files', []):
+                            if opf_case['title'] == 'ENCODE ChIP-Seq Pipeline - Preliminary Files':
+                                opf_files = opf_case['files']
+                                assert len(opf_files) == 1
+                                cont_file = opf_files[0]['@id']
+                        # if not in opf, check processed files
+                        if not cont_file:
+                            pf_list = exp_cnt_resp.get('processed_files', [])
+                            if pf_list:
+                                if pf_list:
+                                    assert len(pf_list) == 1
+                                    cont_file = pf_list[0]['@id']
+                        # did we find it, if so, add it to ta_cnt
+                        if cont_file:
+                            ta_cnt.append(cont_file)
+                        else:
+                            control_ready = False
+
                 else:
                     # don't patch anything if at least one exp is still missing
                     ready_for_step2 = False
                 print('step1')
-                print(step1_status, step1_output)
+                print(step1_status, step1_output, control_ready)
         # back to set level
         all_completed = True
         # is step0 step1 complete
@@ -283,11 +322,9 @@ def chipseq_status(connection, **kwargs):
                 complete['add_tag'] = [set_acc, tag]
             # for non controls we have to run find control files and runs step2
             else:
-
+                print('at')
 
             break
-
-
 
         print()
 
@@ -296,10 +333,7 @@ def chipseq_status(connection, **kwargs):
         missing_run = keep['missing_run']
         running = keep['running']
         problematic_run = keep['problematic_run']
-
-        done = False
-
-        if done:
+        if all_completed:
             final_status += ' completed'
             # completed = [a_sample['accession'], {'files': result_fastq_files}]
             # print('COMPLETED', result_fastq_files)
@@ -321,12 +355,12 @@ def chipseq_status(connection, **kwargs):
         if problematic_run:
             check.full_output['problematic_runs'].append({set_acc: problematic_run})
         # if made it till the end
-        if done:
+        if complete.get('add_tag'):
             assert not running
             assert not problematic_run
             assert not missing_run
-            # check.full_output['completed_runs'].append(completed)
-        break
+            check.full_output['completed_runs'].append(complete)
+
 
     # complete check values
     check.summary = ""
