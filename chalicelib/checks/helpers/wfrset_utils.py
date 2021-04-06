@@ -231,7 +231,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'chip.first_ta_ctl': {
                     'genome_assembly': genome,
                     'file_type': 'read positions',
-                    'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline'}
+                    'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline',
+                    'disable_wfr_inputs': True}
             }
         },
         {
