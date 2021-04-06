@@ -426,8 +426,6 @@ def chipseq_status(connection, **kwargs):
         problematic_run = keep['problematic_run']
         if all_completed:
             final_status += ' completed'
-            # completed = [a_sample['accession'], {'files': result_fastq_files}]
-            # print('COMPLETED', result_fastq_files)
         else:
             if missing_run:
                 final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
@@ -481,13 +479,12 @@ def chipseq_start(connection, **kwargs):
     action = ActionResult(connection, 'chipseq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
-    chipseq_check_result = full_output
-    # chipseq_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    chipseq_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
     if kwargs.get('start_runs'):
         missing_runs = chipseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = chipseq_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True)
     return action
