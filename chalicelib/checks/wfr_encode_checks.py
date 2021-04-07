@@ -522,7 +522,7 @@ def atacseq_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
     # run step 0 on all experiments with more than 2 sets of files
-    # step1 on each experiment,if multiple exps, merge beds, run step2 on set
+    # step1 on each experiment,if multiple exps, merge beds, run step3 on set
     step0_name = 'merge-fastq'
     step1_name = 'encode-atacseq-aln'
     step2_name = 'mergebed'
@@ -731,17 +731,16 @@ def atacseq_status(connection, **kwargs):
                     else:
                         ready_for_step3 = False
             if ready_for_step3:
-
                 # collect step3 input files
-                s2_input_files = {}
+                s3_input_files = {}
                 if organism == 'human':
                     org = 'hs'
-                    s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
-                    s2_input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
+                    s3_input_files['atac.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
+                    s3_input_files['atac.chrsz'] = '/files-reference/4DNFIZJB62D1/'
                 if organism == 'mouse':
                     org = 'mm'
-                    s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
-                    s2_input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
+                    s3_input_files['atac.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
+                    s3_input_files['atac.chrsz'] = '/files-reference/4DNFIBP173GC/'
 
                 def rename_chip(input_at_id_list):
                     # rename bed.gz to tagAlign.gz
@@ -751,55 +750,37 @@ def atacseq_status(connection, **kwargs):
                         renamed.append(acc + '.tagAlign.gz')
                     return renamed
 
-                s2_input_files['additional_file_parameters'] = {}
-                s2_input_files['chip.tas'] = ta
-                s2_input_files['additional_file_parameters']['chip.tas'] = {"rename": rename_chip(ta)}
-                s2_input_files['chip.bam2ta_no_filt_R1.ta'] = taxcor
-                s2_input_files['additional_file_parameters']['chip.bam2ta_no_filt_R1.ta'] = {"rename": rename_chip(taxcor)}
-                if ta_cnt:
-                    s2_input_files['chip.ctl_tas'] = ta_cnt
-                    s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip(ta_cnt)}
-
+                s3_input_files['additional_file_parameters'] = {}
+                s3_input_files['atac.tas'] = ta
+                s3_input_files['additional_file_parameters']['chip.tas'] = {"rename": rename_chip(ta)}
                 # collect parameters
-                parameters = {}
                 if paired == 'single':
                     chip_p = False
                 elif paired == 'paired':
                     chip_p = True
-                if not control_set:
-                    if target_type == 'histone':
-                        set_summary += "| skipped - histone without control needs attention, ie change to tf"
-                        check.brief_output.append(set_summary)
-                        check.full_output['skipped'].append({set_acc: set_summary})
-                        continue
-                run_ids = {'run_name': set_acc,
-                           'desc': a_set.get('description', '')}
                 parameters = {
-                    "chip.pipeline_type": target_type,
-                    "chip.paired_end": chip_p,
-                    "chip.choose_ctl.always_use_pooled_ctl": True,
-                    "chip.qc_report.name": run_ids['run_name'],
-                    "chip.qc_report.desc": run_ids['desc'],
-                    "chip.gensz": org,
-                    "chip.xcor.cpu": 4,
-                    "chip.spp_cpu": 4
+                    "atac.pipeline_type": 'atac',
+                    "atac.paired_end": chip_p,
+                    "atac.gensz": org,
+                    "atac.disable_ataqc": True,
+                    "atac.enable_xcor": False,
                 }
                 if paired == 'single':
                     frag_temp = [300]
                     fraglist = frag_temp * len(ta)
-                    parameters['chip.fraglen'] = fraglist
+                    parameters['atac.fraglen'] = fraglist
 
-                s2_tag = set_acc
+                s3_tag = set_acc
                 # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-                keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
-                                                                     'step2', s2_tag, ta,
-                                                                     s2_input_files, step2_name,
-                                                                     ['chip.optimal_peak', 'chip.conservative_peak', 'chip.sig_fc'],
+                keep, step3_status, step3_output = wfr_utils.stepper(library, keep,
+                                                                     'step3', s3_tag, ta,
+                                                                     s3_input_files, step3_name,
+                                                                     ['atac.optimal_peak', 'atac.conservative_peak', 'atac.sig_fc'],
                                                                      additional_input={'parameters': parameters})
-                if step2_status == 'complete':
-                    set_opt_peak = step2_output[0]
-                    set_cons_peak = step2_output[1]
-                    set_sig_fc = step2_output[2]
+                if step3_status == 'complete':
+                    set_opt_peak = step3_output[0]
+                    set_cons_peak = step3_output[1]
+                    set_sig_fc = step3_output[2]
                     # accumulate files to patch on experiment
                     patch_data = [set_opt_peak, set_cons_peak, set_sig_fc]
                     complete['patch_opf'].append([set_acc, patch_data])
