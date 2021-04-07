@@ -89,8 +89,6 @@ def chipseq_status(connection, **kwargs):
         complete = {'patch_opf': [],
                     'add_tag': []}
         set_acc = a_set['accession']
-        # for i in all_items:
-        #     print(i, len(all_items[i]))
 
         # some feature to extract from each set
         control = ""  # True or False (True if set is control)
@@ -532,7 +530,7 @@ def atacseq_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=[  # 'experiment_relation',
+                                                           ignore_field=['experiment_relation',
                                                                          'biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])
@@ -545,14 +543,12 @@ def atacseq_status(connection, **kwargs):
         for a_file in all_items['file_fastq']:
             if a_file['status'] in ['uploading', 'upload failed']:
                 all_uploaded = False
-
         if not all_uploaded:
             final_status = a_set['accession'] + ' skipped, waiting for file upload'
             print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_set['accession']: 'files status uploading'})
             continue
-
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
@@ -562,40 +558,24 @@ def atacseq_status(connection, **kwargs):
         complete = {'patch_opf': [],
                     'add_tag': []}
         set_acc = a_set['accession']
-        # for i in all_items:
-        #     print(i, len(all_items[i]))
 
         # some feature to extract from each set
-        control = ""  # True or False (True if set is control)
-        control_set = ""  # None if there are no control experiments or if the set is control
-        target_type = ""  # Histone or TF (or None for control)
         paired = ""  # single or paired , checked for each experiment
         organism = ""
         replicate_exps = a_set['replicate_exps']
         replicate_exps = sorted(replicate_exps, key=lambda x: [x['bio_rep_no'], x['tec_rep_no']])
-        # get organism, target and control from the first replicate
+        # get organism
         f_exp = replicate_exps[0]['replicate_exp']['uuid']
         # have to do another get for control experiments if there is one
-        f_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == f_exp][0]
-        control, control_set, target_type, organism = wfr_utils.get_chip_info(f_exp_resp, all_items)
-        print('ORG:', organism, "CONT:", control, "TARGET:", target_type, "CONT_SET:", control_set)
-        set_summary = " - ".join([set_acc, str(organism), str(target_type), str(control)])
+        f_exp_resp = [i for i in all_items['experiment_atacseq'] if i['uuid'] == f_exp][0]
+        biosample = f_exp_resp['biosample']
+        organism = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))[0]
+        set_summary = " - ".join([set_acc, str(organism)])
+        print(set_summary)
         # sanity checks
-        # if control and also has an AB with target
-        if control and target_type:
-            set_summary += "| error - has target and is control"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: set_summary})
-            continue
         # can only process mouse and human at the moment
         if organism not in ['mouse', 'human']:
             set_summary += "| organism not ready for chip"
-            check.brief_output.append(set_summary)
-            check.full_output['skipped'].append({set_acc: set_summary})
-            continue
-        # if not control, we need a target
-        if not control and not target_type:
-            set_summary += "| missing target type"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: set_summary})
             continue
@@ -603,8 +583,6 @@ def atacseq_status(connection, **kwargs):
         continue
         # collect results from step1 runs for step2
         ta = []
-        taxcor = []
-        ta_cnt = []
         # track if all experiments completed step0 and step1
         ready_for_step2 = True
         for an_exp in replicate_exps:
@@ -613,7 +591,7 @@ def atacseq_status(connection, **kwargs):
             # track if all control experiments are completed processing
             control_ready = True
             exp_id = an_exp['replicate_exp']['accession']
-            exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp_id][0]
+            exp_resp = [i for i in all_items['experiment_atacseq'] if i['accession'] == exp_id][0]
             exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files)
             # if there are more then 2 files, we need to merge:
             print(exp_id, len(exp_files), paired)
@@ -659,19 +637,33 @@ def atacseq_status(connection, **kwargs):
             input_files = {}
             if organism == 'human':
                 org = 'hs'
-                input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZQB369V/'
-                input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
-                input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
-                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}}
+                input_files['atac.bowtie2_idx_tar'] = '/files-reference/4DNFIMQPTYDY/'
+                input_files['atac.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
+                input_files['atac.chrsz'] = '/files-reference/4DNFIZJB62D1/'
+                input_files['additional_file_parameters'] = {"atac.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}}
             if organism == 'mouse':
                 org = 'mm'
-                input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZ2PWCC2/'
-                input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
-                input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
-                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}}
+                input_files['atac.bowtie2_idx_tar'] = '/files-reference/4DNFI2493SDN/'
+                input_files['atac.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
+                input_files['atac.chrsz'] = '/files-reference/4DNFIBP173GC/'
+                input_files['additional_file_parameters'] = {"atac.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}}
+            # add input files
+            input_files = {'atac.fastqs': [exp_files]}
             # step1 Parameters
-            parameters = {}
-            parameters["chip.gensz"] = org
+            parameters = {
+                "atac.pipeline_type": 'atac',
+                "atac.gensz": org,
+                "atac.bam2ta.regex_grep_v_ta": "chr[MUE]|random|alt",
+                "atac.disable_ataqc": True,
+                "atac.enable_xcor": False,
+                "atac.trim_adapter.auto_detect_adapter": True,
+                "atac.bowtie2.cpu": 4,
+                "atac.filter.cpu": 4,
+                "atac.bam2ta.cpu": 4,
+                "atac.trim_adapter.cpu": 4,
+                "atac.align_only": True
+            }
+            # sort difference between files and exp files
             if paired == 'single':
                 frag_temp = [300]
                 fraglist = frag_temp * len(exp_files)
@@ -679,54 +671,25 @@ def atacseq_status(connection, **kwargs):
                 parameters['chip.paired_end'] = False
             elif paired == 'paired':
                 parameters['chip.paired_end'] = True
+            if paired == 'single':
+                chip_p = False
+            elif paired == 'paired':
+                chip_p = True
+            parameters = {
+                "atac.pipeline_type": 'atac',
+                "atac.paired_end": chip_p,
+                "atac.gensz": org,
+                "atac.bam2ta.regex_grep_v_ta": "chr[MUE]|random|alt",
+                "atac.disable_ataqc": True,
+                "atac.enable_xcor": False,
+                "atac.trim_adapter.auto_detect_adapter": True,
+                "atac.bowtie2.cpu": 4,
+                "atac.filter.cpu": 4,
+                "atac.bam2ta.cpu": 4,
+                "atac.trim_adapter.cpu": 4,
+                "atac.align_only": True
+            }
 
-            # run step1 for control
-            if control:
-                # control run on tf mode
-                input_files = {'chip.ctl_fastqs': [exp_files]}
-                control_parameters = {
-                    "chip.pipeline_type": 'tf',
-                    "chip.choose_ctl.always_use_pooled_ctl": True,
-                    "chip.bam2ta_ctl.regex_grep_v_ta": "chr[MUE]|random|alt",
-                    "chip.bwa_ctl.cpu": 8,
-                    "chip.merge_fastq_ctl.cpu": 8,
-                    "chip.filter_ctl.cpu": 8,
-                    "chip.bam2ta_ctl.cpu": 8,
-                    "chip.align_only": True
-                }
-                parameters.update(control_parameters)
-
-                s1c_input_files = input_files
-                s1c_tag = exp_id
-                keep, step1c_status, step1c_output = wfr_utils.stepper(library, keep,
-                                                                       'step1c', s1c_tag, exp_files,
-                                                                       s1c_input_files, step1c_name, 'chip.first_ta_ctl',
-                                                                       additional_input={'parameters': parameters})
-                if step1c_status == 'complete':
-                    # accumulate files to patch on experiment
-                    patch_data = [step1c_output, ]
-                    complete['patch_opf'].append([exp_id, patch_data])
-                else:
-                    # don't patch anything if at least one exp is still missing
-                    ready_for_step2 = False
-                print('step1c')
-                print(step1c_status, step1c_output)
-
-            # run step1
-            else:
-                input_files = {'chip.fastqs': [exp_files]}
-                exp_parameters = {
-                    "chip.pipeline_type": target_type,
-                    "chip.choose_ctl.always_use_pooled_ctl": True,
-                    "chip.bam2ta.regex_grep_v_ta": "chr[MUE]|random|alt",
-                    "chip.bwa.cpu": 8,
-                    "chip.merge_fastq.cpu": 8,
-                    "chip.filter.cpu": 8,
-                    "chip.bam2ta.cpu": 8,
-                    "chip.xcor.cpu": 8,
-                    "chip.align_only": True
-                }
-                parameters.update(exp_parameters)
 
                 s1_input_files = input_files
                 s1_tag = exp_id
@@ -760,7 +723,7 @@ def atacseq_status(connection, **kwargs):
                         exp_cnt_id = exp_cnt_ids[0]
                         print('controled by set', exp_cnt_id)
                         # have to do a get for the control experiment
-                        exp_cnt_resp = [i for i in all_items['experiment_seq'] if i['@id'] == exp_cnt_id][0]
+                        exp_cnt_resp = [i for i in all_items['experiment_atacseq'] if i['@id'] == exp_cnt_id][0]
                         cont_file = ''
                         # check opf for control file
                         for opf_case in exp_cnt_resp.get('other_processed_files', []):
@@ -960,4 +923,3 @@ def atacseq_start(connection, **kwargs):
         patch_meta = atacseq_check_result.get('completed_runs')
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True)
     return action
-
