@@ -35,18 +35,13 @@ def chipseq_status(connection, **kwargs):
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
-    # check, skip = wfr_utils.check_indexing(check, connection)
-    # if skip:
-    #     return check
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
-    print(query)
-    # The search
-    # 4DNESIO87EN4 set with control
-    # 4DNESLEFGKRD set without control
-    # query = '/search/?experimentset_type=replicate&type=ExperimentSetReplicate&accession=4DNESIO87EN4'
-    # res = ff_utils.search_metadata(query, key=my_auth)
-    # print(len(res))
+    res = ff_utils.search_metadata(query, key=my_auth)
+    print(len(res))
 
     if not res:
         check.summary = 'All Good!'
@@ -514,9 +509,9 @@ def atacseq_status(connection, **kwargs):
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
-    # check, skip = wfr_utils.check_indexing(check, connection)
-    # if skip:
-    #     return check
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
     # Build the query, add date and lab if available
     query = wfr_utils.build_exp_type_query(exp_type, kwargs)
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -526,12 +521,11 @@ def atacseq_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
     # run step 0 on all experiments with more than 2 sets of files
-    # for control sets, run step1c on each experiment and finish
-    # for non-control sets, run step1 on each experiment, check if control is ready, run step2 on set
+    # step1 on each experiment,if multiple exps, merge beds, run step2 on set
     step0_name = 'merge-fastq'
     step1_name = 'encode-atacseq-aln'
-    step2a_name = 'mergebed'
-    step2_name = 'encode-atacseq-postaln'
+    step2_name = 'mergebed'
+    step3_name = 'encode-atacseq-postaln'
 
     for a_set in res:
         set_acc = a_set['accession']
@@ -605,6 +599,8 @@ def atacseq_status(connection, **kwargs):
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: set_summary})
             continue
+
+        continue
         # collect results from step1 runs for step2
         ta = []
         taxcor = []
