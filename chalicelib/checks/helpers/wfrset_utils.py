@@ -199,69 +199,69 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             }
         },
         {
-            "app_name": "encode-chipseq-aln-ctl",
-            "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl",
-            "parameters": {},
-            "config": {},
-            'custom_pf_fields': {
-                'chip.first_ta_ctl': {
-                    'genome_assembly': genome,
-                    'file_type': 'read positions',
-                    'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline',
-                    'disable_wfr_inputs': True}
+        "app_name": "encode-chipseq-aln-ctl",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'chip.first_ta_ctl': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline',
+                'disable_wfr_inputs': True}
             }
         },
         {
-            "app_name": "encode-chipseq-postaln",
-            "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-postaln",
-            "parameters": {},
-            "config": {},
-            'custom_pf_fields': {
-                'chip.optimal_peak': {
-                    'genome_assembly': genome,
-                    'file_type': 'peaks',
-                    'description': 'Peak calls from ENCODE ChIP-Seq Pipeline'},
-                'chip.conservative_peak': {
-                    'genome_assembly': genome,
-                    'file_type': 'conservative peaks',
-                    'description': 'Conservative peak calls from ENCODE ChIP-Seq Pipeline'},
-                'chip.sig_fc': {
-                    'genome_assembly': genome,
-                    'file_type': 'signal fold change',
-                    'description': 'ChIP-seq signal fold change over input control'}
+        "app_name": "encode-chipseq-postaln",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-postaln",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'chip.optimal_peak': {
+                'genome_assembly': genome,
+                'file_type': 'peaks',
+                'description': 'Peak calls from ENCODE ChIP-Seq Pipeline'},
+            'chip.conservative_peak': {
+                'genome_assembly': genome,
+                'file_type': 'conservative peaks',
+                'description': 'Conservative peak calls from ENCODE ChIP-Seq Pipeline'},
+            'chip.sig_fc': {
+                'genome_assembly': genome,
+                'file_type': 'signal fold change',
+                'description': 'ChIP-seq signal fold change over input control'}
             }
         },
 
         {
-            "app_name": "encode-atacseq-aln",
-            "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-aln",
-            "parameters": {},
-            "config": {},
-            'custom_pf_fields': {
-                'atac.first_ta': {
-                    'genome_assembly': genome,
-                    'file_type': 'read positions',
-                    'description': 'Positions of aligned reads in bed format, one line per read mate, from ENCODE ATAC-Seq Pipeline'}
+        "app_name": "encode-atacseq-aln",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-aln",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'atac.first_ta': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Positions of aligned reads in bed format, one line per read mate, from ENCODE ATAC-Seq Pipeline'}
             }
         },
         {
-            "app_name": "encode-atacseq-postaln",
-            "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-postaln",
-            "parameters": {},
-            "config": {},
-            'custom_pf_fields': {
-                'atac.optimal_peak': {
-                    'genome_assembly': genome,
-                    'file_type': 'peaks',
-                    'description': 'Peak calls from ENCODE ATAC-Seq Pipeline'},
-                'atac.conservative_peak': {
-                    'genome_assembly': genome,
-                    'file_type': 'conservative peaks',
-                    'description': 'Conservative peak calls from ENCODE ATAC-Seq Pipeline'},
-                'atac.sig_fc': {
-                    'genome_assembly': genome,
-                    'file_type': 'signal fold change',
-                    'description': 'ATAC-seq signal fold change'}
+        "app_name": "encode-atacseq-postaln",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-postaln",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'atac.optimal_peak': {
+                'genome_assembly': genome,
+                'file_type': 'peaks',
+                'description': 'Peak calls from ENCODE ATAC-Seq Pipeline'},
+            'atac.conservative_peak': {
+                'genome_assembly': genome,
+                'file_type': 'conservative peaks',
+                'description': 'Conservative peak calls from ENCODE ATAC-Seq Pipeline'},
+            'atac.sig_fc': {
+                'genome_assembly': genome,
+                'file_type': 'signal fold change',
+                'description': 'ATAC-seq signal fold change'}
             }
         },
         {
@@ -308,7 +308,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "workflow_uuid": "af97597e-877a-40b7-b211-98ec0cfb17b4",
         'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro", 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
         },
-
         # RNA SEQ
         {
         "app_name": "encode-rnaseq-stranded",

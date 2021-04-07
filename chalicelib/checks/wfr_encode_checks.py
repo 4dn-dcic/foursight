@@ -485,13 +485,15 @@ def chipseq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, pick_best_2=False)
 def atacseq_status(connection, **kwargs):
     """
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead
+    pick_best_2 -- False by default. If set the True, for sets more than 2 experiments,
+                   2 best will be used instead of running mergebed
     """
     start = datetime.utcnow()
     check = CheckResult(connection, 'atacseq_status')
@@ -506,6 +508,7 @@ def atacseq_status(connection, **kwargs):
     exp_type = 'ATAC-seq'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
+    pick_best_2 = kwargs.get('pick_best_2', False)
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
@@ -575,7 +578,7 @@ def atacseq_status(connection, **kwargs):
         # sanity checks
         # can only process mouse and human at the moment
         if organism not in ['mouse', 'human']:
-            set_summary += "| organism not ready for chip"
+            set_summary += "| organism not ready for atac"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: set_summary})
             continue
@@ -686,39 +689,50 @@ def atacseq_status(connection, **kwargs):
             else:
                 # don't patch anything if at least one exp is still missing
                 ready_for_step2 = False
-            print('step1')
-            print(step1_status, step1_output)
+            print('step1', step1_status, step1_output)
 
         # back to set level
         final_status = set_acc  # start the reporting with acc
         all_completed = True
         # is step0 step1 complete
         if ready_for_step2:
-            # for control, add tag to set, and files to experiments
-            if control:
-                complete['add_tag'] = [set_acc, tag]
-            # for non controls check for step2
-            else:
-                # this only works with 2 experiments, if 3, pick best 2, if more, skip for now
-                if len(ta) > 3:
-                    set_summary += "| skipped - more then 3 experiments in set, can not process at the moment"
-                    check.brief_output.append(set_summary)
-                    check.full_output['skipped'].append({set_acc: set_summary})
-                    continue
-                if len(ta) > 2:
-                    ta_2 = []
-                    taxcor_2 = []
-                    print('ExperimentSet has 3 experiments, selecting best 2')
-                    ta_2 = wfr_utils.select_best_2(ta, all_files, all_qcs)
-                    # xcor does not have qc, use ta indexes to find the correct files
-                    for ta_f in ta_2:
-                        taxcor_2.append(taxcor[ta.index(ta_f)])
-                    ta = ta_2
-                    taxcor = taxcor_2
-                    # for control files ,also select best2
-                    ta_cnt = wfr_utils.select_best_2(ta_cnt, all_files, all_qcs)
+            # Following was the proposed logic, but it is not implemented
+            # Currently, for sets with more than 2 experiments, there are 2 options
+            # 1) pick best 2,   2) run mergebed (default)
 
-                # collect step2 input files
+            # Proposed logic
+            # if there are more then 2 experiments, check the number of biological replicates
+            # if there is 1 Biological Replicate
+            # -pick best 2 exp
+            # if there are 2 Biological replicates
+            #  - run mergebed on bioreps with more then 1 technical replicate
+            # if there are 3 Biological replicates
+            # - if there are 3 total experiments (1 in each biological rep), pick best 2
+            # - else, run mergebed on bioreps with more then 1 technical replicate, and pick best 2 biorep
+            # if there are 4 or more Biolofical replicates
+            # - run mergebed on bioreps with more then 1 technical replicate, and pick best 2 biorep
+            # this only works with 2 experiments, if 3, pick best 2, if more, skip for now
+            ready_for_step3 = True
+            if len(ta) > 2:
+                if pick_best_2:
+                    # pick best 2 - False by default
+                    print('ExperimentSet has 3 experiments, selecting best 2')
+                    ta = wfr_utils.select_best_2(ta, all_files, all_qcs)
+                else:
+                    # run mergebed - default option
+                    s2_input_files = {'input_bed': ta}
+                    s2_tag = set_acc
+                    # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
+                    keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                                                                         'step2', s2_tag, ta,
+                                                                         s2_input_files, step2_name, 'merged_bed')
+                    if step2_status == 'complete':
+                        ta = [step2_output, ]
+                    else:
+                        ready_for_step3 = False
+            if ready_for_step3:
+
+                # collect step3 input files
                 s2_input_files = {}
                 if organism == 'human':
                     org = 'hs'
