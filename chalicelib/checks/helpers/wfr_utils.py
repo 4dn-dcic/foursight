@@ -2030,6 +2030,7 @@ def get_chip_info(f_exp_resp, all_items):
     target_type = ""  # Histone or TF (or None for control)
     # get target
     targets = f_exp_resp.get('targeted_factor', [])
+    # TODO: tag all control antibodies as control and make use of it here
     if targets:
         # use the tag from the first target, this assumes the rest follows the first one
         target = targets[0]
