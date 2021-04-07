@@ -588,10 +588,9 @@ def atacseq_status(connection, **kwargs):
         for an_exp in replicate_exps:
             # track if all experiments completed step0
             ready_for_step1 = True
-            # track if all control experiments are completed processing
-            control_ready = True
             exp_id = an_exp['replicate_exp']['accession']
             exp_resp = [i for i in all_items['experiment_atacseq'] if i['accession'] == exp_id][0]
+            # exp_files [[pair1,pair2], [pair1, pair2]]
             exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files)
             # if there are more then 2 files, we need to merge:
             print(exp_id, len(exp_files), paired)
@@ -633,7 +632,8 @@ def atacseq_status(connection, **kwargs):
                 ready_for_step2 = False
                 continue
 
-            # step1 references:
+            # step1 files
+            # references
             input_files = {}
             if organism == 'human':
                 org = 'hs'
@@ -663,100 +663,37 @@ def atacseq_status(connection, **kwargs):
                 "atac.trim_adapter.cpu": 4,
                 "atac.align_only": True
             }
-            # sort difference between files and exp files
             if paired == 'single':
                 frag_temp = [300]
                 fraglist = frag_temp * len(exp_files)
-                parameters['chip.fraglen'] = fraglist
-                parameters['chip.paired_end'] = False
+                parameters['atac.fraglen'] = fraglist
+                parameters['atac.paired_end'] = False
             elif paired == 'paired':
-                parameters['chip.paired_end'] = True
-            if paired == 'single':
-                chip_p = False
-            elif paired == 'paired':
-                chip_p = True
-            parameters = {
-                "atac.pipeline_type": 'atac',
-                "atac.paired_end": chip_p,
-                "atac.gensz": org,
-                "atac.bam2ta.regex_grep_v_ta": "chr[MUE]|random|alt",
-                "atac.disable_ataqc": True,
-                "atac.enable_xcor": False,
-                "atac.trim_adapter.auto_detect_adapter": True,
-                "atac.bowtie2.cpu": 4,
-                "atac.filter.cpu": 4,
-                "atac.bam2ta.cpu": 4,
-                "atac.trim_adapter.cpu": 4,
-                "atac.align_only": True
-            }
+                parameters['atac.paired_end'] = True
 
+            s1_input_files = input_files
+            s1_tag = exp_id
+            # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
+            keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
+                                                                 'step1', s1_tag, exp_files,
+                                                                 s1_input_files, step1_name, 'atac.first_ta',
+                                                                 additional_input={'parameters': parameters})
+            if step1_status == 'complete':
+                # accumulate files to patch on experiment
+                patch_data = [step1_output, ]
+                complete['patch_opf'].append([exp_id, patch_data])
+                ta.append(step1_output)
+            else:
+                # don't patch anything if at least one exp is still missing
+                ready_for_step2 = False
+            print('step1')
+            print(step1_status, step1_output)
 
-                s1_input_files = input_files
-                s1_tag = exp_id
-                # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-                keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
-                                                                     'step1', s1_tag, exp_files,
-                                                                     s1_input_files, step1_name, ['chip.first_ta', 'chip.first_ta_xcor'],
-                                                                     additional_input={'parameters': parameters})
-                if step1_status == 'complete':
-                    exp_ta_file = step1_output[0]
-                    exp_taxcor_file = step1_output[1]
-                    # accumulate files to patch on experiment
-                    patch_data = [exp_ta_file, ]
-                    complete['patch_opf'].append([exp_id, patch_data])
-                    ta.append(exp_ta_file)
-                    taxcor.append(exp_taxcor_file)
-
-                    # find the control file if there is a control set found
-                    if control_set:
-                        try:
-                            exp_cnt_ids = [i['experiment'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
-                            exp_cnt_ids = [i['@id'] for i in exp_cnt_ids]
-                        except:
-                            control_ready = False
-                            print('Control Relation has problems for this exp', exp_id)
-                            continue
-                        if len(exp_cnt_ids) != 1:
-                            control_ready = False
-                            print('Multiple controls for this exp', exp_id)
-                            continue
-                        exp_cnt_id = exp_cnt_ids[0]
-                        print('controled by set', exp_cnt_id)
-                        # have to do a get for the control experiment
-                        exp_cnt_resp = [i for i in all_items['experiment_atacseq'] if i['@id'] == exp_cnt_id][0]
-                        cont_file = ''
-                        # check opf for control file
-                        for opf_case in exp_cnt_resp.get('other_processed_files', []):
-                            if opf_case['title'] == 'ENCODE ChIP-Seq Pipeline - Preliminary Files':
-                                opf_files = opf_case['files']
-                                assert len(opf_files) == 1
-                                cont_file = opf_files[0]['@id']
-                        # if not in opf, check processed files
-                        if not cont_file:
-                            pf_list = exp_cnt_resp.get('processed_files', [])
-                            if pf_list:
-                                if pf_list:
-                                    assert len(pf_list) == 1
-                                    cont_file = pf_list[0]['@id']
-                        # did we find it, if so, add it to ta_cnt
-                        if cont_file:
-                            ta_cnt.append(cont_file)
-                        else:
-                            control_ready = False
-
-                else:
-                    # don't patch anything if at least one exp is still missing
-                    ready_for_step2 = False
-                print('step1')
-                print(step1_status, step1_output, control_ready)
         # back to set level
         final_status = set_acc  # start the reporting with acc
         all_completed = True
         # is step0 step1 complete
-        if ready_for_step2 and not control_ready:
-                final_status += ' waiting for control experiments to finish processing'
-                all_completed = False
-        elif ready_for_step2:
+        if ready_for_step2:
             # for control, add tag to set, and files to experiments
             if control:
                 complete['add_tag'] = [set_acc, tag]
