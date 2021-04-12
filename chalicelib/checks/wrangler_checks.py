@@ -2674,16 +2674,17 @@ def sync_users_oh_status(connection, **kwargs):
             check.allow_action = True
         check.summary += '| {} {}'.format(str(len(actions[a_key])), a_key)
 
-    if problem:
-        num_problems = 0
-        for k in problem.keys():
-            if k != 'cannot find the lab':
-                num_problems += len(problem[k])
-            else:
-                for key in problem[k].keys():
-                    num_problems += len(problem[k][key]['users'])
+    num_problems = 0
+    for k in problem.keys():
+        if problem[k]:
+            check.status = 'WARN'
 
-        check.status = 'WARN'
+        if k != 'cannot find the lab':
+            num_problems += len(problem[k])
+        else:
+            for key in problem[k].keys():
+                num_problems += len(problem[k][key]['users'])
+
         check.summary += '| %s problems' % (str(num_problems))
 
     check.full_output = {'actions': actions, 'problems': problem}
