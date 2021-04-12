@@ -1505,10 +1505,10 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
         for a_file in input_json['input_files']:
             a_file['mount'] = True
 
-    # testing
-    json_object = json.dumps(input_json, indent=4)
-    print(json_object)
-    return
+    # # testing
+    # json_object = json.dumps(input_json, indent=4)
+    # print(json_object)
+    # return
 
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
