@@ -2703,8 +2703,8 @@ def sync_users_oh_start(connection, **kwargs):
             del a_user['lab_score']
             if 'OH_lab' in a_user:
                 del a_user['OH_lab']
-            if 'log' in a_user:
-                del a_user['log']
+            if 'Log' in a_user:
+                del a_user['Log']
             ff_utils.post_metadata(a_user, 'user', my_auth)
 
     # Add permissions (lab and awards) to existing users in the data portal
@@ -2715,8 +2715,8 @@ def sync_users_oh_start(connection, **kwargs):
             del a_user['lab_score']
             if 'OH_lab' in a_user:
                 del a_user['OH_lab']
-            if 'log' in a_user:
-                del a_user['log']
+            if 'Log' in a_user:
+                del a_user['Log']
             ff_utils.patch_metadata(a_user, user_uuid, my_auth)
 
     # remove user's permissions from the data portal
