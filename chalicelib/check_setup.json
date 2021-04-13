@@ -1482,5 +1482,17 @@
                 }
             }
         }
+    },
+    "cut_and_run" : {
+        "title": "CUT&RUN Pipeline",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
     }
 }
