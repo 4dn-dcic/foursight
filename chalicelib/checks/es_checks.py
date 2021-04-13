@@ -1,9 +1,12 @@
 import time
-from ..run_result import CheckResult, ActionResult
-from ..utils import (
-    check_function,
-    action_function,
-)
+import datetime
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
+
 
 @check_function()
 def elasticsearch_s3_count_diff(connection, **kwargs):
@@ -33,6 +36,7 @@ def elasticsearch_s3_count_diff(connection, **kwargs):
         check.summary = check.description = 'There are <100 checks not on ES'
     check.full_output = full_output
     return check
+
 
 @action_function(timeout=270)
 def migrate_checks_to_es(connection, **kwargs):
@@ -67,6 +71,7 @@ def migrate_checks_to_es(connection, **kwargs):
     action.output = action_logs
     return action
 
+
 @check_function(timeout=270, days=30, to_clean=None)
 def clean_s3_es_checks(connection, **kwargs):
     """
@@ -91,4 +96,4 @@ def clean_s3_es_checks(connection, **kwargs):
     full_output['n_deleted_es'] = n_deleted_es
     check.status = 'DONE'
     check.full_output = full_output
-    return action
+    return check

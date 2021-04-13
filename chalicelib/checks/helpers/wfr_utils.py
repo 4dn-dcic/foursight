@@ -8,8 +8,8 @@ from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
 random_wait = wfrset_utils.random_wait
-# check at the end
-# check extract_file_info has 4 arguments
+load_wait = wfrset_utils.load_wait
+
 
 # wfr_name, accepted versions, expected run time # wfr_name, accepted versions,
 workflow_details = {
@@ -17,9 +17,14 @@ workflow_details = {
         "run_time": 12,
         "accepted_versions": ["0.0.4", "0.2.6"]
     },
+    # old workflow run naming, updated on workflows for old ones
     "fastqc-0-11-4-1": {
         "run_time": 50,
         "accepted_versions": ["0.2.0"]
+    },
+    "fastqc": {
+        "run_time": 50,
+        "accepted_versions": ["v1", "v2"]
     },
     "bwa-mem": {
         "run_time": 50,
@@ -55,7 +60,7 @@ workflow_details = {
     },
     "bedGraphToBigWig": {
         "run_time": 24,
-        "accepted_versions": ["v4"]
+        "accepted_versions": ["v4", "v5"]
     },
     "bedtomultivec": {
         "run_time": 24,
@@ -63,7 +68,7 @@ workflow_details = {
     },
     "bedtobeddb": {
         "run_time": 24,
-        "accepted_versions": ["v2"]
+        "accepted_versions": ["v2", "v3"]
     },
     "encode-chipseq-aln-chip": {
         "run_time": 200,
@@ -121,7 +126,28 @@ workflow_details = {
         "run_time": 200,
         "accepted_versions": ["v2"]
     },
+    're_checker_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['v1.1', 'v1.2']
+    },
+    'mad_qc_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['1.1_dcic_2']
+    },
+    'merge-fastq': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
+    },
+    'insulation-scores-and-boundaries-caller': {
+            "run_time": 200,
+            "accepted_versions": ['v1']
+    },
+    'compartments-caller': {
+                "run_time": 200,
+                "accepted_versions": ['v1.2']
+    }
 }
+
 
 # accepted versions for completed pipelines
 accepted_versions = {
@@ -147,7 +173,7 @@ accepted_versions = {
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
-    # Preliminary - Released to network
+    # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
                       'RepliSeq_Pipeline_v16_step1'],
@@ -182,16 +208,23 @@ accepted_versions = {
     'TRIP': ['']
     }
 
+# Accepted versions for feature calling pipelines
+feature_calling_accepted_versions = {
+    'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"],
+    'compartments': ["compartments_v1.2"]
+}
 # Reference Files
 bwa_index = {"human": "4DNFIZQZ39L9",
              "mouse": "4DNFI823LSI8",
              "fruit-fly": '4DNFIO5MGY32',
-             "chicken": "4DNFIVGRYVQF"}
+             "chicken": "4DNFIVGRYVQF",
+             "zebrafish": "4DNFIUH46PG1"}
 
 chr_size = {"human": "4DNFI823LSII",
             "mouse": "4DNFI3UBJ3HZ",
             "fruit-fly": '4DNFIBEEN92C',
-            "chicken": "4DNFIQFZW4DX"}
+            "chicken": "4DNFIQFZW4DX",
+            "zebrafish": "4DNFI5W8CN1M"}
 
 # star index for rna Seq
 rna_star_index = {"human": "4DNFI3FCGSW2",
@@ -215,7 +248,10 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'NcoI': '/files-reference/4DNFI3HVU2OD/',
                    'MspI': '/files-reference/4DNFI2JHR3OI/',
                    'NcoI_MspI_BspHI': '/files-reference/4DNFI6HA6EH9/',
-                   'AluI': '/files-reference/4DNFIN4DB5O8/'
+                   'AluI': '/files-reference/4DNFIN4DB5O8/',
+                   'DdeI': '/files-reference/4DNFI4YGL4RE/',
+                   'DdeI and DpnII': '/files-reference/4DNFIS1FCRRK/',
+                   'MseI': '/files-reference/4DNFIMD6BNQ8/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
@@ -224,7 +260,9 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
          "fruit-fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
                        },
          "chicken": {"HindIII": '/files-reference/4DNFITPCJFWJ/'
-                     }
+                     },
+         "zebrafish": {'MboI': '/files-reference/4DNFI6OUDFWL/'
+                       }
          }
 
 
@@ -239,7 +277,8 @@ re_kmer = {"human": '/files-reference/4DNFIDMVPFSO/',
 max_size = {"human": None,
             "mouse": 8.2,
             "fruit-fly": 7.5,
-            "chicken": 8.2}
+            "chicken": 8.2,
+            "zebrafish": 7.9}
 
 # Restriction enzyme recognition site length`
 re_nz_sizes = {"HindIII": "6",
@@ -248,22 +287,49 @@ re_nz_sizes = {"HindIII": "6",
                "NcoI": "6",
                "MspI": "4",
                "BspHI": "6",
-               "NcoI_MspI_BspHI": "4"  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
+               "DdeI and DpnII": "4",
+               "DdeI": "4",
+               "NcoI_MspI_BspHI": "4",  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
+               "MseI": "4"
                }
 
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
-          'chicken': 'galGal5'}
+          'chicken': 'galGal5',
+          'zebrafish': 'GRCz11'}
 
 # color map states bed file
-states_file_type = {'SPIN_states_v1': {'color_mapper': '/files-reference/4DNFI27WSLAG/', 'num_states': 9}}
+states_file_type = {
+    'SPIN_states_v1':
+        {
+            'color_mapper': '/files-reference/4DNFI27WSLAG/',
+            'num_states': 9
+            }
+        }
+
+
+# GC% content reference files (compartments pipeline)
+gc_content_ref = {"human": "/files-reference/4DNFI7MCA4R6/",
+                  "mouse": "/files-reference/4DNFIOFXJOUA",
+                  'fruit fly': "/files-reference/4DNFID6KQ941",
+                  "chicken": "/files-reference/4DNFI19V162N",
+                  "zebrafish": "/files-reference/4DNFIHEHIZ3P"}
 
 
 def check_indexing(check, connection):
+    """Checks the indexing queue, if there are items in the queue,
+    Modifies the check, and returns it along with a flag that is set to True,
+    if no items, returns original checks, and flag False"""
     # wait for random time
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
+    # # TEMPORARILY DISABLE ALL PIPELINE RUNS
+    # check.status = 'PASS'  # maybe use warn?
+    # check.brief_output = ['Check Temporarily Disabled']
+    # check.summary = 'Check Temporarily Disabled'
+    # check.full_output = {}
+    # return check, True
     # check indexing queue
     env = connection.ff_env
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
@@ -353,6 +419,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
     # get default run out time
     if not run:
         run = workflow_details[wfr_name]['run_time']
+
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
     run_status = 'did not run'
@@ -433,27 +500,20 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
 
 def get_attribution(file_json):
     """give file response in embedded frame and extract attribution info"""
+    dciclab = '/labs/4dn-dcic-lab/'
     attributions = {
-        'lab': file_json['lab']['@id'],
-        'award': file_json['award']['@id']
+        'lab': dciclab,
+        'award': '/awards/2U01CA200059-06/'
     }
+    assert file_json.get('lab').get('@id')  # assume this is not really necessary
+    file_lab = file_json['lab']['@id']
     cont_labs = []
     if file_json.get('contributing_labs'):
         cont_labs = [i['@id'] for i in file_json['contributing_labs']]
-    appendFDN = True
-    if attributions['lab'] == '/labs/4dn-dcic-lab/':
-        appendFDN = False
+    if file_lab != dciclab and file_lab not in cont_labs:
+        cont_labs.append(file_lab)
     if cont_labs:
-        if appendFDN:
-            cont_labs.append('/labs/4dn-dcic-lab/')
-            cont_labs = list(set(cont_labs))
         attributions['contributing_labs'] = cont_labs
-    else:
-        if appendFDN:
-            cont_labs = ['/labs/4dn-dcic-lab/']
-            attributions['contributing_labs'] = cont_labs
-        else:
-            pass
     return attributions
 
 
@@ -535,36 +595,6 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     return template
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
-    all_inputs = []
-    for arg, files in input_files.items():
-        inp = extract_file_info(files, arg, auth, env)
-        all_inputs.append(inp)
-    # tweak to get bg2bw working
-    all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
-    my_s3_util = s3Utils(env=env)
-    out_bucket = my_s3_util.outfile_bucket
-    """Creates the trigger json that is used by foufront endpoint.
-    """
-    input_json['input_files'] = all_inputs
-    input_json['output_bucket'] = out_bucket
-    input_json["_tibanna"] = {
-        "env": env,
-        "run_type": input_json['app_name'],
-        "run_id": run_name}
-    input_json['step_function_name'] = 'tibanna_pony'
-    input_json['public_postrun_json'] = True
-    if mount:
-        for a_file in input_json['input_files']:
-            a_file['mount'] = True
-    try:
-        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
-        url = json.loads(e['input'])['_tibanna']['url']
-        return url
-    except Exception as e:
-        return str(e)
-
-
 def build_exp_type_query(exp_type, kwargs):
     assert exp_type in accepted_versions
     statuses = ['pre-release', 'released', 'released to project']
@@ -576,6 +606,42 @@ def build_exp_type_query(exp_type, kwargs):
     # for some cases we don't have a defined complete processing tag
     if versions:
         pre_query += "".join(["&completed_processes!=" + i for i in versions])
+
+    # skip non processable experiment sets
+    pre_query += "&tags!=skip_processing"
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        pre_query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        pre_query += '&lab.display_title=' + lab
+    return pre_query
+
+
+def build_feature_calling_query(exp_types, feature, kwargs):
+    assert feature in feature_calling_accepted_versions
+
+    for exp_type in exp_types:
+        assert exp_type in accepted_versions
+
+    # Temporary run on released ExperimentSets only
+    # statuses = ['pre-release', 'released', 'released to project']
+    statuses = ['released']
+    versions = [i for i in accepted_versions[exp_type]]
+    feature_calling_versions = feature_calling_accepted_versions[feature]
+    # Build the query
+    pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
+    pre_query += "".join(["&experiments_in_set.experiment_type=" + i for i in exp_types])
+    pre_query += "".join(["&status=" + i for i in statuses])
+    # for some cases we don't have a defined complete processing tag
+    if versions:
+        pre_query += "".join(["&completed_processes=" + i for i in versions])
+
+    if feature_calling_versions:
+        pre_query += "".join(["&completed_processes!=" + i for i in feature_calling_versions])
+
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -598,8 +664,11 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
       file dict  { exp1 : [ [file1, file2], [file3, file4]]} # paired
     - refs keys  {pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size, lab}
     """
+    # remove non fastq.gz files from the file list
+    fastq_files = [i for i in fastq_files if i['file_format']['file_format'] == 'fastq']
     file_dict = {}
     refs = {}
+
     # check pairing for the first file, and assume all same
     paired = ""
     rep_resp = my_rep_set['experiments_in_set']
@@ -611,8 +680,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
         file_dict[exp['accession']] = []
         if not organisms:
             biosample = exp['biosample']
-            organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
-            assert len(organisms) == 1
+            organisms = list(set([bs.get('individual', {}).get('organism', {}).get('name') for bs in biosample['biosource']]))
         exp_files = exp['files']
         enzyme = exp.get('digestion_enzyme')
         if enzyme:
@@ -650,6 +718,8 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
     # get the organism
     if len(list(set(organisms))) == 1:
         organism = organisms[0]
+    elif len(list(set(organisms))) > 1:
+        organism = "multiple organisms"
     else:
         organism = None
 
@@ -676,6 +746,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
             enz_file = None
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
+
     refs = {'pairing': paired,
             'organism': organism,
             'enzyme': enz,
@@ -712,7 +783,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
             problems.append(file_id)
         elif report['status'] != 'complete':
             missing_run.append(file_id)
-        # There is a successful run, but no extra_file
+        # There is a successful run, but not the expected change (should be part of query)
         elif report['status'] == 'complete':
             missing_meta_changes.append(file_id)
     if running:
@@ -773,13 +844,27 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['enzyme']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
+
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
+            continue
+
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
             set_summary += "| skipped - no chrsize/bwa"
@@ -975,12 +1060,24 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
         # references dict content
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'], type='MARGI')
-        set_summary = " - ".join([set_acc, refs['organism'], refs['enzyme'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['enzyme']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
             continue
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
@@ -1145,14 +1242,32 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
 
 
 def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
-    """If move to pc is set to true, if the exp_set or exp status is not released/to project
-    it will move the files to processed_files"""
+    """Function to update experiment and experiment set metadata for pipeline completions
+    and output files.
+    Parameters
+    ----------
+    patch_data: (dict) example format:
+                {
+                'patch_opf': [
+                    ['set_acc', ['file1', 'file2']],
+                    ['exp_acc', ['file3', 'file4']]
+                    ]
+                'add_tag': [['exp_acc', 'completed_pipeline_tag']]
+                }
+    pipeline_type: (str) key for titles dictionary for setting the opf title
+    move_to_pc: (bool) If False, processing results go to other_processed_files field
+                If True:
+                   If set/exp is released/to project processing results go to other_processed_files field
+                   If set/exp is in other status, processing results go to processed_files field
+    """
     titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
-              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files"}
+              'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
+              'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files",
+              'compartments': "Compartments Signals - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1221,8 +1336,41 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     return log
 
 
+def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
+    time.sleep(load_wait)
+    all_inputs = []
+    for arg, files in input_files.items():
+        inp = extract_file_info(files, arg, auth, env)
+        all_inputs.append(inp)
+    # tweak to get bg2bw working
+    all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
+    my_s3_util = s3Utils(env=env)
+    out_bucket = my_s3_util.outfile_bucket
+    """Creates the trigger json that is used by foufront endpoint.
+    """
+    input_json['input_files'] = all_inputs
+    input_json['output_bucket'] = out_bucket
+    input_json["_tibanna"] = {
+        "env": env,
+        "run_type": input_json['app_name'],
+        "run_id": run_name}
+    input_json['step_function_name'] = 'tibanna_pony'
+    input_json['public_postrun_json'] = True
+    if mount:
+        for a_file in input_json['input_files']:
+            a_file['mount'] = True
+
+    try:
+        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
+        url = json.loads(e['input'])['_tibanna']['url']
+        return url
+    except Exception as e:
+        return str(e)
+
+
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'fastq_R1', 'input_bam', 'rna.fastqs_R1']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1323,12 +1471,24 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
         # pairing, organism, enzyme, bwa_ref, chrsize_ref, enz_ref, f_size
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
         paired = refs['pairing']
-        set_summary = " - ".join([set_acc, refs['organism'], refs['f_size']])
+        set_summary = " - ".join([set_acc, str(refs['organism']), str(refs['f_size'])])
         # if no files were found
         if all(not value for value in exp_files.values()):
             set_summary += "| skipped - no usable file"
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
+            continue
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
             continue
         # skip if missing reference
         if not refs['bwa_ref'] or not refs['chrsize_ref']:
@@ -1464,12 +1624,9 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         exp_files, refs = find_fastq_info(a_set, all_items['file_fastq'])
 
         print(a_set['accession'], 'paired=', refs['pairing'], refs['organism'], refs['f_size'])
-        for i in exp_files:
-            print(i, exp_files[i])
-
         paired = refs['pairing']
         organism = refs['organism']
-        set_summary = " - ".join([set_acc, organism, refs['f_size']])
+        set_summary = " - ".join([set_acc, str(organism), str(refs['f_size'])])
 
         # if no files were found
         if all(not value for value in exp_files.values()):
@@ -1477,10 +1634,20 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: 'skipped - no usable file'})
             continue
-
+        # Skip is organism is missing
+        if not refs['organism']:
+            set_summary += "| skipped - no organism"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - no organism'})
+            continue
+        # skip if more than one organism
+        if refs['organism'] == "multiple organisms":
+            set_summary += "| skipped - multiple organisms"
+            check.brief_output.append(set_summary)
+            check.full_output['skipped'].append({set_acc: 'skipped - multiple organisms'})
+            continue
         if organism not in ['mouse', 'human']:
             msg = 'No reference file for ' + organism
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
@@ -1497,14 +1664,17 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 not_verified.append(an_exp)
         if not_verified:
             msg = ', '.join(not_verified) + ' Not verified for strandedness'
-            print(msg)
             set_summary += "| " + msg
             check.brief_output.append(set_summary)
             check.full_output['skipped'].append({set_acc: msg})
             continue
 
         # cycle through the experiments, skip the ones without usable files
+        # accumulate files for madqc
+        step2_files = []
+        step2_status = 'ready'
         for exp in exp_files.keys():
+            step1_status = 'ready'
             if not exp_files.get(exp):
                 continue
 
@@ -1542,6 +1712,8 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
             # if successful
             if step1_result['status'] == 'complete':
+                # add  madqc file
+                step2_files.append(step1_result['rna.gene_expression'])
                 # create processed files list for experiment
                 exp_results = []
                 for a_type in ['rna.outbam',
@@ -1555,15 +1727,15 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                 complete['patch_opf'].append([exp, exp_results])
             # if still running
             elif step1_result['status'] == 'running':
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 running.append(['step1', exp])
             # if run is not successful
             elif step1_result['status'].startswith("no complete run, too many"):
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 problematic_run.append(['step1', exp])
             # if it is missing
             else:
-                final_status = 'not ready'
+                step1_status = 'not ready'
                 # add part
                 name_tag = exp
                 inp_f = {'rna.align_index': rna_star_index[organism],
@@ -1577,6 +1749,44 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
                     inp_f['rna.fastqs_R1'] = [input_files]
                 overwrite = {'parameters': pars}
                 missing_run.append(['step1', [app_name, organism, overwrite], inp_f, name_tag])
+            if step1_status != 'ready':
+                step2_status = 'not ready'
+
+        if step2_status != 'ready':
+            if running:
+                set_summary += "| running step 1"
+            elif missing_run:
+                set_summary += "| missing step 1"
+            elif problematic_run:
+                set_summary += "| problem in step 1"
+        # if there is a single replicate, skip madqc
+        elif len(step2_files) == 1:
+            step2_status = 'ready'
+        # run step2 if step1 s are complete
+        else:
+            step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
+
+            # if successful
+            if step2_result['status'] == 'complete':
+                pass
+            # if still running
+            elif step2_result['status'] == 'running':
+                step2_status = 'not ready'
+                running.append(['step2', set_acc])
+            # if run is not successful
+            elif step2_result['status'].startswith("no complete run, too many"):
+                step2_status = 'not ready'
+                problematic_run.append(['step2', set_acc])
+            # if it is missing
+            else:
+                step2_status = 'not ready'
+                # add part
+                name_tag = set_acc
+                inp_f = {'mad_qc.quantfiles': step2_files}
+                missing_run.append(['step2', ['mad_qc_workflow', organism, {}], inp_f, name_tag])
+        if step2_status != 'ready':
+            final_status = 'not ready'
 
         if final_status == 'ready':
             # add the tag
@@ -1584,11 +1794,11 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             complete['add_tag'] = [set_acc, tag]
         else:
             if running:
-                set_summary += "| running step 1"
+                set_summary += "| running step 2"
             elif missing_run:
-                set_summary += "| missing step 1"
+                set_summary += "| missing step 2"
             elif problematic_run:
-                set_summary += "| problem in step 1"
+                set_summary += "| problem in step 2"
 
         check.brief_output.append(set_summary)
         if running:
@@ -1622,3 +1832,30 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
         check.status = 'WARN'
     return check
+
+
+def string_to_list(string):
+    "Given a string that is either comma separated values, or a python list, parse to list"
+    for a_sep in "'\":[] ":
+        values = string.replace(a_sep, ",")
+    values = [i.strip() for i in values.split(',') if i]
+    return values
+
+
+def fetch_wfr_associated(wfr_info):
+    """Given wfr embedded frame, find associated output files and qcs"""
+    wfr_as_list = []
+    wfr_as_list.append(wfr_info['uuid'])
+    if wfr_info.get('output_files'):
+        for o in wfr_info['output_files']:
+            if o.get('value'):
+                wfr_as_list.append(o['value']['uuid'])
+            elif o.get('value_qc'):
+                wfr_as_list.append(o['value_qc']['uuid'])
+    if wfr_info.get('output_quality_metrics'):
+        for qc in wfr_info['output_quality_metrics']:
+            if qc.get('value'):
+                wfr_as_list.append(qc['value']['uuid'])
+    if wfr_info.get('quality_metric'):
+        wfr_as_list.append(wfr_info['quality_metric']['uuid'])
+    return list(set(wfr_as_list))

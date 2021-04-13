@@ -1,16 +1,17 @@
-from __future__ import print_function, unicode_literals
 from datetime import datetime, timedelta
-from ..utils import (
-    check_function,
-    action_function,
-)
-from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import requests
 import json
 import time
 import uuid
 from copy import deepcopy
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
+
 
 def get_reference_files(connection):
     """
@@ -1494,7 +1495,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
                 if title not in action_logs['failed_to_create_viewconf'][accession]:
                     action_logs['failed_to_create_viewconf'][accession][title] = {}
 
-                action_logs['failed_to_create_viewconf'][accession][title] = post_viewconf_results["error"]
+                action_logs['failed_to_create_viewconf'][accession][title] = higlass_item_results["error"]
                 continue
 
             # If the filegroup title is not in the ExpSet other_processed_files section, make it now
@@ -1821,7 +1822,9 @@ def patch_file_higlass_uid(connection, **kwargs):
         'patch_failure': {},
         'patch_success': {},
         'registration_failure': {},
-        'registration_success': 0
+        'registration_success': 0,
+        'beddb_copy_failure': {},
+        'beddb_copy_success': 0
     }
     # get latest results
     higlass_check = CheckResult(connection, 'files_not_registered_with_higlass')
@@ -1848,6 +1851,8 @@ def patch_file_higlass_uid(connection, **kwargs):
     start_time = time.time()
     time_expired = False
 
+
+
     # Files to register is organized by filetype.
     to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
     for ftype, hits in to_be_registered.items():
@@ -1863,7 +1868,8 @@ def patch_file_higlass_uid(connection, **kwargs):
                 continue
 
             # Based on the filetype, construct a payload to upload to the higlass server.
-            payload = {'coordSystem': hit['genome_assembly']}
+            payload = {}
+            payload['coordSystem'] = hit['genome_assembly']
             if ftype == 'chromsizes':
                 payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'chromsizes-tsv'
@@ -1893,6 +1899,25 @@ def patch_file_higlass_uid(connection, **kwargs):
                 err_msg = 'No filetype case specified for %s' % ftype
                 action_logs['registration_failure'][hit['accession']] = err_msg
                 continue
+
+            # Call the Flask server component on the Higlass server to copy beddb files
+            # from S3 to the local file system. Using mounted versions of these files is very slow.
+            if payload['filetype'] == 'beddb':
+                copy_res = requests.post(
+                    higlass_server + ':8005/cp/' + payload["filepath"]
+                )
+
+                if copy_res.status_code == 200:
+                    # If copying has been successful, we point to the local file
+                    payload["filepath"] = "beddbs/" + payload["filepath"]
+                    action_logs['beddb_copy_success'] += 1
+                else:
+                    try:
+                        err_msg = copy_res.text
+                    except Exception:
+                        err_msg = copy_res.status_code
+                        action_logs['beddb_copy_failure'][hit['accession']] = err_msg
+
 
             # register with previous higlass_uid if already there
             # otherwise, specify our own new higlass_uid with slugid

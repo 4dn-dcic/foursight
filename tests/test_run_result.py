@@ -1,10 +1,12 @@
 from conftest import *
 
+
 class TestRunResult():
     check_name = 'test_only_check'
-    environ = 'mastertest'
-    connection = app_utils.init_connection(environ)
-    run = run_result.RunResult(connection, check_name)
+    environ = DEV_ENV
+    app_utils_obj = app_utils.AppUtils()
+    connection = app_utils_obj.init_connection(environ)
+    run = run_result.CheckResult(connection, check_name)  # test RunResult using the inherited class
 
     def setup_valid_check(self):
         """ Sets up a 'valid' check according to ES """
@@ -54,9 +56,9 @@ class TestRunResult():
         assert ("is not of type <class 'str'>" in str(exc.value))
 
     def test_BadCheckOrAction(self):
-        test_exc = utils.BadCheckOrAction()
+        test_exc = run_result.BadCheckOrAction()
         assert (str(test_exc) == 'Check or action function seems to be malformed.')
-        test_exc = utils.BadCheckOrAction('Abcd')
+        test_exc = run_result.BadCheckOrAction('Abcd')
         assert (str(test_exc) == 'Abcd')
 
     @pytest.mark.flaky
@@ -104,6 +106,8 @@ class TestRunResult():
         res = check.store_result()
         queried_primary = self.run.get_result_by_uuid(res['kwargs']['uuid'])
         assert res['kwargs']['uuid'] == queried_primary['kwargs']['uuid']
+        if check.connections['es'] is not None:  # force a refresh before the delete
+            check.connections['es'].refresh_index()
         num_deleted_s3, num_deleted_es = self.run.delete_results(primary=False)
         assert num_deleted_s3 == 1
         if check.connections['es'] is not None:
@@ -133,6 +137,7 @@ class TestRunResult():
             check.description = 'This check is just for testing purposes.'
             check.status = 'PASS'
             check.store_result()
+            check.connections['es'].refresh_index()  # force refresh
         num_deleted_s3, num_deleted_es = self.run.delete_results(custom_filter=term_in_descr)
         assert num_deleted_s3 == 5
         if check.connections['es'] is not None:

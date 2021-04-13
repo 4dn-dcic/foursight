@@ -1,15 +1,19 @@
 # Step Settings
 lambda_limit = 750
+load_wait = 8
 random_wait = 20
+
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
           'fruit-fly': 'dm6',
-          'chicken': 'galGal5'}
+          'chicken': 'galGal5',
+          'zebrafish': 'GRCz11'}
 
 pairs_mapper = {"GRCh38": "hg38",
                 "GRCm38": "mm10",
                 "dm6": 'dm6',
-                "galGal5": "galGal5"}
+                "galGal5": "galGal5",
+                "GRCz11": "danRer11"}
 
 
 def step_settings(step_name, my_organism, attribution, overwrite=None):
@@ -30,12 +34,21 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     wf_dict = [{
         'app_name': 'md5',
-        'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6'
+        'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
+        "config": {"ebs_size": 10,
+                   "instance_type": 't3.small',
+                   'EBS_optimized': True
+                  }
     },
         {
-        'app_name': 'fastqc-0-11-4-1',
-        'workflow_uuid': '2324ad76-ff37-4157-8bcc-3ce72b7dace9'
-    },
+        'app_name': 'fastqc',
+        'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5',
+        "config": {
+            "ebs_size": 10,
+            "instance_type": 't3.small',
+            'EBS_optimized': True
+            }
+        },
         {
         'app_name': 'pairsqc-single',
         'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3'
@@ -89,7 +102,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         'app_name': 'imargi-processing-fastq',
         'workflow_uuid': '7eedaaa8-4c2e-4c71-9d9a-04f05ab1becf',
-        'config': {'mem': 8, 'cpu': 4, 'ebs_size': '10x', 'EBS_optimized': 'true'},
+        'config': {'mem': 8, 'cpu': 4, 'ebs_size': '12x', 'EBS_optimized': 'true'},
         'parameters': {"nThreads": 4},
         'custom_pf_fields': {
             'out_bam': {
@@ -142,20 +155,21 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }},
         {
         "app_name": "bedtobeddb",
-        'parameters': {"assembly": pairs_assembly},
-        "workflow_uuid": "9d575e99-5ffe-4ea4-b74f-ad40f621cd39",
-        "overwrite_input_extra": False
+        "workflow_uuid": "91049eef-d434-4e16-a1ad-06de73f079dc",
+        "config": {'mem': 4, 'cpu': 2, "ebs_size": 10},
+        "overwrite_input_extra": True
         },
         {
         "app_name": "bedtomultivec",
         "workflow_uuid": "a52b9b9d-1654-4967-883f-4d2adee77bc7",
         'config': {'mem': 4, 'cpu': 2, 'EBS_optimized': 'false'},
-        "overwrite_input_extra": False
+        "overwrite_input_extra": True
         },
         {
         "app_name": "bedGraphToBigWig",
-        "workflow_uuid": "667b14a7-a47e-4857-adf1-12a6393c4b8e",
-        "overwrite_input_extra": False
+        "workflow_uuid": "a083e05a-46b6-4ae7-aaa4-2abf59300ff7",
+        "config": {'mem': 4, 'cpu': 2, "ebs_size": 30},
+        "overwrite_input_extra": True
         },
         {"app_name": "encode-chipseq",
          "workflow_uuid": "5b44ce1b-0347-40a6-bc9c-f39fb5d7bce3",
@@ -202,20 +216,37 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             }
         },
         {
-        "app_name": "insulator-score-caller",
-        "workflow_uuid": "54a46fe7-cec2-4bfb-ab5f-470320f69fb0",
-        "parameters": {"binsize": -1, "windowsize": 100000, "cutoff": 2},
+        "app_name": "insulation-scores-and-boundaries-caller",
+        "workflow_uuid": "dc9efc2d-baa5-4304-b72b-14610d8d5fc4",
+        "parameters": {"binsize": -1, "windowsize": 100000},
+        "config": {'mem': 32},
         'custom_pf_fields': {
             'bwfile': {
                 'genome_assembly': genome,
                 'file_type': 'insulation score-diamond',
-                'description': 'Diamond insulation scores from Hi-C Pipeline, called by cooltools.'}
+                'description': 'Diamond insulation scores calls on Hi-C contact matrices'},
+            'bedfile': {
+                'genome_assembly': genome,
+                'file_type': 'boundaries',
+                'description': 'Boundaries calls on Hi-C contact matrices'}
             }
+        },
+        {
+        "app_name": "compartments-caller",
+        "workflow_uuid": "d07fa5d4-8721-403e-89b5-e8f323ac9ece",
+        "parameters": {"binsize": 250000, "contact_type": "cis"},
+        "config": {'mem': 4, 'cpu': 1, 'ebs_size': '1.1x', 'EBS_optimized': 'false'},
+        'custom_pf_fields': {
+            'bwfile': {
+                'genome_assembly': genome,
+                'file_type': 'compartments',
+                'description': 'Compartments signals on Hi-C contact matrices'}
+            },
         },
         {
         "app_name": "rna-strandedness",
         "workflow_uuid": "af97597e-877a-40b7-b211-98ec0cfb17b4",
-        'config': {'mem': 0.5, 'cpu': 1, 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
+        'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro", 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
         },
 
         # RNA SEQ
@@ -289,13 +320,31 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         {
         "app_name": "bamqc",
         "workflow_uuid": "42683ab1-59bf-4ec5-a973-030053a134f1",
-        "overwrite_input_extra": False
+        "overwrite_input_extra": False,
+        "config": {"ebs_size": 10}
         },
         {
         "app_name": "fastq-first-line",
         "workflow_uuid": "93a1a931-d55d-4623-adfb-0fa735daf6ae",
         "overwrite_input_extra": False,
-        'config': {'mem': 0.5, 'cpu': 1}
+        'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro"}
+        },
+        {
+        "app_name": "re_checker_workflow",
+        "workflow_uuid": "8479d16e-667a-41e9-8ace-391128f50dc5",
+        "parameters": {},
+        "config": {"mem": 4,
+                   "ebs_size": 10,
+                   "instance_type": "t3.medium"
+                   }
+        },
+        {
+        "app_name": "mad_qc_workflow",
+        "workflow_uuid": "4dba38f0-af7a-4432-88e4-ca804dea64f8",
+        "parameters": {},
+        "config": {"ebs_size": 10,
+                   "instance_type": "t3.medium"
+                   }
         },
         {
         "app_name": "cut_and_run",
@@ -357,11 +406,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
 
     if not template.get('parameters'):
         template['parameters'] = {}
-    if template.get('custom_pf_fields'):
-        for a_file in template['custom_pf_fields']:
-            template['custom_pf_fields'][a_file].update(attribution)
-    template['wfr_meta'] = attribution
-    template['custom_qc_fields'] = attribution
+    template['common_fields'] = attribution
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:

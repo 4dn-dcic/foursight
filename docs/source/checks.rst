@@ -23,7 +23,7 @@ Attributes you can set on a check result
 
 The check result has a number of important attributes that determine what is stored as output of your check. Below is a list of different fields you can set on your check result within the body of your check. As always, the check function should return the check result object. Any of the following attributes can be set like this:
 
-.. code-block::
+.. code-block:: python
 
    check = CheckResult(connection, 'my_check_name')
    check.status = 'PASS'
@@ -57,7 +57,7 @@ Our example check
 
 Let's say we want to write a check that will check Fourfront for all items that were released in the past day, which we will do by leveraging the "date_created" field. A reasonable place for this check to live is chalicelib/checks/wrangler_checks.py, since it is a metadata-oriented check. First, let's put down a barebones framework for our check using the ``check_function`` decorator to initialize the result for the check.
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def items_created_in_the_past_day(connection, **kwargs):
@@ -66,7 +66,7 @@ Let's say we want to write a check that will check Fourfront for all items that 
 
 At the moment, this check won't do anything but write a result to the ``items_created_in_the_past_day`` check directory, which will have some default values (namely status=ERROR). So, the body of the check can be thought of as doing the computation necessary to fill those fields of the check result. To actually get our check to do something, let's import ff_utils module from the central dcicutils package, which allows us to easily make requests to Fourfront. Imports should generally be done at the top level of your checks file, but they are shown in the function here for completeness. It's important to note that we can always get Fourfront access keys through ``connection.ff_keys``. Likewise, the current Fourfront environment (such as ``foufront-webdev`` or ``fourfront-webprod``\ ) using the ``connection.ff_env`` field. These are leveraged when using the ff_utils package.
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def items_created_in_the_past_day(connection, **kwargs):
@@ -78,7 +78,7 @@ At the moment, this check won't do anything but write a result to the ``items_cr
 
 Okay, now we are ready to use the ``ff_utils`` module to connect to Fourfront. Next we need to get a search result from Fourfront and use those results within our check. The big idea is that we will iterate through the search results and see which items have a ``date_created`` value of less than a day ago. I'm going to go ahead and add a lot to the check and describe it afterwards.
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def items_created_in_the_past_day(connection, **kwargs):
@@ -119,7 +119,7 @@ Check setup
 
 Let's start by configuring our check setup (in ``check_setup.json``\ ) so that our check runs on all environment every morning. It will be part of the ``morning_checks`` schedule. It is assumed that you've already read the basics of the check setup in the `getting started <https://foursight.readthedocs.io/en/latest/getting_started.html#adding-checks-to-check_setup>`_ documentation, so we will start with the following.
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "items_created_in_the_past_day": {
@@ -133,13 +133,14 @@ Let's start by configuring our check setup (in ``check_setup.json``\ ) so that o
                }
            }
        }
+    }
 
 Check arguments
 ---------------
 
 A key word arguments (kwargs) object can be passed into your checks for internal use a couple ways. The first is through the ``check_function`` decorator. Any kwargs used in it's declaration will be available in the check. For example, the ``item_type`` variable in the check above would be better set as a default kwarg for the check as-so:
 
-.. code-block::
+.. code-block:: python
 
    @check_function(item_type='Item')
    def items_created_in_the_past_day(connection, **kwargs):
@@ -147,7 +148,7 @@ A key word arguments (kwargs) object can be passed into your checks for internal
 
 These kwargs defined in the check function can be overwritten by those defined in the check setup. Note in the check setup above, the empty ``kwargs`` section means that the default key word arguments will be used when running this check. So if we wanted to run the ``items_created_in_the_past_day`` check with ``item_type = Experiment`` we could add the following key word argument to the check setup:
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "items_created_in_the_past_day": {
@@ -161,10 +162,11 @@ These kwargs defined in the check function can be overwritten by those defined i
                }
            }
        }
+    }
 
 This will cause the ``item_type`` to be overwritten in the check code. If you wanted to use the default ``item_type`` kwarg, you would just leave an empty dictionary under ``kwargs``. Using this system, it is very easy to specify different kwargs for different schedules and environments. In the example below, we use the default kwargs for the ``data`` environment and some unique kwargs for the ``webdev`` environment.
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "items_created_in_the_past_day": {
@@ -181,10 +183,11 @@ This will cause the ``item_type`` to be overwritten in the check code. If you wa
                }
            }
        }
+    }
 
 Lastly, arguments that are not defined in the default kwargs through the ``check_function`` decorator can also be added to the dictionary:
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "items_created_in_the_past_day": {
@@ -201,6 +204,7 @@ Lastly, arguments that are not defined in the default kwargs through the ``check
                }
            }
        }
+    }
 
 This would execute the ``items_created_in_the_past_day`` check with the default kwarg ``item_type=Item`` and the provided ``another_arg=another_val`` kwarg. This system allows checks to have multiple schedules with different parameters.
 
@@ -233,25 +237,25 @@ Sometimes you may want the same check to run multiple times and report results f
 
 For example, let's use the check that we've been demonstrating over the past couple sections. It finds all items of a certain type that have been created in the past day and takes an ``item_type`` key word argument that determines the type. In addition, the ``full_output`` attribute is a dictionary keyed by the item type. So, we can easily pull a previous result from that check (that ran for ``item_type = Experiment``\ , for example) and add another item type (say, ``Biosample``\ ) to it. The desired ``full_output`` would have the following form:
 
-.. code-block::
+.. code-block:: JSON
 
    {
-       'Experiment': [ ... ],
-       'Biosample': [ ... ]
+       "Experiment": [ ... ],
+       "Biosample": [ ... ]
    }
 
 To achieve this, we will use manipulate the ``item_type`` key word argument and initialize the check running for ``Biosample`` with the results of the previous check that used ``Experiment``. All we need to do is change a couple lines from the ``items_created_in_the_past_day`` check that we defined above
 
 First, add the ``uuid`` parameter to the constructor. Read it from the kwargs. This will take care of initializing the check result with the attributes of the results of the check with the given uuid (if it exists).
 
-.. code-block::
+.. code-block:: python
 
    init_uuid = kwargs.get('uuid')
    check = CheckResult(connection, 'items_created_in_the_past_day', init_uuid=init_uuid)
 
 Then, we just need to add the logic to use the ``full_output`` from previous results if available:
 
-.. code-block::
+.. code-block:: python
 
    full_output = check.full_output if check.full_output else {}
 
@@ -260,7 +264,7 @@ Accessing previous/other check results
 
 Another possibility for a check is to operate on the previous results of the same or other checks. To get results for the same check, you can use the same CheckResult object that is defined using the check name at the beginning of the check:
 
-.. code-block::
+.. code-block:: python
 
    check = CheckResult(connection, 'change_in_item_counts')
 
@@ -271,7 +275,7 @@ Using the CheckResult ``check`` object, you have access to all CheckResult metho
 * ``get_latest_result`` will return the last run result of the check, which does not necessarily mean it is ``primary``.
 * ``get_closest_result`` can be used to get the check result that is closest the given time difference from the current time. See the example below:
 
-.. code-block::
+.. code-block:: python
 
    check = CheckResult(connection, 'change_in_item_counts')
 
@@ -287,7 +291,7 @@ Using the CheckResult ``check`` object, you have access to all CheckResult metho
 
 The functions can be used to easily make a check that is aware of its own previous results. You can also make checks that use the results of other checks; to do this, define another check result object with the name of a different check. Consider the following example:
 
-.. code-block::
+.. code-block:: python
 
    @check_function()
    def change_in_item_counts(connection, **kwargs):
@@ -328,7 +332,7 @@ Dependencies
 
 Using the running example from above, the following setup would require ``item_counts_by_type`` (not defined here) to run before ``items_created_in_the_past_day``. This depends on ``item_counts_by_type`` also using the same ``morning_checks`` schedule.
 
-.. code-block::
+.. code-block:: JSON
 
    {
        "items_created_in_the_past_day": {
@@ -342,3 +346,4 @@ Using the running example from above, the following setup would require ``item_c
                }
            }
        }
+    }

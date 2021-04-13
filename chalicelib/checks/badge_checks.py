@@ -1,14 +1,14 @@
-from __future__ import print_function, unicode_literals
-from ..utils import (
-    check_function,
-    action_function,
-)
-from ..run_result import CheckResult, ActionResult
-from dcicutils import ff_utils
 import re
 import requests
 import datetime
 import json
+from dcicutils import ff_utils
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
 
 
 REV = ['in review by lab', 'submission in progress']
@@ -208,6 +208,7 @@ def yellow_flag_biosamples(connection, **kwargs):
         if 'HAP-1' in result.get('biosource_summary') and not ploidy:
             messages.append('HAP-1 biosample missing ploidy authentication')
         if messages:
+            messages = [messages[i] for i in range(len(messages)) if messages[i] not in messages[:i]]
             if result.get('status') in REV:
                 check.brief_output[REV_KEY].append('{} missing {}'.format(
                     result['@id'], ', '.join(list(set([item[item.index('missing') + 8:] for item in messages])))
@@ -360,7 +361,11 @@ def repsets_have_bio_reps(connection, **kwargs):
             else:
                 audit_key = RELEASED_KEY
 
+            # check if single biological replicate
             if len(rep_dict.keys()) == 1:
+                # this tag labels an ExpSet with many replicates, but only one present in the database (typically imaging datasets)
+                if 'many_replicates' in result.get('tags', []):  # skip false positive
+                    continue
                 audits[audit_key]['single_biorep'].append(result['@id'])
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence

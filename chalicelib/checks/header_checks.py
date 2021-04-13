@@ -1,10 +1,10 @@
-from __future__ import print_function, unicode_literals
-from ..utils import (
-    check_function,
-    action_function,
-)
-from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
 
 
 # generic CHECK function used to add a static headers to items of some search result
@@ -126,11 +126,11 @@ def patch_static_headers(connection, **kwargs):
 def prepare_static_headers_data_use_guidelines(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_data_use_guidelines')
     # only check experiment sets that are released, released to project, or in pre-release
-    add_search=('/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title=No%20value'
-                '&status=released&status=released+to+project&status=pre-release&frame=object')
-    remove_search=('/search/?type=ExperimentSet&award.project=4DN&publications_of_set.display_title!=No%20value'
-                   '&status=released&status=released+to+project&status=pre-release&frame=object')
-    header_at_id='/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
+    add_search = ('/search/?type=ExperimentSet&award.project=4DN&produced_in_pub.display_title=No%20value'
+                  '&status=released&status=released+to+project&status=pre-release&frame=object')
+    remove_search = ('/search/?type=ExperimentSet&award.project=4DN&produced_in_pub.display_title!=No%20value'
+                     '&status=released&status=released+to+project&status=pre-release&frame=object')
+    header_at_id = '/static-sections/621e8359-3885-40ce-965d-91894aa7b758/'
     check.action = 'patch_static_headers_data_use_guidelines'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search, append=False)
@@ -149,9 +149,9 @@ def patch_static_headers_data_use_guidelines(connection, **kwargs):
 @check_function()
 def prepare_static_headers_inSitu_HiC(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_inSitu_HiC')
-    add_search='/search/?experiments_in_set.experiment_type=in+situ+Hi-C&type=ExperimentSet&frame=object'
-    remove_search='/search/?experiments_in_set.experiment_type!=in+situ+Hi-C&type=ExperimentSet&frame=object'
-    header_at_id='/static-sections/298554ad-20e2-4449-a752-ac190123dab7/'
+    add_search = '/search/?experiments_in_set.experiment_type=in+situ+Hi-C&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=in+situ+Hi-C&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/298554ad-20e2-4449-a752-ac190123dab7/'
     check.action = 'patch_static_headers_inSitu_HiC'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search)
@@ -170,9 +170,9 @@ def patch_static_headers_inSitu_HiC(connection, **kwargs):
 @check_function()
 def prepare_static_headers_dilution_HiC(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_dilution_HiC')
-    add_search='/search/?experiments_in_set.experiment_type=Dilution+Hi-C&type=ExperimentSet&frame=object'
-    remove_search='/search/?experiments_in_set.experiment_type!=Dilution+Hi-C&type=ExperimentSet&frame=object'
-    header_at_id='/static-sections/7627f4eb-9f2d-4171-9e9b-87ab800ab5cd/'
+    add_search = '/search/?experiments_in_set.experiment_type=Dilution+Hi-C&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=Dilution+Hi-C&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/7627f4eb-9f2d-4171-9e9b-87ab800ab5cd/'
     check.action = 'patch_static_headers_dilution_HiC'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search)
@@ -191,9 +191,9 @@ def patch_static_headers_dilution_HiC(connection, **kwargs):
 @check_function()
 def prepare_static_headers_FISH(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_FISH')
-    add_search='/search/?experiments_in_set.experiment_type=DNA+FISH&type=ExperimentSet&frame=object'
-    remove_search='/search/?experiments_in_set.experiment_type!=DNA+FISH&type=ExperimentSet&frame=object'
-    header_at_id='/static-sections/911424f9-21c7-49fc-b1df-865dd64ae91e/'
+    add_search = '/search/?experiments_in_set.experiment_type=DNA+FISH&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=DNA+FISH&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/911424f9-21c7-49fc-b1df-865dd64ae91e/'
     check.action = 'patch_static_headers_FISH'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search)
@@ -212,9 +212,9 @@ def patch_static_headers_FISH(connection, **kwargs):
 @check_function()
 def prepare_static_headers_SPT(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_SPT')
-    add_search='/search/?experiments_in_set.experiment_type=SPT&type=ExperimentSet&frame=object'
-    remove_search='/search/?experiments_in_set.experiment_type!=SPT&type=ExperimentSet&frame=object'
-    header_at_id='/static-sections/6a313162-e70c-4fbe-93c5-bc78f5faf0c7/'
+    add_search = '/search/?experiments_in_set.experiment_type=SPT&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=SPT&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/6a313162-e70c-4fbe-93c5-bc78f5faf0c7/'
     check.action = 'patch_static_headers_SPT'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search)
@@ -233,9 +233,9 @@ def patch_static_headers_SPT(connection, **kwargs):
 @check_function()
 def prepare_static_headers_SPRITE(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_SPRITE')
-    add_search='/search/?experiments_in_set.experiment_type=DNA+SPRITE&type=ExperimentSet&frame=object'
-    remove_search='/search/?experiments_in_set.experiment_type!=DNA+SPRITE&type=ExperimentSet&frame=object'
-    header_at_id='/static-sections/205f35ec-92cd-4c02-bd35-b0d38dd72a90/'
+    add_search = '/search/?experiments_in_set.experiment_type=DNA+SPRITE&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=DNA+SPRITE&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/205f35ec-92cd-4c02-bd35-b0d38dd72a90/'
     check.action = 'patch_static_headers_SPRITE'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search)
@@ -250,13 +250,13 @@ def patch_static_headers_SPRITE(connection, **kwargs):
     return action
 
 
- #MARGI
+# MARGI
 @check_function()
 def prepare_static_headers_MARGI(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_MARGI')
-    add_search='/search/?experiments_in_set.experiment_type=MARGI&type=ExperimentSet&frame=object'
-    remove_search='/search/?experiments_in_set.experiment_type!=MARGI&type=ExperimentSet&frame=object'
-    header_at_id='/static-sections/0c2ba23e-b256-47ce-a37c-0f1282471789/'
+    add_search = '/search/?experiments_in_set.experiment_type=MARGI&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=MARGI&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/0c2ba23e-b256-47ce-a37c-0f1282471789/'
     check.action = 'patch_static_headers_MARGI'
     find_items_for_header_processing(connection, check, header_at_id,
                                      add_search, remove_search)
@@ -271,43 +271,43 @@ def patch_static_headers_MARGI(connection, **kwargs):
     return action
 
 
-#sci-HiC
+# sci-HiC
 @check_function()
 def prepare_static_headers_sciHiC(connection, **kwargs):
-   check = CheckResult(connection, 'prepare_static_headers_sciHiC')
-   add_search='/search/?experiments_in_set.experiment_type=sci-Hi-C&type=ExperimentSet&frame=object'
-   remove_search='/search/?experiments_in_set.experiment_type!=sci-Hi-C&type=ExperimentSet&frame=object'
-   header_at_id='/static-sections/ae5a6470-0694-4ba3-893a-40b170401bc0/'
-   check.action = 'patch_static_headers_sciHiC'
-   find_items_for_header_processing(connection, check, header_at_id,
-                                    add_search, remove_search)
-   return check
+    check = CheckResult(connection, 'prepare_static_headers_sciHiC')
+    add_search = '/search/?experiments_in_set.experiment_type=sci-Hi-C&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=sci-Hi-C&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/ae5a6470-0694-4ba3-893a-40b170401bc0/'
+    check.action = 'patch_static_headers_sciHiC'
+    find_items_for_header_processing(connection, check, header_at_id,
+                                     add_search, remove_search)
+    return check
 
 
 @action_function()
 def patch_static_headers_sciHiC(connection, **kwargs):
-   action = ActionResult(connection, 'patch_static_headers_sciHiC')
-   # get latest results from prepare_static_headers
-   patch_items_with_headers(connection, action, kwargs)
-   return action
+    action = ActionResult(connection, 'patch_static_headers_sciHiC')
+    # get latest results from prepare_static_headers
+    patch_items_with_headers(connection, action, kwargs)
+    return action
 
 
 # DNase Hi-C
 @check_function()
 def prepare_static_headers_DNase_HiC(connection, **kwargs):
-   check = CheckResult(connection, 'prepare_static_headers_DNase_HiC')
-   add_search='/search/?experiments_in_set.experiment_type=DNase+Hi-C&type=ExperimentSet&frame=object'
-   remove_search='/search/?experiments_in_set.experiment_type!=DNase+Hi-C&type=ExperimentSet&frame=object'
-   header_at_id='/static-sections/84448fd6-ccf0-45a7-86c8-673b5686c059/'
-   check.action = 'patch_static_headers_DNase_HiC'
-   find_items_for_header_processing(connection, check, header_at_id,
-                                    add_search, remove_search)
-   return check
+    check = CheckResult(connection, 'prepare_static_headers_DNase_HiC')
+    add_search = '/search/?experiments_in_set.experiment_type=DNase+Hi-C&type=ExperimentSet&frame=object'
+    remove_search = '/search/?experiments_in_set.experiment_type!=DNase+Hi-C&type=ExperimentSet&frame=object'
+    header_at_id = '/static-sections/84448fd6-ccf0-45a7-86c8-673b5686c059/'
+    check.action = 'patch_static_headers_DNase_HiC'
+    find_items_for_header_processing(connection, check, header_at_id,
+                                     add_search, remove_search)
+    return check
 
 
 @action_function()
 def patch_static_headers_DNase_HiC(connection, **kwargs):
-   action = ActionResult(connection, 'patch_static_headers_DNase_HiC')
-   # get latest results from prepare_static_headers
-   patch_items_with_headers(connection, action, kwargs)
-   return action
+    action = ActionResult(connection, 'patch_static_headers_DNase_HiC')
+    # get latest results from prepare_static_headers
+    patch_items_with_headers(connection, action, kwargs)
+    return action

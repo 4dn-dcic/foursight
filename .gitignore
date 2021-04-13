@@ -4,9 +4,21 @@
 .chalice/config.json
 *.pyc
 __pycache__
+*.egg-info/
+dist/
 .coverage
 *.DS_Store
 htmlcov/
 coverage.xml
 *.ipynb
 !*LocalTest.ipynb
+requirements.txt
+
+# Virtual environments
+*env/
+
+# Emacs
+*~
+
+# PyCharm
+.idea/

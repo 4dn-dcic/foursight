@@ -1,26 +1,26 @@
-from __future__ import print_function, unicode_literals
-from ..utils import (
-    check_function,
-    action_function,
-)
-from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 import re
 import requests
 import datetime
-import json
+from .helpers import wrangler_utils
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
 
 
 STATUS_LEVEL = {
-    'released': 3,
-    'archived': 3,
-    'current': 3,
-    'revoked': 3,
+    'released': 4,
+    'archived': 4,
+    'current': 4,
+    'revoked': 4,
     'released to project': 3,
-    'pre-release': 3,
-    'restricted': 3,
+    'pre-release': 2,
+    'restricted': 4,
     'planned': 2,
-    'archived to project': 2,
+    'archived to project': 3,
     'in review by lab': 1,
     'released to lab': 1,
     'submission in progress': 1,
@@ -43,23 +43,20 @@ def biosource_cell_line_value(connection, **kwargs):
     check = CheckResult(connection, 'biosource_cell_line_value')
 
     cell_line_types = ["primary cell", "primary cell line", "immortalized cell line",
-                       "in vitro differentiated cells", "induced pluripotent stem cell line",
-                       "stem cell", "stem cell derived cell line"]
-    biosources = ff_utils.search_metadata('search/?type=Biosource&frame=object',
-                                          key=connection.ff_keys, page_limit=200)
+                       "induced pluripotent stem cell", "stem cell", "stem cell derived cell line"]
+    biosources = ff_utils.search_metadata(
+        'search/?type=Biosource&cell_line.display_title=No+value&frame=object' +
+        ''.join(['&biosource_type=' + c for c in cell_line_types]),
+        key=connection.ff_keys)
     missing = []
     for biosource in biosources:
-        # check if the biosource type is a cell/cell line
-        if biosource.get('biosource_type') and biosource.get('biosource_type') in cell_line_types:
-            # append if cell_line field is missing
-            if not biosource.get('cell_line'):
-                missing.append({'uuid': biosource['uuid'],
-                                '@id': biosource['@id'],
-                                'biosource_type': biosource.get('biosource_type'),
-                                'description': biosource.get('description'),
-                                'error': 'Missing cell_line metadata'})
+        missing.append({'uuid': biosource['uuid'],
+                        '@id': biosource['@id'],
+                        'biosource_type': biosource.get('biosource_type'),
+                        'description': biosource.get('description'),
+                        'error': 'Missing cell_line OntologyTerm'})
     check.full_output = missing
-    check.brief_output = [item['uuid'] for item in missing]
+    check.brief_output = [item['@id'] for item in missing]
     if missing:
         check.status = 'WARN'
         check.summary = 'Cell line biosources found missing cell_line metadata'
@@ -192,6 +189,66 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     return check
 
 
+@check_function(days_back=14)
+def expset_opf_unique_files(connection, **kwargs):
+    '''
+    Checks Experiments and Experiment Sets with other_processed_files and looks
+    if any opf is also present within the raw, processed or reference files.
+    '''
+    check = CheckResult(connection, 'expset_opf_unique_files')
+    days_back = kwargs.get('days_back')
+    from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
+    # opfs can be on Exps or ExpSets: search ExpSets for each case and merge results
+    opf_query = ('other_processed_files.files.uuid%21=No+value' +
+                 from_date_query +
+                 '&field=experiments_in_set&field=processed_files&field=other_processed_files')
+    opf_sets = ff_utils.search_metadata(
+        'search/?type=ExperimentSet&' + opf_query, key=connection.ff_keys)
+    opf_exps = ff_utils.search_metadata(
+        'search/?type=ExperimentSet&experiments_in_set.' + opf_query, key=connection.ff_keys)
+    # merge
+    es_list = [expset['@id'] for expset in opf_sets]
+    for expset in opf_exps:
+        if expset['@id'] not in es_list:
+            opf_sets.append(expset)
+
+    errors = {}
+    for expset in opf_sets:
+        # skip sets without experiments
+        if not expset.get('experiments_in_set'):
+            continue
+
+        opfs_id = []  # list opfs @id in the ExpSet and Exps
+        all_files = []  # list all raw, processed and reference files in the ExpSet
+        if expset.get('other_processed_files'):
+            opfs_id.extend([f['@id'] for grp in expset['other_processed_files'] for f in grp.get('files', [])])
+        for exp in expset['experiments_in_set']:
+            if exp.get('other_processed_files'):
+                opfs_id.extend([f['@id'] for grp in exp['other_processed_files'] for f in grp.get('files', [])])
+            all_files.extend([f['@id'] for f in exp.get('files', [])])
+            all_files.extend([f['@id'] for f in exp.get('processed_files', [])])
+            all_files.extend([f['@id'] for f in exp.get('reference_files', [])])
+        all_files.extend([f['@id'] for f in expset.get('processed_files', [])])
+
+        # compare opfs and files lists to find duplicates
+        for opf in opfs_id:
+            if opf in all_files:
+                errors.setdefault(expset['@id'], []).append(opf)
+    if errors:
+        check.status = 'WARN'
+        check.summary = '{} exp sets found with files that are also other_processed_files'.format(len(errors))
+        check.description = ('{} Experiment Sets {}found that have other_processed_files'
+                             ' which are also present in raw, processed or reference files'.format(len(errors), from_text))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No exp sets found with files that are also other_processed_files'
+        check.description = ('No Experiment Sets {}found that have other_processed_files'
+                             ' which are also present in raw, processed or reference files'.format(from_text))
+    check.full_output = errors
+
+    return check
+
+
 @check_function()
 def paired_end_info_consistent(connection, **kwargs):
     '''
@@ -199,8 +256,8 @@ def paired_end_info_consistent(connection, **kwargs):
     '''
     check = CheckResult(connection, 'paired_end_info_consistent')
 
-    search1 = 'search/?type=FileFastq&related_files.relationship_type=paired+with&paired_end=No+value'
-    search2 = 'search/?type=FileFastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
+    search1 = 'search/?type=FileFastq&file_format.file_format=fastq&related_files.relationship_type=paired+with&paired_end=No+value'
+    search2 = 'search/?type=FileFastq&file_format.file_format=fastq&related_files.relationship_type!=paired+with&paired_end%21=No+value'
 
     results1 = ff_utils.search_metadata(search1 + '&frame=object', key=connection.ff_keys)
     results2 = ff_utils.search_metadata(search2 + '&frame=object', key=connection.ff_keys)
@@ -247,7 +304,7 @@ def workflow_properties(connection, **kwargs):
             step_inputs = step.get('inputs')
             for step_input in step_inputs:
                 if (step_input['meta'].get('type') in ['data file', 'reference file'] and not
-                    step_input['meta'].get('file_format')):
+                   step_input['meta'].get('file_format')):
                     issues.append('Missing meta.file_format property in Workflow Step `{}` Input `{}`'
                                   ''.format(step.get('name'), step_input.get('name')))
             input_names = [step_input.get('name') for step_input in step_inputs]
@@ -262,7 +319,7 @@ def workflow_properties(connection, **kwargs):
             step_outputs = step.get('outputs')
             for step_output in step_outputs:
                 if (step_output['meta'].get('type') in ['data file', 'reference file'] and not
-                    step_output['meta'].get('file_format')):
+                   step_output['meta'].get('file_format')):
                     issues.append('Missing meta.file_format property in Workflow Step `{}` Output `{}`'
                                   ''.format(step.get('name'), step_output.get('name')))
             output_names = [step_output.get('name') for step_output in step_outputs]
@@ -313,10 +370,11 @@ def page_children_routes(connection, **kwargs):
     results = ff_utils.search_metadata(page_search, key=connection.ff_keys)
     problem_routes = {}
     for result in results:
-        bad_children = [child['name'] for child in result['children'] if
-                        child['name'] != result['name'] + '/' + child['name'].split('/')[-1]]
-        if bad_children:
-            problem_routes[result['name']] = bad_children
+        if result['name'] != 'resources/data-collections':
+            bad_children = [child['name'] for child in result['children'] if
+                            child['name'] != result['name'] + '/' + child['name'].split('/')[-1]]
+            if bad_children:
+                problem_routes[result['name']] = bad_children
 
     if problem_routes:
         check.status = 'WARN'
@@ -334,21 +392,60 @@ def page_children_routes(connection, **kwargs):
 @check_function()
 def check_help_page_urls(connection, **kwargs):
     check = CheckResult(connection, 'check_help_page_urls')
-
     server = connection.ff_keys['server']
-    results = ff_utils.search_metadata('search/?type=StaticSection&q=help&status!=draft&field=body',
-                                       key=connection.ff_keys)
+    help_results = ff_utils.search_metadata(
+        'search/?type=StaticSection&q=help&status=released&field=body&field=options',
+        key=connection.ff_keys
+    )
+    resource_results = ff_utils.search_metadata(
+        'search/?type=StaticSection&q=resources&status=released&field=body&field=options',
+        key=connection.ff_keys
+    )
+    results = help_results
+    results = results + [item for item in resource_results if item['@id'] not in [res['@id'] for res in results]]
     sections_w_broken_links = {}
+    addl_exceptions = {}
+    timeouts = {}
     for result in results:
         broken_links = []
-        urls = re.findall('[\(|\[|=]["]*(http[^\s\)\]]+|/[^\s\)\]]+)[\)|\]|"]', result.get('body', ''))
+        body = result.get('body', '')
+        urls = []
+        if result.get('options', {}).get('filetype') == 'md':
+            # look for markdown links - e.g. [text](link)
+            links = re.findall(r'\[[^\]]+\]\([^\)]+\)', body)
+            for link in links:
+                # test only link part of match (not text part, even if it looks like a link)
+                idx = link.index(']')
+                url = link[link.index('(', idx)+1:-1]
+                urls.append(url)
+                # remove these from body so body can be checked for other types of links
+                body = body[:body.index(link)] + body[body.index(link)+len(link):]
+        # looks for links starting with http (full) or / (relative) inside parentheses or brackets
+        urls += re.findall(r'[\(\[=]["]*(http[^\s\)\]"]+|/[^\s\)\]"]+)[\)\]"]', body)
         for url in urls:
-            if url.startswith('/'):
-                # fill in appropriate url
+            if url.startswith('mailto'):
+                continue
+            if url.startswith('#'):  # section of static page
+                url = result['@id'] + url
+            if url.startswith('/'):  # fill in appropriate url for relative link
                 url = server + url
-            request = requests.get(url)
-            if request.status_code not in [200, 412]:
-                broken_links.append((url, request.status_code))
+            if url.startswith(server.rstrip('/') + '/search/') or url.startswith(server.rstrip('/') + '/browse/'):
+                continue
+            try:
+                request = requests.get(url.replace('&amp;', '&'), timeout=2)
+                if request.status_code not in [200, 412]:
+                    broken_links.append((url, request.status_code))
+                elif request.status_code == 504:
+                    timeouts.setdefault(result['@id'], [])
+                    timeouts[result['@id']].append(url)
+            except requests.exceptions.Timeout:
+                timeouts.setdefault(result['@id'], [])
+                timeouts[result['@id']].append(url)
+            except requests.exceptions.SSLError:
+                continue
+            except Exception as e:
+                addl_exceptions.setdefault(result['@id'], {})
+                addl_exceptions[result['@id']][url] = str(e)
         if broken_links:
             sections_w_broken_links[result['@id']] = broken_links
     if sections_w_broken_links:
@@ -360,7 +457,88 @@ def check_help_page_urls(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No broken links found'
         check.description = check.summary
-    check.full_output = sections_w_broken_links
+    check.full_output = {
+        'broken links': sections_w_broken_links,
+        'timed out requests': timeouts,
+        'additional exceptions': addl_exceptions
+    }
+    return check
+
+
+@check_function(run_on_uuid_list=None, add_res_to_ignore=False, reset_ignore=False)
+def check_search_urls(connection, **kwargs):
+    '''Check for URLs in static sections that link to a search or browse page
+    and return no results. Keeps a list of items to ignore.
+
+    Args:
+    - run_on_uuid_list: if present, run the check only on these items (list of
+      uuids, comma separated).
+    - add_res_to_ignore: if True, add all results to the ignore list and they
+      will not show up next time (default is False). Use in combination with run_on_uuid_list.
+    - reset_ignore: if True, empty the ignore list (default is False).
+
+    Results:
+    - full_output.result: static sections have URLs to search/browse with 0 results.
+    - full_output.ignore: static sections in the ignore list are not checked by
+      current and future runs of the check. Can be modified by check kwargs.
+    '''
+    check = CheckResult(connection, 'check_search_urls')
+
+    # get items to ignore from previous check result, unless reset_ignore is True
+    if kwargs.get('reset_ignore') is True:
+        ignored_sections = []
+    else:
+        last_result = check.get_primary_result()
+        # if last one was fail, find an earlier check with non-FAIL status
+        it = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            it += 1
+            hours = it * 7 * 24  # this is a weekly check, so look for checks with 7 days iteration
+            last_result = check.get_closest_result(diff_hours=hours)
+            if it > 4:
+                check.summary = 'Cannot find a non-fail primary check in the past 4 weeks'
+                check.status = 'ERROR'
+                return check
+        # remove cases previously ignored
+        ignored_sections = last_result['full_output'].get('ignore', [])
+
+    query = 'search/?type=StaticSection&status%21=deleted&status%21=draft'
+    # if check is limited to certain uuids
+    if kwargs.get('run_on_uuid_list'):
+        uuids = kwargs['run_on_uuid_list'].split(',')
+        query += ''.join(['&uuid=' + u.strip() for u in uuids])
+    results = ff_utils.search_metadata(query + '&field=body&field=uuid',
+                                       key=connection.ff_keys)
+    problematic_sections = {}
+    results_filtered = [r for r in results if r['uuid'] not in ignored_sections]
+    for result in results_filtered:
+        body = result.get('body', '')
+        # search links for search or browse pages, either explicit or relative
+        urls = re.findall(r'[\(\[=]["]*(?:[^\s\)\]"]+(?:4dnucleome|elasticbeanstalk)[^\s\)\]"]+|/)((?:browse|search)/\?[^\s\)\]"]+)[\)\]"]', body)
+        if urls:
+            for url in urls:
+                url = url.replace('&amp;', '&')  # replace HTML &amp;
+                url = re.sub(r'&limit=[^&]*|limit=[^&]*&?', '', url)  # remove limit if present
+                q_results = ff_utils.search_metadata(url + '&limit=1&field=uuid', key=connection.ff_keys)
+                if len(q_results) == 0:
+                    problematic_sections.setdefault(result['uuid'], [])
+                    problematic_sections[result['uuid']].append(url)
+
+    # move results to ignored if add_res_to_ignore == True
+    if problematic_sections and kwargs.get('add_res_to_ignore') is True:
+        ignored_sections.extend([uuid for uuid in problematic_sections.keys() if uuid not in ignored_sections])
+        problematic_sections = {}
+
+    if problematic_sections:
+        check.status = 'WARN'
+        check.summary = 'Empty search links found'
+        check.description = ('{} static sections currently have empty search links.'
+                             ''.format(len(problematic_sections.keys())))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No empty search links found'
+        check.description = check.summary
+    check.full_output = {'result': problematic_sections, 'ignore': ignored_sections}
     return check
 
 
@@ -495,19 +673,22 @@ def check_opf_status_mismatch(connection, **kwargs):
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp =  ff_utils.expand_es_metadata(list(set(files)), key=connection.ff_keys)
-    opf_status_dict = {
-        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] in files
-    }
+    resp = ff_utils.get_es_metadata(list(set(files)),
+                                    sources=['links.quality_metric', 'object.status', 'uuid'],
+                                    key=connection.ff_keys)
+    opf_status_dict = {item['uuid']: item['object']['status'] for item in resp if item['uuid'] in files}
     opf_linked_dict = {
-        item['uuid']: item.get('quality_metric') for val in resp[0].values() for item in val if item['uuid'] in files
+        item['uuid']: item.get('links', {}).get('quality_metric', []) for item in resp if item['uuid'] in files
     }
-    opf_other_dict = {
-        item['uuid']: item['status'] for val in resp[0].values() for item in val if item['uuid'] not in files
-    }
+    quality_metrics = [uuid for item in resp for uuid in item.get('links', {}).get('quality_metric', [])]
+    qm_resp = ff_utils.get_es_metadata(list(set(quality_metrics)),
+                                       sources=['uuid', 'object.status'],
+                                       key=connection.ff_keys)
+    opf_other_dict = {item['uuid']: item['object']['status'] for item in qm_resp if item not in files}
     check.full_output = {}
     for result in results:
-        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid') for item in result.get('other_processed_files', [])}
+        hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid')
+                   for item in result.get('other_processed_files', [])}
         titles = [item['title'] for item in result.get('other_processed_files', [])]
         titles.extend([item['title'] for exp in result.get('experiments_in_set', [])
                        for item in exp.get('other_processed_files', [])])
@@ -520,28 +701,33 @@ def check_opf_status_mismatch(connection, **kwargs):
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
             statuses = set([opf_status_dict[f['uuid']] for f in file_list])
-            if len(statuses) > 1:  # status mismatch in opf collection
-                problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
-                if hg_dict.get(title):
-                    problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
+            # import pdb; pdb.set_trace()
+            if not statuses:
+                # to account for empty sections that may not yet contain files
+                pass
+            elif len(statuses) > 1:  # status mismatch in opf collection
+                scores = set([STATUS_LEVEL.get(status, 0) for status in list(statuses)])
+                if len(scores) > 1:
+                    problem_dict[title] = {f['@id']: {'status': opf_status_dict[f['uuid']]} for f in file_list}
+                    if hg_dict.get(title):
+                        problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
             elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
                 if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
-                    problem_dict[title] = {'files': list(statuses)[0], 'higlass_view_config': opf_status_dict[hg_dict[title]]}
-            elif 'release' not in result['status'] and (
-                STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]
-            ):  # if ExpSet not released, and opf collection has higher status
+                    problem_dict[title] = {'files': list(statuses)[0],
+                                           'higlass_view_config': opf_status_dict[hg_dict[title]]}
+            elif STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]:
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
             for f in file_list:
                 if opf_linked_dict.get(f['uuid']):
-                    if (STATUS_LEVEL[opf_other_dict[opf_linked_dict[f['uuid']]]] !=
-                        STATUS_LEVEL[opf_status_dict[f['uuid']]]):
-                        if title not in problem_dict:
-                            problem_dict[title] = {}
-                        if f['@id'] not in problem_dict[title]:
-                            problem_dict[title][f['@id']] = {}
-                        problem_dict[title][f['@id']]['quality_metric'] = {
-                            'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[opf_linked_dict[f['uuid']]]
-                        }
+                    for qm in opf_linked_dict[f['uuid']]:
+                        if (STATUS_LEVEL[opf_other_dict[qm]] != STATUS_LEVEL[opf_status_dict[f['uuid']]]):
+                            if title not in problem_dict:
+                                problem_dict[title] = {}
+                            if f['@id'] not in problem_dict[title]:
+                                problem_dict[title][f['@id']] = {}
+                            problem_dict[title][f['@id']]['quality_metric'] = {
+                                'uuid': opf_linked_dict[f['uuid']], 'status': opf_other_dict[qm]
+                            }
         if problem_dict:
             check.full_output[result['@id']] = problem_dict
     if check.full_output:
@@ -573,8 +759,7 @@ def check_validation_errors(connection, **kwargs):
         check.summary = 'Validation errors found'
         check.description = ('{} items found with validation errors, comprising the following '
                              'item types: {}. \nFor search results see link below.'.format(
-                                 len(results), ', '.join(list(types))
-                            ))
+                                 len(results), ', '.join(list(types))))
         check.ff_link = connection.ff_server + search_url
     else:
         check.status = 'PASS'
@@ -693,7 +878,10 @@ def check_bio_feature_organism_name(connection, **kwargs):
         else:
             if linked_orgn_name:
                 if orgn_name != linked_orgn_name:
-                    if linked_orgn_name == 'unspecified':
+                    if linked_orgn_name == 'unspecified' or orgn_name == 'engineered reagent':
+                        # unspecified here means an organism or multiple coule not be found from linked genes or other criteria
+                        # for engineered reagent may find a linked name depending on what is linked to bio_feature
+                        # usually want to keep the given 'engineered reagent' label but warrants occasional review
                         name_trumps_guess += 1
                         to_report['name_trumps_guess'].update({bfuuid: (orgn_name, linked_orgn_name)})
                     elif orgn_name == 'unspecified':  # patch if a specific name is found
@@ -708,6 +896,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
                     matches += 1
             else:
                 to_report['name_trumps_guess'].update({bfuuid: (orgn_name, None)})
+                name_trumps_guess += 1
     brief_report.sort()
     cnt_rep = [
         'MATCHES: {}'.format(matches),
@@ -763,3 +952,198 @@ def patch_bio_feature_organism_name(connection, **kwargs):
         action.status = 'DONE'
         action.output = action_logs
         return action
+
+
+@check_function()
+def check_fastq_read_id(connection, **kwargs):
+    '''
+        Reports if there are uploaded fastq files with integer read ids
+    '''
+    check = CheckResult(connection, 'check_fastq_read_id')
+    check.description = 'Reports fastq files that have integer read ids uploaded after 2020-04-13'
+    check.summary = 'No fastq files with integer ids'
+    check.full_output = {}
+    check.status = 'PASS'
+    query = '/search/?date_created.from=2020-04-13&file_format.file_format=fastq&status=uploaded&type=FileFastq'
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    if not res:
+        return check
+    target_files = {}
+    for a_re in res:
+        if a_re.get('file_first_line'):
+            read_id = a_re['file_first_line'].split(' ')[0][1:]
+            if read_id.isnumeric():
+                if a_re.get('experiments'):
+                    exp = a_re['experiments'][0]['@id']
+                    exp_title = a_re['experiments'][0]['display_title']
+                else:
+                    exp = 'No experiment associated'
+                    exp_title = ''
+
+                if exp not in target_files:
+                    target_files[exp] = {'title': exp_title, 'files': []}
+                target_files[exp]['files'].append(a_re['accession'])
+
+    if target_files:
+        check.status = 'WARN'
+        check.summary = '%s fastq files have integer read ids' % (sum([len(v['files']) for i, v in target_files.items()]))
+        check.full_output = target_files
+
+    return check
+
+
+@check_function()
+def released_hela_files(connection, **kwargs):
+    '''
+    Check if fastq or bam files from HeLa cells have a visible status.
+    '''
+    check = CheckResult(connection, 'released_hela_files')
+    visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
+    formats = ['fastq', 'bam']
+    query = 'search/?type=File'
+    query += ''.join(['&file_format.file_format=' + f for f in formats])
+    query += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
+    query += ''.join(['&status=' + s for s in visible_statuses])
+    query += '&field=uuid&field=file_format&field=status'
+    res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    files = {'visible': []}
+    for a_file in res:
+        files['visible'].append({
+            'uuid': a_file['uuid'],
+            'file_format': a_file['file_format']['file_format'],
+            'file_status': a_file['status']})
+    if files['visible']:
+        check.status = 'WARN'
+        check.summary = 'Fastq files from HeLa with visible status found'
+        check.description = '%s fastq files from HeLa found with status: %s' % (len(files['visible']), str(visible_statuses).strip('[]'))
+        check.action_message = 'Will attempt to patch %s files to status=restricted' % len(files['visible'])
+        check.allow_action = True
+    else:
+        check.status = 'PASS'
+        check.summary = 'No fastq or bam files from HeLa with visible status found'
+        check.description = 'No fastq or bam files from HeLa found with status: %s' % str(visible_statuses).strip('[]')
+    check.brief_output = {'visible': '%s files' % len(files['visible'])}
+    check.full_output = files
+    check.action = 'restrict_hela'
+    return check
+
+
+@check_function()
+def released_output_from_restricted_input(connection, **kwargs):
+    '''
+    Check if fastq or bam files produced by workflows with restricted input
+    files (typically because deriving from HeLa cells) have a visible status.
+    In addition, check if any fastq or bam processed file (with visible
+    status) is not output of a workflow ('unlinked'). If this happens, the
+    check cannot ensure that all processed files are analyzed.
+    '''
+    check = CheckResult(connection, 'released_output_from_restricted_input')
+    visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
+    formats = ['fastq', 'bam']
+    query_wfr = 'search/?type=WorkflowRun'
+    query_wfr += '&input_files.value.status=restricted'
+    query_wfr += ''.join(['&output_files.value.status=' + s for s in visible_statuses])
+    query_wfr += ''.join(['&output_files.value.file_format.display_title=' + f for f in formats])
+    query_wfr += '&field=output_files'
+    res_wfr = ff_utils.search_metadata(query_wfr, key=connection.ff_keys)
+    # this returns wfrs that have AT LEAST one output file with these values
+    files = {'visible': [], 'unlinked': []}
+    for a_wfr in res_wfr:
+        for a_file in a_wfr.get('output_files', []):
+            if a_file.get('value'):
+                format = a_file['value']['file_format']['display_title']
+                status = a_file['value']['status']
+                if format in formats and status in visible_statuses:
+                    files['visible'].append({
+                        'uuid': a_file['value']['uuid'],
+                        'file_format': format,
+                        'file_status': status})
+    # search for visible fastq or bam processed files that are not output of any workflow
+    query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value'
+    query_pf += ''.join(['&status=' + st for st in visible_statuses])
+    query_pf += ''.join(['&file_format.file_format=' + f for f in formats])
+    query_pf += '&field=uuid&field=status&field=file_format'
+    res_pf = ff_utils.search_metadata(query_pf, key=connection.ff_keys)
+    for a_pf in res_pf:
+        files['unlinked'].append({
+            'uuid': a_pf['uuid'],
+            'file_format': a_pf['file_format']['display_title'],
+            'file_status': a_pf['status']})
+
+    if files['visible'] or files['unlinked']:
+        check.status = 'WARN'
+        check.summary = "Problematic processed files found"
+        check.description = "Found %s problematic FASTQ or BAM processed files: 'visible' files should be restricted" % (len(files['visible']) + len(files['unlinked']))
+        if files['unlinked']:
+            check.description += "; 'unlinked' files are not output of any workflow, therefore cannot be analyzed (consider linking)"
+        if files['visible']:
+            check.allow_action = True
+            check.action_message = "Will attempt to patch %s 'visible' files to status=restricted" % len(files['visible'])
+    else:
+        check.status = 'PASS'
+        check.summary = "No problematic processed files found"
+        check.description = "No visible output files found from wfr with restricted files as input"
+    check.full_output = files
+    check.brief_output = {'visible': '%s files' % len(files['visible']),
+                          'unlinked': '%s files' % len(files['unlinked'])}
+    check.action = 'restrict_hela'
+    return check
+
+
+@action_function()
+def restrict_hela(connection, **kwargs):
+    '''
+    Patch the status of visible HeLa files to "restricted"
+    '''
+    action = ActionResult(connection, 'restrict_hela')
+    check_res = action.get_associated_check_result(kwargs)
+    files_to_patch = check_res['full_output']['visible']
+    action_logs = {'patch_success': [], 'patch_failure': []}
+    patch = {'status': 'restricted'}
+    for a_file in files_to_patch:
+        try:
+            ff_utils.patch_metadata(patch, a_file['uuid'], key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({a_file['uuid']: str(e)})
+        else:
+            action_logs['patch_success'].append(a_file['uuid'])
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function(days_delay=14)
+def external_submission_but_missing_dbxrefs(connection, **kwargs):
+    ''' Check if items with external_submission also have dbxrefs.
+    When exporting metadata for submission to an external repository,
+    external_submission is patched. After some time (delay), the corresponding
+    dbxref should also have been received and patched.
+    '''
+    check = CheckResult(connection, 'external_submission_but_missing_dbxrefs')
+    delay = kwargs.get('days_delay')
+    try:
+        delay = int(delay)
+    except (ValueError, TypeError):
+        delay = 14
+    date_now = datetime.datetime.now(datetime.timezone.utc)
+    days_diff = datetime.timedelta(days=delay)
+    to_date = datetime.datetime.strftime(date_now - days_diff, "%Y-%m-%d %H:%M")
+
+    query = ('search/?type=Item&dbxrefs=No+value' +
+             '&external_submission.date_exported.to=' + to_date)
+    items = ff_utils.search_metadata(query + '&field=dbxrefs&field=external_submission', key=connection.ff_keys)
+    if items:
+        check.status = 'WARN'
+        check.summary = 'Items missing dbxrefs found'
+        check.description = '{} items exported for external submission more than {} days ago but still without dbxrefs'.format(len(items), delay)
+
+    else:
+        check.status = 'PASS'
+        check.summary = 'No items missing dbxrefs found'
+        check.description = 'All items exported for external submission more than {} days ago have dbxrefs'.format(delay)
+    check.full_output = [{i['@id']: i['external_submission']} for i in items]
+
+    return check

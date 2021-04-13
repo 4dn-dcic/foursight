@@ -19,3 +19,9 @@ Local Foursight
 ^^^^^^^^^^^^^^^
 
 To run a local version of Foursight, run ``chalice local`` at the top level. Navigate to ``localhost:8000`` to see the ``dev`` site.
+
+
+Updating CRON Mappings
+^^^^^^^^^^^^^^^^^^^^^^
+
+**WARNING**: If you remove a CRON or RATE schedule - foursight does not currently delete the lambda that is created.  Therefore, if you do remove a CRON from the scheduling mapping you need to delete the corresponding lambda from AWS. The lambdas have names like ``foursight-dev-hourly_checks_1`` or ``foursight-prod-monthly_checks``.  Failure to delete lambdas that should no longer be used can lead to increased load and unwanted costs.

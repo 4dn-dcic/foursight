@@ -1,15 +1,19 @@
-from __future__ import print_function, unicode_literals
-from ..utils import (
-    check_function,
-    action_function,
-    parse_datetime_to_utc
+import os
+from foursight_core.checks.helpers.sys_utils import (
+    parse_datetime_to_utc,
 )
-from ..run_result import CheckResult, ActionResult
 from dcicutils import ff_utils
 from .helpers.google_utils import GoogleAPISyncer
 import copy
 import itertools
 import datetime
+
+# Use confchecks to import decorators object and its methods for each check module
+# rather than importing check_function, action_function, CheckResult, ActionResult
+# individually - they're now part of class Decorators in foursight-core::decorators
+# that requires initialization with foursight prefix.
+from .helpers.confchecks import *
+
 
 #### HELPER FUNCTIONS ####
 
@@ -416,7 +420,8 @@ def generate_exp_set_report(curr_res, prev_res, **kwargs):
 
 #### CHECKS / ACTIONS #####
 
-@check_function()
+# TODO: This check has been removed from the schedule and should be revisited and refactored
+# @check_function()
 def experiment_set_reporting_data(connection, **kwargs):
     """
     Get a snapshot of all experiment sets, their experiments, and files of
@@ -437,9 +442,10 @@ def experiment_set_reporting_data(connection, **kwargs):
     return check
 
 
-@check_function(start_date=None, end_date=None, update_tag='DISCARD', tag_filter=None, project_filter='4DN', is_internal=False)
-def data_release_updates(connection, **kwargs):
+def _old_data_release_updates(connection, **kwargs):
     """
+    OLD VERSION of the data_release_updates check with docstring.
+
     Diff two results of 'experiment_set_reporting_data' check.
 
     start_date and end_date are dates in form YYYY-MM-DD.
@@ -486,7 +492,7 @@ def data_release_updates(connection, **kwargs):
         end_data_result = data_check.get_closest_result(override_date=end_date)
     else:  # use primary result if end_data_result is not supplied
         end_data_result = data_check.get_primary_result()
-        end_date_str = end_data_result['uuid'][:10] #YYYY-MM-DD
+        end_date_str = end_data_result['uuid'][:10]  # YYYY-MM-DD
     # start_date must be before end_date
     if start_date_str > end_date_str:
         check.status = 'ERROR'
@@ -498,7 +504,9 @@ def data_release_updates(connection, **kwargs):
         return check
     tag_filter = kwargs['tag_filter']
     project_filter = kwargs.get('project_filter')
-    used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end). Used filter on replicate sets tag is %s and the filter on award.project is %s (None means no filter in both cases).' % (start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'], tag_filter, project_filter)
+    used_res_strings = ' Compared results from %s (start) to %s (end). UUIDs are %s (start) and %s (end). Used filter on replicate sets tag is %s and the filter on award.project is %s (None means no filter in both cases).' % (
+    start_date_str, end_date_str, start_data_result.get('uuid', 'None'), end_data_result['uuid'], tag_filter,
+    project_filter)
     start_output = start_data_result.get('full_output', {})  # this can be empty
     end_output = end_data_result.get('full_output')  # this cannot be empty
     if not isinstance(start_output, dict) or not isinstance(end_output, dict):
@@ -575,7 +583,7 @@ def data_release_updates(connection, **kwargs):
         group_report['award'] = '1U01CA200059-01'
         group_report['status'] = 'released'
         group_report['is_internal'] = kwargs['is_internal']
-        for gr in group: # iterate through the rest of the items
+        for gr in group:  # iterate through the rest of the items
             group_report['update_items'].append({'primary_id': gr['set_@id'], 'secondary_ids': gr['items']})
         group_reports.append(group_report)
     # update summaries for plural cases
@@ -589,7 +597,9 @@ def data_release_updates(connection, **kwargs):
     static_proj = project_filter if project_filter else ''
     static_scope = 'network members' if kwargs['is_internal'] else 'public'
     static_tag = 'with %s tag' % tag_filter if tag_filter else ''
-    static_content = ' '.join(['All', static_proj, 'data released to', static_scope, 'between', start_date_str, 'and', end_date_str, static_tag])
+    static_content = ' '.join(
+        ['All', static_proj, 'data released to', static_scope, 'between', start_date_str, 'and', end_date_str,
+         static_tag])
     report_static_section = {
         'name': 'release-updates.' + kwargs['update_tag'],
         'body': '<h4 style=\"margin-top:0px;font-weight:400\">' + static_content + '</h4>'
@@ -601,7 +611,8 @@ def data_release_updates(connection, **kwargs):
             'static_section': report_static_section
         }
         check.description = 'Ready to publish new data release updates.' + used_res_strings
-        check.action_message = 'Will publish %s  grouped updates with the update_tag: %s. See brief_output.' % ( str(len(group_reports)), kwargs['update_tag'])
+        check.action_message = 'Will publish %s  grouped updates with the update_tag: %s. See brief_output.' % (
+        str(len(group_reports)), kwargs['update_tag'])
         check.allow_action = True
     else:
         check.brief_output = {
@@ -612,8 +623,20 @@ def data_release_updates(connection, **kwargs):
     return check
 
 
-@action_function()
+# TODO: This check has been removed from the schedule and should be revisited and refactored
+# @check_function(start_date=None, end_date=None, update_tag='DISCARD', tag_filter=None, project_filter='4DN', is_internal=False)
+def data_release_updates(connection, **kwargs):
+    """ TODO: New version of this check - for now, does nothing - see old version above. """
+    check = CheckResult(connection, 'data_release_updates')
+    check.status = 'PASS'
+    check.brief_output = check.full_output = 'This check still needs to be implemented!'
+    return check
+
+
+# TODO: This action has been removed from the schedule and should be revisited and refactored
+# @action_function
 def publish_data_release_updates(connection, **kwargs):
+    """ TODO: This action probably needs rewriting as well as it based on the OLD data_release_updates check. """
     action = ActionResult(connection, 'publish_data_release_updates')
     report_result = action.get_associated_check_result(kwargs)
     action.description = "Publish data release updates to Fourfront."
@@ -638,7 +661,6 @@ def publish_data_release_updates(connection, **kwargs):
     return action
 
 
-
 @check_function(start_date=None, end_date=None)
 def sync_google_analytics_data(connection, **kwargs):
     '''
@@ -647,18 +669,14 @@ def sync_google_analytics_data(connection, **kwargs):
 
     TODO: No use case yet, but we could accept start_date and end_date here & maybe in action eventually.
     '''
-
-    from ..utils import get_stage_info
-
     check = CheckResult(connection, 'sync_google_analytics_data')
 
-    if get_stage_info()['stage'] != 'prod':
+    if os.environ.get('chalice_stage', 'dev') != 'prod':
         check.summary = check.description = 'This check only runs on Foursight prod'
         return check
 
-
     recent_passing_run = False
-    recent_runs = check.get_result_history(0, 20, after_date = datetime.datetime.now() - datetime.timedelta(hours=3)) # Any runs of this type in last 3 hours.
+    recent_runs = check.get_result_history(0, 20, after_date=datetime.datetime.now() - datetime.timedelta(hours=3))
     for run in recent_runs:
         # recent_runs is a list of lists. [status, None, kwargdict]
         # Status is at index 0.
