@@ -63,6 +63,74 @@ def elastic_search_space(connection, **kwargs):
     return check
 
 
+@check_function()
+def scale_down_elasticsearch_production(connection):
+    """ Scales down Elasticsearch (production configuration).
+        HOT (0600 to 2000 EST):
+            Master:
+                3x c5.large.elasticsearch
+            Data:
+                2x c5.2xlarge.elasticsearch
+        COLD (2000 to 0600 EST):  This is what we are resizing to
+            Master:
+                None
+            Data:
+                2x c5.large.elasticsearch
+        XXX: should probably use constants in ElasticSearchServiceClient
+        For now, must be explicitly triggered - but should be put on a schedule.
+    """
+    check = CheckResult(connection, 'scale_down_elasticsearch_production')
+    es_client = es_utils.ElasticSearchServiceClient()
+    success = es_client.resize_elasticsearch_cluster(
+                domain_name=connection.ff_env,
+                master_node_type='t2.medium.elasticsearch',  # discarded
+                master_node_count=0,
+                data_node_type='c5.large.elasticsearch',
+                data_node_count=2
+            )
+    if not success:
+        check.status = 'ERROR'
+        check.description = 'Could not trigger cluster resize - check lambda logs'
+    else:
+        check.status = 'PASS'
+        check.description = 'Downward cluster resize triggered'
+    return check
+
+
+@check_function()
+def scale_up_elasticsearch_production(connection):
+    """ Scales down Elasticsearch (production configuration).
+        HOT (0600 to 2000 EST):  This is what we are resizing to
+            Master:
+                3x c5.large.elasticsearch
+            Data:
+                2x c5.2xlarge.elasticsearch
+        COLD (2000 to 0600 EST):
+            Master:
+                None
+            Data:
+                2x c5.large.elasticsearch
+        XXX: should probably use constants in ElasticSearchServiceClient
+        For now, must be explicitly triggered - but should be put on a schedule.
+    """
+    check = CheckResult(connection, 'scale_up_elasticsearch_production')
+    es_client = es_utils.ElasticSearchServiceClient()
+    success = es_client.resize_elasticsearch_cluster(
+                domain_name=connection.ff_env,
+                master_node_type='c5.large.elasticsearch',
+                master_node_count=3,
+                data_node_type='c5.2xlarge.elasticsearch',
+                data_node_count=2
+            )
+    if not success:
+        check.status = 'ERROR'
+        check.description = 'Could not trigger cluster resize - check lambda logs'
+    else:
+        check.status = 'PASS'
+        check.description = 'Downward cluster resize triggered'
+    return check
+
+
 # @check_function()
 # def elastic_beanstalk_health(connection, **kwargs):
 #     """

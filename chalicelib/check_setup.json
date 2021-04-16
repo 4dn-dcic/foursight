@@ -1964,5 +1964,17 @@
                 }
             }
         }
+    },
+    "scale_down_elasticsearch_production": {
+        "title": "Scale down production ElasticSearch Cluster",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["data", "staging"]
+    },
+    "scale_up_elasticsearch_production": {
+        "title": "Scale up production ElasticSearch Cluster",
+        "group": "System checks",
+        "schedule": {},
+        "display": ["data", "staging"]
     }
 }

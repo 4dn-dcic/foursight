@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "1.4.42"
+version = "1.4.43"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -10,7 +10,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.6.1,<3.7"
-dcicutils = "^1.8.3"
+dcicutils = "^1.14.1"
 click = "^7.1.2"
 PyJWT = "1.5.3"
 Jinja2 = "2.10.1"
