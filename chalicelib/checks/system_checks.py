@@ -99,7 +99,7 @@ def scale_down_elasticsearch_production(connection):
 
 @check_function()
 def scale_up_elasticsearch_production(connection):
-    """ Scales down Elasticsearch (production configuration).
+    """ Scales up Elasticsearch (production configuration).
         HOT (0600 to 2000 EST):  This is what we are resizing to
             Master:
                 3x c5.large.elasticsearch
