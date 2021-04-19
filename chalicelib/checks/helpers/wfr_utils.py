@@ -1499,7 +1499,7 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
         "run_type": input_json['app_name'],
         "run_id": run_name}
     # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
-    input_json['step_function_name'] = 'tibanna_zebra'
+    input_json['step_function_name'] = 'tibanna_pony'
     input_json['public_postrun_json'] = True
     if mount:
         for a_file in input_json['input_files']:
@@ -1521,10 +1521,11 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
 def start_missing_run(run_info, auth, env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
-                 'chip.ctl_fastqs', 'chip.fastqs']
+                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
+    attr_file = ''
     # find file to use for attribution
     for attr_key in attr_keys:
         if attr_key in inputs:
