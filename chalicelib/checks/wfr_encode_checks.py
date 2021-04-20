@@ -206,7 +206,8 @@ def chipseq_status(connection, **kwargs):
             # run step1 for control
             if control:
                 # control run on tf mode
-                input_files = {'chip.ctl_fastqs': [exp_files]}
+                # input_files = {'chip.ctl_fastqs': [exp_files]}
+                input_files['chip.ctl_fastqs'] = [exp_files]
                 control_parameters = {
                     "chip.pipeline_type": 'tf',
                     "chip.choose_ctl.always_use_pooled_ctl": True,
@@ -237,7 +238,8 @@ def chipseq_status(connection, **kwargs):
 
             # run step1
             else:
-                input_files = {'chip.fastqs': [exp_files]}
+                # input_files = {'chip.fastqs': [exp_files]}
+                input_files['chip.fastqs'] = [exp_files]
                 exp_parameters = {
                     "chip.pipeline_type": target_type,
                     "chip.choose_ctl.always_use_pooled_ctl": True,
@@ -381,13 +383,11 @@ def chipseq_status(connection, **kwargs):
                         check.brief_output.append(set_summary)
                         check.full_output['skipped'].append({set_acc: set_summary})
                         continue
-                run_ids = {'run_name': set_acc,
-                           'desc': a_set.get('description', '')}
+                run_ids = {'desc': set_acc + a_set.get('description', '')}
                 parameters = {
                     "chip.pipeline_type": target_type,
                     "chip.paired_end": chip_p,
                     "chip.choose_ctl.always_use_pooled_ctl": True,
-                    "chip.qc_report.name": run_ids['run_name'],
                     "chip.qc_report.desc": run_ids['desc'],
                     "chip.gensz": org,
                     "chip.xcor.cpu": 4,
@@ -481,7 +481,7 @@ def chipseq_start(connection, **kwargs):
         missing_runs = chipseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = chipseq_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True, runtype='chip')
     return action
 
 
