@@ -651,7 +651,7 @@ def atacseq_status(connection, **kwargs):
                 input_files['atac.chrsz'] = '/files-reference/4DNFIBP173GC/'
                 input_files['additional_file_parameters'] = {"atac.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}}
             # add input files
-            input_files = {'atac.fastqs': [exp_files]}
+            input_files['atac.fastqs'] = [exp_files]
             # step1 Parameters
             parameters = {
                 "atac.pipeline_type": 'atac',
@@ -853,5 +853,5 @@ def atacseq_start(connection, **kwargs):
         missing_runs = atacseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = atacseq_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True, runtype='atac')
     return action
