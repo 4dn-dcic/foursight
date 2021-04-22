@@ -909,6 +909,7 @@ def check_bio_feature_organism_name(connection, **kwargs):
     if brief_report:
         check.summary = 'Found BioFeatures with organism_name that needs attention'
         check.status = 'WARN'
+        check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'BioFeature organism_name looks good'
