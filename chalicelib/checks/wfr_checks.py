@@ -2503,6 +2503,7 @@ def compartments_caller_status(connection, **kwargs):
         return check
 
     for a_res in res:
+        skip = False
         running = []
         completed = {'patch_opf': [], 'add_tag': []}
         missing_run = []
