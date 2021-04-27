@@ -2698,7 +2698,7 @@ def sync_users_oh_start(connection, **kwargs):
     sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     actions = sync_users_oh_check_result['actions']
     user_list = get_oh_google_sheet()
-    action_logs = {'patch_success': [], 'patch_failure': [], 'post_success': [], 'post_failure': []}
+    action_logs = {'patch_success': [], 'patch_failure': [], 'post_success': [], 'post_failure': [], 'write_to_sheet_failure': ''}
     # add new users to the data portal
     if actions.get('add_user'):
         for a_user in actions['add_user']:
@@ -2792,15 +2792,18 @@ def sync_users_oh_start(connection, **kwargs):
             col = c + 1
             gs_write.append(gspread.models.Cell(row, col, line[key]))
     # #Write the cells to the worksheet
-    worksheet.update_cells(gs_write)
-    # the return value from this operation will look like this
-    # {'spreadsheetId': '1Zhkjwu8uDznG0kKqJF-EwSLzXMrdaCTSzz68V_n-l6U',
-    # 'updatedCells': 10944,
-    # 'updatedColumns': 18,
-    # 'updatedRange': "'test updates'!A1:R608",
-    # 'updatedRows': 608}
-    # TODO: maybe we can use it to add more infor to action message
-    if action_logs['patch_failure'] or action_logs['post_failure']:
+    try:
+        worksheet.update_cells(gs_write)
+    except Exception as e:
+        action_logs['write_to_sheet_failure'] = str(e)
+        # the return value from this operation will look like this
+        # {'spreadsheetId': '1Zhkjwu8uDznG0kKqJF-EwSLzXMrdaCTSzz68V_n-l6U',
+        # 'updatedCells': 10944,
+        # 'updatedColumns': 18,
+        # 'updatedRange': "'t est updates'!A1:R608",
+        # 'updatedRows': 608}
+
+    if action_logs['patch_failure'] or action_logs['post_failure'] or action_logs['write_to_sheet_failure']:
         action.status = 'FAIL'
     else:
         action.status = 'DONE'
