@@ -529,7 +529,8 @@ def atacseq_status(connection, **kwargs):
     step3_name = 'encode-atacseq-postaln'
 
     for a_set in res:
-        if a_set['accession'] != '4DNESQZYEJ8N':
+        test_sets = ['4DNESQZYEJ8N', '4DNESRQCT3SG']
+        if a_set['accession'] not in test_sets:
             continue
 
         set_acc = a_set['accession']
@@ -736,7 +737,6 @@ def atacseq_status(connection, **kwargs):
                     else:
                         ready_for_step3 = False
             if ready_for_step3:
-                all_completed = True
                 # collect step3 input files
                 s3_input_files = {}
                 if organism == 'human':
