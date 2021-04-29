@@ -1964,5 +1964,43 @@
                 }
             }
         }
+    },
+    "scale_down_elasticsearch_production": {
+        "title": "Scale down production ElasticSearch Cluster",
+        "group": "System checks",
+        "schedule": {
+            "friday_autoscaling_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        },
+        "display": ["data", "staging"]
+    },
+    "scale_up_elasticsearch_production": {
+        "title": "Scale up production ElasticSearch Cluster",
+        "group": "System checks",
+        "schedule": {
+            "monday_autoscaling_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "kwargs" : {
+                        "primary": true
+                    }
+                }
+            }
+        }, 
+        "display": ["data", "staging"]
     }
 }
