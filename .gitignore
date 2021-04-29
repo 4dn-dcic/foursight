@@ -22,3 +22,9 @@ requirements.txt
 
 # PyCharm
 .idea/
+
+chalicelib/checks/wfr_cgap_checks.py
+
+chalicelib/checks/helpers/wfrset_cgap_utils.py
+
+chalicelib/checks/helpers/cgap_utils.py
