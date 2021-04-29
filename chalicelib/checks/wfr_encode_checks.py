@@ -529,10 +529,6 @@ def atacseq_status(connection, **kwargs):
     step3_name = 'encode-atacseq-postaln'
 
     for a_set in res:
-        test_sets = ['4DNESQZYEJ8N', '4DNESRQCT3SG']
-        if a_set['accession'] not in test_sets:
-            continue
-
         set_acc = a_set['accession']
         all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
@@ -587,8 +583,6 @@ def atacseq_status(connection, **kwargs):
             check.full_output['skipped'].append({set_acc: set_summary})
             continue
 
-        # continue
-        # import pdb; pdb.set_trace()
         # collect results from step1 runs for step2
         ta = []
         # track if all experiments completed step0 and step1
@@ -651,8 +645,7 @@ def atacseq_status(connection, **kwargs):
                 input_files['additional_file_parameters'] = {"atac.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}}
             if organism == 'mouse':
                 org = 'mm'
-                # input_files['atac.bowtie2_idx_tar'] = '/files-reference/4DNFI2493SDN/'
-                input_files['atac.bowtie2_idx_tar'] = '/files-reference/4DNFIUTCLH6X/' #  temp while testing webdev uuid issue
+                input_files['atac.bowtie2_idx_tar'] = '/files-reference/4DNFI2493SDN/'
                 input_files['atac.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                 input_files['atac.chrsz'] = '/files-reference/4DNFIBP173GC/'
                 input_files['additional_file_parameters'] = {"atac.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}}
@@ -792,8 +785,6 @@ def atacseq_status(connection, **kwargs):
                     complete['patch_opf'].append([set_acc, patch_data])
                     complete['add_tag'] = [set_acc, tag]
                     all_completed = True
-                # else:
-                #     all_completed = False
 
         # unpack results
         missing_run = keep['missing_run']
