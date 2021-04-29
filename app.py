@@ -24,6 +24,16 @@ def end_of_day_on_weekdays():
     return Cron('0', '22', '?', '*', 'MON-FRI', '*')
 
 
+def friday_at_8_pm_est():
+    """ Creates a Cron schedule (in UTC) for Friday at 8pm EST """
+    return Cron('0', '0', '?', '*', 'SAT', '*')  # 24 - 4 = 20 = 8PM
+
+
+def monday_at_2_am_est():
+    """ Creates a Cron schedule (in UTC) for every Monday at 2 AM EST """
+    return Cron('0', '6', '?', '*', 'MON', '*')  # 6 - 4 = 2AM
+
+
 # this dictionary defines the CRON schedules for the dev and prod foursight
 # stagger them to reduce the load on Fourfront. Times are UTC
 # info: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
@@ -40,6 +50,8 @@ foursight_cron_by_schedule = {
     'morning_checks_4': Cron('0', '9', '*', '*', '?', '*'),
     'monday_checks': Cron('0', '10', '?', '*', '2', '*'),
     'monthly_checks': Cron('0', '10', '1', '*', '?', '*'),
+    'friday_autoscaling_checks': friday_at_8_pm_est(),
+    'monday_autoscaling_checks': monday_at_2_am_est(),
     'manual_checks': effectively_never(),
     'deployment_checks': end_of_day_on_weekdays()
 }
@@ -127,6 +139,20 @@ def deployment_checks(event):
     if STAGE == 'dev':
         return  # do not schedule the deployment checks on dev
     app_utils_obj.queue_scheduled_checks('all', 'deployment_checks')
+
+
+@app.schedule(foursight_cron_by_schedule['friday_autoscaling_checks'])
+def friday_autoscaling_checks(event):
+    if STAGE == 'dev':
+        return  # do not schedule autoscaling checks on dev
+    app_utils_obj.queue_scheduled_checks('all', 'friday_autoscaling_checks')
+
+
+@app.schedule(foursight_cron_by_schedule['monday_autoscaling_checks'])
+def monday_autoscaling_checks(event):
+    if STAGE == 'dev':
+        return  # do not schedule autoscaling checks on dev
+    app_utils_obj.queue_scheduled_checks('all', 'monday_autoscaling_checks')
 
 
 '''######### END SCHEDULED FXNS #########'''
