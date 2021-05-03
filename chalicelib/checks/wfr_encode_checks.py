@@ -317,11 +317,10 @@ def chipseq_status(connection, **kwargs):
                 print(step1_status, step1_output, control_ready)
         # back to set level
         final_status = set_acc  # start the reporting with acc
-        all_completed = True
+        all_completed = False
         # is step0 step1 complete
         if ready_for_step2 and not control_ready:
-                final_status += ' waiting for control experiments to finish processing'
-                all_completed = False
+            final_status += ' waiting for control experiments to finish processing'
         elif ready_for_step2:
             # for control, add tag to set, and files to experiments
             if control:
@@ -417,8 +416,7 @@ def chipseq_status(connection, **kwargs):
                     patch_data = [set_opt_peak, set_cons_peak, set_sig_fc]
                     complete['patch_opf'].append([set_acc, patch_data])
                     complete['add_tag'] = [set_acc, tag]
-                else:
-                    all_completed = False
+                    all_completed = True
 
         # unpack results
         missing_run = keep['missing_run']
