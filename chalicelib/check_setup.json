@@ -1,5 +1,5 @@
 {
-    "atac_seq_status": {
+    "atacseq_status": {
         "title": "f) ATAC-seq",
         "group": "Pipeline checks",
         "schedule": {

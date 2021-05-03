@@ -1521,7 +1521,7 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
 def start_missing_run(run_info, auth, env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
-                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas']
+                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
