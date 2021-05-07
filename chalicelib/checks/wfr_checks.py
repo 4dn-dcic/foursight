@@ -2604,14 +2604,16 @@ def cut_and_run_status(connection, **kwargs):
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_type = 'CUT&RUN'                                            # do I need to add this?
+    exp_type = 'CUT&RUN'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]                 # do add this, though
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)        # is this the best way?
+
+    # Query needs replacement for '&' in exp type name--hardcoded to avoid query builder error 
+    query = '/search/?experimentset_type=replicate&type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=CUT%26RUN&status=pre-release&status=released&status=released+to+project&completed_processes%21=&tags%21=skip_processing'
     # Search
     res = ff_utils.search_metadata(query, key=my_auth)
     print(len(res))
@@ -2620,7 +2622,8 @@ def cut_and_run_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    step_1 = 'cut_and_run_main'
+#    step_0 = 'merge-fastq'
+    step_1 = 'cut_and_run_workflow'
     step_2 = 'cut_and_run_peaks'                                    # check names?
     for a_set in res:
         set_acc = a_set['accession']
@@ -2648,6 +2651,12 @@ def cut_and_run_status(connection, **kwargs):
             check.full_output['skipped'].append({a_set['accession']: 'files status uploading'})
             continue
 
+        all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
+        all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
+        all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
+        library = {'wfrs': all_wfrs, 'files': all_files, 'qcs': all_qcs}
+        keep = {'missing_run': [], 'running': [], 'problematic_run': []}
+
         # if all completed, patch this info
         complete = {'patch_opf': [],
                     'add_tag': []}
@@ -2665,17 +2674,17 @@ def cut_and_run_status(connection, **kwargs):
         exp_relation = f_exp_resp.get('experiment_relation')
         if exp_relation:
             rel_type = [i['relationship_type'] for i in exp_relation]
-        if 'control for' in rel_type:
-            control = True
-        if 'controlled by' in rel_type:
-            control = False
-            controls = [i['experiment'] for i in exp_relation if i['relationship_type'] == 'controlled by']
-            if len(controls) != 1:
-                print('multiple control experiments')
-            else:
-                cont_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == controls[0]['uuid']][0]
-                cont_exp_info = cont_exp_resp['experiment_sets']
-                control_set = [i['accession'] for i in cont_exp_info if i['@id'].startswith('/experiment-set-replicates/')][0]
+            if 'control for' in rel_type:
+                control = True
+            if 'controlled by' in rel_type:
+                control = False
+                controls = [i['experiment'] for i in exp_relation if i['relationship_type'] == 'controlled by']
+                if len(controls) != 1:
+                    print('multiple control experiments')
+                else:
+                    cont_exp_resp = [i for i in all_files['experiment_seq'] if i['uuid'] == controls[0]['uuid']][0]
+                    cont_exp_info = cont_exp_resp['experiment_sets']
+                    control_set = [i['accession'] for i in cont_exp_info if i['@id'].startswith('/experiment-set-replicates/')][0]
         else:
             # if no relation is present
             # set to false (arbitrary)
@@ -2704,8 +2713,73 @@ def cut_and_run_status(connection, **kwargs):
             control_ready = True
             exp_id = an_exp['replicate_exp']['accession']
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp_id][0]
-            
+            # new code here
+            exp_files = []
+            paired = ""
+            tmp_exp_files = exp_resp['files']
+            for a_file in tmp_exp_files:
+                f_t = []
+                file_resp = [i for i in all_files if i['uuid'] == a_file['uuid']][0]
+                # get pair end no
+                pair_end = file_resp.get('paired_end')
+                if pair_end == '2':
+                    paired = 'paired'
+                    continue
+                # get paired file
+                paired_with = ""
+                relations = file_resp.get('related_files')
+                if not relations:
+                    pass
+                else:
+                    for relation in relations:
+                        if relation['relationship_type'] == 'paired with':
+                            paired = 'paired'
+                            paired_with = relation['file']['@id']
+                # decide if data is not paired end reads
+                if not paired_with:
+                    if not paired:
+                        paired = 'single'
+                    else:
+                        if paired != 'single':
+                            print('inconsistent fastq pair info')
+                            continue
+                    f_t.append(file_resp['@id'])
+                else:
+                    f2 = [i for i in all_files if i['@id'] == paired_with][0]
+                    f_t.append(file_resp['@id'])
+                    f_t.append(f2['@id'])
+                exp_files.append(f_t)
+            inputs_R1 = [] 
+            inputs_R2 = []
+            inputs_R1.append([i[0] for i in exp_files])
+            inputs_R2.append([i[1] for i in exp_files])
 
+            # step1 references:
+            input_files = {}
+            if organism == 'human':
+                input_files['chr_sizes'] = '/files-reference/4DNFIZJB62D1/'
+                input_files['bowtie2_index'] = '/files-reference/4DNFIMQPTYDY/'
+            if organism == 'mouse':
+                input_files['chr_sizes'] = '/files-reference/4DNFIBP173GC/'
+                input_files['bowtie2_index'] = '/files-reference/4DNFI2493SDN/'
+
+            parameters = {}
+            parameters["nthreads_trim"] = 4
+            parameters["nthreads_aln"] = 4
+
+            input_files['input_fastqs_R1'] = [inputs_R1]
+            input_files['input_fastqs_R2'] = [inputs_R2]
+
+            s1_input_files = input_files
+            s1_tag = exp_id
+            s1_out = ['out_bam','out_bw','out_bedgraph']
+
+            keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
+                                                                   'step1', s1_tag, exp_files,
+                                                                   s1_input_files, step_1, s1_out,
+                                                                   additional_input={'parameters': parameters})
+
+            check.full_output['needs_runs'].append(["a"])
 
 
 @action_function(start_missing=True)

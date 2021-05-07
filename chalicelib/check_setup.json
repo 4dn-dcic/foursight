@@ -1965,7 +1965,7 @@
             }
         }
     },
-    "cut_and_run" : {
+    "cut_and_run_status" : {
         "title": "CUT&RUN Pipeline",
         "group": "Pipeline checks",
         "schedule": {
