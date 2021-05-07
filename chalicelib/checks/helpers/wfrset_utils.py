@@ -38,7 +38,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "config": {"ebs_size": 10,
                    "instance_type": 't3.small',
                    'EBS_optimized': True
-                  }
+                   }
     },
         {
         'app_name': 'fastqc',
@@ -171,39 +171,99 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "config": {'mem': 4, 'cpu': 2, "ebs_size": 30},
         "overwrite_input_extra": True
         },
-        {"app_name": "encode-chipseq",
-         "workflow_uuid": "5b44ce1b-0347-40a6-bc9c-f39fb5d7bce3",
-         'custom_pf_fields': {
-             'chip.sig_fc': {
-                 'genome_assembly': genome,
-                 'file_type': 'intensity values',
-                 'description': 'ChIP-seq signal fold change over control input'},
-             'chip.peak_calls': {
-                 'genome_assembly': genome,
-                 'file_type': 'peaks',
-                 'description': 'ChIP-seq peak calls'},
-             'chip.qc_json': {
-                 'genome_assembly': genome,
-                 'file_type': 'qc',
-                 'description': 'ChIP-seq QC json'}
-         }
-         },
-        {"app_name": "encode-atacseq",
-         "workflow_uuid": "6fb021e9-858c-4561-8ce1-e0adc673e0b5",
-         'custom_pf_fields': {
-             'atac.sig_fc': {
-                 'genome_assembly': genome,
-                 'file_type': 'intensity values',
-                 'description': 'ATAC-seq signal fold change over control input'},
-             'atac.peak_calls': {
-                 'genome_assembly': genome,
-                 'file_type': 'peaks',
-                 'description': 'ATAC-seq peak calls'},
-             'atac.qc_json': {
-                 'genome_assembly': genome,
-                 'file_type': 'qc',
-                 'description': 'ATAC-seq QC json'}
-         }},
+        {
+            "app_name": "merge-fastq",
+            "workflow_uuid": "e20ef13d-64d8-4d10-94b1-ed45e7d6a7c2",
+            "parameters": {},
+            'custom_pf_fields': {
+                'merged_fastq': {
+                    'genome_assembly': genome,
+                    'file_type': 'reads-combined',
+                    'description': 'Merged fastq file'}
+            }
+        },
+        {
+            "app_name": "encode-chipseq-aln-chip",
+            "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-chip",
+            "parameters": {},
+            "config": {},
+            'custom_pf_fields': {
+                'chip.first_ta': {
+                    'genome_assembly': genome,
+                    'file_type': 'read positions',
+                    'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline'},
+                'chip.first_ta_xcor': {
+                    'genome_assembly': genome,
+                    'file_type': 'intermediate file',
+                    'description': 'Counts file used only for QC'}
+            }
+        },
+        {
+        "app_name": "encode-chipseq-aln-ctl",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'chip.first_ta_ctl': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline',
+                'disable_wfr_inputs': True}
+            }
+        },
+        {
+        "app_name": "encode-chipseq-postaln",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-postaln",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'chip.optimal_peak': {
+                'genome_assembly': genome,
+                'file_type': 'peaks',
+                'description': 'Peak calls from ENCODE ChIP-Seq Pipeline'},
+            'chip.conservative_peak': {
+                'genome_assembly': genome,
+                'file_type': 'conservative peaks',
+                'description': 'Conservative peak calls from ENCODE ChIP-Seq Pipeline'},
+            'chip.sig_fc': {
+                'genome_assembly': genome,
+                'file_type': 'signal fold change',
+                'description': 'ChIP-seq signal fold change over input control'}
+            }
+        },
+
+        {
+        "app_name": "encode-atacseq-aln",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-aln",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'atac.first_ta': {
+                'genome_assembly': genome,
+                'file_type': 'read positions',
+                'description': 'Positions of aligned reads in bed format, one line per read mate, from ENCODE ATAC-Seq Pipeline'}
+            }
+        },
+        {
+        "app_name": "encode-atacseq-postaln",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-postaln",
+        "parameters": {},
+        "config": {},
+        'custom_pf_fields': {
+            'atac.optimal_peak': {
+                'genome_assembly': genome,
+                'file_type': 'peaks',
+                'description': 'Peak calls from ENCODE ATAC-Seq Pipeline'},
+            'atac.conservative_peak': {
+                'genome_assembly': genome,
+                'file_type': 'conservative peaks',
+                'description': 'Conservative peak calls from ENCODE ATAC-Seq Pipeline'},
+            'atac.sig_fc': {
+                'genome_assembly': genome,
+                'file_type': 'signal fold change',
+                'description': 'ATAC-seq signal fold change'}
+            }
+        },
         {
         "app_name": "mergebed",
         "workflow_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
@@ -248,7 +308,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "workflow_uuid": "af97597e-877a-40b7-b211-98ec0cfb17b4",
         'config': {'mem': 1, 'cpu': 1, "instance_type": "t3.micro", 'ebs_size': '1.1x', 'EBS_optimized': 'false'}
         },
-
         # RNA SEQ
         {
         "app_name": "encode-rnaseq-stranded",
@@ -410,5 +469,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:
-                template[a_key][a_spec] = overwrite[a_key][a_spec]
+                # if the key value is a dictionary, use update
+                if isinstance(overwrite[a_key][a_spec], dict):
+                    template[a_key][a_spec].update(overwrite[a_key][a_spec])
+                # if it is string array bool, set the value
+                else:
+                    template[a_key][a_spec] = overwrite[a_key][a_spec]
     return template

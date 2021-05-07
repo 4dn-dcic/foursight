@@ -392,7 +392,118 @@ def extract_nz_chr(acc, auth):
     return nz_num, chrsize, max_distance
 
 
-def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_qc=False, run=None):
+def check_qcs_on_files(file_meta, all_qcs):
+    """Go over qc related fields, and check for overall quality score."""
+    def check_qc(file_accession, resp, failed_qcs_list):
+        """format errors and return a errors list."""
+        quality_score = resp.get('overall_quality_status', '')
+        if quality_score.upper() != 'PASS':
+            failed_qcs_list.append([file_accession, resp['display_title'], resp['uuid']])
+        return failed_qcs_list
+
+    failed_qcs = []
+    if not file_meta.get('quality_metric'):
+        return
+    qc_result = [i for i in all_qcs if i['@id'] == file_meta['quality_metric']['@id']][0]
+    if qc_result['display_title'].startswith('QualityMetricQclist'):
+        if not qc_result.get('qc_list'):
+            return
+        for qc in qc_result['qc_list']:
+            qc_resp = [i for i in all_qcs if i['@id'] == qc['@id']][0]
+            failed_qcs = check_qc(file_meta['accession'], qc_resp, failed_qcs)
+    else:
+        failed_qcs = check_qc(file_meta['accession'], qc_result, failed_qcs)
+    return failed_qcs
+
+
+def stepper(library, keep,
+            step_tag, sample_tag, new_step_input_file,
+            input_file_dict,  new_step_name, new_step_output_arg,
+            additional_input={}, organism='human', no_output=False):
+    """This functions packs the core of wfr check, for a given workflow and set of
+    input files, it will return the status of process on these files.
+    It will also check for failed qcs on input files.
+    new_step_output_arg= can be str or list, will return str or list of @id for output files with given argument(s)"""
+    step_output = ''
+    # unpack library
+    all_files = library['files']
+    all_wfrs = library['wfrs']
+    all_qcs = library['qcs']
+    # unpack keep
+    running = keep['running']
+    problematic_run = keep['problematic_run']
+    missing_run = keep['missing_run']
+
+    # Lets get the repoinse from one of the input files that will be used in this step
+    # if it is a list take the first item, if not use it as is
+    # new_step_input_file must be the @id
+    # also check for qc status
+    qc_errors = []
+    if isinstance(new_step_input_file, list) or isinstance(new_step_input_file, tuple):
+        file_accs = []
+        for an_input in new_step_input_file:
+            # for chip seq we need another level of unwrapping
+            if isinstance(an_input, list) or isinstance(an_input, tuple):
+                for a_nested_input in an_input:
+                    file_accs.append(a_nested_input.split('/')[2])
+                    input_resp = [i for i in all_files if i['@id'] == a_nested_input][0]
+                    errors = check_qcs_on_files(input_resp, all_qcs)
+                    if errors:
+                        qc_errors.extend(errors)
+            else:
+                file_accs.append(an_input.split('/')[2])
+                input_resp = [i for i in all_files if i['@id'] == an_input][0]
+                errors = check_qcs_on_files(input_resp, all_qcs)
+                if errors:
+                    qc_errors.extend(errors)
+        name_tag = '_'.join(file_accs)
+    else:
+        input_resp = [i for i in all_files if i['@id'] == new_step_input_file][0]
+        errors = check_qcs_on_files(input_resp, all_qcs)
+        if errors:
+            qc_errors.extend(errors)
+        name_tag = new_step_input_file.split('/')[2]
+    # if there are qc errors, return with qc qc_errors
+    if qc_errors:
+        problematic_run.append([step_tag + ' input file qc error', qc_errors])
+        step_status = "no complete run, qc error"
+    # if no qc problem, go on with the run check
+    else:
+        if no_output:
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+        else:
+            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+        step_status = step_result['status']
+        # if successful
+        input_file_accession = input_resp['accession']
+        if step_status == 'complete':
+            if new_step_output_arg:
+                if isinstance(new_step_output_arg, list):
+                    output_list = []
+                    for an_output_arg in new_step_output_arg:
+                        output_list.append(step_result[an_output_arg])
+                    step_output = output_list
+                else:
+                    step_output = step_result[new_step_output_arg]
+            pass
+        # if still running
+        elif step_status == 'running':
+            running.append([step_tag, sample_tag, input_file_accession])
+        # if run is not successful
+        elif step_status.startswith("no complete run, too many"):
+            problematic_run.append([step_tag, sample_tag, input_file_accession])
+        else:
+            # add step 4
+            missing_run.append([step_tag, [new_step_name, organism, additional_input], input_file_dict, name_tag])
+
+    keep['running'] = running
+    keep['problematic_run'] = problematic_run
+    keep['missing_run'] = missing_run
+    return keep, step_status, step_output
+
+
+def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
+                md_qc=False, run=None, error_threshold=2):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
@@ -405,10 +516,11 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None, md_q
      versions: acceptable versions for wfr
      md_qc: if no output file is excepted, set to True
      run: if run is still running beyond this hour limit, assume problem
+     error_threshold = if there are this many failed runs, don't proceed
     """
     # tag as problematic if problematic runs are this many
     # if there are n failed runs, don't proceed
-    error_at_failed_runs = 2
+    error_at_failed_runs = error_threshold
     # you should provide key or all_wfrs
     assert key or all_wfrs
     if wfr_name not in workflow_details:
@@ -517,7 +629,7 @@ def get_attribution(file_json):
     return attributions
 
 
-def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
+def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename=[]):
     """Takes file id, and creates info dict for tibanna"""
     my_s3_util = s3Utils(env=env)
     raw_bucket = my_s3_util.raw_file_bucket
@@ -529,17 +641,50 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
     if rename:
         change_from = rename[0]
         change_to = rename[1]
-
     # if it is list of items, change the structure
+    # with chip seq, files might be wrapped in 3 levels of nesting
+    # ToDo: an iterative unwrapper would simplify the code here
     if isinstance(obj_id, list):
-        # if it is list of list, change the structure, for RNAseq
-        if isinstance(obj_id[0], list):
-            # will only work with single item in first list (was implemented for RNA seq)
-            assert len(obj_id) == 1
-            object_key = []
-            uuid = []
-            buckets = []
-            for obj in obj_id[0]:
+        object_key = []
+        uuid = []
+        buckets = []
+        print('1', obj_id)
+        for obj in obj_id:
+            print('2', obj)
+            if isinstance(obj, (list, tuple)):
+                nested_object_key = []
+                nested_uuid = []
+                for nested_obj in obj:
+                    print('3', nested_obj)
+                    if isinstance(nested_obj, (list, tuple)):
+                        nested_nested_object_key = []
+                        nested_nested_uuid = []
+                        for nested_nested_obj in nested_obj:
+                            print('4', nested_nested_obj)
+                            metadata = ff_utils.get_metadata(nested_nested_obj, key=auth)
+                            nested_nested_object_key.append(metadata['display_title'])
+                            nested_nested_uuid.append(metadata['uuid'])
+                            # get the bucket
+                            if 'FileProcessed' in metadata['@type']:
+                                my_bucket = out_bucket
+                            else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                                my_bucket = raw_bucket
+                            buckets.append(my_bucket)
+                        nested_object_key.append(nested_nested_object_key)
+                        nested_uuid.append(nested_nested_uuid)
+                    else:
+                        metadata = ff_utils.get_metadata(nested_obj, key=auth)
+                        nested_object_key.append(metadata['display_title'])
+                        nested_uuid.append(metadata['uuid'])
+                        # get the bucket
+                        if 'FileProcessed' in metadata['@type']:
+                            my_bucket = out_bucket
+                        else:  # covers cases of FileFastq, FileReference, FileMicroscopy
+                            my_bucket = raw_bucket
+                        buckets.append(my_bucket)
+                object_key.append(nested_object_key)
+                uuid.append(nested_uuid)
+            else:
                 metadata = ff_utils.get_metadata(obj, key=auth)
                 object_key.append(metadata['display_title'])
                 uuid.append(metadata['uuid'])
@@ -549,35 +694,15 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
                 else:  # covers cases of FileFastq, FileReference, FileMicroscopy
                     my_bucket = raw_bucket
                 buckets.append(my_bucket)
-            # check bucket consistency
-            assert len(list(set(buckets))) == 1
-            template['object_key'] = [object_key]
-            template['uuid'] = [uuid]
-            template['bucket_name'] = buckets[0]
-            if rename:
-                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key'][0]]
-        # if it is just a list
-        else:
-            object_key = []
-            uuid = []
-            buckets = []
-            for obj in obj_id:
-                metadata = ff_utils.get_metadata(obj, key=auth)
-                object_key.append(metadata['display_title'])
-                uuid.append(metadata['uuid'])
-                # get the bucket
-                if 'FileProcessed' in metadata['@type']:
-                    my_bucket = out_bucket
-                else:  # covers cases of FileFastq, FileReference, FileMicroscopy
-                    my_bucket = raw_bucket
-                buckets.append(my_bucket)
-            # check bucket consistency
-            assert len(list(set(buckets))) == 1
-            template['object_key'] = object_key
-            template['uuid'] = uuid
-            template['bucket_name'] = buckets[0]
-            if rename:
-                template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        # check bucket consistency
+        assert len(list(set(buckets))) == 1
+        template['object_key'] = object_key
+        template['uuid'] = uuid
+        template['bucket_name'] = buckets[0]
+        if rename:
+            template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+        if additional_parameters:
+            template.update(additional_parameters)
 
     # if obj_id is a string
     else:
@@ -592,6 +717,8 @@ def extract_file_info(obj_id, arg_name, auth, env, rename=[]):
         template['bucket_name'] = my_bucket
         if rename:
             template['rename'] = template['object_key'].replace(change_from, change_to)
+        if additional_parameters:
+            template.update(additional_parameters)
     return template
 
 
@@ -670,12 +797,14 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
     refs = {}
 
     # check pairing for the first file, and assume all same
-    paired = ""
+
     rep_resp = my_rep_set['experiments_in_set']
     enzymes = []
     organisms = []
     total_f_size = 0
+    pairing = []  # collect pairing for each experiment and report if they are consistent or not
     for exp in rep_resp:
+        paired = ""
         exp_resp = exp
         file_dict[exp['accession']] = []
         if not organisms:
@@ -709,12 +838,14 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
             if paired == 'No':
                 file_dict[exp_resp['accession']].append(f1)
             elif paired == 'Yes':
+                #
                 relations = file_resp['related_files']
                 paired_files = [relation['file']['@id'] for relation in relations
                                 if relation['relationship_type'] == 'paired with']
                 assert len(paired_files) == 1
                 f2 = paired_files[0]
                 file_dict[exp_resp['accession']].append((f1, f2))
+        pairing.append(paired)
     # get the organism
     if len(list(set(organisms))) == 1:
         organism = organisms[0]
@@ -746,8 +877,12 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
             enz_file = None
 
     f_size = int(total_f_size / (1024 * 1024 * 1024))
-
-    refs = {'pairing': paired,
+    # check pairing consistency
+    if len(set(pairing)) == 1:
+        set_pair_status = pairing[0]
+    else:
+        set_pair_status = 'Inconsistent'
+    refs = {'pairing': set_pair_status,
             'organism': organism,
             'enzyme': enz,
             'bwa_ref': bwa,
@@ -1336,16 +1471,25 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
     return log
 
 
-def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
-    time.sleep(load_wait)
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mount=False):
     all_inputs = []
+    # input_files container
+    input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
+    # additional input file parameters
+    input_file_parameters = input_files_and_params.get('additional_file_parameters', {})
     for arg, files in input_files.items():
-        inp = extract_file_info(files, arg, auth, env)
+        additional_params = input_file_parameters.get(arg, {})
+        inp = extract_file_info(files, arg, additional_params, auth, env)
         all_inputs.append(inp)
     # tweak to get bg2bw working
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
     my_s3_util = s3Utils(env=env)
     out_bucket = my_s3_util.outfile_bucket
+    # shorten long name_tags
+    # they get combined with workflow name, and total should be less then 80
+    # (even less since repeats need unique names)
+    if len(run_name) > 30:
+        run_name = run_name[:30] + '...'
     """Creates the trigger json that is used by foufront endpoint.
     """
     input_json['input_files'] = all_inputs
@@ -1354,11 +1498,17 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
+    # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
     input_json['step_function_name'] = 'tibanna_pony'
     input_json['public_postrun_json'] = True
     if mount:
         for a_file in input_json['input_files']:
             a_file['mount'] = True
+
+    # # testing
+    # json_object = json.dumps(input_json, indent=4)
+    # print(json_object)
+    # return
 
     try:
         e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
@@ -1369,11 +1519,13 @@ def run_missing_wfr(input_json, input_files, run_name, auth, env, mount=False):
 
 
 def start_missing_run(run_info, auth, env):
-    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams',
-                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile']
+    attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
+                 'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
+                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
+    attr_file = ''
     # find file to use for attribution
     for attr_key in attr_keys:
         if attr_key in inputs:
@@ -1382,9 +1534,20 @@ def start_missing_run(run_info, auth, env):
                 attr_file = attr_file[0]
                 if isinstance(attr_file, list):
                     attr_file = attr_file[0]
-                    break
+                    if isinstance(attr_file, list):
+                        attr_file = attr_file[0]
+                        break
+                    else:
+                        break
                 else:
                     break
+            else:
+                break
+    if not attr_file:
+        possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
+        error_message = ('one of these argument names {} which carry the input file -not the references-'
+                         ' should be added to att_keys dictionary on foursight cgap_utils.py function start_missing_run').format(possible_keys)
+        raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
     url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
@@ -1859,3 +2022,115 @@ def fetch_wfr_associated(wfr_info):
     if wfr_info.get('quality_metric'):
         wfr_as_list.append(wfr_info['quality_metric']['uuid'])
     return list(set(wfr_as_list))
+
+
+def get_chip_info(f_exp_resp, all_items):
+    """Gether the following information from the first experiment in the chip set"""
+    control = ""  # True or False (True if set in scope is control)
+    control_set = ""  # None (if no control exp is set), or the control experiment for the one in scope
+    target_type = ""  # Histone or TF (or None for control)
+    # get target
+    targets = f_exp_resp.get('targeted_factor', [])
+    # TODO: tag all control antibodies as control and make use of it here
+    if targets:
+        # use the tag from the first target, this assumes the rest follows the first one
+        target = targets[0]
+        target_info = [i for i in all_items['bio_feature'] if i['uuid'] == target['uuid']][0]
+        # set to tf default and switch to histone if tagged so
+        target_tags = target_info.get('tags', [])
+        if not target_tags:
+            target_type = None
+        elif 'histone' in target_tags:
+            target_type = 'histone'
+        else:
+            target_type = 'tf'
+    else:
+        target_type = None
+
+    # get organism
+    biosample = f_exp_resp['biosample']
+    organism = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))[0]
+
+    # get control information
+    exp_relation = f_exp_resp.get('experiment_relation')
+    if exp_relation:
+        rel_type = [i['relationship_type'] for i in exp_relation]
+        if 'control for' in rel_type:
+            control = True
+        if 'controlled by' in rel_type:
+            control = False
+            controls = [i['experiment'] for i in exp_relation if i['relationship_type'] == 'controlled by']
+            if len(controls) != 1:
+                print('multiple control experiments')
+            else:
+                cont_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == controls[0]['uuid']][0]
+                cont_exp_info = cont_exp_resp['experiment_sets']
+                control_set = [i['accession'] for i in cont_exp_info if i['@id'].startswith('/experiment-set-replicates/')][0]
+    else:
+        # if no relation is present
+        # set it as if control when the target is None
+        if not target_type:
+            control = True
+        # if there is target, but no relation, treat it as an experiment without control
+        else:
+            control = False
+            control_set = None
+    return control, control_set, target_type, organism
+
+
+def get_chip_files(exp_resp, all_files):
+    files = []
+    paired = ""
+    exp_files = exp_resp['files']
+    for a_file in exp_files:
+        f_t = []
+        file_resp = [i for i in all_files if i['uuid'] == a_file['uuid']][0]
+        # get pair end no
+        pair_end = file_resp.get('paired_end')
+        if pair_end == '2':
+            paired = 'paired'
+            continue
+        # get paired file
+        paired_with = ""
+        relations = file_resp.get('related_files')
+        if not relations:
+            pass
+        else:
+            for relation in relations:
+                if relation['relationship_type'] == 'paired with':
+                    paired = 'paired'
+                    paired_with = relation['file']['@id']
+        # decide if data is not paired end reads
+        if not paired_with:
+            if not paired:
+                paired = 'single'
+            else:
+                if paired != 'single':
+                    print('inconsistent fastq pair info')
+                    continue
+            f_t.append(file_resp['@id'])
+        else:
+            f2 = [i for i in all_files if i['@id'] == paired_with][0]
+            f_t.append(file_resp['@id'])
+            f_t.append(f2['@id'])
+        files.append(f_t)
+    return files, paired
+
+
+def select_best_2(file_list, all_files, all_qcs):
+    scores = []
+    # run it for list with at least 3 elements
+    if len(file_list) < 3:
+        return(file_list)
+
+    for f in file_list:
+        f_resp = [i for i in all_files if i['@id'] == f][0]
+        qc = f_resp['quality_metric']
+        qc_resp = [i for i in all_qcs if i['uuid'] == qc['uuid']][0]
+        try:
+            score = qc_resp['nodup_flagstat_qc'][0]['mapped']
+        except Exception:
+            score = qc_resp['ctl_nodup_flagstat_qc'][0]['mapped']
+        scores.append((score, f))
+    scores = sorted(scores, key=lambda x: -x[0])
+    return [scores[0][1], scores[1][1]]

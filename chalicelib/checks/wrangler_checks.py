@@ -2698,6 +2698,7 @@ def sync_users_oh_start(connection, **kwargs):
     sync_users_oh_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     actions = sync_users_oh_check_result['actions']
     user_list = get_oh_google_sheet()
+    action_logs = {'patch_success': [], 'patch_failure': [], 'post_success': [], 'post_failure': [], 'write_to_sheet_failure': ''}
     # add new users to the data portal
     if actions.get('add_user'):
         for a_user in actions['add_user']:
@@ -2706,7 +2707,12 @@ def sync_users_oh_start(connection, **kwargs):
                 del a_user['OH_lab']
             if 'Log' in a_user:
                 del a_user['Log']
-            ff_utils.post_metadata(a_user, 'user', my_auth)
+            try:
+                ff_utils.post_metadata(a_user, 'user', my_auth)
+            except Exception as e:
+                action_logs['post_failure'].append({a_user['email']: str(e)})
+            else:
+                action_logs['post_success'].append(a_user['email'])
 
     # Add permissions (lab and awards) to existing users in the data portal
     if actions.get('add_credentials'):
@@ -2718,13 +2724,23 @@ def sync_users_oh_start(connection, **kwargs):
                 del a_user['OH_lab']
             if 'Log' in a_user:
                 del a_user['Log']
-            ff_utils.patch_metadata(a_user, user_uuid, my_auth)
+            try:
+                ff_utils.patch_metadata(a_user, user_uuid, my_auth)
+            except Exception as e:
+                action_logs['patch_failure'].append({user_uuid: str(e)})
+            else:
+                action_logs['patch_success'].append(a_user['email'])
 
     # remove user's permissions from the data portal
     if actions.get('delete_user'):
         for a_user in actions['delete_user']:
             # Delete the user permissions: submits_for, groups, viewing_groups and lab.
-            ff_utils.delete_field(a_user, 'submits_for, lab, viewing_groups, groups', key=my_auth)
+            try:
+                ff_utils.delete_field(a_user, 'submits_for, lab, viewing_groups, groups', key=my_auth)
+            except Exception as e:
+                action_logs['patch_failure'].append({a_user: str(e)})
+            else:
+                action_logs['patch_success'].append(a_user)
 
     # update google sheet
     # we will create a modified version of the full stack and write on google sheet at once
@@ -2776,14 +2792,22 @@ def sync_users_oh_start(connection, **kwargs):
             col = c + 1
             gs_write.append(gspread.models.Cell(row, col, line[key]))
     # #Write the cells to the worksheet
-    worksheet.update_cells(gs_write)
-    # the return value from this operation will look like this
-    # {'spreadsheetId': '1Zhkjwu8uDznG0kKqJF-EwSLzXMrdaCTSzz68V_n-l6U',
-    # 'updatedCells': 10944,
-    # 'updatedColumns': 18,
-    # 'updatedRange': "'test updates'!A1:R608",
-    # 'updatedRows': 608}
-    # TODO: maybe we can use it to add more infor to action message
+    try:
+        worksheet.update_cells(gs_write)
+    except Exception as e:
+        action_logs['write_to_sheet_failure'] = str(e)
+        # the return value from this operation will look like this
+        # {'spreadsheetId': '1Zhkjwu8uDznG0kKqJF-EwSLzXMrdaCTSzz68V_n-l6U',
+        # 'updatedCells': 10944,
+        # 'updatedColumns': 18,
+        # 'updatedRange': "'t est updates'!A1:R608",
+        # 'updatedRows': 608}
+
+    if action_logs['patch_failure'] or action_logs['post_failure'] or action_logs['write_to_sheet_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
     return action
 
 

@@ -4,6 +4,7 @@ import requests
 import json
 import time
 import uuid
+from urllib.parse import urlparse
 from copy import deepcopy
 
 # Use confchecks to import decorators object and its methods for each check module
@@ -1632,6 +1633,12 @@ def files_not_registered_with_higlass(connection, **kwargs):
         "proc": None,
     }
 
+    ''' small helper function to check urls are valid
+    '''
+    def does_url_exist(path):
+        r = requests.head(path)
+        return r.status_code == requests.codes.ok
+
     for file_cat, filetypes in valid_filetypes.items():
         # If the user specified a filetype, only use that one.
         filetypes_to_use = [f for f in filetypes if search_all_filetypes or f == kwargs['filetype']]
@@ -1672,6 +1679,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             "uuid",
             "extra_files",
             "upload_key",
+            "open_data_url"
         ):
             search_query += "&field=" + new_field
 
@@ -1702,7 +1710,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'uuid': procfile['uuid'],
                 'file_format': procfile['file_format'].get('file_format'),
                 'higlass_uid': procfile.get('higlass_uid'),
-                'genome_assembly': procfile['genome_assembly']
+                'genome_assembly': procfile['genome_assembly'],
+                'open_data_url': procfile.get('open_data_url')  # get it if it has it
             }
 
             file_format = file_info["file_format"]
@@ -1719,8 +1728,9 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 for extra in procfile.get('extra_files', []):
                     if extra['file_format'].get('display_title') in type2extra[file_format] \
                         and 'upload_key' in extra \
-                        and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
+                            and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
+                        file_info['is_extra'] = True  # add a flag that this is an extra file that won't have it's own open_data_url
                         break
                 if 'upload_key' not in file_info:
                     # bw or beddb file not found, do not consider this file for registration
@@ -1735,10 +1745,17 @@ def files_not_registered_with_higlass(connection, **kwargs):
 
             # make sure file exists on s3
             typebucket_by_cat = {
-                "raw" : connection.ff_s3.raw_file_bucket,
-                "proc" : connection.ff_s3.outfile_bucket,
+                "raw": connection.ff_s3.raw_file_bucket,
+                "proc": connection.ff_s3.outfile_bucket,
             }
-            if not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[file_cat]):
+            if 'open_data_url' in file_info and file_info['open_data_url'] is not None:
+                if 'is_extra' in file_info:  # reformat the url so it points to extra file
+                    file_info['open_data_url'] = '/'.join(file_info['open_data_url'].split('/')[:-2]) + '/' + file_info['upload_key']
+                    # 'https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/7c4f27a2-ff7e-4f7a-b3f5-bbe773e68614/4DNFIWSFMDXE.bed.gz'
+                if not does_url_exist(file_info['open_data_url']):
+                    not_found_s3.append(file_info)
+                    continue
+            elif not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[file_cat]):
                 not_found_s3.append(file_info)
                 continue
 
@@ -1851,8 +1868,6 @@ def patch_file_higlass_uid(connection, **kwargs):
     start_time = time.time()
     time_expired = False
 
-
-
     # Files to register is organized by filetype.
     to_be_registered = higlass_check_result.get('full_output', {}).get('files_not_registered')
     for ftype, hits in to_be_registered.items():
@@ -1870,29 +1885,38 @@ def patch_file_higlass_uid(connection, **kwargs):
             # Based on the filetype, construct a payload to upload to the higlass server.
             payload = {}
             payload['coordSystem'] = hit['genome_assembly']
+            raw_bucket_types = ['chromsizes', 'beddb']
+            out_bucket_types = ['mcool', 'bg', 'bw', 'bigbed', 'bed']
+            if 'open_data_url' in hit and hit.get('open_data_url') is not None:
+                # The expected file path format is: bucket/upload_key
+                od_url = hit.get('open_data_url')
+                url_parsed = urlparse(hit.get('open_data_url'))
+                bucket = url_parsed.netloc.split('.')[0] #subdomain
+                file_path = bucket + url_parsed.path
+                payload["filepath"] = file_path
+            else:
+                if ftype in raw_bucket_types:
+                    payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
+                elif ftype in out_bucket_types:
+                    payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
+
             if ftype == 'chromsizes':
-                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'chromsizes-tsv'
                 payload['datatype'] = 'chromsizes'
             elif ftype == 'beddb':
-                payload["filepath"] = connection.ff_s3.raw_file_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'gene-annotation'
             elif ftype == 'mcool':
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'cooler'
                 payload['datatype'] = 'matrix'
             elif ftype in ['bg', 'bw', 'bigbed']:
                 # bigbeds can be registered the same way as bigwigs
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'bigwig'
                 payload['datatype'] = 'vector'
             elif ftype == 'bed' and hit['upload_key'].endswith(".bed.multires.mv5"):
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'multivec'
                 payload['datatype'] = 'multivec'
             elif ftype == 'bed':
-                payload["filepath"] = connection.ff_s3.outfile_bucket + "/" + hit['upload_key']
                 payload['filetype'] = 'beddb'
                 payload['datatype'] = 'bedlike'
             else:
@@ -1914,6 +1938,7 @@ def patch_file_higlass_uid(connection, **kwargs):
                 else:
                     try:
                         err_msg = copy_res.text
+                        action_logs['beddb_copy_failure'][hit['accession']] = err_msg
                     except Exception:
                         err_msg = copy_res.status_code
                         action_logs['beddb_copy_failure'][hit['accession']] = err_msg
