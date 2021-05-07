@@ -64,7 +64,7 @@ def elastic_search_space(connection, **kwargs):
 
 
 @check_function()
-def scale_down_elasticsearch_production(connection):
+def scale_down_elasticsearch_production(connection, **kwargs):
     """ Scales down Elasticsearch (production configuration).
         HOT (0600 to 2000 EST):
             Master:
@@ -98,7 +98,7 @@ def scale_down_elasticsearch_production(connection):
 
 
 @check_function()
-def scale_up_elasticsearch_production(connection):
+def scale_up_elasticsearch_production(connection, **kwargs):
     """ Scales up Elasticsearch (production configuration).
         HOT (0600 to 2000 EST):  This is what we are resizing to
             Master:
