@@ -696,27 +696,23 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
                 buckets.append(my_bucket)
         # check bucket consistency
         assert len(list(set(buckets))) == 1
-        template['object_key'] = object_key
         template['uuid'] = uuid
-        template['bucket_name'] = buckets[0]
         if rename:
-            template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+            template['rename'] = [i.replace(change_from, change_to) for i in object_key]
         if additional_parameters:
             template.update(additional_parameters)
 
     # if obj_id is a string
     else:
         metadata = ff_utils.get_metadata(obj_id, key=auth)
-        template['object_key'] = metadata['display_title']
         template['uuid'] = metadata['uuid']
         # get the bucket
         if 'FileProcessed' in metadata['@type']:
             my_bucket = out_bucket
         else:  # covers cases of FileFastq, FileReference, FileMicroscopy
             my_bucket = raw_bucket
-        template['bucket_name'] = my_bucket
         if rename:
-            template['rename'] = template['object_key'].replace(change_from, change_to)
+            template['rename'] = object_key.replace(change_from, change_to)
         if additional_parameters:
             template.update(additional_parameters)
     return template
