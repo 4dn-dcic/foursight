@@ -546,6 +546,7 @@ def item_counts_by_type(connection, **kwargs):
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
+    # import pdb; pdb.set_trace()
     check = CheckResult(connection, 'change_in_item_counts')
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
@@ -582,7 +583,7 @@ def change_in_item_counts(connection, **kwargs):
     to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     # tracking items and ontology terms must be explicitly searched for
-    search_query = ''.join(['search/?type=Item&type=OntologyTerm&type=TrackingItem',
+    search_query = ''.join(['search/?status!=deleted&type=Item&type=OntologyTerm&type=TrackingItem',
                             '&frame=object&date_created.from=',
                             from_date, '&date_created.to=', to_date])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys)
@@ -599,7 +600,7 @@ def change_in_item_counts(connection, **kwargs):
         if _type in diff_counts:
             _entry['ES'] += 1
 
-    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&',
+    check.ff_link = ''.join([connection.ff_server, 'search/?status!=deleted&type=Item&',
                              'type=OntologyTerm&type=TrackingItem&date_created.from=',
                              from_date, '&date_created.to=', to_date])
     check.brief_output = diff_counts
