@@ -583,7 +583,7 @@ def change_in_item_counts(connection, **kwargs):
     to_date = datetime.datetime.strptime(latest_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     from_date = datetime.datetime.strptime(prior_check['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime('%Y-%m-%d+%H:%M')
     # tracking items and ontology terms must be explicitly searched for
-    search_query = ''.join(['search/?status!=deleted&type=Item&type=OntologyTerm&type=TrackingItem',
+    search_query = ''.join(['search/?type=Item&type=OntologyTerm&type=TrackingItem',
                             '&frame=object&date_created.from=',
                             from_date, '&date_created.to=', to_date])
     search_resp = ff_utils.search_metadata(search_query, key=connection.ff_keys)
@@ -600,7 +600,7 @@ def change_in_item_counts(connection, **kwargs):
         if _type in diff_counts:
             _entry['ES'] += 1
 
-    check.ff_link = ''.join([connection.ff_server, 'search/?status!=deleted&type=Item&',
+    check.ff_link = ''.join([connection.ff_server, 'search/?type=Item&',
                              'type=OntologyTerm&type=TrackingItem&date_created.from=',
                              from_date, '&date_created.to=', to_date])
     check.brief_output = diff_counts
@@ -610,7 +610,11 @@ def change_in_item_counts(connection, **kwargs):
     # see if we have negative counts
     # allow negative counts, but make note of, for the following types
     purged_types = ['TrackingItem', 'HiglassViewConfig']
+    bs_type = 'Biosample'
     negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
+    if bs_type in negative_types:
+        if diff_counts[bs_type]['DB'] == -1:
+            negative_types.remove(bs_type)
     inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
     if negative_types:
         negative_str = ', '.join(negative_types)
