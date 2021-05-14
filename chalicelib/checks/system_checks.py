@@ -531,7 +531,7 @@ def secondary_queue_deduplication(connection, **kwargs):
     return check
 
 
-@check_function()
+# @check_function()
 def clean_up_travis_queues(connection, **kwargs):
     """
     Clean up old sqs queues based on the name ("travis-job")
@@ -646,7 +646,7 @@ def snapshot_rds(connection, **kwargs):
     return check
 
 
-@check_function()
+# @check_function()
 def process_download_tracking_items(connection, **kwargs):
     """
     Do a few things here, and be mindful of the 5min lambda limit.
@@ -777,7 +777,7 @@ def process_download_tracking_items(connection, **kwargs):
     return check
 
 
-@check_function()
+# @check_function()
 def purge_download_tracking_items(connection, **kwargs):
     """
     This check was originally created to take in any search through kwargs.

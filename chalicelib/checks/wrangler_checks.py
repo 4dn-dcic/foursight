@@ -546,6 +546,7 @@ def item_counts_by_type(connection, **kwargs):
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
+    # import pdb; pdb.set_trace()
     check = CheckResult(connection, 'change_in_item_counts')
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
@@ -609,7 +610,11 @@ def change_in_item_counts(connection, **kwargs):
     # see if we have negative counts
     # allow negative counts, but make note of, for the following types
     purged_types = ['TrackingItem', 'HiglassViewConfig']
+    bs_type = 'Biosample'
     negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
+    if bs_type in negative_types:
+        if diff_counts[bs_type]['DB'] == -1:
+            negative_types.remove(bs_type)
     inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
     if negative_types:
         negative_str = ', '.join(negative_types)
