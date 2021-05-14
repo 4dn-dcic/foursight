@@ -70,11 +70,13 @@ def elastic_search_space(connection, **kwargs):
 
 
 def resolve_es_domain_name(connection):
-    """ Small helper that acquires health page on the given ff_env and resolves blue vs. green. """
-    if 'blue' in connection.ff_es:
+    """ Resolves blue vs. green depending on the URL, throwing exception if something.  """
+    if 'fourfront-blue' in connection.ff_es:
         return FF_BLUE_ES_CLUSTER_DOMAIN
-    else:
+    elif 'fourfront-green' in connection.ff_es:
         return FF_GREEN_ES_CLUSTER_DOMAIN
+    else:
+        raise Exception('Tried to run autoscaling check on non-production cluster! %s' % connection.ff_es)
 
 
 @check_function()
