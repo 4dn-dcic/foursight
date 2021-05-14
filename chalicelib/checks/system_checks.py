@@ -24,6 +24,12 @@ from .helpers.confchecks import *
 
 
 # XXX: put into utils?
+FF_BLUE_ES_CLUSTER_DOMAIN = 'fourfront-blue-6-8'
+FF_GREEN_ES_CLUSTER_DOMAIN = 'fourfront-green-6-8'
+PROD_ES_CLUSTERS = [
+    FF_BLUE_ES_CLUSTER_DOMAIN,
+    FF_GREEN_ES_CLUSTER_DOMAIN
+]
 FF_TEST_CLUSTER = 'search-fourfront-testing-6-8-kncqa2za2r43563rkcmsvgn2fq.us-east-1.es.amazonaws.com:443'
 TEST_ES_CLUSTERS = [
     FF_TEST_CLUSTER
@@ -63,6 +69,14 @@ def elastic_search_space(connection, **kwargs):
     return check
 
 
+def resolve_es_domain_name(connection):
+    """ Small helper that acquires health page on the given ff_env and resolves blue vs. green. """
+    if 'blue' in connection.ff_es:
+        return FF_BLUE_ES_CLUSTER_DOMAIN
+    else:
+        return FF_GREEN_ES_CLUSTER_DOMAIN
+
+
 @check_function()
 def scale_down_elasticsearch_production(connection, **kwargs):
     """ Scales down Elasticsearch (production configuration).
@@ -82,7 +96,7 @@ def scale_down_elasticsearch_production(connection, **kwargs):
     check = CheckResult(connection, 'scale_down_elasticsearch_production')
     es_client = es_utils.ElasticSearchServiceClient()
     success = es_client.resize_elasticsearch_cluster(
-                domain_name=connection.ff_env,
+                domain_name=resolve_es_domain_name(connection),
                 master_node_type='t2.medium.elasticsearch',  # discarded
                 master_node_count=0,
                 data_node_type='c5.large.elasticsearch',
@@ -116,7 +130,7 @@ def scale_up_elasticsearch_production(connection, **kwargs):
     check = CheckResult(connection, 'scale_up_elasticsearch_production')
     es_client = es_utils.ElasticSearchServiceClient()
     success = es_client.resize_elasticsearch_cluster(
-                domain_name=connection.ff_env,
+                domain_name=resolve_es_domain_name(connection),
                 master_node_type='c5.large.elasticsearch',
                 master_node_count=3,
                 data_node_type='c5.2xlarge.elasticsearch',
