@@ -1926,11 +1926,6 @@
         "group": "System checks",
         "schedule": {
             "friday_autoscaling_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
                 "staging": {
                     "kwargs": {
                         "primary": true
@@ -1945,11 +1940,6 @@
         "group": "System checks",
         "schedule": {
             "monday_autoscaling_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
                 "staging": {
                     "kwargs" : {
                         "primary": true
