@@ -91,7 +91,7 @@ def scale_down_elasticsearch_production(connection, **kwargs):
             Master:
                 None
             Data:
-                2x c5.large.elasticsearch
+                3x c5.xlarge.elasticsearch
         XXX: should probably use constants in ElasticSearchServiceClient
         For now, must be explicitly triggered - but should be put on a schedule.
     """
@@ -101,8 +101,8 @@ def scale_down_elasticsearch_production(connection, **kwargs):
                 domain_name=resolve_es_domain_name(connection),
                 master_node_type='t2.medium.elasticsearch',  # discarded
                 master_node_count=0,
-                data_node_type='c5.large.elasticsearch',
-                data_node_count=2
+                data_node_type='c5.xlarge.elasticsearch',
+                data_node_count=3
             )
     if not success:
         check.status = 'ERROR'
