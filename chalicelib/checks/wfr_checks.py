@@ -27,8 +27,8 @@ def md5run_status_extra_file(connection, **kwargs):
         return check
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
-             '&status!=archived&status!=archived to project'
-             '&extra_files.status!=uploaded&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value')
+             '&status!=archived&status!=archived to project&extra_files.status!=uploaded'
+             '&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value&extra_files.md5sum=No value')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -36,9 +36,52 @@ def md5run_status_extra_file(connection, **kwargs):
         return check
     else:
         check.status = 'WARN'
-        check.brief_output = ['There are user submitted extra files without md5runs']
+        check.brief_output = ['There are extra files without md5runs']
         check.full_output = {'extra_files_missing_md5': [i['accession'] for i in res]}
         return check
+
+
+@action_function(start_missing=True)
+def md5run_extra_file_start(connection, **kwargs):
+    """Start md5 runs for extra files by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'md5run_extra_file_start')
+    action_logs = {'runs_started': [], "runs_failed": []}
+    my_auth = connection.ff_keys
+    md5run_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    action_logs['check_output'] = md5run_check_result
+    targets = []
+    if kwargs.get('start_missing'):
+        targets.extend(md5run_check_result.get('extra_files_missing_md5', []))
+    action_logs['targets'] = targets
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
+
+        # get extra files with missing md5sum and retrieve their format as identifier
+        extra_formats = []
+        for ext in a_file['extra_files']:
+            if 'md5sum' not in ext or not ext['md5sum']:
+                extra_formats.append(ext['file_format']['display_title'])  # format of extra file
+
+        for extra_format in extra_formats:
+            inp_f = {'input_file': a_file['@id'],
+                     'additional_file_parameters': {'input_file': {'format_if_extra': extra_format}}}
+            url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+            # aws run url
+            if url.startswith('http'):
+                action_logs['runs_started'].append(url)
+            else:
+                action_logs['runs_failed'].append([a_target, extra_format, url])
+
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
 
 
 @check_function(file_type='File', lab_title=None, start_date=None)
