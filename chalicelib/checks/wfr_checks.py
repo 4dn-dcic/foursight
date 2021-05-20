@@ -2188,7 +2188,7 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='insulation_scores_and_boundaries')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='insulation_scores_and_boundaries')
     return action
 
 
