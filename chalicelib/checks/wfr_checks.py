@@ -2596,7 +2596,7 @@ def mcoolqc_status(connection, **kwargs):
         return check
     check.summary = '{} files need a mcoolqc'. format(len(res))
     check.status = 'WARN'
-    check = wfr_utils.check_runs_without_output(new_res, check, 'mcoolQC', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'mcoolQC', my_auth, start)
     return check
 
 
