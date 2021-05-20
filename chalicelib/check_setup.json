@@ -1948,5 +1948,19 @@
             }
         },
         "display": ["data", "staging"]
+    },
+    "mcoolqc_status": {
+        "title": "b) McoolQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
     }
 }

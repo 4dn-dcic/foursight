@@ -145,6 +145,10 @@ workflow_details = {
     'compartments-caller': {
                 "run_time": 200,
                 "accepted_versions": ['v1.2']
+    },
+    'mcoolQC': {
+                "run_time": 200,
+                "accepted_versions": ['v1']
     }
 }
 
@@ -520,6 +524,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
     """
     # tag as problematic if problematic runs are this many
     # if there are n failed runs, don't proceed
+
     error_at_failed_runs = error_threshold
     # you should provide key or all_wfrs
     assert key or all_wfrs
@@ -764,7 +769,7 @@ def build_feature_calling_query(exp_types, feature, kwargs):
 
     if feature_calling_versions:
         pre_query += "".join(["&completed_processes!=" + i for i in feature_calling_versions])
-
+    pre_query += "&processed_files.quality_metric.@type=QualityMetricMcool"
     # add date
     s_date = kwargs.get('start_date')
     if s_date:

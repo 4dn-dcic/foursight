@@ -405,6 +405,12 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                    "instance_type": "t3.medium"
                    }
         },
+        {
+        "app_name": "mcoolQC",
+        "workflow_uuid": "0bf9f47a-dec1-4324-9b41-fa183880a7db",
+        "overwrite_input_extra": False,
+        "config": {"ebs_size": 10, "instance_type": "c5ad.2xlarge"}
+        },
         # temp
         {
         "app_name": "",
