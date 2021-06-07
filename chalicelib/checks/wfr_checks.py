@@ -2586,8 +2586,7 @@ def cut_and_run_status(connection, **kwargs):
         all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
+                                                           ignore_field=['biosample_relation',
                                                                          'references',
                                                                          'reference_pubs'])
         now = datetime.utcnow()
@@ -2607,6 +2606,7 @@ def cut_and_run_status(connection, **kwargs):
             check.full_output['skipped'].append({a_set['accession']: 'files status uploading'})
             continue
 
+        # ALL WFRS HERE! No WFRS are being added
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
@@ -2638,9 +2638,10 @@ def cut_and_run_status(connection, **kwargs):
                 if len(controls) != 1:
                     print('multiple control experiments')
                 else:
-                    cont_exp_resp = [i for i in all_files['experiment_seq'] if i['uuid'] == controls[0]['uuid']][0]
+                    cont_exp_resp = [i for i in all_items['experiment_seq'] if i['uuid'] == controls[0]['uuid']][0]
                     cont_exp_info = cont_exp_resp['experiment_sets']
                     control_set = [i['accession'] for i in cont_exp_info if i['@id'].startswith('/experiment-set-replicates/')][0]
+                    print("control set", control_set)
         else:
             # if no relation is present
             # set to false (arbitrary)
@@ -2664,6 +2665,7 @@ def cut_and_run_status(connection, **kwargs):
         bam = []
         bedgraph = []
         bw = []
+        bg_ctl = []
 
         ready_for_step2 = True
         for an_exp in replicate_exps:
@@ -2736,7 +2738,160 @@ def cut_and_run_status(connection, **kwargs):
                                                                    s1_input_files, step_1, s1_out,
                                                                    additional_input={'parameters': parameters})
 
-            check.full_output['needs_runs'].append(["a"])
+            if step1_status == 'complete':
+                exp_bam = step1_output[0]
+                exp_bedgraph = step1_output[1]
+                exp_bw = step1_output[2]
+                # accumulate files to patch on experiment
+                patch_data = [step1_output, ]
+
+                # what exactly do I want to patch here
+                complete['patch_opf'].append([exp_id, patch_data])
+                bam.append(exp_bam)
+                bedgraph.append(exp_bedgraph)
+                bw.append(exp_bw)
+
+                # check if control is ready (for step 2)
+                # if the experiment has a control set (NOT a control)
+                if control_set:
+                    try:
+                        exp_cnt_ids = [i['experiment'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
+                        exp_cnt_ids = [i['@id'] for i in exp_cnt_ids]
+
+                    except:
+                        control_ready = False
+                        print('Control Relation has problems for this exp', exp_id)
+                        continue
+                    if len(exp_cnt_ids) != 1:
+                        control_ready = False
+                        print('Multiple controls for this exp', exp_id)
+                        continue
+
+                    # this is the control experiment
+                    exp_cnt_id = exp_cnt_ids[0]
+                    print('controlled by set', exp_cnt_id)
+                   
+                    exp_cnt_resp = [i for i in all_items['experiment_seq'] if i['@id'] == exp_cnt_id][0]
+                    cont_file = ''
+                    # check if the control has processed files for next step
+                    for opf_case in exp_cnt_resp.get('other_processed_files', []):
+                        opf_files = opf_case['files']
+                        for opf_fi in opf_files:
+                            f_format = opf_fi['file_format']
+
+                            # select the bedgraph file if there are several
+                            if f_format['@id'] == '/file-formats/bg/':
+                                cont_file = opf_fi['@id']
+
+                    # if not in opf, check processed files
+                    if not cont_file:
+                        pf_list = exp_cnt_resp.get('processed_files', [])
+                        if pf_list:
+                            for pf in pf_list:
+                                f_format = pf['file_format']
+
+                                # select the bedgraph file
+                                if f_format['@id'] == '/file-formats/bg/':
+                                    cont_file = pf['@id']
+                    # did we find it, if so, add it to bg_ctl
+                    if cont_file:
+                        bg_ctl.append(cont_file)
+                    else:
+                        control_ready = False
+
+            else:
+                # don't patch anything if at least one exp is still missing
+                ready_for_step2 = False
+            print('step1')
+            print(step1_status, step1_output)
+
+        final_status = set_acc  # start the reporting with acc
+        all_completed = True
+        # are step0 + step1 complete
+        if ready_for_step2 and not control_ready:
+            final_status += ' waiting for control experiments to finish processing'
+            all_completed = False
+        elif ready_for_step2:
+             # for control, add tag to set, and files to experiments
+            if control:
+                complete['add_tag'] = [set_acc, tag]
+            # for non controls check for step2
+            else:
+                # collect step2 input files
+                s2_input_files = {}
+                s2_input_files['bedgr'] = bedgraph
+                s2_input_files['control'] = ctl_bg
+                s2_file_gp = bedgraph + ctl_bg                
+                parameters = {}
+                parameters['norm'] = 'norm'
+                parameters['stringency'] = 'relaxed'
+
+                s2_out = ['out_bedg']
+                s2_tag = set_acc
+                keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                                                                     'step2', s2_tag, s2_file_g,
+                                                                     s2_input_files, step2_name,
+                                                                     s2_out,
+                                                                     additional_input={'parameters': parameters})
+                if step2_status == 'complete':
+                    set_peak = step2_output[0]
+                    complete['patch_opf'].append([set_acc, [set_peak]])
+                    complete['add_tag'] = [set_acc, tag]
+                else:
+                    all_completed = False
+
+        # unpack results
+        missing_run = keep['missing_run']
+        running = keep['running']
+        problematic_run = keep['problematic_run']
+        if all_completed:
+            final_status += ' completed'
+        else:
+            if missing_run:
+                final_status += ' |Missing: ' + " ".join([i[0] for i in missing_run])
+            if running:
+                final_status += ' |Running: ' + " ".join([i[0] for i in running])
+            if problematic_run:
+                final_status += ' |Problem: ' + " ".join([i[0] for i in problematic_run])
+
+        # add dictionaries to main ones
+        check.brief_output.append(final_status)
+        print(final_status)
+        if running:
+            check.full_output['running_runs'].append({set_acc: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({set_acc: missing_run})
+        if problematic_run:
+            check.full_output['problematic_runs'].append({set_acc: problematic_run})
+        # if made it till the end
+        if complete.get('add_tag'):
+            assert not running
+            assert not problematic_run
+            assert not missing_run
+            check.full_output['completed_runs'].append(complete)
+
+
+    # complete check values
+    check.summary = ""
+    if check.full_output['running_runs']:
+        check.summary = str(len(check.full_output['running_runs'])) + ' running|'
+    if check.full_output['skipped']:
+        check.summary += str(len(check.full_output['skipped'])) + ' skipped|'
+        check.status = 'WARN'
+    if check.full_output['needs_runs']:
+        check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['completed_runs']:
+        check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
+        check.status = 'WARN'
+        check.allow_action = True
+    if check.full_output['problematic_runs']:
+        check.summary += str(len(check.full_output['problematic_runs'])) + ' problem|'
+        check.status = 'WARN'
+
+    print("FINISHED")
+    return check
 
 
 

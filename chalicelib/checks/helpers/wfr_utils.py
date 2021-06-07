@@ -145,6 +145,14 @@ workflow_details = {
     'compartments-caller': {
                 "run_time": 200,
                 "accepted_versions": ['v1.2']
+    },
+    'cut_and_run_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
+    },
+    'cut_and_run_peaks': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
     }
 }
 
@@ -204,7 +212,7 @@ accepted_versions = {
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
     'GAM': [''],
-    'CUT&RUN': [''],
+    'CUT&RUN': ['CUT_AND_RUN_v1'],
     'TRIP': ['']
     }
 
