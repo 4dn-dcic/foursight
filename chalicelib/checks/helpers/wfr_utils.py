@@ -259,7 +259,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
-                   "HindIII": '/files-reference/4DNFI6V32T9J/'
+                   "HindIII": '/files-reference/4DNFI6V32T9J/',
+                   "Arima - A1, A2": '/files-reference/4DNFIE78H3K7/'
                    },
          "fruit-fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
                        },
@@ -294,7 +295,8 @@ re_nz_sizes = {"HindIII": "6",
                "DdeI and DpnII": "4",
                "DdeI": "4",
                "NcoI_MspI_BspHI": "4",  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
-               "MseI": "4"
+               "MseI": "4",
+               "Arima - A1, A2": "4"  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
                }
 
 mapper = {'human': 'GRCh38',
