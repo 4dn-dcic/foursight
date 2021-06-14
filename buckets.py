@@ -3,11 +3,18 @@ import json
 from chalicelib.vars import FOURSIGHT_PREFIX
 from foursight_core.buckets import Buckets as Buckets_from_core
 
+
 class Buckets(Buckets_from_core):
     """create and configure buckets for foursight"""
 
     prefix = FOURSIGHT_PREFIX
     envs = ['data', 'hotseat', 'mastertest', 'staging', 'webdev']
+
+    def ff_env(self, env):
+        if env in ['data', 'staging']:
+            return env
+        else: 
+            return 'fourfront-%s' % env
 
     def ff_url(self, env):
         if env == 'data':
