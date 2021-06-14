@@ -11,10 +11,8 @@ class Buckets(Buckets_from_core):
     envs = ['data', 'hotseat', 'mastertest', 'staging', 'webdev']
 
     def ff_env(self, env):
-        if env == 'data':
-            return 'fourfront-blue'
-        elif env == 'staging':
-            return 'fourfront-green'
+        if env in ['data', 'staging']:
+            return env
         else: 
             return 'fourfront-%s' % env
 
