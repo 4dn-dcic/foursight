@@ -2,6 +2,7 @@ import boto3
 import json
 from chalicelib.vars import FOURSIGHT_PREFIX
 from foursight_core.buckets import Buckets as Buckets_from_core
+from dcicutils import env_utils
 
 
 class Buckets(Buckets_from_core):
@@ -11,7 +12,7 @@ class Buckets(Buckets_from_core):
     envs = ['data', 'hotseat', 'mastertest', 'staging', 'webdev']
 
     def ff_env(self, env):
-        if env in ['data', 'staging']:
+        if env_utils.is_stg_or_prd_env(env):  # data or staging
             return env
         else: 
             return 'fourfront-%s' % env
