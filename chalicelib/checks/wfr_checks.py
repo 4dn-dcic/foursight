@@ -2806,11 +2806,10 @@ def cut_and_run_status(connection, **kwargs):
             print(step1_status, step1_output)
 
         final_status = set_acc  # start the reporting with acc
-        all_completed = True
+        all_completed = False
         # are step0 + step1 complete
         if ready_for_step2 and not control_ready:
             final_status += ' waiting for control experiments to finish processing'
-            all_completed = False
         elif ready_for_step2:
              # for control, add tag to set, and files to experiments
             if control:
@@ -2837,8 +2836,7 @@ def cut_and_run_status(connection, **kwargs):
                     set_peak = step2_output[0]
                     complete['patch_opf'].append([set_acc, [set_peak]])
                     complete['add_tag'] = [set_acc, tag]
-                else:
-                    all_completed = False
+                    all_completed = True
 
         # unpack results
         missing_run = keep['missing_run']
