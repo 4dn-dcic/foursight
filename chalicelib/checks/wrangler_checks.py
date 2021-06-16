@@ -7,7 +7,7 @@ import datetime
 import time
 import itertools
 import random
-from fuzzywuzzy import fuzz
+import py_stringmatching as stringmatch
 import boto3
 from .helpers import wrangler_utils
 from collections import Counter
@@ -1176,7 +1176,8 @@ def users_with_doppelganger(connection, **kwargs):
             cases.append(log)
         # if not, compare names
         else:
-            score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
+            matcher = stringmatch.Levenshtein()
+            score = matcher.get_sim_score(us1['display_title'], us2['display_title']) * 100
             if score > 85:
                 msg = '{} and {} are similar-{}'.format(
                     us1['display_title'],
@@ -1192,7 +1193,7 @@ def users_with_doppelganger(connection, **kwargs):
     if len(ignored_cases) > 100:
         fail_msg = 'Number of ignored cases is very high, time for maintainace'
         check.brief_output = fail_msg
-        check.full_output = {'result': [fail_msg, ],  'ignore': ignored_cases}
+        check.full_output = {'result': [fail_msg, ], 'ignore': ignored_cases}
         check.status = 'FAIL'
         return check
     # remove ignored cases from all cases
@@ -2424,8 +2425,9 @@ def sync_users_oh_status(connection, **kwargs):
         score = 0
         best = ''
         log = []
+        matcher = stringmatch.Levenshtein()
         for disp in all_lab_names:
-            s = fuzz.token_sort_ratio(record['OH Lab'], disp.split(',')[0])
+            s = matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100
             if s > score:
                 best = disp
                 score = s
