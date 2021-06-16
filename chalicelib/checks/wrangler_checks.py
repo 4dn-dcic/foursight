@@ -1177,7 +1177,7 @@ def users_with_doppelganger(connection, **kwargs):
         # if not, compare names
         else:
             matcher = stringmatch.Levenshtein()
-            score = matcher.get_sim_score(us1['display_title'], us2['display_title']) * 100
+            score = round(matcher.get_sim_score(us1['display_title'], us2['display_title']) * 100)
             if score > 85:
                 msg = '{} and {} are similar-{}'.format(
                     us1['display_title'],
@@ -2427,7 +2427,7 @@ def sync_users_oh_status(connection, **kwargs):
         log = []
         matcher = stringmatch.Levenshtein()
         for disp in all_lab_names:
-            s = matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100
+            s = round(matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100)
             if s > score:
                 best = disp
                 score = s
