@@ -76,10 +76,10 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = false
 python-versions = ">= 2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
-version = "1.17.95"
+version = "1.17.96"
 
 [package.dependencies]
-botocore = ">=1.20.95,<1.21.0"
+botocore = ">=1.20.96,<1.21.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.4.0,<0.5.0"
 
@@ -89,7 +89,7 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = false
 python-versions = ">= 2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
-version = "1.20.95"
+version = "1.20.96"
 
 [package.dependencies]
 jmespath = ">=0.7.1,<1.0.0"
@@ -97,7 +97,7 @@ python-dateutil = ">=2.1,<3.0.0"
 urllib3 = ">=1.25.4,<1.27"
 
 [package.extras]
-crt = ["awscrt (0.11.15)"]
+crt = ["awscrt (0.11.24)"]
 
 [[package]]
 category = "main"
@@ -274,7 +274,7 @@ description = "Serverless Chalice Application for Monitoring"
 name = "foursight-core"
 optional = false
 python-versions = ">=3.6,<3.7"
-version = "0.1.10"
+version = "0.1.11"
 
 [package.dependencies]
 Jinja2 = "2.10.1"
@@ -284,11 +284,9 @@ click = ">=7.1.2,<8.0.0"
 dcicutils = ">=1.7.0,<2.0.0"
 elasticsearch = ">=6.8.1,<7.0.0"
 elasticsearch-dsl = ">=6.4.0,<7.0.0"
-fuzzywuzzy = "0.17.0"
 geocoder = "1.38.1"
 gitpython = ">=3.1.2,<4.0.0"
 google-api-python-client = "1.7.4"
-python-Levenshtein = "0.12.0"
 pytz = ">=2020.1,<2021.0"
 
 [[package]]
@@ -298,17 +296,6 @@ name = "future"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 version = "0.18.2"
-
-[[package]]
-category = "main"
-description = "Fuzzy string matching in python"
-name = "fuzzywuzzy"
-optional = false
-python-versions = "*"
-version = "0.17.0"
-
-[package.extras]
-speedup = ["python-levenshtein (>=0.12)"]
 
 [[package]]
 category = "main"
@@ -739,17 +726,6 @@ version = "1.0.4"
 
 [[package]]
 category = "main"
-description = "Python extension for computing string edit distances and similarities."
-name = "python-levenshtein"
-optional = false
-python-versions = "*"
-version = "0.12.0"
-
-[package.dependencies]
-setuptools = "*"
-
-[[package]]
-category = "main"
 description = "World timezone definitions, modern and historical"
 name = "pytz"
 optional = false
@@ -1033,7 +1009,7 @@ docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "pytest-enabler", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "11eb856e0f393f07ea5259eebc147fb9634196b3ecbbf6323d6f0c6a13ecfe84"
+content-hash = "8f66b78169b10c0ee87203935e259067eb1d7f6dbe732ae6ab40210df2a9895c"
 python-versions = ">=3.6.1,<3.7"
 
 [metadata.files]
@@ -1063,12 +1039,12 @@ blessed = [
     {file = "blessed-1.17.6.tar.gz", hash = "sha256:a9a774fc6eda05248735b0d86e866d640ca2fef26038878f7e4d23f7749a1e40"},
 ]
 boto3 = [
-    {file = "boto3-1.17.95-py2.py3-none-any.whl", hash = "sha256:8e5af9c7ea16ce1c35b7c3220d073dea9735bb1790107820d475462500ae1eff"},
-    {file = "boto3-1.17.95.tar.gz", hash = "sha256:e61607211816c194dbe2701db48dcddc87cf19372e6f57a9ebe4dfe93dfe177c"},
+    {file = "boto3-1.17.96-py2.py3-none-any.whl", hash = "sha256:c7d6f3f09081440ca80500e679fec19f0b7597648ee380ae940ed29ad5c3768f"},
+    {file = "boto3-1.17.96.tar.gz", hash = "sha256:67a4b0578944f061fbfa05206eb5b10c5250374e9849743413739c539584b60e"},
 ]
 botocore = [
-    {file = "botocore-1.20.95-py2.py3-none-any.whl", hash = "sha256:240a9ef007292e986a4e11662f9038435d9d4fd242e083db160c86eb5c24af30"},
-    {file = "botocore-1.20.95.tar.gz", hash = "sha256:dc215f59735a3abde6c66a61f43f10d95bc18754d310da4e2037b3b8c4d8aa2d"},
+    {file = "botocore-1.20.96-py2.py3-none-any.whl", hash = "sha256:b18d2d016b371b769a88cb080088ce75582748b4a7efa5748e9ced4f23bdbc99"},
+    {file = "botocore-1.20.96.tar.gz", hash = "sha256:204f7403bfe1ab837784421ddd069fd880be99d946cb59cbf31c72296ea9507a"},
 ]
 cachetools = [
     {file = "cachetools-4.2.2-py3-none-any.whl", hash = "sha256:2cc0b89715337ab6dbba85b5b50effe2b0c74e035d83ee8ed637cf52f12ae001"},
@@ -1173,15 +1149,11 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight_core-0.1.10-py3-none-any.whl", hash = "sha256:4db5e65f4877e67fbebeb6c57033e724f7267e57bed2791c3264cb34c522dbdb"},
-    {file = "foursight_core-0.1.10.tar.gz", hash = "sha256:ed10098484184ee485b107c6cc35d3fb53cf8ed5091705ad92441fecea233443"},
+    {file = "foursight_core-0.1.11-py3-none-any.whl", hash = "sha256:a37991ff6a01c3288792b9c9c370894a1cd7aa84a4c708b720139a3b38d783ec"},
+    {file = "foursight_core-0.1.11.tar.gz", hash = "sha256:34b15e1114dde3ade362114a3e356cbf9abf4eeb2e90e3dd6708f222893794ec"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
-]
-fuzzywuzzy = [
-    {file = "fuzzywuzzy-0.17.0-py2.py3-none-any.whl", hash = "sha256:5ac7c0b3f4658d2743aa17da53a55598144edbc5bee3c6863840636e6926f254"},
-    {file = "fuzzywuzzy-0.17.0.tar.gz", hash = "sha256:6f49de47db00e1c71d40ad16da42284ac357936fa9b66bea1df63fed07122d62"},
 ]
 geocoder = [
     {file = "geocoder-1.38.1-py2.py3-none-any.whl", hash = "sha256:a733e1dfbce3f4e1a526cac03aadcedb8ed1239cf55bd7f3a23c60075121a834"},
@@ -1427,9 +1399,6 @@ python-editor = [
     {file = "python_editor-1.0.4-py2.7.egg", hash = "sha256:ea87e17f6ec459e780e4221f295411462e0d0810858e055fc514684350a2f522"},
     {file = "python_editor-1.0.4-py3-none-any.whl", hash = "sha256:1bf6e860a8ad52a14c3ee1252d5dc25b2030618ed80c022598f00176adc8367d"},
     {file = "python_editor-1.0.4-py3.5.egg", hash = "sha256:c3da2053dbab6b29c94e43c486ff67206eafbe7eb52dbec7390b5e2fb05aac77"},
-]
-python-levenshtein = [
-    {file = "python-Levenshtein-0.12.0.tar.gz", hash = "sha256:033a11de5e3d19ea25c9302d11224e1a1898fe5abd23c61c7c360c25195e3eb1"},
 ]
 pytz = [
     {file = "pytz-2020.5-py2.py3-none-any.whl", hash = "sha256:16962c5fb8db4a8f63a26646d8886e9d769b6c511543557bc84e9569fb9a9cb4"},
