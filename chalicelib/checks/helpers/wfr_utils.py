@@ -1529,7 +1529,8 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
 def start_missing_run(run_info, auth, env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
-                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas']
+                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas',
+                 'input_fastqs_R1', 'input_fastqs_R2']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1554,7 +1555,7 @@ def start_missing_run(run_info, auth, env):
     if not attr_file:
         possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
         error_message = ('one of these argument names {} which carry the input file -not the references-'
-                         ' should be added to att_keys dictionary on foursight cgap_utils.py function start_missing_run').format(possible_keys)
+                         ' should be added to att_keys dictionary on foursight wfr_utils.py function start_missing_run').format(possible_keys)
         raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])

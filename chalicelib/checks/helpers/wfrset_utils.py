@@ -406,7 +406,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                    }
         },
         {
-        "app_name": "cut_and_run",
+        "app_name": "cut_and_run_workflow",
         "workflow_uuid": "c5db38be-f139-4157-9832-398bda2c62d2",
         "parameters": {
             'nthreads_trim': 4,

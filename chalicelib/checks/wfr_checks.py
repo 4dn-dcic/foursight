@@ -2901,10 +2901,11 @@ def cut_and_run_start(connection, **kwargs):
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     cut_and_run_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
-    missing = []
+    missing_runs = []
+    patch_meta = []
     action_logs['kwargs'] = kwargs
     if kwargs.get('start_missing'):
-        missing = cut_and_run_check_result.get('missing_runs')
+        missing_runs = cut_and_run_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = cut_and_run_check_result.get('complete_runs')
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True)
