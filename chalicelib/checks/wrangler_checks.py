@@ -7,7 +7,8 @@ import datetime
 import time
 import itertools
 import random
-import py_stringmatching as stringmatch
+from fuzzywuzzy import fuzz
+# import py_stringmatching as stringmatch
 import boto3
 from .helpers import wrangler_utils
 from collections import Counter
@@ -1176,8 +1177,9 @@ def users_with_doppelganger(connection, **kwargs):
             cases.append(log)
         # if not, compare names
         else:
-            matcher = stringmatch.Levenshtein()
-            score = round(matcher.get_sim_score(us1['display_title'], us2['display_title']) * 100)
+            # matcher = stringmatch.Levenshtein()
+            # score = round(matcher.get_sim_score(us1['display_title'], us2['display_title']) * 100)
+            score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
             if score > 85:
                 msg = '{} and {} are similar-{}'.format(
                     us1['display_title'],
@@ -2425,9 +2427,10 @@ def sync_users_oh_status(connection, **kwargs):
         score = 0
         best = ''
         log = []
-        matcher = stringmatch.Levenshtein()
+        # matcher = stringmatch.Levenshtein()
         for disp in all_lab_names:
-            s = round(matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100)
+            # s = round(matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100)
+            s = fuzz.token_sort_ratio(record['OH Lab'], disp.split(',')[0])
             if s > score:
                 best = disp
                 score = s
