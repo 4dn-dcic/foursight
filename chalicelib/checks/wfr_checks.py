@@ -2231,7 +2231,7 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='insulation_scores_and_boundaries')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='insulation_scores_and_boundaries', pc_append=True)
     return action
 
 
@@ -2486,7 +2486,6 @@ def compartments_caller_status(connection, **kwargs):
     feature = 'compartments'
     contact_type = 'cis'
     binsize = 250000
-
     # completion tag
     tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
     # check indexing queue
@@ -2592,7 +2591,7 @@ def compartments_caller_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='compartments')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='compartments', pc_append=True)
     return action
 
 
