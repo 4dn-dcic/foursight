@@ -1401,7 +1401,7 @@ def check_for_ontology_updates(connection, **kwargs):
                 continue
             else:
                 # looks for date string in versionIRI line
-                match = re.search('(2[1-5])?([0-9]{2})-[0-9]{2}-(2[1-5])?[0-9]{2}', vline)
+                match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
                 if match:
                     v = match.group()
                     versions[o['ontology_prefix']]['latest'] = v
