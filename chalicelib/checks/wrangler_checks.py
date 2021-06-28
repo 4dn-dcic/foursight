@@ -1368,42 +1368,50 @@ def check_for_ontology_updates(connection, **kwargs):
         } for o in ontologies
     }
     for o in ontologies:
-        # UBERON needs different behavior
+        owl = None
         if o['ontology_prefix'] == 'UBERON':
-            uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
-            ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
-            versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
-        # instead of repos etc, check download url for ontology header to get version
+            # UBERON needs different URL for version info
+            owl = requests.get('http://purl.obolibrary.org/obo/uberon.owl', headers={"Range": "bytes=0-2000"})
         elif o.get('download_url'):
+            # instead of repos etc, check download url for ontology header to get version
             owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
-            if owl.status_code == 404:
-                versions[o['ontology_prefix']]['latest'] = 'WARN: 404 at download_url'
-                check.summary = '404 at download_url'
-                check.description = 'One or more ontologies has a download_url with a 404 error.'
-                check.description += ' Please update ontology item or try again later.'
-                check.status = 'WARN'
+
+        if not owl:
+            # there is an issue with the request beyond 404
+            versions[o['ontology_prefix']]['latest'] = 'WARN: no owl returned at request'
+            check.summary = 'Problem with ontology request - nothing returned'
+            check.description = 'One or more ontologies has nothing returned from attempted request.'
+            check.description += ' Please update ontology item or try again later.'
+            check.status = 'WARN'
+            continue
+        elif owl.status_code == 404:
+            versions[o['ontology_prefix']]['latest'] = 'WARN: 404 at download_url'
+            check.summary = 'Problem 404 at download_url'
+            check.description = 'One or more ontologies has a download_url with a 404 error.'
+            check.description += ' Please update ontology item or try again later.'
+            check.status = 'WARN'
+            continue
+        if 'versionIRI' in owl.text:
+            idx = owl.text.index('versionIRI')
+            vline = owl.text[idx:idx+150]
+            if 'releases'in vline:
+                vline = vline.split('/')
+                v = vline[vline.index('releases')+1]
+                versions[o['ontology_prefix']]['latest'] = v
                 continue
-            if 'versionIRI' in owl.text:
-                idx = owl.text.index('versionIRI')
-                vline = owl.text[idx:idx+150]
-                if 'releases'in vline:
-                    vline = vline.split('/')
-                    v = vline[vline.index('releases')+1]
+            else:
+                # looks for date string in versionIRI line
+                match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
+                if match:
+                    v = match.group()
                     versions[o['ontology_prefix']]['latest'] = v
                     continue
-                else:
-                    # looks for date string in versionIRI line
-                    match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
-                    if match:
-                        v = match.group()
-                        versions[o['ontology_prefix']]['latest'] = v
-                        continue
-            # SO removed version info from versionIRI, use date field instead
-            if 'oboInOwl:date' in owl.text:
-                idx = owl.text.index('>', owl.text.index('oboInOwl:date'))
-                vline = owl.text[idx+1:owl.text.index('<', idx)]
-                v = vline.split()[0]
-                versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
+        # SO removed version info from versionIRI, use date field instead
+        if 'oboInOwl:date' in owl.text:
+            idx = owl.text.index('>', owl.text.index('oboInOwl:date'))
+            vline = owl.text[idx+1:owl.text.index('<', idx)]
+            v = vline.split()[0]
+            versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
     check.brief_output = []
     for k, v in versions.items():
         if v.get('latest') and '404' in v['latest']:
@@ -1421,7 +1429,7 @@ def check_for_ontology_updates(connection, **kwargs):
             check.brief_output.append('{} OK'.format(k))
     check.full_output = versions
     num = ''.join(check.brief_output).count('update')
-    if '404' not in check.summary:
+    if 'Problem' not in check.summary:
         if num:
             check.summary = 'Ontology updates available'
             check.description = '{} ontologies need update'.format(num)
