@@ -644,20 +644,6 @@
             }
         }
     },
-    "clean_up_travis_queues": {
-        "title": "Clean up Travis queues",
-        "group": "System checks",
-        "schedule": {
-            "morning_checks_2": {
-                "data": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "clean_up_webdev_wfrs": {
         "title": "Clean up webdev workflows runs",
         "group": "Metadata checks",
@@ -1553,42 +1539,12 @@
             }
         }
     },
-    "process_download_tracking_items": {
-        "title": "Process Download Tracking Items",
-        "group": "System checks",
-        "schedule": {
-            "ten_min_checks": {
-                "data": {
-                    "dependencies": [
-                        "purge_download_tracking_items"
-                    ],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "provision_indexer_environment": {
         "title": "Provision Indexer Environment",
         "group": "Deployment Checks",
         "schedule": {
             "manual_checks": {
                 "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "purge_download_tracking_items": {
-        "title": "Purge Download Tracking Items",
-        "group": "Cleanup checks",
-        "schedule": {
-            "ten_min_checks": {
-                "data": {
-                    "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
@@ -1982,11 +1938,6 @@
         "group": "System checks",
         "schedule": {
             "friday_autoscaling_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
                 "staging": {
                     "kwargs": {
                         "primary": true
@@ -2001,18 +1952,28 @@
         "group": "System checks",
         "schedule": {
             "monday_autoscaling_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
                 "staging": {
                     "kwargs" : {
                         "primary": true
                     }
                 }
             }
-        }, 
+        },
         "display": ["data", "staging"]
+    },
+    "mcoolqc_status": {
+        "title": "b) McoolQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
     }
 }

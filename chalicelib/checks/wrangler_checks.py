@@ -8,6 +8,7 @@ import time
 import itertools
 import random
 from fuzzywuzzy import fuzz
+# import py_stringmatching as stringmatch
 import boto3
 from .helpers import wrangler_utils
 from collections import Counter
@@ -546,6 +547,7 @@ def item_counts_by_type(connection, **kwargs):
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
+    # import pdb; pdb.set_trace()
     check = CheckResult(connection, 'change_in_item_counts')
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
@@ -609,7 +611,11 @@ def change_in_item_counts(connection, **kwargs):
     # see if we have negative counts
     # allow negative counts, but make note of, for the following types
     purged_types = ['TrackingItem', 'HiglassViewConfig']
+    bs_type = 'Biosample'
     negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
+    if bs_type in negative_types:
+        if diff_counts[bs_type]['DB'] == -1:
+            negative_types.remove(bs_type)
     inconsistent_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] != diff_counts[tp]['ES'] and tp not in purged_types)]
     if negative_types:
         negative_str = ', '.join(negative_types)
@@ -1171,6 +1177,8 @@ def users_with_doppelganger(connection, **kwargs):
             cases.append(log)
         # if not, compare names
         else:
+            # matcher = stringmatch.Levenshtein()
+            # score = round(matcher.get_sim_score(us1['display_title'], us2['display_title']) * 100)
             score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
             if score > 85:
                 msg = '{} and {} are similar-{}'.format(
@@ -1187,7 +1195,7 @@ def users_with_doppelganger(connection, **kwargs):
     if len(ignored_cases) > 100:
         fail_msg = 'Number of ignored cases is very high, time for maintainace'
         check.brief_output = fail_msg
-        check.full_output = {'result': [fail_msg, ],  'ignore': ignored_cases}
+        check.full_output = {'result': [fail_msg, ], 'ignore': ignored_cases}
         check.status = 'FAIL'
         return check
     # remove ignored cases from all cases
@@ -1360,42 +1368,50 @@ def check_for_ontology_updates(connection, **kwargs):
         } for o in ontologies
     }
     for o in ontologies:
-        # UBERON needs different behavior
+        owl = None
         if o['ontology_prefix'] == 'UBERON':
-            uberon = requests.get('http://svn.code.sf.net/p/obo/svn/uberon/releases/')
-            ub_release = uberon._content.decode('utf-8').split('</li>\n  <li>')[-1]
-            versions['UBERON']['latest'] = ub_release[ub_release.index('>') + 1: ub_release.index('</a>')].rstrip('/')
-        # instead of repos etc, check download url for ontology header to get version
+            # UBERON needs different URL for version info
+            owl = requests.get('http://purl.obolibrary.org/obo/uberon.owl', headers={"Range": "bytes=0-2000"})
         elif o.get('download_url'):
+            # instead of repos etc, check download url for ontology header to get version
             owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
-            if owl.status_code == 404:
-                versions[o['ontology_prefix']]['latest'] = 'WARN: 404 at download_url'
-                check.summary = '404 at download_url'
-                check.description = 'One or more ontologies has a download_url with a 404 error.'
-                check.description += ' Please update ontology item or try again later.'
-                check.status = 'WARN'
+
+        if not owl:
+            # there is an issue with the request beyond 404
+            versions[o['ontology_prefix']]['latest'] = 'WARN: no owl returned at request'
+            check.summary = 'Problem with ontology request - nothing returned'
+            check.description = 'One or more ontologies has nothing returned from attempted request.'
+            check.description += ' Please update ontology item or try again later.'
+            check.status = 'WARN'
+            continue
+        elif owl.status_code == 404:
+            versions[o['ontology_prefix']]['latest'] = 'WARN: 404 at download_url'
+            check.summary = 'Problem 404 at download_url'
+            check.description = 'One or more ontologies has a download_url with a 404 error.'
+            check.description += ' Please update ontology item or try again later.'
+            check.status = 'WARN'
+            continue
+        if 'versionIRI' in owl.text:
+            idx = owl.text.index('versionIRI')
+            vline = owl.text[idx:idx+150]
+            if 'releases'in vline:
+                vline = vline.split('/')
+                v = vline[vline.index('releases')+1]
+                versions[o['ontology_prefix']]['latest'] = v
                 continue
-            if 'versionIRI' in owl.text:
-                idx = owl.text.index('versionIRI')
-                vline = owl.text[idx:idx+150]
-                if 'releases'in vline:
-                    vline = vline.split('/')
-                    v = vline[vline.index('releases')+1]
+            else:
+                # looks for date string in versionIRI line
+                match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
+                if match:
+                    v = match.group()
                     versions[o['ontology_prefix']]['latest'] = v
                     continue
-                else:
-                    # looks for date string in versionIRI line
-                    match = re.search('(20)?([0-9]{2})-[0-9]{2}-(20)?[0-9]{2}', vline)
-                    if match:
-                        v = match.group()
-                        versions[o['ontology_prefix']]['latest'] = v
-                        continue
-            # SO removed version info from versionIRI, use date field instead
-            if 'oboInOwl:date' in owl.text:
-                idx = owl.text.index('>', owl.text.index('oboInOwl:date'))
-                vline = owl.text[idx+1:owl.text.index('<', idx)]
-                v = vline.split()[0]
-                versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
+        # SO removed version info from versionIRI, use date field instead
+        if 'oboInOwl:date' in owl.text:
+            idx = owl.text.index('>', owl.text.index('oboInOwl:date'))
+            vline = owl.text[idx+1:owl.text.index('<', idx)]
+            v = vline.split()[0]
+            versions[o['ontology_prefix']]['latest'] = datetime.datetime.strptime(v, '%d:%m:%Y').strftime('%Y-%m-%d')
     check.brief_output = []
     for k, v in versions.items():
         if v.get('latest') and '404' in v['latest']:
@@ -1413,7 +1429,7 @@ def check_for_ontology_updates(connection, **kwargs):
             check.brief_output.append('{} OK'.format(k))
     check.full_output = versions
     num = ''.join(check.brief_output).count('update')
-    if '404' not in check.summary:
+    if 'Problem' not in check.summary:
         if num:
             check.summary = 'Ontology updates available'
             check.description = '{} ontologies need update'.format(num)
@@ -2419,7 +2435,9 @@ def sync_users_oh_status(connection, **kwargs):
         score = 0
         best = ''
         log = []
+        # matcher = stringmatch.Levenshtein()
         for disp in all_lab_names:
+            # s = round(matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100)
             s = fuzz.token_sort_ratio(record['OH Lab'], disp.split(',')[0])
             if s > score:
                 best = disp

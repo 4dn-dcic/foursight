@@ -27,8 +27,8 @@ def md5run_status_extra_file(connection, **kwargs):
         return check
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
-             '&status!=archived&status!=archived to project'
-             '&extra_files.status!=uploaded&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value')
+             '&status!=archived&status!=archived to project&extra_files.status!=uploaded'
+             '&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value&extra_files.md5sum=No value')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -36,9 +36,52 @@ def md5run_status_extra_file(connection, **kwargs):
         return check
     else:
         check.status = 'WARN'
-        check.brief_output = ['There are user submitted extra files without md5runs']
+        check.brief_output = ['There are extra files without md5runs']
         check.full_output = {'extra_files_missing_md5': [i['accession'] for i in res]}
         return check
+
+
+@action_function(start_missing=True)
+def md5run_extra_file_start(connection, **kwargs):
+    """Start md5 runs for extra files by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'md5run_extra_file_start')
+    action_logs = {'runs_started': [], "runs_failed": []}
+    my_auth = connection.ff_keys
+    md5run_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    action_logs['check_output'] = md5run_check_result
+    targets = []
+    if kwargs.get('start_missing'):
+        targets.extend(md5run_check_result.get('extra_files_missing_md5', []))
+    action_logs['targets'] = targets
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+        wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
+
+        # get extra files with missing md5sum and retrieve their format as identifier
+        extra_formats = []
+        for ext in a_file['extra_files']:
+            if 'md5sum' not in ext or not ext['md5sum']:
+                extra_formats.append(ext['file_format']['display_title'])  # format of extra file
+
+        for extra_format in extra_formats:
+            inp_f = {'input_file': a_file['@id'],
+                     'additional_file_parameters': {'input_file': {'format_if_extra': extra_format}}}
+            url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+            # aws run url
+            if url.startswith('http'):
+                action_logs['runs_started'].append(url)
+            else:
+                action_logs['runs_failed'].append([a_target, extra_format, url])
+
+    action.output = action_logs
+    action.status = 'DONE'
+    return action
 
 
 @check_function(file_type='File', lab_title=None, start_date=None)
@@ -2104,11 +2147,31 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         for pfile in a_res['processed_files']:
             if pfile['file_format']['display_title'] == 'mcool':
                 file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
-                # Skip problematic mcools files for now, until qc metrics for mcools are in place
-                if file_meta.get('tags'):
-                    if 'skip_domain_callers' in file_meta['tags']:
-                        skip = True
+                qc_values = file_meta['quality_metric']['quality_metric_summary'][0]['value']
+                problematic_resolutions = qc_values.split('; ')
+                # verify if binsize is good
+                enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
+                organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+                re_enz_size = wfr_utils.re_nz_sizes.get(enz)
+                if not re_enz_size:
+                    if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
+                        re_enz_size = "4"
+                    else:
+                        check.full_output['problematic_runs'].append({a_res['accession']: ['%s missing enz site length' % (enz)]})
                         continue
+
+                if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
+                    binsize = 5000
+                elif int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
+                    binsize = 10000
+                if str(binsize) in problematic_resolutions:
+                    skip = True
+                    continue
+                # # Skip problematic mcools files for now, until qc metrics for mcools are in place
+                # if file_meta.get('tags'):
+                #     if 'skip_domain_callers' in file_meta['tags']:
+                #         skip = True
+                #         continue
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
         if skip:
             continue
@@ -2117,20 +2180,6 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         elif insu_and_boun_report['status'].startswith("no complete run, too many"):
             problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif insu_and_boun_report['status'] != 'complete':
-            enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
-            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
-            re_enz_size = wfr_utils.re_nz_sizes.get(enz)
-            if not re_enz_size:
-                if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
-                    re_enz_size = "4"
-                else:
-                    check.full_output['problematic_runs'].append({a_res['accession']: ['%s missing enz site length' % (enz)]})
-                    continue
-
-            if int(re_enz_size) == 4:  # if 4-cutter binsize is 5k
-                binsize = 5000
-            if int(re_enz_size) == 6:  # if 6-cutter binsize is 10k
-                binsize = 10000
             overwrite = {'parameters': {"binsize": binsize}}
             inp_f = {'mcoolfile': pfile['accession']}
             missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
@@ -2182,7 +2231,7 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='insulation_scores_and_boundaries')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='insulation_scores_and_boundaries', pc_append=True)
     return action
 
 
@@ -2437,7 +2486,6 @@ def compartments_caller_status(connection, **kwargs):
     feature = 'compartments'
     contact_type = 'cis'
     binsize = 250000
-
     # completion tag
     tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
     # check indexing queue
@@ -2467,11 +2515,17 @@ def compartments_caller_status(connection, **kwargs):
         for pfile in a_res['processed_files']:
             if pfile['file_format']['display_title'] == 'mcool':
                 file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
+                qc_values = file_meta['quality_metric']['quality_metric_summary'][0]['value']
+                problematic_resolutions = qc_values.split('; ')
+                if str(binsize) in problematic_resolutions:
+                    skip = True
+                    continue
+
                 # Skip problematic mcools files for now, until qc metrics for mcools are in place
-                if file_meta.get('tags'):
-                    if 'skip_domain_callers' in file_meta['tags']:
-                        skip = True
-                        continue
+                # if file_meta.get('tags'):
+                #     if 'skip_domain_callers' in file_meta['tags']:
+                #         skip = True
+                #         continue
                 workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
         if skip:
             continue
@@ -2537,7 +2591,90 @@ def compartments_caller_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='compartments')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='compartments', pc_append=True)
+    return action
+
+
+@check_function(lab_title=None, start_date=None)
+def mcoolqc_status(connection, **kwargs):
+    """Searches for annotated bam files that do not have a qc object
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead (default=24 hours)
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'mcoolqc_status')
+    my_auth = connection.ff_keys
+    check.action = "mcoolqc_start"
+    check.brief_output = []
+    check.full_output = {}
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query (find mcool files)
+    default_stati = 'released&status=uploaded&status=released+to+project'
+    stati = 'status=' + (kwargs.get('status') or default_stati)
+    query = 'search/?file_format.file_format=mcool&{}'.format(stati)
+    query += '&type=FileProcessed'
+    query += '&quality_metric.display_title=No+value'
+    # add date
+    s_date = kwargs.get('start_date')
+    if s_date:
+        query += '&date_created.from=' + s_date
+    # add lab
+    lab = kwargs.get('lab_title')
+    if lab:
+        query += '&lab.display_title=' + lab
+    # The search
+    print(query)
+    res = ff_utils.search_metadata(query, key=my_auth)
+
+    if not res:
+        check.action_message = 'No action required at this moment'
+        check.summary = 'All Good!'
+        return check
+    check.summary = '{} files need a mcoolqc'. format(len(res))
+    check.status = 'WARN'
+    check = wfr_utils.check_runs_without_output(res, check, 'mcoolQC', my_auth, start)
+    return check
+
+
+@action_function(start_missing_run=True, start_missing_meta=True)
+def mcoolqc_start(connection, **kwargs):
+    """Start mcoolqc runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'mcoolqc_start')
+    action_logs = {'runs_started': [], 'runs_failed': []}
+    my_auth = connection.ff_keys
+    mcoolqc_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    targets = []
+    if kwargs.get('start_missing_run'):
+        targets.extend(mcoolqc_check_result.get('files_without_run', []))
+    if kwargs.get('start_missing_meta'):
+        targets.extend(mcoolqc_check_result.get('files_without_changes', []))
+    for a_target in targets:
+        now = datetime.utcnow()
+        if (now-start).seconds > lambda_limit:
+            action.description = 'Did not complete action due to time limitations'
+            break
+        a_file = ff_utils.get_metadata(a_target, key=my_auth)
+        attributions = wfr_utils.get_attribution(a_file)
+
+        inp_f = {'mcoolfile': a_file['@id']}
+        wfr_setup = wfrset_utils.step_settings('mcoolQC',
+                                               'no_organism',
+                                               attributions)
+        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        # aws run url
+        if url.startswith('http'):
+            action_logs['runs_started'].append(url)
+        else:
+            action_logs['runs_failed'].append([a_target, url])
+    action.output = action_logs
+    action.status = 'DONE'
     return action
 
 @check_function(lab_title=None, start_date=None)

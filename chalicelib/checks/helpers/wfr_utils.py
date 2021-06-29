@@ -153,6 +153,10 @@ workflow_details = {
     'cut_and_run_peaks': {
         "run_time": 200,
         "accepted_versions": ['v1']
+    },
+    'mcoolQC': {
+                "run_time": 200,
+                "accepted_versions": ['v1']
     }
 }
 
@@ -263,7 +267,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
-                   "HindIII": '/files-reference/4DNFI6V32T9J/'
+                   "HindIII": '/files-reference/4DNFI6V32T9J/',
+                   "Arima - A1, A2": '/files-reference/4DNFIE78H3K7/'
                    },
          "fruit-fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
                        },
@@ -298,7 +303,8 @@ re_nz_sizes = {"HindIII": "6",
                "DdeI and DpnII": "4",
                "DdeI": "4",
                "NcoI_MspI_BspHI": "4",  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
-               "MseI": "4"
+               "MseI": "4",
+               "Arima - A1, A2": "4"  # this is an NZ mix, no of cut sites should be similar to 4 cutter mspI
                }
 
 mapper = {'human': 'GRCh38',
@@ -528,6 +534,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
     """
     # tag as problematic if problematic runs are this many
     # if there are n failed runs, don't proceed
+
     error_at_failed_runs = error_threshold
     # you should provide key or all_wfrs
     assert key or all_wfrs
@@ -704,27 +711,23 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
                 buckets.append(my_bucket)
         # check bucket consistency
         assert len(list(set(buckets))) == 1
-        template['object_key'] = object_key
         template['uuid'] = uuid
-        template['bucket_name'] = buckets[0]
         if rename:
-            template['rename'] = [i.replace(change_from, change_to) for i in template['object_key']]
+            template['rename'] = [i.replace(change_from, change_to) for i in object_key]
         if additional_parameters:
             template.update(additional_parameters)
 
     # if obj_id is a string
     else:
         metadata = ff_utils.get_metadata(obj_id, key=auth)
-        template['object_key'] = metadata['display_title']
         template['uuid'] = metadata['uuid']
         # get the bucket
         if 'FileProcessed' in metadata['@type']:
             my_bucket = out_bucket
         else:  # covers cases of FileFastq, FileReference, FileMicroscopy
             my_bucket = raw_bucket
-        template['bucket_name'] = my_bucket
         if rename:
-            template['rename'] = template['object_key'].replace(change_from, change_to)
+            template['rename'] = object_key.replace(change_from, change_to)
         if additional_parameters:
             template.update(additional_parameters)
     return template
@@ -761,9 +764,7 @@ def build_feature_calling_query(exp_types, feature, kwargs):
     for exp_type in exp_types:
         assert exp_type in accepted_versions
 
-    # Temporary run on released ExperimentSets only
-    # statuses = ['pre-release', 'released', 'released to project']
-    statuses = ['released']
+    statuses = ['pre-release', 'released', 'released to project', 'uploaded']
     versions = [i for i in accepted_versions[exp_type]]
     feature_calling_versions = feature_calling_accepted_versions[feature]
     # Build the query
@@ -776,7 +777,7 @@ def build_feature_calling_query(exp_types, feature, kwargs):
 
     if feature_calling_versions:
         pre_query += "".join(["&completed_processes!=" + i for i in feature_calling_versions])
-
+    pre_query += "&processed_files.quality_metric.@type=QualityMetricMcool"
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -1384,7 +1385,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
     return check
 
 
-def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
+def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_append=False):
     """Function to update experiment and experiment set metadata for pipeline completions
     and output files.
     Parameters
@@ -1402,6 +1403,9 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
                 If True:
                    If set/exp is released/to project processing results go to other_processed_files field
                    If set/exp is in other status, processing results go to processed_files field
+    pc_append: (bool) If True and move_to_pc is True - append outfiles to existing processed files
+            This is relevant for pipelines that produce files to be added to datasets upon which a pipeline (eg. Hi-C)
+            has already been run - eg. Compartment Caller or Insulation Score/Boundaries
     """
     titles = {"hic": "HiC Processing Pipeline - Preliminary Files",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
@@ -1451,9 +1455,19 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False):
         # if move_to_pc is true, add them to processed_files
         if move_to_pc:
             # at this step we expect processed_files field to be empty
+            # unless pc_append is True
             if ex_pc:
-                log.append('expected processed_files to be empty: {}'.format(acc))
-                continue
+                if pc_append:
+                    ex_pc_cnt = len(ex_pc_ids)
+                    ex_pc_ids.extend(list_pc)
+                    list_pc = ex_pc_ids
+                    if ex_pc_cnt == len(list_pc):
+                        # warn if it looks like no existing pfs were added
+                        log.append('expected additions to existing processed files: {}'.format(acc))
+                        continue
+                else:
+                    log.append('expected processed_files to be empty: {}'.format(acc))
+                    continue
             # patch the processed files field
             ff_utils.patch_metadata({'processed_files': list_pc}, obj_id=acc, key=auth)
         # if not move_to_pc, add files to opf with proper title
@@ -1563,9 +1577,8 @@ def start_missing_run(run_info, auth, env):
     return url
 
 
-def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='hic'):
+def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='hic', pc_append=False):
     started_runs = 0
-    patched_md = 0
     action.description = ""
     action_log = {'started_runs': [], 'failed_runs': [], 'patched_meta': [], 'failed_meta': []}
     if missing_runs:
@@ -1593,8 +1606,7 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
             if (now-start).seconds > lambda_limit:
                 action.description = 'Did not complete action due to time limitations.'
                 break
-            patched_md += 1
-            error = patch_complete_data(a_completed_info, runtype, my_auth, move_to_pc=move_to_pc)
+            error = patch_complete_data(a_completed_info, runtype, my_auth, move_to_pc=move_to_pc, pc_append=pc_append)
             if not error:
                 log_message = acc + ' completed processing'
                 action_log['patched_meta'].append(log_message)

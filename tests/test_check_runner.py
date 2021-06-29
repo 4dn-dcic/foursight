@@ -190,13 +190,13 @@ class TestCheckRunner():
 
     def test_queue_check_group(self):
         # find the checks we will be using
-        use_schedule = 'ten_min_checks'
+        use_schedule = 'monthly_checks'
         check_handler = check_utils.CheckHandler(FOURSIGHT_PREFIX)
         check_schedule = check_handler.get_check_schedule(use_schedule)
         use_checks = [cs[0].split('/')[1] for env in check_schedule for cs in check_schedule[env]]
         # get a reference point for check results
         prior_res = check_handler.get_check_results(self.connection, checks=use_checks, use_latest=True)
-        run_input = self.app_utils_obj.queue_scheduled_checks(self.environ, 'ten_min_checks')
+        run_input = self.app_utils_obj.queue_scheduled_checks(self.environ, 'monthly_checks')
         assert (self.queue_name in run_input.get('sqs_url'))
         finished_count = 0  # since queue attrs are approximate
         error_count = 0

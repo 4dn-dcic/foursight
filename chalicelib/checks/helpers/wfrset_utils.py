@@ -411,25 +411,31 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "parameters": {
             'nthreads_trim': 4,
             'nthreads_aln': 4
-        },
+            },
         "config": {'mem': 2, 'cpu': 1},
         'custom_pf_fields': {
             'out_bam': {
                 'genome_assembly': genome,
                 'file_type': 'read positions',
                 'description': 'Alignment output file from CUT&RUN'
-            },
+                },
             'out_bedgraph': {
                 'genome_assembly': genome,
                 'file_type': 'bed',
                 'description': 'Vizualization output file from CUT&RUN'
-            },
+                },
             'out_bw': {
                 'genome_assembly': genome,
                 'file_type': 'bw',
                 'description': 'Vizualization output file from CUT&RUN'
+                }
             }
-        }
+        },
+        {
+        "app_name": "mcoolQC",
+        "workflow_uuid": "0bf9f47a-dec1-4324-9b41-fa183880a7db",
+        "overwrite_input_extra": False,
+        "config": {"ebs_size": 10, "instance_type": "c5ad.2xlarge"}
         },
         # temp
         {
