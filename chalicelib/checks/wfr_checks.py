@@ -2863,8 +2863,8 @@ def cut_and_run_status(connection, **kwargs):
             parameters["nthreads_trim"] = 4
             parameters["nthreads_aln"] = 4
 
-            input_files['input_fastqs_R1'] = [inputs_R1]
-            input_files['input_fastqs_R2'] = [inputs_R2]
+            input_files['input_fastqs_R1'] = inputs_R1[0]
+            input_files['input_fastqs_R2'] = inputs_R2[0]
 
             s1_input_files = input_files
             s1_tag = exp_id

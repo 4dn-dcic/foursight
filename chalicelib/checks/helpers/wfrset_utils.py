@@ -412,7 +412,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'nthreads_trim': 4,
             'nthreads_aln': 4
             },
-        "config": {'mem': 2, 'cpu': 1},
+        "config": {'mem': 4, 'cpu': 4},
         'custom_pf_fields': {
             'out_bam': {
                 'genome_assembly': genome,
