@@ -390,7 +390,8 @@ def chipseq_status(connection, **kwargs):
                     "chip.qc_report.desc": run_ids['desc'],
                     "chip.gensz": org,
                     "chip.xcor.cpu": 4,
-                    "chip.spp_cpu": 4
+                    "chip.spp_cpu": 4,
+                    "chip.spp_mem_mb": 24000 
                 }
                 if paired == 'single':
                     frag_temp = [300]

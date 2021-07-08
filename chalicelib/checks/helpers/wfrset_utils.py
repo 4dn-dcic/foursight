@@ -202,7 +202,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "encode-chipseq-aln-ctl",
         "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl",
         "parameters": {},
-        "config": {},
+        "config": {"instance_type": "c5.4xlarge"},
         'custom_pf_fields': {
             'chip.first_ta_ctl': {
                 'genome_assembly': genome,
