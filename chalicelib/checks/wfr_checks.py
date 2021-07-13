@@ -2880,7 +2880,7 @@ def cut_and_run_status(connection, **kwargs):
                 exp_bedgraph = step1_output[1]
                 exp_bw = step1_output[2]
                 # accumulate files to patch on experiment
-                patch_data = [set_acc,step1_output]
+                patch_data = [exp_id,step1_output]
 
                 # what exactly do I want to patch here
                 complete['patch_opf'].append([exp_id, patch_data])
