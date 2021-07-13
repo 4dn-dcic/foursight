@@ -1085,19 +1085,22 @@ def finalize_user_pending_labs(connection, **kwargs):
     return action
 
 
-def get_and_sort_tokens_to_string(s):
-    tokens = [t.lower() for t in re.split(r'\W+', s) if t]
-    tokens.sort()
+def get_tokens_to_string(s):
+    """ divides a (potentially) multi-word string into tokens - splitting on whitespace or hyphens
+       (important for hyphenated names) and lower casing
+       returns a single joined string of tokens
+    """
+    tokens = [t.lower() for t in re.split(r'[\s-]', s) if t]
     return ''.join(tokens)
 
 
 def string_label_similarity(string1, string2):
     """ compares sorted tokens for similarity
-        simple tokenization - then sorting and return a score between
+        simple tokenization - return a score between
         0-1
     """
-    s1cmp = get_and_sort_tokens_to_string(string1)
-    s2cmp = get_and_sort_tokens_to_string(string2)
+    s1cmp = get_tokens_to_string(string1)
+    s2cmp = get_tokens_to_string(string2)
     return SequenceMatcher(None, s1cmp, s2cmp).ratio()
 
 
