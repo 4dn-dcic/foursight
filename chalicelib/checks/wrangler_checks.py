@@ -2453,8 +2453,7 @@ def sync_users_oh_status(connection, **kwargs):
         log = []
         # matcher = stringmatch.Levenshtein()
         for disp in all_lab_names:
-            # s = round(matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100)
-            score = round(string_label_similarity(record['OH Lab'], disp.split(',')[0]) * 100)
+            s = round(string_label_similarity(record['OH Lab'], disp.split(',')[0]) * 100)
             if s > score:
                 best = disp
                 score = s
