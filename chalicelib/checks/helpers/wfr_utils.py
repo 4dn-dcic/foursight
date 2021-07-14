@@ -255,7 +255,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'AluI': '/files-reference/4DNFIN4DB5O8/',
                    'DdeI': '/files-reference/4DNFI4YGL4RE/',
                    'DdeI and DpnII': '/files-reference/4DNFIS1FCRRK/',
-                   'MseI': '/files-reference/4DNFIMD6BNQ8/'
+                   'MseI': '/files-reference/4DNFIMD6BNQ8/',
+                   "Arima - A1, A2": '/files-reference/4DNFIU1RS39P/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
