@@ -1095,7 +1095,7 @@ def get_tokens_to_string(s):
 
 
 def string_label_similarity(string1, string2):
-    """ compares sorted tokens for similarity
+    """ compares concantenate token strings for similarity
         simple tokenization - return a score between
         0-1
     """
