@@ -1131,7 +1131,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                     missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite],
                                         inp_f, set_acc])
             else:
-                problematic_run.append(['step3-not_unique', set_acc])
+                problematic_run.append(['step3-not_unique', set_acc, all_step3s])
                 set_summary += "| problem in step 3- not unique"
         check.brief_output.append(set_summary)
         if running:
