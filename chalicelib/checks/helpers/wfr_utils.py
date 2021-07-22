@@ -1343,7 +1343,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                     missing_run.append(['step3', ['imargi-processing-pairs', refs['organism'], {}],
                                         inp_f, set_acc])
             else:
-                problematic_run.append(['step3-not_unique', set_acc])
+                problematic_run.append(['step3-not_unique', set_acc, all_step3s])
                 set_summary += "| problem in step 3- not unique"
         check.brief_output.append(set_summary)
         if running:
