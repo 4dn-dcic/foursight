@@ -162,7 +162,7 @@ def chipseq_status(connection, **kwargs):
                     s0_tag = exp_id + '_p' + str(merge_enum)
                     keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
                                                                          'step0', s0_tag, merge_case,
-                                                                         s0_input_files, step0_name, 'merged_fastq')
+                                                                         s0_input_files, step0_name, 'merged_fastq', organism=organism)
                     if step0_status == 'complete':
                         merged_files.append(step0_output)
                     else:
@@ -225,7 +225,7 @@ def chipseq_status(connection, **kwargs):
                 keep, step1c_status, step1c_output = wfr_utils.stepper(library, keep,
                                                                        'step1c', s1c_tag, exp_files,
                                                                        s1c_input_files, step1c_name, 'chip.first_ta_ctl',
-                                                                       additional_input={'parameters': parameters})
+                                                                       additional_input={'parameters': parameters}, organism=organism)
                 if step1c_status == 'complete':
                     # accumulate files to patch on experiment
                     patch_data = [step1c_output, ]
@@ -260,7 +260,7 @@ def chipseq_status(connection, **kwargs):
                 keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
                                                                      'step1', s1_tag, exp_files,
                                                                      s1_input_files, step1_name, ['chip.first_ta', 'chip.first_ta_xcor'],
-                                                                     additional_input={'parameters': parameters})
+                                                                     additional_input={'parameters': parameters}, organism=organism)
                 if step1_status == 'complete':
                     exp_ta_file = step1_output[0]
                     exp_taxcor_file = step1_output[1]
@@ -406,7 +406,7 @@ def chipseq_status(connection, **kwargs):
                                                                      'step2', s2_tag, ta,
                                                                      s2_input_files, step2_name,
                                                                      ['chip.optimal_peak', 'chip.conservative_peak', 'chip.sig_fc'],
-                                                                     additional_input={'parameters': parameters})
+                                                                     additional_input={'parameters': parameters}, organism=organism)
                 if step2_status == 'complete':
                     set_opt_peak = step2_output[0]
                     set_cons_peak = step2_output[1]
