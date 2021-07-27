@@ -7,8 +7,7 @@ import datetime
 import time
 import itertools
 import random
-from fuzzywuzzy import fuzz
-# import py_stringmatching as stringmatch
+from difflib import SequenceMatcher
 import boto3
 from .helpers import wrangler_utils
 from collections import Counter
@@ -1086,6 +1085,25 @@ def finalize_user_pending_labs(connection, **kwargs):
     return action
 
 
+def get_tokens_to_string(s):
+    """ divides a (potentially) multi-word string into tokens - splitting on whitespace or hyphens
+       (important for hyphenated names) and lower casing
+       returns a single joined string of tokens
+    """
+    tokens = [t.lower() for t in re.split(r'[\s-]', s) if t]
+    return ''.join(tokens)
+
+
+def string_label_similarity(string1, string2):
+    """ compares concantenate token strings for similarity
+        simple tokenization - return a score between
+        0-1
+    """
+    s1cmp = get_tokens_to_string(string1)
+    s2cmp = get_tokens_to_string(string2)
+    return SequenceMatcher(None, s1cmp, s2cmp).ratio()
+
+
 @check_function(emails=None, ignore_current=False, reset_ignore=False)
 def users_with_doppelganger(connection, **kwargs):
     """ Find users that share emails or have very similar names
@@ -1177,9 +1195,7 @@ def users_with_doppelganger(connection, **kwargs):
             cases.append(log)
         # if not, compare names
         else:
-            # matcher = stringmatch.Levenshtein()
-            # score = round(matcher.get_sim_score(us1['display_title'], us2['display_title']) * 100)
-            score = fuzz.token_sort_ratio(us1['display_title'], us2['display_title'])
+            score = round(string_label_similarity(us1['display_title'], us2['display_title']) * 100)
             if score > 85:
                 msg = '{} and {} are similar-{}'.format(
                     us1['display_title'],
@@ -1219,7 +1235,7 @@ def users_with_doppelganger(connection, **kwargs):
             a_case['log'] = a_case['log'] + add_on
             a_case['brief'] = a_case['brief'] + add_on
 
-    check.full_output = {'result': cases,  'ignore': ignored_cases}
+    check.full_output = {'result': cases, 'ignore': ignored_cases}
     if cases:
         check.summary = 'Some user accounts need attention.'
         check.brief_output = [i['brief'] for i in cases]
@@ -2437,8 +2453,7 @@ def sync_users_oh_status(connection, **kwargs):
         log = []
         # matcher = stringmatch.Levenshtein()
         for disp in all_lab_names:
-            # s = round(matcher.get_sim_score(record['OH Lab'], disp.split(',')[0]) * 100)
-            s = fuzz.token_sort_ratio(record['OH Lab'], disp.split(',')[0])
+            s = round(string_label_similarity(record['OH Lab'], disp.split(',')[0]) * 100)
             if s > score:
                 best = disp
                 score = s

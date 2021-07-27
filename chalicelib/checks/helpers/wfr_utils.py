@@ -263,7 +263,8 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    'AluI': '/files-reference/4DNFIN4DB5O8/',
                    'DdeI': '/files-reference/4DNFI4YGL4RE/',
                    'DdeI and DpnII': '/files-reference/4DNFIS1FCRRK/',
-                   'MseI': '/files-reference/4DNFIMD6BNQ8/'
+                   'MseI': '/files-reference/4DNFIMD6BNQ8/',
+                   "Arima - A1, A2": '/files-reference/4DNFIU1RS39P/'
                    },
          "mouse": {'MboI': '/files-reference/4DNFIONK4G14/',
                    'DpnII': '/files-reference/4DNFI3HVC1SE/',
@@ -1138,7 +1139,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                     missing_run.append(['step3', ['hi-c-processing-pairs', refs['organism'], overwrite],
                                         inp_f, set_acc])
             else:
-                problematic_run.append(['step3-not_unique', set_acc])
+                problematic_run.append(['step3-not_unique', set_acc, all_step3s])
                 set_summary += "| problem in step 3- not unique"
         check.brief_output.append(set_summary)
         if running:
