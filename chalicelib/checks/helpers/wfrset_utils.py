@@ -450,5 +450,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     if overwrite:
         for a_key in overwrite:
             for a_spec in overwrite[a_key]:
-                template[a_key][a_spec] = overwrite[a_key][a_spec]
+                # if the key value is a dictionary, set default and use update
+                if isinstance(overwrite[a_key][a_spec], dict):
+                    template[a_key].setdefault(a_spec, {}).update(overwrite[a_key][a_spec])
+                # if it is string array bool, set the value
+                else:
+                    template[a_key][a_spec] = overwrite[a_key][a_spec]
     return template
