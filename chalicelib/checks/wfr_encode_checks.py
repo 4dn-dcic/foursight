@@ -248,6 +248,8 @@ def chipseq_status(connection, **kwargs):
                     "chip.merge_fastq.cpu": 8,
                     "chip.filter.cpu": 8,
                     "chip.bam2ta.cpu": 8,
+                    "chip.xcor.cpu": 16,
+                    "chip.xcor.mem_mb": 20000,
                     "chip.align_only": True
                 }
                 parameters.update(exp_parameters)
