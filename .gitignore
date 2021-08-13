@@ -26,5 +26,7 @@ requirements.txt
 chalicelib/checks/wfr_cgap_checks.py
 
 chalicelib/checks/helpers/wfrset_cgap_utils.py
-
+deployment.zip
+sam.yaml
+sam.json
 chalicelib/checks/helpers/cgap_utils.py
