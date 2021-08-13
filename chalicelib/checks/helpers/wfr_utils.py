@@ -711,6 +711,7 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
                     my_bucket = raw_bucket
                 buckets.append(my_bucket)
         # check bucket consistency
+        print("Buckets: ", buckets)
         assert len(list(set(buckets))) == 1
         template['uuid'] = uuid
         if rename:
@@ -1415,7 +1416,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
               'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
               'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files",
-              'compartments': "Compartments Signals - Preliminary Files"}
+              'compartments': "Compartments Signals - Preliminary Files",
+              "cutnrun": "CUT&RUN Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1545,7 +1547,7 @@ def start_missing_run(run_info, auth, env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
                  'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas',
-                 'input_fastqs_R1', 'input_fastqs_R2']
+                 'input_fastqs_R1', 'input_fastqs_R2', 'input_bg']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]

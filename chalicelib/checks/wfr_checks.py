@@ -2743,7 +2743,6 @@ def cut_and_run_status(connection, **kwargs):
             check.full_output['skipped'].append({a_set['accession']: 'files status uploading'})
             continue
 
-        # ALL WFRS HERE! No WFRS are being added
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         all_files = [i for typ in all_items for i in all_items[typ] if typ.startswith('file_')]
         all_qcs = [i for typ in all_items for i in all_items[typ] if typ.startswith('quality_metric')]
@@ -2868,22 +2867,25 @@ def cut_and_run_status(connection, **kwargs):
 
             s1_input_files = input_files
             s1_tag = exp_id
-            s1_out = ['out_bam','out_bw','out_bedgraph']
+            s1_out = ['out_bam','out_bedgraph','out_bw']
 
             keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
                                                                    'step1', s1_tag, exp_files,
                                                                    s1_input_files, step_1, s1_out,
-                                                                   additional_input={'parameters': parameters})
+                                                                   additional_input={'parameters': parameters},
+                                                                   organism=organism)
 
             if step1_status == 'complete':
                 exp_bam = step1_output[0]
                 exp_bedgraph = step1_output[1]
                 exp_bw = step1_output[2]
+                patch_data = [exp_bam, exp_bedgraph, exp_bw]
                 # accumulate files to patch on experiment
-                patch_data = [exp_id,step1_output]
+                
+                # patch files to experiment
+                patch_data = [exp_id, [exp_bam, exp_bedgraph, exp_bw]]
 
-                # what exactly do I want to patch here
-                complete['patch_opf'].append([exp_id, patch_data])
+                complete['patch_opf'].append(patch_data)
                 bam.append(exp_bam)
                 bedgraph.append(exp_bedgraph)
                 bw.append(exp_bw)
@@ -2892,8 +2894,7 @@ def cut_and_run_status(connection, **kwargs):
                 # if the experiment has a control set (NOT a control)
                 if control_set:
                     try:
-                        exp_cnt_ids = [i['experiment'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
-                        exp_cnt_ids = [i['@id'] for i in exp_cnt_ids]
+                        exp_cnt_ids = [i['experiment']['@id'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
 
                     except:
                         control_ready = False
@@ -2934,6 +2935,7 @@ def cut_and_run_status(connection, **kwargs):
                     if cont_file:
                         bg_ctl.append(cont_file)
                     else:
+                        print("It's this one")
                         control_ready = False
 
             else:
@@ -2951,29 +2953,31 @@ def cut_and_run_status(connection, **kwargs):
              # for control, add tag to set, and files to experiments
             if control:
                 complete['add_tag'] = [set_acc, tag]
+                # ********************** ADD FILES TO EXPERIMENTS HERE ***********************
             # for non controls check for step2
             else:
-                # collect step2 input files
-                s2_input_files = {}
-                s2_input_files['bedgr'] = bedgraph
-                s2_input_files['control'] = ctl_bg
-                s2_file_gp = bedgraph + ctl_bg                
+                # collect step2 parameters and input files
                 parameters = {}
                 parameters['norm'] = 'norm'
                 parameters['stringency'] = 'relaxed'
-
                 s2_out = ['out_bedg']
-                s2_tag = set_acc
-                keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
-                                                                     'step2', s2_tag, s2_file_g,
-                                                                     s2_input_files, step2_name,
-                                                                     s2_out,
-                                                                     additional_input={'parameters': parameters})
-                if step2_status == 'complete':
-                    set_peak = step2_output[0]
-                    complete['patch_opf'].append([set_acc, [set_peak]])
-                    complete['add_tag'] = [set_acc, tag]
-                    all_completed = True
+                dummy_list = [0]
+                for dum in dummy_list: 
+                    s2_input_files = {}
+                    s2_input_files['input_bg'] = bedgraph[0]            #Added zeroes 8/10/21
+                    s2_input_files['input_bg_ctl'] = bg_ctl[0]
+                    s2_file_gp = bedgraph + bg_ctl         
+                    s2_tag = set_acc
+                    keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                                                                     'step2', s2_tag, s2_file_gp,
+                                                                     s2_input_files, step_2, s2_out,
+                                                                     additional_input={'parameters': parameters},
+                                                                     organism=organism)
+                    if step2_status == 'complete':
+                        set_peak = step2_output[0]
+                        complete['patch_opf'].append([set_acc, [set_peak]])
+                        complete['add_tag'] = [set_acc, tag]
+                        all_completed = True
 
         # unpack results
         missing_run = keep['missing_run']
@@ -3030,7 +3034,7 @@ def cut_and_run_status(connection, **kwargs):
 
 
 
-@action_function(start_missing=True)
+@action_function(start_missing=True, patch_completed=True)
 def cut_and_run_start(connection, **kwargs):
     start = datetime.utcnow()
     action = ActionResult(connection, 'cut_and_run_start')
@@ -3044,8 +3048,9 @@ def cut_and_run_start(connection, **kwargs):
     if kwargs.get('start_missing'):
         missing_runs = cut_and_run_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
-        patch_meta = cut_and_run_check_result.get('complete_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True)
+        patch_meta = cut_and_run_check_result.get('completed_runs')
+        print("patch_meta", patch_meta)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=False, runtype='cutnrun', pc_append=True)
     return action
 
 
