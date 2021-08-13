@@ -249,7 +249,6 @@ def chipseq_status(connection, **kwargs):
                     "chip.filter.cpu": 8,
                     "chip.bam2ta.cpu": 8,
                     "chip.xcor.cpu": 16,
-                    "chip.xcor.mem_mb": 20000,
                     "chip.align_only": True
                 }
                 parameters.update(exp_parameters)
@@ -392,7 +391,6 @@ def chipseq_status(connection, **kwargs):
                     "chip.gensz": org,
                     "chip.xcor.cpu": 4,
                     "chip.spp_cpu": 4,
-                    # "chip.spp_mem_mb": 32000 
                     "chip.peak_caller": "macs2"
                 }
                 if paired == 'single':
