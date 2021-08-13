@@ -248,7 +248,7 @@ def chipseq_status(connection, **kwargs):
                     "chip.merge_fastq.cpu": 8,
                     "chip.filter.cpu": 8,
                     "chip.bam2ta.cpu": 8,
-                    "chip.xcor.cpu": 16,
+                    "chip.xcor.cpu": 8,
                     "chip.align_only": True
                 }
                 parameters.update(exp_parameters)
@@ -390,13 +390,16 @@ def chipseq_status(connection, **kwargs):
                     "chip.qc_report.desc": run_ids['desc'],
                     "chip.gensz": org,
                     "chip.xcor.cpu": 4,
-                    "chip.spp_cpu": 4,
-                    "chip.peak_caller": "macs2"
                 }
                 if paired == 'single':
                     frag_temp = [300]
                     fraglist = frag_temp * len(ta)
                     parameters['chip.fraglen'] = fraglist
+
+                # if the target is a tf and there is no control, use macs2
+                if not control_set:
+                    if target_type == 'tf':
+                        parameters['chip.peak_caller'] = "macs2"
 
                 s2_tag = set_acc
                 # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
