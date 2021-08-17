@@ -2715,7 +2715,6 @@ def cut_and_run_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-#    step_0 = 'merge-fastq'
     step_1 = 'cut_and_run_workflow'
     step_2 = 'cut_and_run_peaks'                                    # check names?
     for a_set in res:
@@ -2935,7 +2934,6 @@ def cut_and_run_status(connection, **kwargs):
                     if cont_file:
                         bg_ctl.append(cont_file)
                     else:
-                        print("It's this one")
                         control_ready = False
 
             else:
@@ -2953,7 +2951,7 @@ def cut_and_run_status(connection, **kwargs):
              # for control, add tag to set, and files to experiments
             if control:
                 complete['add_tag'] = [set_acc, tag]
-                # ********************** ADD FILES TO EXPERIMENTS HERE ***********************
+                # add output files for control here?
             # for non controls check for step2
             else:
                 # collect step2 parameters and input files
@@ -2961,6 +2959,8 @@ def cut_and_run_status(connection, **kwargs):
                 parameters['norm'] = 'norm'
                 parameters['stringency'] = 'relaxed'
                 s2_out = ['out_bedg']
+
+                # Replace dummy with all input files and cycle through?
                 dummy_list = [0]
                 for dum in dummy_list: 
                     s2_input_files = {}
