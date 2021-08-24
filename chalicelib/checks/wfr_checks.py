@@ -2706,7 +2706,7 @@ def cut_and_run_status(connection, **kwargs):
         return check
 
     # Query needs replacement for '&' in exp type name--hardcoded to avoid query builder error
-    query = '/search/?experimentset_type=replicate&type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=CUT%26RUN&status=pre-release&status=released&status=released+to+project&completed_processes%21=&tags%21=skip_processing'
+    query = '/search/?experimentset_type=replicate&type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=CUT%26RUN&status=pre-release&status=released&status=released+to+project&completed_processes!=CUT_AND_RUN_v1&tags!=skip_processing'
     # Search
     res = ff_utils.search_metadata(query, key=my_auth)
     print(len(res))
@@ -2801,6 +2801,7 @@ def cut_and_run_status(connection, **kwargs):
         bedgraph = []
         bw = []
         bg_ctl = []
+        bg_s2_info = {}
 
         ready_for_step2 = True
         for an_exp in replicate_exps:
@@ -2889,9 +2890,12 @@ def cut_and_run_status(connection, **kwargs):
                 bedgraph.append(exp_bedgraph)
                 bw.append(exp_bw)
 
+                bg_s2_info[exp_id] = {'input_bg': exp_bedgraph, 'is_control': True, 'bg_ctl': ""}
+
                 # check if control is ready (for step 2)
                 # if the experiment has a control set (NOT a control)
                 if control_set:
+                    bg_s2_info[exp_id]['is_control'] = False
                     try:
                         exp_cnt_ids = [i['experiment']['@id'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
 
@@ -2933,6 +2937,7 @@ def cut_and_run_status(connection, **kwargs):
                     # did we find it, if so, add it to bg_ctl
                     if cont_file:
                         bg_ctl.append(cont_file)
+                        bg_s2_info[exp_id]['bg_ctl'] = cont_file
                     else:
                         control_ready = False
 
@@ -2948,7 +2953,7 @@ def cut_and_run_status(connection, **kwargs):
         if ready_for_step2 and not control_ready:
             final_status += ' waiting for control experiments to finish processing'
         elif ready_for_step2:
-             # for control, add tag to set, and files to experiments
+            # for control, add tag to set, and files to experiments
             if control:
                 complete['add_tag'] = [set_acc, tag]
                 # add output files for control here?
@@ -2960,24 +2965,34 @@ def cut_and_run_status(connection, **kwargs):
                 parameters['stringency'] = 'relaxed'
                 s2_out = ['out_bedg']
 
-                # Replace dummy with all input files and cycle through?
-                dummy_list = [0]
-                for dum in dummy_list: 
-                    s2_input_files = {}
-                    s2_input_files['input_bg'] = bedgraph[0]            #Added zeroes 8/10/21
-                    s2_input_files['input_bg_ctl'] = bg_ctl[0]
-                    s2_file_gp = bedgraph + bg_ctl         
-                    s2_tag = set_acc
-                    keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                # Cycle through experiments in experiment set (k is experiment id)
+                all_completed = True
+                for k,v in bg_s2_info.items():
+                    print(k,v)
+                    if v['bg_ctl'] and not v['is_control']:
+                        s2_input_files = {}
+                        s2_input_files['input_bg'] = v['input_bg']
+                        s2_input_files['input_bg_ctl'] = v['bg_ctl']
+                        s2_file_gp = [v['input_bg'], v['bg_ctl']]         
+                        s2_tag = v['input_bg'] + v['bg_ctl']
+                        print(s2_file_gp)
+                        keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
                                                                      'step2', s2_tag, s2_file_gp,
                                                                      s2_input_files, step_2, s2_out,
                                                                      additional_input={'parameters': parameters},
                                                                      organism=organism)
-                    if step2_status == 'complete':
-                        set_peak = step2_output[0]
-                        complete['patch_opf'].append([set_acc, [set_peak]])
-                        complete['add_tag'] = [set_acc, tag]
-                        all_completed = True
+                        if step2_status == 'complete':
+                            set_peak = step2_output[0]
+                            print("set_peak val: ", set_peak)
+                            # patch_s2 = [[set_acc, []],[k,[set_peak]]]
+                            patch_s2 = [k, [set_peak]]
+                            complete['patch_opf'].append(patch_s2)
+                            # can only be one layer deep, despite wfr_utils documentation
+                        else:
+                            all_completed = False
+                
+                if all_completed:
+                    complete['add_tag'] = [set_acc, tag]
 
         # unpack results
         missing_run = keep['missing_run']
