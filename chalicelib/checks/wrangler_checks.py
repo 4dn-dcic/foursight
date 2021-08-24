@@ -609,7 +609,7 @@ def change_in_item_counts(connection, **kwargs):
     total_counts_db = sum([diff_counts[coll]['DB'] for coll in diff_counts if diff_counts[coll]['DB'] >= 0])
     # see if we have negative counts
     # allow negative counts, but make note of, for the following types
-    purged_types = ['TrackingItem', 'HiglassViewConfig']
+    purged_types = ['TrackingItem', 'HiglassViewConfig', 'MicroscopeConfiguration']
     bs_type = 'Biosample'
     negative_types = [tp for tp in diff_counts if (diff_counts[tp]['DB'] < 0 and tp not in purged_types)]
     if bs_type in negative_types:
