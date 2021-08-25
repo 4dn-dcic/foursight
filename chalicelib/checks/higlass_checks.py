@@ -1817,7 +1817,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.action_message = "Will attempt to patch higlass_uid for %s files." % file_count
     return check
 
-@action_function(file_accession=None, force_new_higlass_uid=False, time_limit=270)
+@action_function(file_accession=None, force_new_higlass_uid=False, time_limit=870)
 def patch_file_higlass_uid(connection, **kwargs):
     """
     After running "files_not_registered_with_higlass",
