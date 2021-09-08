@@ -438,6 +438,35 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             }
         },
         {
+        "app_name": "cut_and_run_ctl_workflow",
+        "workflow_uuid": "04895a25-b609-4fc8-b0d5-9dd9e45d9237",
+        "parameters": {
+            "nthreads_trim": 4,
+            "nthreads_aln": 4
+            },
+        "config": {'mem': 4, 'cpu': 4},
+        "custom_pf_fields": {
+            "out_bam": {
+                "genome_assembly": genome,
+                "file_type": "read positions",
+                "description": "Alignment output file from CUT&RUN",
+                'disable_wfr_inputs': True
+                },
+            "out_bedgraph": {
+                "genome_assembly": genome,
+                "file_type": "bg",
+                "description": "Vizualization output file from CUT&RUN",
+                'disable_wfr_inputs': True
+                },
+            "out_bw": {
+                "genome_assembly": genome,
+                "file_type": "bw",
+                "description": "Vizualization output file from CUT&RUN",
+                'disable_wfr_inputs': True
+                }
+            }
+        },
+        {
         "app_name": "cut_and_run_peaks",
         "workflow_uuid": "b43bcc4e-d566-4fbf-a0bb-375a2ad517d8",
         "config": {'mem': 8, 'cpu': 1, 'ebs_size': 10},

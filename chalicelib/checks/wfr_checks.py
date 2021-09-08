@@ -2716,6 +2716,7 @@ def cut_and_run_status(connection, **kwargs):
         return check
 
     step_1 = 'cut_and_run_workflow'
+    step_1c = 'cut_and_run_ctl_workflow'
     step_2 = 'cut_and_run_peaks'                                    # check names?
     for a_set in res:
         set_acc = a_set['accession']
@@ -2752,6 +2753,9 @@ def cut_and_run_status(connection, **kwargs):
         complete = {'patch_opf': [],
                     'add_tag': []}
         set_acc = a_set['accession']
+        
+        # dict to organize patched files before patching
+        patch_opf = {}
 
         # features to check
         control = ""  # True or False (True if set is control)
@@ -2869,12 +2873,21 @@ def cut_and_run_status(connection, **kwargs):
             s1_tag = exp_id
             s1_out = ['out_bam','out_bedgraph','out_bw']
 
-            keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
+            add_input = {'parameters': parameters}
+            if control:
+                keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
+                                                                   'step1c', s1_tag, exp_files,
+                                                                   s1_input_files, step_1c, s1_out,
+                                                                   additional_input={'parameters': parameters},
+                                                                   organism=organism)
+            else:
+                keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
                                                                    'step1', s1_tag, exp_files,
                                                                    s1_input_files, step_1, s1_out,
                                                                    additional_input={'parameters': parameters},
                                                                    organism=organism)
 
+            
             if step1_status == 'complete':
                 exp_bam = step1_output[0]
                 exp_bedgraph = step1_output[1]
@@ -2886,6 +2899,7 @@ def cut_and_run_status(connection, **kwargs):
                 patch_data = [exp_id, [exp_bam, exp_bedgraph, exp_bw]]
 
                 complete['patch_opf'].append(patch_data)
+                patch_opf[exp_id] = [exp_bam, exp_bedgraph, exp_bw]
                 bam.append(exp_bam)
                 bedgraph.append(exp_bedgraph)
                 bw.append(exp_bw)
@@ -2968,12 +2982,11 @@ def cut_and_run_status(connection, **kwargs):
                 # Cycle through experiments in experiment set (k is experiment id)
                 all_completed = True
                 for k,v in bg_s2_info.items():
-                    print(k,v)
                     if v['bg_ctl'] and not v['is_control']:
                         s2_input_files = {}
                         s2_input_files['input_bg'] = v['input_bg']
                         s2_input_files['input_bg_ctl'] = v['bg_ctl']
-                        s2_file_gp = [v['input_bg'], v['bg_ctl']]         
+                        s2_file_gp = [v['bg_ctl'], v['input_bg']]         
                         s2_tag = v['input_bg'] + v['bg_ctl']
                         print(s2_file_gp)
                         keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
@@ -2983,11 +2996,10 @@ def cut_and_run_status(connection, **kwargs):
                                                                      organism=organism)
                         if step2_status == 'complete':
                             set_peak = step2_output[0]
-                            print("set_peak val: ", set_peak)
-                            # patch_s2 = [[set_acc, []],[k,[set_peak]]]
-                            patch_s2 = [k, [set_peak]]
-                            complete['patch_opf'].append(patch_s2)
-                            # can only be one layer deep, despite wfr_utils documentation
+                            
+                            # if the processed files are already being patched, add the new
+                            patch_opf.setdefault(k, []).append(set_peak)
+                            complete['patch_opf'] = [[uuid, files] for uuid, files in zip(patch_opf.keys(), patch_opf.values())]
                         else:
                             all_completed = False
                 

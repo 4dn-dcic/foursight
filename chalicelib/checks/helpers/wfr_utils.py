@@ -150,6 +150,10 @@ workflow_details = {
         "run_time": 200,
         "accepted_versions": ['v1']
     },
+    'cut_and_run_ctl_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
+    },
     'cut_and_run_peaks': {
         "run_time": 200,
         "accepted_versions": ['v1']
@@ -449,7 +453,7 @@ def stepper(library, keep,
     problematic_run = keep['problematic_run']
     missing_run = keep['missing_run']
 
-    # Lets get the repoinse from one of the input files that will be used in this step
+    # Let's get the response from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
     # new_step_input_file must be the @id
     # also check for qc status
@@ -614,7 +618,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
         if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
-        return {'status': "no complete run, errrored"}
+        return {'status': "no complete run, errored"}
     # if other statuses, started running
     elif run_duration < run:
         return {'status': "running"}
