@@ -10,6 +10,15 @@ class TestCheckResult():
     app_utils_obj = app_utils.AppUtils()
     connection = app_utils_obj.init_connection(environ)
 
+    @staticmethod
+    def check_res_without_id_alias(res1, res2):
+        """ Ignore the id_alias field when comparing check responses"""
+        if 'id_alias' in res1:
+            del res1['id_alias']
+        if 'id_alias' in res2:
+            del res2['id_alias']
+        assert res1 == res2
+
     @pytest.mark.parametrize('use_es', [False])
     def test_check_result_methods(self, use_es):
         """ Enabling the ES layer causes test flakiness due to the index refresh interval.
@@ -34,14 +43,14 @@ class TestCheckResult():
         res = check.store_result()
         # fetch this check. latest and closest result with 0 diff should be the same
         late_res = check.get_latest_result()
-        assert (late_res == res)
+        self.check_res_without_id_alias(late_res, res)
         primary_res = check.get_primary_result()
-        assert (primary_res == res)
+        self.check_res_without_id_alias(primary_res, res)
         # check get_closest_res without and with override_date
         close_res = check.get_closest_result(0, 0)
-        assert (close_res == res)
+        self.check_res_without_id_alias(close_res, res)
         override_res = check.get_closest_result(override_date=datetime.datetime.utcnow())
-        assert (override_res == res)
+        self.check_res_without_id_alias(override_res, res)
         if check.es:
             check.connections['es'].refresh_index()
         all_res = check.get_all_results()
@@ -55,7 +64,7 @@ class TestCheckResult():
         assert (getattr(check_copy, 'uuid', None) is None)
         assert (getattr(check_copy, 'kwargs', {}) == {})
         check_copy.kwargs = {'primary': True, 'uuid': prime_uuid}
-        assert (res == check_copy.store_result())
+        self.check_res_without_id_alias(res, check_copy.store_result())
 
     @pytest.mark.parametrize('use_es', [False])
     def test_get_closest_result(self, use_es):
