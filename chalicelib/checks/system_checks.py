@@ -648,10 +648,15 @@ def snapshot_rds(connection, **kwargs):
     # snapshot ID can only have letters, numbers, and hyphens
     snap_time = datetime.datetime.strptime(kwargs['uuid'], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%dT%H-%M-%S")
     snapshot_name = 'foursight-snapshot-%s-%s' % (rds_name, snap_time)
-    res = beanstalk_utils.create_db_snapshot(rds_name, snapshot_name)
-    if res == 'Deleting':  # XXX: How this^ function works should be changed - Will 6/2/2020
+    client = boto3.client('rds', region_name=beanstalk_utils.REGION)
+    res = client.create_db_snapshot(
+             DBSnapshotIdentifier=snapshot_name,
+             DBInstanceIdentifier=rds_name
+    )
+    if not res.get('DBSnapshot'):
         check.status = 'FAIL'
-        check.summary = check.description = 'Something went wrong during snaphot creation'
+        check.summary = check.description = 'Something went wrong during snapshot creation'
+        check.full_output = res
     else:
         check.status = 'PASS'
         # there is a datetime in the response that must be str formatted
