@@ -1513,8 +1513,6 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
-    # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
-    input_json['step_function_name'] = 'tibanna_pony'
     input_json['public_postrun_json'] = True
     if mount:
         for a_file in input_json['input_files']:
@@ -1526,8 +1524,9 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
     # return
 
     try:
-        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
-        url = json.loads(e['input'])['_tibanna']['url']
+        sfn = 'tibanna_pony_' + env  # env should be either data or webdev
+        res = API().run_workflow(input_json, sfn=sfn, verbose=False)
+        url = res['_tibanna']['url']
         return url
     except Exception as e:
         return str(e)
