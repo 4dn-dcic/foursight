@@ -4,6 +4,7 @@ import random
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
+from tibanna_4dn.core import API
 from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
