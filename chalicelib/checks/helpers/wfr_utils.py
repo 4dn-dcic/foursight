@@ -1525,7 +1525,7 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
     # return
 
     try:
-        sfn = 'tibanna_pony_' + env  # env should be either data or webdev
+        sfn = 'tibanna_pony_' + env.replace('fourfront-', '')  # env should be either data, webdev or fourfront-webdev
         res = API().run_workflow(input_json, sfn=sfn, verbose=False)
         url = res['_tibanna']['url']
         return url
