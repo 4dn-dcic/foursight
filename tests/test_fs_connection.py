@@ -1,4 +1,5 @@
 from conftest import *
+from botocore.exceptions import ClientError
 
 class TestFSConnection():
     environ_info = {
