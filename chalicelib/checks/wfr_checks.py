@@ -2018,7 +2018,7 @@ def bam_re_status(connection, **kwargs):
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = [  # "AluI",
         "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
-        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII", "MseI"  # added patterns in action
+        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII", "MseI","Arima - A1, A2"  # added patterns in action
     ]
     # make a new list of files to work on
     filtered_res = []
@@ -2065,7 +2065,9 @@ def bam_re_start(connection, **kwargs):
         "NcoI_MspI_BspHI": {"motif": {"regex": ("CCATGCATGG|CCATGCATGA|CCATGCGG|TCATGCATGG|TCATGCATGA|TCATGCGG|"
                                                 "CCGCATGG|CCGCATGA|CCGCGG|GGTACGTACC|AGTACGTACC|GGCGTACC|GGTACGTACT|"
                                                 "AGTACGTACT|GGCGTACT|GGTACGCC|AGTACGCC|GGCGCC")}},
-        "MseI": {"motif": {"regex": "TTATA"}}}
+        "MseI": {"motif": {"regex": "TTATA"}},
+        "Arima - A1, A2": {"motif": {"regex": "GATCGATC|GA.TGATC|GA.TA.TC|GATCA.TC|"
+                                              "CT.ACTAG|CT.AT.AG|CTAGT.AG|CTAGCTAG"}}}
 
     if kwargs.get('start_missing_run'):
         targets.extend(bam_re_check_result.get('files_without_run', []))
