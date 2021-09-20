@@ -994,16 +994,17 @@ def check_fastq_read_id(connection, **kwargs):
 
 
 @check_function()
-def released_hela_files(connection, **kwargs):
+def released_protected_data_files(connection, **kwargs):
     '''
-    Check if fastq or bam files from HeLa cells have a visible status.
+    Check if fastq or bam files from IndividualHuman with protected_data=True
+    have a visible status
     '''
-    check = CheckResult(connection, 'released_hela_files')
+    check = CheckResult(connection, 'released_protected_data_files')
     visible_statuses = ['released to project', 'released', 'archived to project', 'archived', 'replaced']
     formats = ['fastq', 'bam']
     query = 'search/?type=File'
     query += ''.join(['&file_format.file_format=' + f for f in formats])
-    query += '&experiments.biosample.biosource.individual.display_title=4DNINEL8T2GK'
+    query += '&experiments.biosample.biosource.individual.protected_data=true'
     query += ''.join(['&status=' + s for s in visible_statuses])
     query += '&field=uuid&field=file_format&field=status'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
@@ -1015,17 +1016,17 @@ def released_hela_files(connection, **kwargs):
             'file_status': a_file['status']})
     if files['visible']:
         check.status = 'WARN'
-        check.summary = 'Fastq files from HeLa with visible status found'
-        check.description = '%s fastq files from HeLa found with status: %s' % (len(files['visible']), str(visible_statuses).strip('[]'))
+        check.summary = 'Found visible sequence files that should be restricted'
+        check.description = '%s fastq or bam files from restricted individuals found with status: %s' % (len(files['visible']), str(visible_statuses).strip('[]'))
         check.action_message = 'Will attempt to patch %s files to status=restricted' % len(files['visible'])
         check.allow_action = True
     else:
         check.status = 'PASS'
-        check.summary = 'No fastq or bam files from HeLa with visible status found'
-        check.description = 'No fastq or bam files from HeLa found with status: %s' % str(visible_statuses).strip('[]')
+        check.summary = 'No unrestricted fastq or bam files found from individuals with protected_data'
+        check.description = 'No fastq or bam files from restricted individuals found with status: %s' % str(visible_statuses).strip('[]')
     check.brief_output = {'visible': '%s files' % len(files['visible'])}
     check.full_output = files
-    check.action = 'restrict_hela'
+    check.action = 'restrict_files'
     return check
 
 
@@ -1087,16 +1088,16 @@ def released_output_from_restricted_input(connection, **kwargs):
     check.full_output = files
     check.brief_output = {'visible': '%s files' % len(files['visible']),
                           'unlinked': '%s files' % len(files['unlinked'])}
-    check.action = 'restrict_hela'
+    check.action = 'restrict_files'
     return check
 
 
 @action_function()
-def restrict_hela(connection, **kwargs):
+def restrict_files(connection, **kwargs):
     '''
-    Patch the status of visible HeLa files to "restricted"
+    Patch the status of visible sequence files to "restricted"
     '''
-    action = ActionResult(connection, 'restrict_hela')
+    action = ActionResult(connection, 'restrict_files')
     check_res = action.get_associated_check_result(kwargs)
     files_to_patch = check_res['full_output']['visible']
     action_logs = {'patch_success': [], 'patch_failure': []}
