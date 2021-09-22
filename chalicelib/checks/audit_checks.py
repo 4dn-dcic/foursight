@@ -1006,20 +1006,27 @@ def released_protected_data_files(connection, **kwargs):
     query += ''.join(['&file_format.file_format=' + f for f in formats])
     query += '&experiments.biosample.biosource.individual.protected_data=true'
     query += ''.join(['&status=' + s for s in visible_statuses])
-    query += '&field=uuid&field=file_format&field=status'
+    query += '&field=file_format&field=status&field=open_data_url'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     files = {'visible': []}
+    files_with_open_data_url = False
     for a_file in res:
-        files['visible'].append({
-            'uuid': a_file['uuid'],
+        file_report = {
+            '@id': a_file['@id'],
             'file_format': a_file['file_format']['file_format'],
-            'file_status': a_file['status']})
+            'file_status': a_file['status']}
+        if a_file.get('open_data_url'):
+            files_with_open_data_url = True
+            file_report['open_data_url'] = a_file['open_data_url']
+        files['visible'].append(file_report)
     if files['visible']:
         check.status = 'WARN'
         check.summary = 'Found visible sequence files that should be restricted'
         check.description = '%s fastq or bam files from restricted individuals found with status: %s' % (len(files['visible']), str(visible_statuses).strip('[]'))
         check.action_message = 'Will attempt to patch %s files to status=restricted' % len(files['visible'])
         check.allow_action = True
+        if files_with_open_data_url:
+            check.description += '\nNOTE: some files are in AWS Open Data bucket and should be moved manually'
     else:
         check.status = 'PASS'
         check.summary = 'No unrestricted fastq or bam files found from individuals with protected_data'
@@ -1050,27 +1057,36 @@ def released_output_from_restricted_input(connection, **kwargs):
     res_wfr = ff_utils.search_metadata(query_wfr, key=connection.ff_keys)
     # this returns wfrs that have AT LEAST one output file with these values
     files = {'visible': [], 'unlinked': []}
+    files_with_open_data_url = False
     for a_wfr in res_wfr:
         for a_file in a_wfr.get('output_files', []):
             if a_file.get('value'):
                 format = a_file['value']['file_format']['display_title']
                 status = a_file['value']['status']
                 if format in formats and status in visible_statuses:
-                    files['visible'].append({
-                        'uuid': a_file['value']['uuid'],
+                    file_report = {
+                        '@id': a_file['value']['@id'],
                         'file_format': format,
-                        'file_status': status})
+                        'file_status': status}
+                    if a_file['value'].get('open_data_url'):
+                        files_with_open_data_url = True
+                        file_report['open_data_url'] = a_file['value']['open_data_url']
+                    files['visible'].append(file_report)
     # search for visible fastq or bam processed files that are not output of any workflow
     query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value'
     query_pf += ''.join(['&status=' + st for st in visible_statuses])
     query_pf += ''.join(['&file_format.file_format=' + f for f in formats])
-    query_pf += '&field=uuid&field=status&field=file_format'
+    query_pf += '&field=file_format&field=status&field=open_data_url'
     res_pf = ff_utils.search_metadata(query_pf, key=connection.ff_keys)
-    for a_pf in res_pf:
-        files['unlinked'].append({
-            'uuid': a_pf['uuid'],
-            'file_format': a_pf['file_format']['display_title'],
-            'file_status': a_pf['status']})
+    for a_file in res_pf:
+        file_report = {
+            '@id': a_file['@id'],
+            'file_format': a_file['file_format']['display_title'],
+            'file_status': a_file['status']}
+        if a_file.get('open_data_url'):
+            files_with_open_data_url = True
+            file_report['open_data_url'] = a_file['open_data_url']
+        files['unlinked'].append(file_report)
 
     if files['visible'] or files['unlinked']:
         check.status = 'WARN'
@@ -1081,6 +1097,8 @@ def released_output_from_restricted_input(connection, **kwargs):
         if files['visible']:
             check.allow_action = True
             check.action_message = "Will attempt to patch %s 'visible' files to status=restricted" % len(files['visible'])
+        if files_with_open_data_url:
+            check.description += '\nNOTE: some files are in AWS Open Data bucket and should be moved manually'
     else:
         check.status = 'PASS'
         check.summary = "No problematic processed files found"
