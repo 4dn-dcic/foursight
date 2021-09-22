@@ -1487,7 +1487,10 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
     return log
 
 
-def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mount=False):
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, fs_env, mount=False):
+    if fs_env == 'staging':
+        raise ValueError("'staging' not an expected value for fs_env - pipelines do not run on staging."
+                         "please run on data instead.")
     all_inputs = []
     # input_files container
     input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
@@ -1524,8 +1527,10 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
     # print(json_object)
     # return
 
+    # env should be either data, webdev or fourfront-webdev
+
     try:
-        sfn = 'tibanna_pony_' + env.replace('fourfront-', '')  # env should be either data, webdev or fourfront-webdev
+        sfn = 'tibanna_pony_' + fs_env
         res = API().run_workflow(input_json, sfn=sfn, verbose=False)
         url = res['_tibanna']['url']
         return url
