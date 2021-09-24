@@ -3109,7 +3109,9 @@ def cut_and_run_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = cut_and_run_check_result.get('completed_runs')
         print("patch_meta", patch_meta)
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=False, runtype='cutnrun', pc_append=True)
+    fs_env = connection.fs_env
+    print(fs_env)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=False, runtype='cutnrun', pc_append=True)
     return action
 
 
