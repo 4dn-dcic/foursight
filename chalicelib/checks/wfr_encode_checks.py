@@ -476,6 +476,7 @@ def chipseq_start(connection, **kwargs):
     action = ActionResult(connection, 'chipseq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     chipseq_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -483,7 +484,7 @@ def chipseq_start(connection, **kwargs):
         missing_runs = chipseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = chipseq_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True, runtype='chip')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=True, runtype='chip')
     return action
 
 
@@ -846,6 +847,7 @@ def atacseq_start(connection, **kwargs):
     action = ActionResult(connection, 'atacseq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     atacseq_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -853,5 +855,5 @@ def atacseq_start(connection, **kwargs):
         missing_runs = atacseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = atacseq_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,  move_to_pc=True, runtype='atac')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=True, runtype='atac')
     return action
