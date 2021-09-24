@@ -1501,7 +1501,10 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
     return log
 
 
-def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mount=False):
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, fs_env, mount=False):
+    if fs_env == 'staging':
+        raise ValueError("'staging' not an expected value for fs_env - pipelines do not run on staging."
+                         "please run on data instead.")
     all_inputs = []
     # input_files container
     input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
@@ -1515,6 +1518,7 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
     my_s3_util = s3Utils(env=env)
     out_bucket = my_s3_util.outfile_bucket
+    sfn = 'tibanna_pony_' + fs_env
     # shorten long name_tags
     # they get combined with workflow name, and total should be less then 80
     # (even less since repeats need unique names)
@@ -1529,6 +1533,8 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
         "run_type": input_json['app_name'],
         "run_id": run_name}
     input_json['public_postrun_json'] = True
+    input_json['step_function_name'] = sfn
+    input_json['env_name'] = env
     if mount:
         for a_file in input_json['input_files']:
             a_file['mount'] = True
@@ -1538,8 +1544,9 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
     # print(json_object)
     # return
 
+    # env should be either data, webdev or fourfront-webdev
+
     try:
-        sfn = 'tibanna_pony_' + env.replace('fourfront-', '')  # env should be either data, webdev or fourfront-webdev
         res = API().run_workflow(input_json, sfn=sfn, verbose=False)
         url = res['_tibanna']['url']
         return url

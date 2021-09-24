@@ -72,7 +72,10 @@ def md5run_extra_file_start(connection, **kwargs):
         for extra_format in extra_formats:
             inp_f = {'input_file': a_file['@id'],
                      'additional_file_parameters': {'input_file': {'format_if_extra': extra_format}}}
-            url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+            url = wfr_utils.run_missing_wfr(
+                wfr_setup, inp_f, a_file['accession'],
+                connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+            )
             # aws run url
             if url.startswith('http'):
                 action_logs['runs_started'].append(url)
@@ -226,7 +229,10 @@ def md5run_start(connection, **kwargs):
         inp_f = {'input_file': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
 
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -304,7 +310,7 @@ def fastqc_start(connection, **kwargs):
         inp_f = {'input_fastq': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('fastqc', 'no_organism', attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'],
-                                        connection.ff_keys, connection.ff_env, mount=True)
+                                        connection.ff_keys, connection.ff_env, connection.fs_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -398,7 +404,10 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=False)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=False
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -495,7 +504,10 @@ def bg2bw_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedGraphToBigWig',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -608,7 +620,10 @@ def bed2beddb_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedtobeddb',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1609,7 +1624,9 @@ def bed2multivec_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedtomultivec',
                                                'no_organism',
                                                attributions, parameters)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1726,7 +1743,9 @@ def rna_strandedness_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('rna-strandedness',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1871,7 +1890,10 @@ def bamqc_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bamqc',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1968,7 +1990,10 @@ def fastq_first_line_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('fastq-first-line',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -2090,7 +2115,10 @@ def bam_re_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -2669,7 +2697,9 @@ def mcoolqc_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('mcoolQC',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -3136,7 +3166,9 @@ def template_start(connection, **kwargs):
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('template', 'no_organism', attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
