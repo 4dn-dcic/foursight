@@ -1540,7 +1540,7 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, fs_
         return str(e)
 
 
-def start_missing_run(run_info, auth, env):
+def start_missing_run(run_info, auth, env, fs_env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
                  'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas']
@@ -1572,11 +1572,11 @@ def start_missing_run(run_info, auth, env):
         raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
-    url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
+    url = run_missing_wfr(settings, inputs, name_tag, auth, env, fs_env, mount=False)
     return url
 
 
-def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='hic', pc_append=False):
+def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False, runtype='hic', pc_append=False):
     started_runs = 0
     action.description = ""
     action_log = {'started_runs': [], 'failed_runs': [], 'patched_meta': [], 'failed_meta': []}
@@ -1591,7 +1591,7 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
 
             for a_run in a_case[acc]:
                 started_runs += 1
-                url = start_missing_run(a_run, my_auth, my_env)
+                url = start_missing_run(a_run, my_auth, my_env, fs_env)
                 log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
                 if url.startswith('http'):
                     action_log['started_runs'].append([log_message, url])
