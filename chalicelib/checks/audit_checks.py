@@ -1152,10 +1152,15 @@ def external_submission_but_missing_dbxrefs(connection, **kwargs):
     days_diff = datetime.timedelta(days=delay)
     to_date = datetime.datetime.strftime(date_now - days_diff, "%Y-%m-%d %H:%M")
 
-    query = ('search/?type=Item&dbxrefs=No+value' +
-             '&external_submission.date_exported.to=' + to_date)
+    query = ('search/?type=ExperimentSet&type=Experiment&type=Biosample&type=FileFastq' +
+             '&dbxrefs=No+value&external_submission.date_exported.to=' + to_date)
     items = ff_utils.search_metadata(query + '&field=dbxrefs&field=external_submission', key=connection.ff_keys)
+    grouped_results = {}
     if items:
+        for i in items:
+            grouped_results.setdefault(i['@type'][0], []).append(i['@id'])
+        check.brief_output = {i_type: len(ids) for i_type, ids in grouped_results.items()}
+        check.full_output = grouped_results
         check.status = 'WARN'
         check.summary = 'Items missing dbxrefs found'
         check.description = '{} items exported for external submission more than {} days ago but still without dbxrefs'.format(len(items), delay)
@@ -1164,6 +1169,5 @@ def external_submission_but_missing_dbxrefs(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No items missing dbxrefs found'
         check.description = 'All items exported for external submission more than {} days ago have dbxrefs'.format(delay)
-    check.full_output = [{i['@id']: i['external_submission']} for i in items]
 
     return check
