@@ -72,7 +72,10 @@ def md5run_extra_file_start(connection, **kwargs):
         for extra_format in extra_formats:
             inp_f = {'input_file': a_file['@id'],
                      'additional_file_parameters': {'input_file': {'format_if_extra': extra_format}}}
-            url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+            url = wfr_utils.run_missing_wfr(
+                wfr_setup, inp_f, a_file['accession'],
+                connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+            )
             # aws run url
             if url.startswith('http'):
                 action_logs['runs_started'].append(url)
@@ -226,7 +229,10 @@ def md5run_start(connection, **kwargs):
         inp_f = {'input_file': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('md5', 'no_organism', attributions)
 
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -304,7 +310,7 @@ def fastqc_start(connection, **kwargs):
         inp_f = {'input_fastq': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('fastqc', 'no_organism', attributions)
         url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'],
-                                        connection.ff_keys, connection.ff_env, mount=True)
+                                        connection.ff_keys, connection.ff_env, connection.fs_env, mount=True)
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -398,7 +404,10 @@ def pairsqc_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=False)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=False
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -495,7 +504,10 @@ def bg2bw_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedGraphToBigWig',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -608,7 +620,10 @@ def bed2beddb_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedtobeddb',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -663,6 +678,7 @@ def in_situ_hic_start(connection, **kwargs):
     action = ActionResult(connection, 'in_situ_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -670,7 +686,7 @@ def in_situ_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -719,6 +735,7 @@ def dilution_hic_start(connection, **kwargs):
     action = ActionResult(connection, 'dilution_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -727,7 +744,7 @@ def dilution_hic_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -775,6 +792,7 @@ def tcc_start(connection, **kwargs):
     action = ActionResult(connection, 'tcc_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -782,7 +800,7 @@ def tcc_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -830,6 +848,7 @@ def dnase_hic_start(connection, **kwargs):
     action = ActionResult(connection, 'dnase_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -837,7 +856,7 @@ def dnase_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -885,6 +904,7 @@ def capture_hic_start(connection, **kwargs):
     action = ActionResult(connection, 'capture_hic_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -892,7 +912,7 @@ def capture_hic_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -940,6 +960,7 @@ def micro_c_start(connection, **kwargs):
     action = ActionResult(connection, 'micro_c_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -947,7 +968,7 @@ def micro_c_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -995,6 +1016,7 @@ def chia_pet_start(connection, **kwargs):
     action = ActionResult(connection, 'chia_pet_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1002,7 +1024,7 @@ def chia_pet_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False)
     return action
 
 
@@ -1050,6 +1072,7 @@ def in_situ_chia_pet_start(connection, **kwargs):
     action = ActionResult(connection, 'in_situ_chia_pet_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1057,7 +1080,7 @@ def in_situ_chia_pet_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False)
     return action
 
 
@@ -1105,6 +1128,7 @@ def trac_loop_start(connection, **kwargs):
     action = ActionResult(connection, 'trac_loop_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1112,7 +1136,7 @@ def trac_loop_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -1160,6 +1184,7 @@ def plac_seq_start(connection, **kwargs):
     action = ActionResult(connection, 'plac_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1167,7 +1192,7 @@ def plac_seq_start(connection, **kwargs):
         missing_runs = hic_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = hic_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
 
@@ -1212,6 +1237,7 @@ def repli_2_stage_start(connection, **kwargs):
     action = ActionResult(connection, 'repli_2_stage_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1219,7 +1245,7 @@ def repli_2_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
                                    move_to_pc=True,  runtype='repliseq')
     return action
 
@@ -1265,6 +1291,7 @@ def repli_multi_stage_start(connection, **kwargs):
     action = ActionResult(connection, 'repli_multi_stage_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1272,7 +1299,7 @@ def repli_multi_stage_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
                                    move_to_pc=True,  runtype='repliseq')
     return action
 
@@ -1318,6 +1345,7 @@ def tsa_seq_start(connection, **kwargs):
     action = ActionResult(connection, 'tsa_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1326,7 +1354,7 @@ def tsa_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
                                    move_to_pc=False,  runtype='repliseq')
     return action
 
@@ -1372,6 +1400,7 @@ def nad_seq_start(connection, **kwargs):
     action = ActionResult(connection, 'nad_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1379,7 +1408,7 @@ def nad_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start,
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
                                    move_to_pc=False,  runtype='repliseq')
     return action
 
@@ -1417,6 +1446,7 @@ def atac_seq_start(connection, **kwargs):
     action = ActionResult(connection, 'atac_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1424,7 +1454,7 @@ def atac_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False)
     return action
 
 
@@ -1473,6 +1503,7 @@ def margi_start(connection, **kwargs):
     action = ActionResult(connection, 'margi_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     margi_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1481,7 +1512,7 @@ def margi_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = margi_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='margi')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='margi')
     return action
 
 
@@ -1609,7 +1640,9 @@ def bed2multivec_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bedtomultivec',
                                                'no_organism',
                                                attributions, parameters)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1726,7 +1759,9 @@ def rna_strandedness_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('rna-strandedness',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1786,6 +1821,7 @@ def rna_seq_start(connection, **kwargs):
     action = ActionResult(connection, 'rna_seq_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -1793,7 +1829,7 @@ def rna_seq_start(connection, **kwargs):
         missing_runs = check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='rnaseq')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='rnaseq')
     return action
 
 
@@ -1871,7 +1907,10 @@ def bamqc_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('bamqc',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -1968,7 +2007,10 @@ def fastq_first_line_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('fastq-first-line',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -2090,7 +2132,10 @@ def bam_re_start(connection, **kwargs):
                                                'no_organism',
                                                attributions,
                                                overwrite=additional_setup)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'],
+            connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -2225,6 +2270,7 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     action = ActionResult(connection, 'insulation_scores_and_boundaries_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     insu_and_boun_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -2233,7 +2279,7 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='insulation_scores_and_boundaries', pc_append=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='insulation_scores_and_boundaries', pc_append=True)
     return action
 
 
@@ -2585,6 +2631,7 @@ def compartments_caller_start(connection, **kwargs):
     action = ActionResult(connection, 'compartments_caller_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
+    fs_env = connection.fs_env
     insu_and_boun_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
     missing_runs = []
     patch_meta = []
@@ -2593,7 +2640,7 @@ def compartments_caller_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=True, runtype='compartments', pc_append=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='compartments', pc_append=True)
     return action
 
 
@@ -2669,7 +2716,9 @@ def mcoolqc_start(connection, **kwargs):
         wfr_setup = wfrset_utils.step_settings('mcoolQC',
                                                'no_organism',
                                                attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, mount=True)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env, mount=True
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)
@@ -2732,7 +2781,9 @@ def template_start(connection, **kwargs):
         attributions = wfr_utils.get_attribution(a_file)
         inp_f = {'input_fastq': a_file['@id']}
         wfr_setup = wfrset_utils.step_settings('template', 'no_organism', attributions)
-        url = wfr_utils.run_missing_wfr(wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env)
+        url = wfr_utils.run_missing_wfr(
+            wfr_setup, inp_f, a_file['accession'], connection.ff_keys, connection.ff_env, connection.fs_env
+        )
         # aws run url
         if url.startswith('http'):
             action_logs['runs_started'].append(url)

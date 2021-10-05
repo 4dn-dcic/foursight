@@ -1,4 +1,5 @@
 from conftest import *
+from botocore.exceptions import ClientError
 
 class TestFSConnection():
     environ_info = {
@@ -50,7 +51,15 @@ class TestFSConnection():
         assert (check_res.get('ff_link') == 'not_a_real_http_link')
 
     def test_bad_ff_connection_in_fs_connection(self):
-        # do not set test=True, should raise because it's not a real FF
-        with pytest.raises(Exception) as exec_info:
-            bad_connection = fs_connection.FSConnection('test', self.environ_info, host=HOST)
-        assert ('Could not initiate connection to Fourfront' in str(exec_info.value))
+        try:
+            # Note we do not set test=True. This should raise a ClientError because it's not a real FF env.
+            fs_connection.FSConnection('nosuchenv', self.environ_info, host=HOST)
+        except ClientError as e:
+            # This is what we expect to happen.
+            assert e.response['Error']['Code'] == 404
+        except Exception as e:
+            # Should never get here.
+            raise AssertionError(f"Got unexpected error ({type(e)}: {e}")
+        else:
+            # Should never get here either.
+            raise AssertionError(f"Got no error where a ClientError was expected.")
