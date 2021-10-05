@@ -1,5 +1,5 @@
 import time
-import boto3
+import boto3  # PyCharm says nothing is arranging to load this - is that really so?
 import shutil
 import datetime
 import tempfile
@@ -7,13 +7,10 @@ from git import Repo
 from dcicutils.ff_utils import get_metadata
 from dcicutils.deployment_utils import EBDeployer
 from dcicutils.beanstalk_utils import compute_ff_stg_env
-from dcicutils.env_utils import (
-    FF_ENV_INDEXER, is_fourfront_env,
-)
-from dcicutils.beanstalk_utils import (
-    compute_ff_prd_env, beanstalk_info, is_indexing_finished
-)
-from ..vars import FOURSIGHT_PREFIX, DEV_ENV
+from dcicutils.env_utils import is_fourfront_env, indexer_env_for_env
+from dcicutils.misc_utils import ignored
+from dcicutils.beanstalk_utils import compute_ff_prd_env, beanstalk_info  # , is_indexing_finished
+# from ..vars import FOURSIGHT_PREFIX, DEV_ENV
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
@@ -72,7 +69,7 @@ def indexer_server_status(connection, **kwargs):
     check = CheckResult(connection, 'indexer_server_status')
     check.action = 'terminate_indexer_server'
     env = kwargs.get('env')
-    indexer_env = FF_ENV_INDEXER
+    indexer_env = indexer_env_for_env(env)
     description = try_to_describe_indexer_env(indexer_env)  # verify an indexer is online
     if description is None:
         check.status = 'PASS'  # could have been terminated
@@ -147,7 +144,8 @@ def provision_indexer_environment(connection, **kwargs):
         return check
 
     def _deploy_indexer(e, version):
-        description = try_to_describe_indexer_env(FF_ENV_INDEXER)
+        indexer_env = indexer_env_for_env(e)
+        description = try_to_describe_indexer_env(indexer_env)
         if description is not None:
             check.status = 'ERROR'
             check.summary = 'Tried to spin up indexer env for %s when one already exists for this portal' % e
@@ -183,6 +181,7 @@ def _deploy_application_to_beanstalk(connection, **kwargs):
     branch = kwargs.get('branch', 'master')  # by default deploy master
     application_version_name = kwargs.get('application_version_name', None)
     repo = kwargs.get('repo', None)
+    ignored(repo)  # TODO: should it be? why was it being looked up? -kmp 5-Oct-2021
 
     # error if we try to deploy prod
     if env == compute_ff_prd_env():
@@ -193,6 +192,8 @@ def _deploy_application_to_beanstalk(connection, **kwargs):
     if application_version_name is None:  # if not specified, use branch+timestamp
         application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
 
+    # TODO: This is defaulting its arguments. Should it be taking repo dataflow from above where 'repo' var is unused?
+    #       -kmp 5-Oct-2021
     repo_location = clone_repo_to_temporary_dir()
 
     try:
