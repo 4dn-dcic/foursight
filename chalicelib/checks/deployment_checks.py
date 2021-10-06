@@ -183,8 +183,6 @@ def _deploy_application_to_beanstalk(connection, **kwargs):
     env = kwargs.get('env', 'fourfront-mastertest')  # by default
     branch = kwargs.get('branch', 'master')  # by default deploy master
     application_version_name = kwargs.get('application_version_name', None)
-    repo = kwargs.get('repo', None)
-    ignored(repo)  # TODO: should it be? why was it being looked up? -kmp 5-Oct-2021
 
     # error if we try to deploy prod
     if env == compute_ff_prd_env():
@@ -195,8 +193,6 @@ def _deploy_application_to_beanstalk(connection, **kwargs):
     if application_version_name is None:  # if not specified, use branch+timestamp
         application_version_name = 'foursight-package-%s-%s' % (branch, datetime.datetime.utcnow())
 
-    # TODO: This is defaulting its arguments. Should it be taking repo dataflow from above where 'repo' var is unused?
-    #       -kmp 5-Oct-2021
     repo_location = clone_repo_to_temporary_dir()
 
     try:
