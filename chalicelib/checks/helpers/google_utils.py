@@ -1,6 +1,6 @@
-'''
+"""
 NOTICE: THIS FILE (and google client library dependency) IS TEMPORARY AND WILL BE MOVED TO **DCICUTILS** AFTER MORE COMPLETE
-'''
+"""
 
 import inspect
 from datetime import (
@@ -12,7 +12,6 @@ import pytz
 from types import FunctionType
 from calendar import monthrange
 from collections import OrderedDict
-from dcicutils.env_utils import FF_PROD_BUCKET_ENV
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 from dcicutils import ff_utils, s3_utils
@@ -46,7 +45,7 @@ DEFAULT_GOOGLE_API_CONFIG = {
 
 
 class _NestedGoogleServiceAPI:
-    '''Used as common base class for nested classes of GoogleAPISyncer.'''
+    """Used as common base class for nested classes of GoogleAPISyncer."""
     def __init__(self, syncer_instance):
         self.owner = syncer_instance
         if not self.owner.credentials:
@@ -54,7 +53,7 @@ class _NestedGoogleServiceAPI:
 
 
 def report(*args, disabled=False):
-    '''Decorator for AnalyticsAPI'''
+    """Decorator for AnalyticsAPI"""
     def decorate_func(func):
         if disabled:
             return func
@@ -67,7 +66,7 @@ def report(*args, disabled=False):
 
 
 class GoogleAPISyncer:
-    '''
+    """
     Handles authentication and common requests against Google APIs using `fourfront-ec2-account` (a service_account).
     If no access keys are provided, initiates a connection to production.
 
@@ -81,7 +80,7 @@ class GoogleAPISyncer:
         s3UtilsInstance     - Optional. Provide an S3Utils class instance connected to a bucket with a proper Google API key (if none supplied otherwise).
                               If not supplied, a new S3 connection will be created to the Fourfront production bucket.
         extra_config        - Additional Google API config, e.g. OAuth2 scopes and Analytics View ID. Shouldn't need to set this.
-    '''
+    """
 
     DEFAULT_CONFIG = DEFAULT_GOOGLE_API_CONFIG
 
@@ -105,7 +104,7 @@ class GoogleAPISyncer:
         s3UtilsInstance     = None,
         extra_config        = DEFAULT_GOOGLE_API_CONFIG
     ):
-        '''Authenticate with Google APIs and initialize sub-class instances.'''
+        """Authenticate with Google APIs and initialize sub-class instances."""
         if s3UtilsInstance is None:
             self._s3Utils = s3_utils.s3Utils(env='data')  # Google API Keys are stored on production bucket only ATM.
         else:
@@ -145,15 +144,15 @@ class GoogleAPISyncer:
 
 
     class AnalyticsAPI(_NestedGoogleServiceAPI):
-        '''
+        """
         Interface for accessing Google Analytics data using our Google API Syncer credentials.
 
         Relevant Documentation:
         https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
-        '''
+        """
 
         def transform_report_result(self, raw_result, save_raw_values=False, date_increment="daily"):
-            '''
+            """
             Transform raw responses (multi-dimensional array) from Google Analytics to a more usable
             list-of-dictionaries structure.
 
@@ -162,10 +161,10 @@ class GoogleAPISyncer:
 
             Returns:
                 A dictionary with `start_date`, `end_date`, `date_requested`, and parsed reports as `reports`.
-            '''
+            """
 
             def format_metric_value(row, metric_dict, metric_index):
-                '''Parses value from row into a numerical format, if necessary.'''
+                """Parses value from row into a numerical format, if necessary."""
                 value = row['metrics'][0]["values"][metric_index]
                 type = metric_dict['type']
                 if type == 'INTEGER':
@@ -192,12 +191,12 @@ class GoogleAPISyncer:
                 return return_items
 
             def parse_google_api_date(date_requested):
-                '''
+                """
                 Returns ISO-formatted date of a date string sent to Google Analytics.
                 Translates 'yesterday', 'XdaysAgo', from `date.today()` appropriately.
                 TODO: Return Python3 date when date.fromisoformat() is available (Python v3.7+)
                 TODO: Handle 'today' and maybe other date string options.
-                '''
+                """
 
                 tz = pytz.timezone(self.owner.extra_config.get("analytics_timezone", "US/Eastern"))
                 today = datetime.now(tz).date()
@@ -253,10 +252,10 @@ class GoogleAPISyncer:
 
 
         def get_report_provider_method_names(self):
-            '''
+            """
             Collects name of every single method defined on this classes which is
             marked with `@report` decorator (non-disabled) and returns in form of list.
-            '''
+            """
             report_requests = []
             for method_name in GoogleAPISyncer.AnalyticsAPI.__dict__.keys():
                 method_instance = getattr(self, method_name)
@@ -267,7 +266,7 @@ class GoogleAPISyncer:
 
 
         def query_reports(self, report_requests=None, **kwargs):
-            '''
+            """
             Run a query to Google Analytics API
             Accepts either a list of reportRequests (according to Google Analytics API Docs) and returns their results,
             or a list of strings which reference AnalyticsAPI methods (aside from this one).
@@ -279,7 +278,7 @@ class GoogleAPISyncer:
 
             Returns:
                 Parsed and transformed analytics data. See: GoogleAPISyncer.AnalyticsAPI.transform_report_result()
-            '''
+            """
 
             if report_requests is None:
                 report_requests = self.get_report_provider_method_names()
@@ -346,12 +345,12 @@ class GoogleAPISyncer:
 
 
         def get_latest_tracking_item_date(self, increment="daily"):
-            '''
+            """
             Queries '/search/?type=TrackingItem&sort=-google_analytics.for_date&&google_analytics.date_increment=...'
             to get date of last TrackingItem for increment in database.
 
             TODO: Accept yearly once we want to collect & viz it.
-            '''
+            """
             if increment not in ('daily', 'monthly'):
                 raise IndexError("increment parameter must be one of 'daily', 'monthly'")
 
