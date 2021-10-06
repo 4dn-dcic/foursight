@@ -3,14 +3,15 @@ import boto3  # PyCharm says nothing is arranging to load this - is that really 
 import shutil
 import datetime
 import tempfile
+
+from botocore.exceptions import ClientError
 from git import Repo
 from dcicutils.ff_utils import get_metadata
 from dcicutils.deployment_utils import EBDeployer
 from dcicutils.beanstalk_utils import compute_ff_stg_env
 from dcicutils.env_utils import is_fourfront_env, indexer_env_for_env
 from dcicutils.misc_utils import ignored
-from dcicutils.beanstalk_utils import compute_ff_prd_env, beanstalk_info  # , is_indexing_finished
-# from ..vars import FOURSIGHT_PREFIX, DEV_ENV
+from dcicutils.beanstalk_utils import compute_ff_prd_env, beanstalk_info
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
@@ -20,13 +21,15 @@ from .helpers.confchecks import *
 
 
 def try_to_describe_indexer_env(env):
-    """ Small helper that wraps beanstalk_info so we can recover from exceptions
-        XXX: Fix beanstalk_info so it will not throw IndexError if you give it bad env
     """
+    Small helper that wraps beanstalk_info so we can easily ignore error for non-existent env.
+    """
+    # XXX: Should make beanstalk_info take something like if_does_not_exist= that can be 'error' or None,
+    #      defaulting to 'error' so it's an incompatible change, but so we can pass None for our need.
     try:
         return beanstalk_info(env)
-    except IndexError:
-        return None  # env does not exist
+    except (IndexError, ClientError):
+        return None  # Previously got IndexError if env does not exist, but now get a botocore.exceptions.ClientError
     except Exception:
         raise  # something else happened we should (probably) raise
 
