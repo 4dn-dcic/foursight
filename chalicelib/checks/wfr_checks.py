@@ -2739,6 +2739,7 @@ def cut_and_run_status(connection, **kwargs):
 
     # Query needs replacement for '&' in exp type name--hardcoded to avoid query builder error
     query = '/search/?experimentset_type=replicate&type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=CUT%26RUN&status=pre-release&status=released&status=released+to+project&completed_processes!=CUT_AND_RUN_v1&tags!=skip_processing'
+    
     # Search
     res = ff_utils.search_metadata(query, key=my_auth)
     print(len(res))
@@ -2834,10 +2835,9 @@ def cut_and_run_status(connection, **kwargs):
             continue
 
         bam = []
-        bedgraph = []
-        bw = []
-        bg_ctl = []
-        bg_s2_info = {}
+        bedpe = []
+        bp_ctl = []
+        bp_s2_info = {}
 
         ready_for_step2 = True
         for an_exp in replicate_exps:
@@ -2903,7 +2903,7 @@ def cut_and_run_status(connection, **kwargs):
 
             s1_input_files = input_files
             s1_tag = exp_id
-            s1_out = ['out_bam','out_bedgraph','out_bw']
+            s1_out = ['out_bam','out_bedpe']
 
             add_input = {'parameters': parameters}
             if control:
@@ -2922,26 +2922,24 @@ def cut_and_run_status(connection, **kwargs):
             
             if step1_status == 'complete':
                 exp_bam = step1_output[0]
-                exp_bedgraph = step1_output[1]
-                exp_bw = step1_output[2]
-                patch_data = [exp_bam, exp_bedgraph, exp_bw]
+                exp_bedpe = step1_output[1]
+                #patch_data = [exp_bam, exp_bedpe]
                 # accumulate files to patch on experiment
                 
                 # patch files to experiment
-                patch_data = [exp_id, [exp_bam, exp_bedgraph, exp_bw]]
+                patch_data = [exp_id, [exp_bam, exp_bedpe]]
 
                 complete['patch_opf'].append(patch_data)
-                patch_opf[exp_id] = [exp_bam, exp_bedgraph, exp_bw]
+                patch_opf[exp_id] = [exp_bam, exp_bedpe]
                 bam.append(exp_bam)
-                bedgraph.append(exp_bedgraph)
-                bw.append(exp_bw)
+                bedpe.append(exp_bedpe)
 
-                bg_s2_info[exp_id] = {'input_bg': exp_bedgraph, 'is_control': True, 'bg_ctl': ""}
+                bp_s2_info[exp_id] = {'input_bp': exp_bedpe, 'is_control': True, 'bp_ctl': ""}
 
                 # check if control is ready (for step 2)
                 # if the experiment has a control set (NOT a control)
                 if control_set:
-                    bg_s2_info[exp_id]['is_control'] = False
+                    bp_s2_info[exp_id]['is_control'] = False
                     try:
                         exp_cnt_ids = [i['experiment']['@id'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
 
@@ -2967,7 +2965,7 @@ def cut_and_run_status(connection, **kwargs):
                             f_format = opf_fi['file_format']
 
                             # select the bedgraph file if there are several
-                            if f_format['@id'] == '/file-formats/bg/':
+                            if f_format['@id'] == '/file-formats/bedpe/':
                                 cont_file = opf_fi['@id']
 
                     # if not in opf, check processed files
@@ -2977,13 +2975,13 @@ def cut_and_run_status(connection, **kwargs):
                             for pf in pf_list:
                                 f_format = pf['file_format']
 
-                                # select the bedgraph file
-                                if f_format['@id'] == '/file-formats/bg/':
+                                # select the bedpe file
+                                if f_format['@id'] == '/file-formats/bedpe/':
                                     cont_file = pf['@id']
-                    # did we find it, if so, add it to bg_ctl
+                    # did we find it, if so, add it to bp_ctl
                     if cont_file:
-                        bg_ctl.append(cont_file)
-                        bg_s2_info[exp_id]['bg_ctl'] = cont_file
+                        bp_ctl.append(cont_file)
+                        bp_s2_info[exp_id]['bp_ctl'] = cont_file
                     else:
                         control_ready = False
 
@@ -3013,13 +3011,13 @@ def cut_and_run_status(connection, **kwargs):
 
                 # Cycle through experiments in experiment set (k is experiment id)
                 all_completed = True
-                for k,v in bg_s2_info.items():
-                    if v['bg_ctl'] and not v['is_control']:
+                for k,v in bp_s2_info.items():
+                    if v['bp_ctl'] and not v['is_control']:
                         s2_input_files = {}
-                        s2_input_files['input_bg'] = v['input_bg']
-                        s2_input_files['input_bg_ctl'] = v['bg_ctl']
-                        s2_file_gp = [v['bg_ctl'], v['input_bg']]         
-                        s2_tag = v['input_bg'] + v['bg_ctl']
+                        s2_input_files['input_bp'] = v['input_bp']
+                        s2_input_files['input_bp_ctl'] = v['bp_ctl']
+                        s2_file_gp = [v['bp_ctl'], v['input_bp']]         
+                        s2_tag = v['input_bp'] + v['bp_ctl']
                         print(s2_file_gp)
                         keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
                                                                      'step2', s2_tag, s2_file_gp,

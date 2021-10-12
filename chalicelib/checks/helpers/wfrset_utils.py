@@ -418,22 +418,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             "nthreads_trim": 4,
             "nthreads_aln": 4
             },
-        "config": {'mem': 8, 'cpu': 4, 'ebs_size': 16},
+        "config": {'mem': 12, 'cpu': 6, 'ebs_size': 40},
         "custom_pf_fields": {
             "out_bam": {
                 "genome_assembly": genome,
                 "file_type": "read positions",
                 "description": "Alignment output file from CUT&RUN"
                 },
-            "out_bedgraph": {
+            "out_bedpe": {
                 "genome_assembly": genome,
-                "file_type": "bg",
-                "description": "Vizualization output file from CUT&RUN"
-                },
-            "out_bw": {
-                "genome_assembly": genome,
-                "file_type": "bw",
-                "description": "Vizualization output file from CUT&RUN"
+                "file_type": "intermediate file",
+                "description": "Filtered reads, output file from CUT&RUN"
                 }
             }
         },
@@ -452,16 +447,10 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "description": "Alignment output file from CUT&RUN",
                 'disable_wfr_inputs': True
                 },
-            "out_bedgraph": {
+            "out_bedpe": {
                 "genome_assembly": genome,
-                "file_type": "bg",
-                "description": "Vizualization output file from CUT&RUN",
-                'disable_wfr_inputs': True
-                },
-            "out_bw": {
-                "genome_assembly": genome,
-                "file_type": "bw",
-                "description": "Vizualization output file from CUT&RUN",
+                "file_type": "bedpe",
+                "description": "Filtered reads, output file from CUT&RUN",
                 'disable_wfr_inputs': True
                 }
             }
