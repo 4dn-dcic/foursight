@@ -2788,7 +2788,7 @@ def cut_and_run_status(connection, **kwargs):
         set_acc = a_set['accession']
         
         # dict to organize patched files before patching
-        patch_opf = {}
+        # patch_opf = {}
 
         # features to check
         control = ""  # True or False (True if set is control)
@@ -2930,7 +2930,7 @@ def cut_and_run_status(connection, **kwargs):
                 patch_data = [exp_id, [exp_bam, exp_bedpe]]
 
                 complete['patch_opf'].append(patch_data)
-                patch_opf[exp_id] = [exp_bam, exp_bedpe]
+                # patch_opf[exp_id] = [exp_bam, exp_bedpe]
                 bam.append(exp_bam)
                 bedpe.append(exp_bedpe)
 
@@ -3031,10 +3031,15 @@ def cut_and_run_status(connection, **kwargs):
                                                                  organism=organism)
                 if step2_status == 'complete':
                     set_peak = step2_output[0]
-                            
+                    set_bw = step2_output[1]
+                    
+                    patch_data = [set_acc, [set_peak, set_bw]]
+                    complete['patch_opf'].append(patch_data)
+                    # patch_opf[set_acc] = [set_peak, set_bw]
+                    
                     # if the processed files are already being patched, add the new
-                    patch_opf.setdefault(k, []).append(set_peak)
-                    complete['patch_opf'] = [[uuid, files] for uuid, files in zip(patch_opf.keys(), patch_opf.values())]
+                    # patch_opf.setdefault(k, []).append(set_peak)
+                    # complete['patch_opf'] = [[uuid, files] for uuid, files in zip(patch_opf.keys(), patch_opf.values())]
                 else:
                     all_completed = False
                 
