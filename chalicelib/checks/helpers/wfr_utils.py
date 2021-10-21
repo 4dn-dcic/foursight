@@ -1558,7 +1558,7 @@ def start_missing_run(run_info, auth, env, fs_env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
                  'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas',
-                 'input_fastqs_R1', 'input_fastqs_R2', 'input_bg']
+                 'input_fastqs_R1', 'input_fastqs_R2', 'input_bedpe']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]

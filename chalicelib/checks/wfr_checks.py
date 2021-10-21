@@ -3007,31 +3007,36 @@ def cut_and_run_status(connection, **kwargs):
                 parameters = {}
                 parameters['norm'] = 'norm'
                 parameters['stringency'] = 'relaxed'
-                s2_out = ['out_bedg']
+                s2_out = ['out_bedg','out_bw']
+                s2_input_files = {'input_bedpe': [],'input_bedpe_ctl': []}
 
+                if organism == 'human':
+                    s2_input_files['chr_sizes'] = '/files-reference/4DNFIZJB62D1/'
+                if organism == 'mouse':
+                    s2_input_files['chr_sizes'] = '/files-reference/4DNFIBP173GC/'
+                
                 # Cycle through experiments in experiment set (k is experiment id)
                 all_completed = True
+                s2_file_gp = []
                 for k,v in bp_s2_info.items():
                     if v['bp_ctl'] and not v['is_control']:
-                        s2_input_files = {}
-                        s2_input_files['input_bp'] = v['input_bp']
-                        s2_input_files['input_bp_ctl'] = v['bp_ctl']
-                        s2_file_gp = [v['bp_ctl'], v['input_bp']]         
-                        s2_tag = v['input_bp'] + v['bp_ctl']
-                        print(s2_file_gp)
-                        keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
-                                                                     'step2', s2_tag, s2_file_gp,
-                                                                     s2_input_files, step_2, s2_out,
-                                                                     additional_input={'parameters': parameters},
-                                                                     organism=organism)
-                        if step2_status == 'complete':
-                            set_peak = step2_output[0]
+                        s2_input_files['input_bedpe'].append(v['input_bp'])
+                        s2_input_files['input_bedpe_ctl'].append(v['bp_ctl'])
+                        s2_file_gp.append([v['bp_ctl'], v['input_bp']])
+                s2_tag = set_acc
+                keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                                                                'step2', s2_tag, s2_file_gp,
+                                                                 s2_input_files, step_2, s2_out,
+                                                                 additional_input={'parameters': parameters},
+                                                                 organism=organism)
+                if step2_status == 'complete':
+                    set_peak = step2_output[0]
                             
-                            # if the processed files are already being patched, add the new
-                            patch_opf.setdefault(k, []).append(set_peak)
-                            complete['patch_opf'] = [[uuid, files] for uuid, files in zip(patch_opf.keys(), patch_opf.values())]
-                        else:
-                            all_completed = False
+                    # if the processed files are already being patched, add the new
+                    patch_opf.setdefault(k, []).append(set_peak)
+                    complete['patch_opf'] = [[uuid, files] for uuid, files in zip(patch_opf.keys(), patch_opf.values())]
+                else:
+                    all_completed = False
                 
                 if all_completed:
                     complete['add_tag'] = [set_acc, tag]

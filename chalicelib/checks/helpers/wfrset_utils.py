@@ -439,7 +439,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             "nthreads_trim": 4,
             "nthreads_aln": 4
             },
-        "config": {'mem': 4, 'cpu': 4},
+        "config": {'mem': 12, 'cpu': 6, 'ebs_size': 40},
         "custom_pf_fields": {
             "out_bam": {
                 "genome_assembly": genome,
@@ -449,7 +449,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 },
             "out_bedpe": {
                 "genome_assembly": genome,
-                "file_type": "bedpe",
+                "file_type": "intermediate file",
                 "description": "Filtered reads, output file from CUT&RUN",
                 'disable_wfr_inputs': True
                 }
@@ -462,8 +462,13 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'custom_pf_fields': {
             "out_bedg": {
                 "genome_assembly": genome,
-                "file_type": "bed",
+                "file_type": "peaks",
                 "description": "Peaks output file from CUT&RUN"
+                },
+            "out_bw": {
+                "genome_assembly": genome,
+                "file_type": "signal fold change",
+                "description": "Signal track from CUT&RUN"
                 }
             }
         },
