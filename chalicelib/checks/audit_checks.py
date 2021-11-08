@@ -437,8 +437,9 @@ def check_help_page_urls(connection, **kwargs):
             try:
                 request = requests.get(url.replace('&amp;', '&'), timeout=2)
                 if request.status_code == 403 and 'doi.org'.lower() in url:
-                    # requests to doi.org that get redirected to biorxiv will fail with 403 - skip
-                    continue
+                    # requests to doi.org that get redirected to biorxiv fail with 403
+                    addl_exceptions.setdefault(result['@id'], {})
+                    addl_exceptions[result['@id']][url] = str(403)
                 elif request.status_code not in [200, 412]:
                     broken_links.append((url, request.status_code))
                 elif request.status_code == 504:
