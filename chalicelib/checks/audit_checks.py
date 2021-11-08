@@ -425,6 +425,9 @@ def check_help_page_urls(connection, **kwargs):
         for url in urls:
             if url.startswith('mailto'):
                 continue
+            elif 'biorxiv.org'.lower() in url:
+                # biorxiv does not allow programmatic requests - skip
+                continue
             if url.startswith('#'):  # section of static page
                 url = result['@id'] + url
             if url.startswith('/'):  # fill in appropriate url for relative link
@@ -433,7 +436,10 @@ def check_help_page_urls(connection, **kwargs):
                 continue
             try:
                 request = requests.get(url.replace('&amp;', '&'), timeout=2)
-                if request.status_code not in [200, 412]:
+                if request.status_code == 403 and 'doi.org'.lower() in url:
+                    # requests to doi.org that get redirected to biorxiv will fail with 403 - skip
+                    continue
+                elif request.status_code not in [200, 412]:
                     broken_links.append((url, request.status_code))
                 elif request.status_code == 504:
                     timeouts.setdefault(result['@id'], [])
