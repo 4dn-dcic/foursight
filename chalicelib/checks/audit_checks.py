@@ -442,9 +442,6 @@ def check_help_page_urls(connection, **kwargs):
                     addl_exceptions[result['@id']][url] = str(403)
                 elif request.status_code not in [200, 412]:
                     broken_links.append((url, request.status_code))
-                elif request.status_code == 504:
-                    timeouts.setdefault(result['@id'], [])
-                    timeouts[result['@id']].append(url)
             except requests.exceptions.Timeout:
                 timeouts.setdefault(result['@id'], [])
                 timeouts[result['@id']].append(url)
