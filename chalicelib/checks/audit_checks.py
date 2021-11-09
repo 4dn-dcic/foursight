@@ -425,7 +425,7 @@ def check_help_page_urls(connection, **kwargs):
         for url in urls:
             if url.startswith('mailto'):
                 continue
-            elif 'biorxiv.org'.lower() in url:
+            elif 'biorxiv.org' in url.lower():
                 # biorxiv does not allow programmatic requests - skip
                 continue
             if url.startswith('#'):  # section of static page
@@ -436,7 +436,7 @@ def check_help_page_urls(connection, **kwargs):
                 continue
             try:
                 request = requests.get(url.replace('&amp;', '&'), timeout=2)
-                if request.status_code == 403 and 'doi.org'.lower() in url:
+                if request.status_code == 403 and 'doi.org' in url:
                     # requests to doi.org that get redirected to biorxiv fail with 403
                     addl_exceptions.setdefault(result['@id'], {})
                     addl_exceptions[result['@id']][url] = str(403)
