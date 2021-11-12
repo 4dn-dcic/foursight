@@ -420,7 +420,6 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "workflow_uuid": "0bf9f47a-dec1-4324-9b41-fa183880a7db",
         "overwrite_input_extra": False,
         "config": {"ebs_size": 10, "instance_type": "c5ad.2xlarge"}
-        },
     },
     {
         "app_name": "cut_and_run_workflow",
