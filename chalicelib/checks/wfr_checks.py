@@ -441,7 +441,7 @@ def bg2bw_status(connection, **kwargs):
     query = ("/search/?type=FileProcessed&file_format.file_format=bg"
              "&extra_files.file_format.display_title!=bw"
              "&status!=uploading&status!=to be uploaded by workflow"
-             "&status!=archived&status!=archived to project")
+             "&status!=archived&status!=archived to project&tags!=skip_processing")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -456,7 +456,8 @@ def bg2bw_status(connection, **kwargs):
                "&extra_files.file_format.display_title=bw"
                "&extra_files.status=uploading"
                "&extra_files.status=to be uploaded by workflow"
-               "&status!=uploading&status!=to be uploaded by workflow")
+               "&status!=uploading&status!=to be uploaded by workflow"
+               "&tags!=skip_processing")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -2738,7 +2739,10 @@ def cut_and_run_status(connection, **kwargs):
         return check
 
     # Query needs replacement for '&' in exp type name--hardcoded to avoid query builder error
-    query = '/search/?experimentset_type=replicate&type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=CUT%26RUN&status=pre-release&status=released&status=released+to+project&completed_processes!=CUT_AND_RUN_v1&tags!=skip_processing'
+    query = ("/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
+            "&experiments_in_set.experiment_type.display_title=CUT%26RUN&status=pre-release"
+            "&status=released&status=released+to+project&completed_processes!=CUT_AND_RUN_v1"
+            "&tags!=skip_processing")
     
     # Search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -2760,7 +2764,6 @@ def cut_and_run_status(connection, **kwargs):
                                                                          'references',
                                                                          'reference_pubs'])
         now = datetime.utcnow()
-        print(a_set['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
             break
         # are all files uploaded ?
@@ -2771,7 +2774,6 @@ def cut_and_run_status(connection, **kwargs):
 
         if not all_uploaded:
             final_status = a_set['accession'] + ' skipped, waiting for file upload'
-            print(final_status)
             check.brief_output.append(final_status)
             check.full_output['skipped'].append({a_set['accession']: 'files status uploading'})
             continue
@@ -2787,9 +2789,6 @@ def cut_and_run_status(connection, **kwargs):
                     'add_tag': []}
         set_acc = a_set['accession']
         
-        # dict to organize patched files before patching
-        # patch_opf = {}
-
         # features to check
         control = ""  # True or False (True if set is control)
         control_set = ""  # None if there are no control experiments or if the set is control
@@ -2923,14 +2922,12 @@ def cut_and_run_status(connection, **kwargs):
             if step1_status == 'complete':
                 exp_bam = step1_output[0]
                 exp_bedpe = step1_output[1]
-                #patch_data = [exp_bam, exp_bedpe]
                 # accumulate files to patch on experiment
                 
                 # patch files to experiment
                 patch_data = [exp_id, [exp_bam, exp_bedpe]]
 
                 complete['patch_opf'].append(patch_data)
-                # patch_opf[exp_id] = [exp_bam, exp_bedpe]
                 bam.append(exp_bam)
                 bedpe.append(exp_bedpe)
 
@@ -2954,7 +2951,6 @@ def cut_and_run_status(connection, **kwargs):
 
                     # this is the control experiment
                     exp_cnt_id = exp_cnt_ids[0]
-                    print('controlled by set', exp_cnt_id)
                    
                     exp_cnt_resp = [i for i in all_items['experiment_seq'] if i['@id'] == exp_cnt_id][0]
                     cont_file = ''
@@ -2988,7 +2984,7 @@ def cut_and_run_status(connection, **kwargs):
             else:
                 # don't patch anything if at least one exp is still missing
                 ready_for_step2 = False
-            print('step1')
+            print('step1:')
             print(step1_status, step1_output)
 
         final_status = set_acc  # start the reporting with acc
@@ -3035,11 +3031,7 @@ def cut_and_run_status(connection, **kwargs):
                     
                     patch_data = [set_acc, [set_peak, set_bw]]
                     complete['patch_opf'].append(patch_data)
-                    # patch_opf[set_acc] = [set_peak, set_bw]
                     
-                    # if the processed files are already being patched, add the new
-                    # patch_opf.setdefault(k, []).append(set_peak)
-                    # complete['patch_opf'] = [[uuid, files] for uuid, files in zip(patch_opf.keys(), patch_opf.values())]
                 else:
                     all_completed = False
                 
@@ -3118,7 +3110,6 @@ def cut_and_run_start(connection, **kwargs):
         patch_meta = cut_and_run_check_result.get('completed_runs')
         print("patch_meta", patch_meta)
     fs_env = connection.fs_env
-    print(fs_env)
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=False, runtype='cutnrun', pc_append=True)
     return action
 
