@@ -1636,8 +1636,11 @@ def files_not_registered_with_higlass(connection, **kwargs):
     ''' small helper function to check urls are valid
     '''
     def does_url_exist(path):
-        r = requests.head(path)
-        return r.status_code == requests.codes.ok
+        try:
+            r = requests.head(path)
+            return r.status_code == requests.codes.ok
+        except Exception:
+            return False
 
     for file_cat, filetypes in valid_filetypes.items():
         # If the user specified a filetype, only use that one.
