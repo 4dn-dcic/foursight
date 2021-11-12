@@ -147,6 +147,18 @@ workflow_details = {
                 "run_time": 200,
                 "accepted_versions": ['v1.2']
     },
+    'cut_and_run_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
+    },
+    'cut_and_run_ctl_workflow': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
+    },
+    'cut_and_run_peaks': {
+        "run_time": 200,
+        "accepted_versions": ['v1']
+    },
     'mcoolQC': {
                 "run_time": 200,
                 "accepted_versions": ['v1']
@@ -209,7 +221,7 @@ accepted_versions = {
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
     'GAM': [''],
-    'CUT&RUN': [''],
+    'CUT&RUN': ['CUT_AND_RUN_v1'],
     'TRIP': ['']
     }
 
@@ -442,7 +454,7 @@ def stepper(library, keep,
     problematic_run = keep['problematic_run']
     missing_run = keep['missing_run']
 
-    # Lets get the repoinse from one of the input files that will be used in this step
+    # Let's get the response from one of the input files that will be used in this step
     # if it is a list take the first item, if not use it as is
     # new_step_input_file must be the @id
     # also check for qc status
@@ -607,7 +619,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
         if len(same_type_wfrs) >= error_at_failed_runs:
             return {'status': "no complete run, too many errors"}
 
-        return {'status': "no complete run, errrored"}
+        return {'status': "no complete run, errored"}
     # if other statuses, started running
     elif run_duration < run:
         return {'status': "running"}
@@ -704,6 +716,7 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
                     my_bucket = raw_bucket
                 buckets.append(my_bucket)
         # check bucket consistency
+        print("Buckets: ", buckets)
         assert len(list(set(buckets))) == 1
         template['uuid'] = uuid
         if rename:
@@ -1408,7 +1421,8 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
               'margi': "iMARGI Processing Pipeline - Preliminary Files",
               'rnaseq': "ENCODE RNA-Seq Pipeline - Preliminary Files",
               'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files",
-              'compartments': "Compartments Signals - Preliminary Files"}
+              'compartments': "Compartments Signals - Preliminary Files",
+              "cutnrun": "CUT&RUN Pipeline - Preliminary Files"}
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
         return ['no content in patch_opf, skipping']
@@ -1543,7 +1557,8 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, fs_
 def start_missing_run(run_info, auth, env, fs_env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
-                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas']
+                 'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas',
+                 'input_fastqs_R1', 'input_fastqs_R2', 'input_bedpe']
     run_settings = run_info[1]
     inputs = run_info[2]
     name_tag = run_info[3]
@@ -1568,7 +1583,7 @@ def start_missing_run(run_info, auth, env, fs_env):
     if not attr_file:
         possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
         error_message = ('one of these argument names {} which carry the input file -not the references-'
-                         ' should be added to att_keys dictionary on foursight cgap_utils.py function start_missing_run').format(possible_keys)
+                         ' should be added to att_keys dictionary on foursight wfr_utils.py function start_missing_run').format(possible_keys)
         raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])

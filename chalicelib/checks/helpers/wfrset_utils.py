@@ -421,6 +421,67 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "overwrite_input_extra": False,
         "config": {"ebs_size": 10, "instance_type": "c5ad.2xlarge"}
     },
+    {
+        "app_name": "cut_and_run_workflow",
+        "workflow_uuid": "c5db38be-f139-4157-9832-398bda2c62d2",
+        "parameters": {
+            "nthreads_trim": 4,
+            "nthreads_aln": 4
+            },
+        "config": {'mem': 8, 'cpu': 4, 'ebs_size': 28},
+        "custom_pf_fields": {
+            "out_bam": {
+                "genome_assembly": genome,
+                "file_type": "read positions",
+                "description": "Alignment output file from CUT&RUN"
+                },
+            "out_bedpe": {
+                "genome_assembly": genome,
+                "file_type": "intermediate file",
+                "description": "Filtered reads, output file from CUT&RUN"
+            }
+        }
+    },
+    {
+        "app_name": "cut_and_run_ctl_workflow",
+        "workflow_uuid": "04895a25-b609-4fc8-b0d5-9dd9e45d9237",
+        "parameters": {
+            "nthreads_trim": 4,
+            "nthreads_aln": 4
+        },
+        "config": {'mem': 8, 'cpu': 4, 'ebs_size': 20},
+        "custom_pf_fields": {
+            "out_bam": {
+                "genome_assembly": genome,
+                "file_type": "read positions",
+                "description": "Alignment output file from CUT&RUN",
+                'disable_wfr_inputs': True
+                },
+            "out_bedpe": {
+                "genome_assembly": genome,
+                "file_type": "intermediate file",
+                "description": "Filtered reads, output file from CUT&RUN",
+                'disable_wfr_inputs': True
+            }
+        }
+    },
+    {
+        "app_name": "cut_and_run_peaks",
+        "workflow_uuid": "b43bcc4e-d566-4fbf-a0bb-375a2ad517d8",
+        "config": {'mem': 16, 'cpu': 2, 'ebs_size': 36},
+        'custom_pf_fields': {
+            "out_bedg": {
+                "genome_assembly": genome,
+                "file_type": "peaks",
+                "description": "Peaks output file from CUT&RUN"
+                },
+            "out_bw": {
+                "genome_assembly": genome,
+                "file_type": "signal fold change",
+                "description": "Signal track from CUT&RUN"
+            }
+        }
+    },
     # temp
     {
         "app_name": "",

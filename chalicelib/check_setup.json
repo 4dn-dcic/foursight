@@ -1921,6 +1921,18 @@
             }
         }
     },
+    "cut_and_run_status" : {
+        "title": "CUT&RUN Pipeline",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks": {
+                "webdev": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
     "scale_down_elasticsearch_production": {
         "title": "Scale down production ElasticSearch Cluster",
         "group": "System checks",
