@@ -1993,8 +1993,8 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
         if len(opf_exp_set_labs) == 1 and opf_exp_set_labs[0] == opf['lab']['uuid']:
             # lab of exp/set is the same as lab of opf
             continue
-        elif opf.get('contributing_labs'):
-            contr_labs = [lab['uuid'] for lab in opf['contributing_labs']]
+        else:
+            contr_labs = [lab['uuid'] for lab in opf.get('contributing_labs', [])]
             labs_to_add = [es_lab for es_lab in opf_exp_set_labs if es_lab not in contr_labs]
             if labs_to_add:
                 # some labs of exp/sets are missing from contributing labs of opf
