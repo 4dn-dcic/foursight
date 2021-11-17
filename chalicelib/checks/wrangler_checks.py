@@ -1988,21 +1988,16 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
         if opf['@id'] in [opf_probl['@id'] for opf_probl in output_opfs['problematic']]:
             # skip problematic files
             continue
-        labs_to_add = []
         opf_exp_set_labs = list(set([es_uuid_2_lab[exp_set] for exp_set in opf['exp_set_uuids']]))
-        if len(opf_exp_set_labs) == 1 and opf_exp_set_labs[0] == opf['lab']['uuid']:
-            # lab of exp/set is the same as lab of opf
-            continue
-        else:
-            contr_labs = [lab['uuid'] for lab in opf.get('contributing_labs', [])]
-            labs_to_add = [es_lab for es_lab in opf_exp_set_labs if es_lab not in contr_labs]
-            if labs_to_add:
-                # some labs of exp/sets are missing from contributing labs of opf
-                contr_labs.extend(labs_to_add)
-                output_opfs['to_patch'].append({
-                    '@id': opf['@id'],
-                    'contributing_labs': contr_labs,
-                    'lab': opf['lab']['display_title']})
+        contr_labs = [lab['uuid'] for lab in opf.get('contributing_labs', [])]
+        # add labs of Exp/Set that are not lab or contr_labs of opf
+        labs_to_add = [es_lab for es_lab in opf_exp_set_labs if es_lab != opf['lab']['uuid'] and es_lab not in contr_labs]
+        if labs_to_add:
+            contr_labs.extend(labs_to_add)
+            output_opfs['to_patch'].append({
+                '@id': opf['@id'],
+                'contributing_labs': contr_labs,
+                'lab': opf['lab']['display_title']})
 
     if output_opfs['to_patch'] or output_opfs['problematic']:
         check.status = 'WARN'
