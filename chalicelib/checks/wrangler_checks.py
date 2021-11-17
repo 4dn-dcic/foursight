@@ -1962,69 +1962,57 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
               '&track_and_facet_info.experiment_bucket%21=processed+file' +
               '&field=experiment_sets&field=experiments' +
               '&field=lab&field=contributing_labs' + from_date_query)
-    result = ff_utils.search_metadata(search, key=connection.ff_keys)
+    other_processed_files = ff_utils.search_metadata(search, key=connection.ff_keys)
 
-    opf = {'to_patch': [], 'problematic': []}
-    exp_set_uuids = []  # Exp or ExpSet uuid list
-    for res in result:
-        if res.get('experiments'):
-            if len(res['experiments']) != 1:  # this should not happen
-                opf['problematic'].append({
-                    '@id': res['@id'],
-                    'experiments': [exp['uuid'] for exp in res['experiments']]})
-                continue
-            exp_or_set = res['experiments'][0]
-        elif res.get('experiment_sets'):
-            if len(res['experiment_sets']) != 1:  # this should not happen
-                opf['problematic'].append({
-                    '@id': res['@id'],
-                    'experiment_sets': [es['uuid'] for es in res['experiment_sets']]})
-                continue
-            exp_or_set = res['experiment_sets'][0]
+    output_opfs = {'to_patch': [], 'problematic': []}
+    exp_set_uuids_to_check = []  # Exp or ExpSet uuid list
+    for opf in other_processed_files:
+        if opf.get('experiments'):
+            exp_or_sets = opf['experiments']
+        elif opf.get('experiment_sets'):
+            exp_or_sets = opf['experiment_sets']
         else:  # this should not happen
-            opf['problematic'].append({'@id': res['@id']})
+            output_opfs['problematic'].append({'@id': opf['@id']})
             continue
-        res['exp_set_uuid'] = exp_or_set['uuid']
-        if res['exp_set_uuid'] not in exp_set_uuids:
-            exp_set_uuids.append(res['exp_set_uuid'])
+        opf['exp_set_uuids'] = [exp_or_set['uuid'] for exp_or_set in exp_or_sets]
+        exp_set_uuids_to_check.extend([uuid for uuid in opf['exp_set_uuids'] if uuid not in exp_set_uuids_to_check])
 
     # get lab of Exp/ExpSet
-    result_exp_set = ff_utils.get_es_metadata(exp_set_uuids, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
-    uuid_2_lab = {}  # map file uuid to Exp/Set lab
-    for item in result_exp_set:
-        uuid_2_lab[item['uuid']] = item['properties']['lab']
+    result_exp_set = ff_utils.get_es_metadata(exp_set_uuids_to_check, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
+    es_uuid_2_lab = {}  # map Exp/Set uuid to Exp/Set lab
+    for es in result_exp_set:
+        es_uuid_2_lab[es['uuid']] = es['properties']['lab']
 
     # evaluate contributing lab
-    for res in result:
-        if res['@id'] not in [pr['@id'] for pr in opf['problematic']]:
-            contr_lab = []
-            exp_set_lab = uuid_2_lab[res['exp_set_uuid']]
-            if exp_set_lab == res['lab']['uuid']:
-                continue
-            elif res.get('contributing_labs'):
-                contr_lab = [lab['uuid'] for lab in res['contributing_labs']]
-                if exp_set_lab in contr_lab:
-                    continue
-            contr_lab.append(exp_set_lab)
-            opf['to_patch'].append({
-                '@id': res['@id'],
-                'contributing_labs': contr_lab,
-                'lab': res['lab']['display_title']})
+    for opf in other_processed_files:
+        if opf['@id'] in [opf_probl['@id'] for opf_probl in output_opfs['problematic']]:
+            # skip problematic files
+            continue
+        opf_exp_set_labs = list(set([es_uuid_2_lab[exp_set] for exp_set in opf['exp_set_uuids']]))
+        contr_labs = [lab['uuid'] for lab in opf.get('contributing_labs', [])]
+        # add labs of Exp/Set that are not lab or contr_labs of opf
+        labs_to_add = [es_lab for es_lab in opf_exp_set_labs if es_lab != opf['lab']['uuid'] and es_lab not in contr_labs]
+        if labs_to_add:
+            contr_labs.extend(labs_to_add)
+            output_opfs['to_patch'].append({
+                '@id': opf['@id'],
+                'contributing_labs': contr_labs,
+                'lab': opf['lab']['display_title']})
 
-    if opf['to_patch'] or opf['problematic']:
+    if output_opfs['to_patch'] or output_opfs['problematic']:
         check.status = 'WARN'
         check.summary = 'Supplementary files need attention'
-        check.description = '%s files %sneed patching' % (len(opf['to_patch']), from_text)
-        if opf['problematic']:
-            check.description += ' and %s files have problems with experiments or sets' % len(opf['problematic'])
-        if opf['to_patch']:
+        check.description = '%s files %sneed patching' % (len(output_opfs['to_patch']), from_text)
+        if output_opfs['problematic']:
+            check.description += ' and %s files have problems with experiments or sets' % len(output_opfs['problematic'])
+        if output_opfs['to_patch']:
             check.allow_action = True
     else:
         check.status = 'PASS'
         check.summary = 'All supplementary files have correct contributing labs'
         check.description = 'All files %sare good' % from_text
-    check.brief_output = {'to_patch': len(opf['to_patch']), 'problematic': len(opf['problematic'])}
-    check.full_output = opf
+    check.brief_output = {'to_patch': len(output_opfs['to_patch']), 'problematic': len(output_opfs['problematic'])}
+    check.full_output = output_opfs
     return check
 
 
