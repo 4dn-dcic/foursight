@@ -1,6 +1,14 @@
+import requests
+
 from conftest import *
 from dcicutils.base import get_beanstalk_real_url
 from dcicutils.misc_utils import ignored
+
+
+def _env_is_up_and_healthy(env):
+    env_url = get_beanstalk_real_url(env)
+    health_page_url = f"{env_url}/health?format=json"
+    return requests.get(health_page_url).status_code == 200
 
 
 class TestUtils:
@@ -69,11 +77,6 @@ class TestUtils:
         assert (kwargs.get('bcd') == 234)
         assert (kwargs.get('uuid').startswith('20'))
         assert (kwargs.get('primary') is False)
-
-    def _env_is_up_and_healthy(env):
-        env_url = get_beanstalk_real_url(env)
-        health_page_url = f"{env_url}/health?format=json"
-        return requests.get(health_page_url).status_code == 200
 
     def test_get_s3_utils(self):
         """
