@@ -1,4 +1,5 @@
 from conftest import *
+from dcicutils.base import get_beanstalk_real_url
 from dcicutils.misc_utils import ignored
 
 
@@ -69,26 +70,34 @@ class TestUtils:
         assert (kwargs.get('uuid').startswith('20'))
         assert (kwargs.get('primary') is False)
 
+    def _env_is_up_and_healthy(env):
+        env_url = get_beanstalk_real_url(env)
+        health_page_url = f"{env_url}/health?format=json"
+        return requests.get(health_page_url).status_code == 200
+
     def test_get_s3_utils(self):
         """
         Sanity test for s3 utils for all envs
         """
         environments = [env for env in self.app_utils_obj.init_environments() if 'cgap' not in env]
         for env in environments:
-            print(f"performing init_connection for env {env}")
-            conn = self.app_utils_obj.init_connection(env)
-            print(f"creating s3Utils for env {env}")
-            s3_obj = s3_utils.s3Utils(env=conn.ff_env)
-            assert (s3_obj.sys_bucket is not None)
-            assert (s3_obj.outfile_bucket is not None)
-            assert (s3_obj.raw_file_bucket is not None)
-            ff_keys = s3_obj.get_access_keys()
-            ff_keys_keys = ff_keys.keys()
-            ff_keys = None  # for security, so it doesn't show up in errors
-            ignored(ff_keys)
-            assert ({'server', 'key', 'secret'} <= set(ff_keys_keys))
-            hg_keys = s3_obj.get_higlass_key()
-            hg_keys_keys = hg_keys.keys()
-            hg_keys = None  # for security, so it doesn't show up in errors
-            ignored(hg_keys)
-            assert ({'server', 'key', 'secret'} <= set(hg_keys_keys))
+            if _env_is_up_and_healthy(env):
+                print(f"performing init_connection for env {env}")
+                conn = self.app_utils_obj.init_connection(env)
+                print(f"creating s3Utils for env {env}")
+                s3_obj = s3_utils.s3Utils(env=conn.ff_env)
+                assert (s3_obj.sys_bucket is not None)
+                assert (s3_obj.outfile_bucket is not None)
+                assert (s3_obj.raw_file_bucket is not None)
+                ff_keys = s3_obj.get_access_keys()
+                ff_keys_keys = ff_keys.keys()
+                ff_keys = None  # for security, so it doesn't show up in errors
+                ignored(ff_keys)
+                assert ({'server', 'key', 'secret'} <= set(ff_keys_keys))
+                hg_keys = s3_obj.get_higlass_key()
+                hg_keys_keys = hg_keys.keys()
+                hg_keys = None  # for security, so it doesn't show up in errors
+                ignored(hg_keys)
+                assert ({'server', 'key', 'secret'} <= set(hg_keys_keys))
+            else:
+                pytest.skip(f"Health page for {env} is unavailable, so test is being skipped.")
