@@ -2,6 +2,7 @@ import requests
 
 from conftest import *
 from dcicutils.base import get_beanstalk_real_url
+from dcicutils.env_utils import full_env_name
 from dcicutils.misc_utils import ignored
 
 
@@ -83,7 +84,8 @@ class TestUtils:
         """
         Sanity test for s3 utils for all envs
         """
-        if _env_is_up_and_healthy(env):
+        envname = env if env in ['data', 'staging'] else full_env_name(env)
+        if _env_is_up_and_healthy(envname):
             print(f"performing init_connection for env {env}")
             conn = self.app_utils_obj.init_connection(env)
             print(f"creating s3Utils for env {env}")
