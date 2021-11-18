@@ -1,5 +1,15 @@
+import requests
+
 from conftest import *
+from dcicutils.base import get_beanstalk_real_url
+from dcicutils.env_utils import full_env_name
 from dcicutils.misc_utils import ignored
+
+
+def _env_is_up_and_healthy(env):
+    env_url = get_beanstalk_real_url(env)
+    health_page_url = f"{env_url}/health?format=json"
+    return requests.get(health_page_url).status_code == 200
 
 
 class TestUtils:
@@ -69,12 +79,13 @@ class TestUtils:
         assert (kwargs.get('uuid').startswith('20'))
         assert (kwargs.get('primary') is False)
 
-    def test_get_s3_utils(self):
+    @pytest.mark.parametrize('env', [env for env in app_utils_obj.init_environments() if 'cgap' not in env])
+    def test_get_s3_utils(self, env):
         """
         Sanity test for s3 utils for all envs
         """
-        environments = [env for env in self.app_utils_obj.init_environments() if 'cgap' not in env]
-        for env in environments:
+        envname = env if env in ['data', 'staging'] else full_env_name(env)
+        if _env_is_up_and_healthy(envname):
             print(f"performing init_connection for env {env}")
             conn = self.app_utils_obj.init_connection(env)
             print(f"creating s3Utils for env {env}")
@@ -92,3 +103,5 @@ class TestUtils:
             hg_keys = None  # for security, so it doesn't show up in errors
             ignored(hg_keys)
             assert ({'server', 'key', 'secret'} <= set(hg_keys_keys))
+        else:
+            pytest.skip(f"Health page for {env} is unavailable, so test is being skipped.")
