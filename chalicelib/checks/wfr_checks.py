@@ -108,7 +108,10 @@ def md5run_status(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
+    # query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
+    # query = '/search/?file_format.file_format=pairs&md5sum=No+value&track_and_facet_info.experiment_type=in+situ+Hi-C&track_and_facet_info.experimental_lab=John+Lis%2C+CORNELL&type=FileProcessed&workflow_run_inputs.workflow.title%21=md5+0.2.6'
+    # query = '/search/?file_type=gene+expression&md5sum=No+value&status=uploaded&track_and_facet_info.experiment_type=RNA-seq&type=FileProcessed'
+    query = '/search/?md5sum=No+value&status=uploaded&track_and_facet_info.experiment_type%21=No+value&type=FileProcessed'
     # add file type
     f_type = kwargs.get('file_type')
     query += '&type=' + f_type
