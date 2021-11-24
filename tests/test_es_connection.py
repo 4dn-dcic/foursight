@@ -118,8 +118,13 @@ class TestESConnection():
         check4 = self.es.load_json(__file__, 'test_checks/check4.json')
         self.es.put_object(self.uuid(check1), check1)
         self.es.put_object(self.uuid(check2), check2)
-        self.es.put_object('page_children_routes/' + type + '.json', check3)
-        self.es.put_object('check_status_mismatch/' + type + '.json', check4)
+        # set id_alias so that main page checks function as intended
+        key1 = 'page_children_routes/' + type + '.json'
+        key2 = 'check_status_mismatch/' + type + '.json'
+        check3['id_alias'] = key1
+        check4['id_alias'] = key2
+        self.es.put_object(key1, check3)
+        self.es.put_object(key2, check4)
         self.es.refresh_index()
         if type == 'primary':
             res = self.es.get_main_page_checks()

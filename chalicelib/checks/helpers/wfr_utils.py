@@ -4,6 +4,7 @@ import random
 from dcicutils import ff_utils, s3Utils
 from datetime import datetime
 from operator import itemgetter
+from tibanna_4dn.core import API
 from . import wfrset_utils
 
 lambda_limit = wfrset_utils.lambda_limit
@@ -60,7 +61,7 @@ workflow_details = {
     },
     "bedGraphToBigWig": {
         "run_time": 24,
-        "accepted_versions": ["v4", "v5"]
+        "accepted_versions": ["v4", "v5", "v6"]
     },
     "bedtomultivec": {
         "run_time": 24,
@@ -1486,7 +1487,10 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
     return log
 
 
-def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mount=False):
+def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, fs_env, mount=False):
+    if fs_env == 'staging':
+        raise ValueError("'staging' not an expected value for fs_env - pipelines do not run on staging."
+                         "please run on data instead.")
     all_inputs = []
     # input_files container
     input_files = {k: v for k, v in input_files_and_params.items() if k != 'additional_file_parameters'}
@@ -1500,6 +1504,7 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
     all_inputs = sorted(all_inputs, key=itemgetter('workflow_argument_name'))
     my_s3_util = s3Utils(env=env)
     out_bucket = my_s3_util.outfile_bucket
+    sfn = 'tibanna_pony_' + fs_env
     # shorten long name_tags
     # they get combined with workflow name, and total should be less then 80
     # (even less since repeats need unique names)
@@ -1513,9 +1518,9 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
         "env": env,
         "run_type": input_json['app_name'],
         "run_id": run_name}
-    # input_json['env_name'] = CGAP_ENV_WEBPROD  # e.g., 'fourfront-cgap'
-    input_json['step_function_name'] = 'tibanna_pony'
     input_json['public_postrun_json'] = True
+    input_json['step_function_name'] = sfn
+    input_json['env_name'] = env
     if mount:
         for a_file in input_json['input_files']:
             a_file['mount'] = True
@@ -1525,15 +1530,17 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, mou
     # print(json_object)
     # return
 
+    # env should be either data, webdev or fourfront-webdev
+
     try:
-        e = ff_utils.post_metadata(input_json, 'WorkflowRun/run', key=auth)
-        url = json.loads(e['input'])['_tibanna']['url']
+        res = API().run_workflow(input_json, sfn=sfn, verbose=False)
+        url = res['_tibanna']['url']
         return url
     except Exception as e:
         return str(e)
 
 
-def start_missing_run(run_info, auth, env):
+def start_missing_run(run_info, auth, env, fs_env):
     attr_keys = ['fastq1', 'fastq', 'input_pairs', 'input_bams', 'input_fastqs',
                  'fastq_R1', 'input_bam', 'rna.fastqs_R1', 'mad_qc.quantfiles', 'mcoolfile',
                  'chip.ctl_fastqs', 'chip.fastqs', 'chip.tas', 'atac.fastqs', 'atac.tas']
@@ -1565,11 +1572,11 @@ def start_missing_run(run_info, auth, env):
         raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
-    url = run_missing_wfr(settings, inputs, name_tag, auth, env, mount=False)
+    url = run_missing_wfr(settings, inputs, name_tag, auth, env, fs_env, mount=False)
     return url
 
 
-def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_to_pc=False, runtype='hic', pc_append=False):
+def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False, runtype='hic', pc_append=False):
     started_runs = 0
     action.description = ""
     action_log = {'started_runs': [], 'failed_runs': [], 'patched_meta': [], 'failed_meta': []}
@@ -1584,7 +1591,7 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, start, move_t
 
             for a_run in a_case[acc]:
                 started_runs += 1
-                url = start_missing_run(a_run, my_auth, my_env)
+                url = start_missing_run(a_run, my_auth, my_env, fs_env)
                 log_message = acc + ' started running ' + a_run[0] + ' with ' + a_run[3]
                 if url.startswith('http'):
                     action_log['started_runs'].append([log_message, url])

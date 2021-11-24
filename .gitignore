@@ -10,6 +10,7 @@ dist/
 *.DS_Store
 htmlcov/
 coverage.xml
+.python-version
 *.ipynb
 !*LocalTest.ipynb
 requirements.txt

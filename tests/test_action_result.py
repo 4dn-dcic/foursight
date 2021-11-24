@@ -15,9 +15,12 @@ class TestActionResult():
         assert (res.get('type') == 'action')
         assert ('uuid' in res.get('kwargs'))
         action.kwargs = {'do_not_store': True}
-        unstored_res = action.store_result() # will not update latest result
+        unstored_res = action.store_result()  # will not update latest result
         assert ('do_not_store' in unstored_res['kwargs'])
         res2 = action.get_latest_result()
+        # remove id_alias's which will differ
+        del res['id_alias']
+        del res2['id_alias']
         assert (res == res2)
         # bad status
         action.kwargs = {'abc': 123}
