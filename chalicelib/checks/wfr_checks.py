@@ -2886,11 +2886,10 @@ def cut_and_run_status(connection, **kwargs):
 
             # step1 references:
             input_files = {}
+            input_files['chr_sizes'] = wfr_utils.chr_size[organism]
             if organism == 'human':
-                input_files['chr_sizes'] = '/files-reference/4DNFIZJB62D1/'
                 input_files['bowtie2_index'] = '/files-reference/4DNFIMQPTYDY/'
             if organism == 'mouse':
-                input_files['chr_sizes'] = '/files-reference/4DNFIBP173GC/'
                 input_files['bowtie2_index'] = '/files-reference/4DNFI2493SDN/'
 
             parameters = {}
@@ -3006,10 +3005,7 @@ def cut_and_run_status(connection, **kwargs):
                 s2_out = ['out_bedg','out_bw']
                 s2_input_files = {'input_bedpe': [],'input_bedpe_ctl': []}
 
-                if organism == 'human':
-                    s2_input_files['chr_sizes'] = '/files-reference/4DNFIZJB62D1/'
-                if organism == 'mouse':
-                    s2_input_files['chr_sizes'] = '/files-reference/4DNFIBP173GC/'
+                s2_input_files['chr_sizes'] = wfr_utils.chr_size[organism]
                 
                 # Cycle through experiments in experiment set (k is experiment id)
                 all_completed = True
