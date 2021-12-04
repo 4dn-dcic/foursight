@@ -3042,9 +3042,10 @@ def cut_and_run_status(connection, **kwargs):
                                                                  organism=organism)
                 if step2_status == 'complete':
                     set_peak = step2_output[0]
-                    set_bw = step2_output[1]
+                    set_narrowpeak = step2_output[1]
+                    set_bw = step2_output[2]
                     
-                    patch_data = [set_acc, [set_peak, set_bw]]
+                    patch_data = [set_acc, [set_peak, set_narrowpeak, set_bw]]
                     complete['patch_opf'].append(patch_data)
                     
                 else:
