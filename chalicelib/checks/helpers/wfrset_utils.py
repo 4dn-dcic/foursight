@@ -475,6 +475,11 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 "file_type": "peaks",
                 "description": "Peaks output file from CUT&RUN"
                 },
+            "out_narrow_bed": {
+                "genome_assembly": genome,
+                "file_type": "peaks",
+                "description": "Location of max signal in peaks output file from CUT&RUN"
+                },
             "out_bw": {
                 "genome_assembly": genome,
                 "file_type": "signal fold change",
