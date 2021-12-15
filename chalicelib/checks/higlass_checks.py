@@ -186,11 +186,13 @@ def add_viewconf_static_content_to_file(connection, item_uuid, higlass_item_uuid
     # Look through the static content to see if this section exists already.
     reuse_existing = False
     for sc in patched_static_content:
-        if sc["description"] == "auto_generated_higlass_view_config":
+        if "description" in sc and sc["description"] == "auto_generated_higlass_view_config":
             sc.update(new_sc_section)
             reuse_existing = True
-            break
-
+        else:
+            sc_content = sc.get('content')
+            if sc_content and 'uuid' in sc_content:
+                sc['content'] = sc_content.get('uuid')
     # If there is no existing Higlass static content, add the new content to the existing static_content
     if not reuse_existing:
         patched_static_content = static_content_section + [new_sc_section]
