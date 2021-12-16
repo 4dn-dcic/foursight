@@ -87,7 +87,7 @@ def md5run_extra_file_start(connection, **kwargs):
     return action
 
 
-@check_function(file_type='File', lab_title=None, start_date=None, query='/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project')
+@check_function(file_type='File', lab_title=None, start_date=None, override_query=None)
 def md5run_status(connection, **kwargs):
     """Searches for files that are uploaded to s3, but not went though md5 run.
     This check makes certain assumptions
@@ -111,7 +111,9 @@ def md5run_status(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    query = kwargs.get('query')
+    query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
+    if kwargs.get('override_query'):
+        query = kwargs['override_query']
     # add file type
     f_type = kwargs.get('file_type')
     query += '&type=' + f_type
