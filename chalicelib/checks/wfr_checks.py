@@ -3021,7 +3021,7 @@ def cut_and_run_status(connection, **kwargs):
                 parameters = {}
                 parameters['norm'] = 'norm'
                 parameters['stringency'] = 'relaxed'
-                s2_out = ['out_bedg','out_bw']
+                s2_out = ['out_bedg', 'out_narrow_bed', 'out_bw']
                 s2_input_files = {'input_bedpe': [],'input_bedpe_ctl': []}
 
                 s2_input_files['chr_sizes'] = wfr_utils.chr_size[organism]
@@ -3126,7 +3126,7 @@ def cut_and_run_start(connection, **kwargs):
         patch_meta = cut_and_run_check_result.get('completed_runs')
         print("patch_meta", patch_meta)
     fs_env = connection.fs_env
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=False, runtype='cutnrun', pc_append=True)
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=True, runtype='cutnrun', pc_append=True)
     return action
 
 

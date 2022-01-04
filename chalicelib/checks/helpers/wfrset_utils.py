@@ -468,7 +468,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     {
         "app_name": "cut_and_run_peaks",
         "workflow_uuid": "b43bcc4e-d566-4fbf-a0bb-375a2ad517d8",
-        "config": {'mem': 16, 'cpu': 2, 'ebs_size': 36},
+        "config": {'mem': 32, 'cpu': 8, 'ebs_size': 50},
         'custom_pf_fields': {
             "out_bedg": {
                 "genome_assembly": genome,
