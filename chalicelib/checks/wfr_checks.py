@@ -204,6 +204,41 @@ def md5run_status(connection, **kwargs):
     return check
 
 
+@check_function()
+def md5run_released_files(connection, **kwargs):
+    """Search for (pre)released files that do not have md5sum (this should not happen)"""
+    check = CheckResult(connection, 'md5run_released_files')
+    my_auth = connection.ff_keys
+    check.action = "md5run_start"
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query
+    statuses = ['pre-release', 'released to project',  'released',
+                'archived to project', 'archived', 'replaced']
+    query = '/search/?type=File&md5sum=No+value' + ''.join(['&status=' + s for s in statuses])
+
+    files = {}
+    files['released_without_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+        query + '&workflow_run_inputs.workflow.title%21=md5+0.2.6', key=my_auth)]
+    files['released_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+        query + '&workflow_run_inputs.workflow.title=md5+0.2.6', key=my_auth)]
+
+    if files:
+        check.status = 'WARN'
+        check.brief_output = {k: str(len(v)) + ' files' for k, v in files}
+        check.full_output = files
+        if files['released_without_md5run']:
+            check.allow_action = True
+        if files['released_with_md5run']:
+            check.action_message = 'Files with previous md5run CANNOT be run automatically'
+    else:
+        check.summary = 'All Good!'
+    return check
+
+
 @action_function(start_missing=True, start_not_switched=True)
 def md5run_start(connection, **kwargs):
     """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
@@ -216,6 +251,7 @@ def md5run_start(connection, **kwargs):
     targets = []
     if kwargs.get('start_missing'):
         targets.extend(md5run_check_result.get('files_without_md5run', []))
+        targets.extend(md5run_check_result.get('released_without_md5run', []))
     if kwargs.get('start_not_switched'):
         targets.extend(md5run_check_result.get('files_with_run_and_wrong_status', []))
     action_logs['targets'] = targets
