@@ -228,7 +228,7 @@ def md5run_released_files(connection, **kwargs):
 
     if files:
         check.status = 'WARN'
-        check.brief_output = {k: str(len(v)) + ' files' for k, v in files}
+        check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
         check.full_output = files
         if files['released_without_md5run']:
             check.allow_action = True
