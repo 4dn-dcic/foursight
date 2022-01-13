@@ -226,7 +226,7 @@ def md5run_released_files(connection, **kwargs):
     files['released_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
         query + '&workflow_run_inputs.workflow.title=md5+0.2.6', key=my_auth)]
 
-    if files:
+    if files['released_without_md5run'] or files['released_with_md5run']:
         check.status = 'WARN'
         check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
         check.full_output = files
