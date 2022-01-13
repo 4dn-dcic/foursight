@@ -1165,6 +1165,20 @@
             }
         }
     },
+    "md5run_released_files": {
+        "title": "a) MD5run released files",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "micro_c_status": {
         "title": "d) Micro-C",
         "group": "Pipeline checks",
