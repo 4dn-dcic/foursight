@@ -155,10 +155,10 @@ def md5run_status(connection, **kwargs):
                 my_bucket = raw_bucket
         # check if file is in s3
         file_id = a_file['accession']
-        head_info = my_s3_util.does_key_exist(a_file['upload_key'], my_bucket)
-        if not head_info:
-            no_s3_file.append(file_id)
-            continue
+        # head_info = my_s3_util.does_key_exist(a_file['upload_key'], my_bucket)
+        # if not head_info:
+        #     no_s3_file.append(file_id)
+        #     continue
         md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
         if md5_report['status'] == 'running':
             running.append(file_id)
