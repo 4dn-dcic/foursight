@@ -216,8 +216,8 @@ def md5run_released_files(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    statuses = ['pre-release', 'released to project',  'released',
-                'archived to project', 'archived', 'replaced']
+    statuses = ['pre-release', 'released',  # 'released to project', 'archived to project'
+                'archived', 'replaced']
     query = '/search/?type=File&md5sum=No+value' + ''.join(['&status=' + s for s in statuses])
 
     files = {}
