@@ -17,7 +17,7 @@ def ecs_status(connection, **kwargs):
     client = ECSUtils()
     cluster_arns = client.list_ecs_clusters()
     for cluster_arn in cluster_arns:
-        if 'cgap' in cluster_arn:
+        if 'Fourfront' in cluster_arn:
             cluster_services = client.list_ecs_services(cluster_name=cluster_arn)
             full_output['ECSMeta']['clusters'][cluster_arn] = {
                 'services': cluster_services
