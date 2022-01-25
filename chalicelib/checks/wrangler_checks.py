@@ -1257,6 +1257,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "replication timing": "Replication timing",
         "proximity to cellular component": "Proximity-seq",
         "dna binding": "DNA binding",
+        "dna damage detection": "DNA damage detection",
         "open chromatin": "Open Chromatin",
         "open chromatin - single cell": "Open Chromatin",
         "dna-dna pairwise interactions": "Hi-C",
