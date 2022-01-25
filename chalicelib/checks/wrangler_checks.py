@@ -1294,15 +1294,15 @@ def check_assay_classification_short_names(connection, **kwargs):
             value = subclass_dict[exptype['assay_subclassification'].lower()]
         else:
             manual[exptype['@id']] = {
-                'classification': exptype['assay_classification'],
-                'subclassification': exptype['assay_subclassification'],
+                'classification': exptype.get('assay_classification'),
+                'subclassification': exptype.get('assay_subclassification'),
                 'current subclass_short': exptype.get('assay_subclass_short'),
                 'new subclass_short': 'N/A - Attention needed'
             }
         if value and exptype.get('assay_subclass_short') != value:
             auto_patch[exptype['@id']] = {
-                'classification': exptype['assay_classification'],
-                'subclassification': exptype['assay_subclassification'],
+                'classification': exptype.get('assay_classification'),
+                'subclassification': exptype.get('assay_subclassification'),
                 'current subclass_short': exptype.get('assay_subclass_short'),
                 'new subclass_short': value
             }
