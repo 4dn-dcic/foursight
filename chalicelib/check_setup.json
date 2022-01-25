@@ -1977,5 +1977,56 @@
                 }
             }
         }
+    },
+    "ecs_status": {
+        "title": "ECS Status",
+        "group": "ECS Checks",
+        "schedule": {
+            "manual_checks": {
+                "mastertest": {
+                    "kwargs": {
+                        "primary": true
+                    },
+                "dependencies": []
+                }
+            }
+        },
+        "display": [
+            "mastertest"
+        ]
+  },
+  "update_ecs_application_versions": {
+        "title": "Update ECS Cluster Application Versions",
+        "group": "ECS Checks",
+        "schedule": {
+            "manual_checks": {
+                "mastertest": {
+                      "kwargs": {
+                          "primary": true
+                      },
+                      "dependencies": []
+                }
+            }
+        },
+        "display": [
+            "mastertest"
+        ]
+  },
+    "trigger_codebuild_run": {
+        "title": "Triggers a CodeBuild run",
+        "group": "ECS Checks",
+        "schedule": {
+            "manual_checks": {
+                "mastertest": {
+                      "kwargs": {
+                          "primary": true
+                      },
+                      "dependencies": []
+                }
+            }
+        },
+        "display": [
+            "mastertest"
+        ]
     }
 }
