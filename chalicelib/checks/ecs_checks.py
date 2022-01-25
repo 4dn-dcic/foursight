@@ -18,7 +18,8 @@ def ecs_status(connection, **kwargs):
     cluster_arns = client.list_ecs_clusters()
     for cluster_arn in cluster_arns:
         if 'Fourfront' in cluster_arn:
-            cluster_services = client.list_ecs_services(cluster_name=cluster_arn)
+            # TODO: fix dcicutils
+            cluster_services = client.client.list_services(cluster=cluster_arn).get('serviceArns', [])
             full_output['ECSMeta']['clusters'][cluster_arn] = {
                 'services': cluster_services
             }
