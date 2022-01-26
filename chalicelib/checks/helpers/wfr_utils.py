@@ -2,7 +2,7 @@ import json
 import time
 import random
 from dcicutils import ff_utils, s3Utils
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from operator import itemgetter
 from tibanna_4dn.core import API
 from . import wfrset_utils
@@ -2154,3 +2154,22 @@ def select_best_2(file_list, all_files, all_qcs):
         scores.append((score, f))
     scores = sorted(scores, key=lambda x: -x[0])
     return [scores[0][1], scores[1][1]]
+
+
+def limit_number_of_runs(check, my_auth):
+    """Checks the number of workflow runs started in the past 6h. Return the
+    number of remaining runs before hitting the rate limit of pulls from Docker
+    Hub. This is currently 200 every 6 hours."""
+    n_runs_max = 180  # this is set below the actual limit, since only a few workflows check this before running
+    statuses = ['in review by lab', 'deleted', 'pre-release', 'released to project', 'released']
+    query = '/search/?type=WorkflowRunAwsem' + ''.join(['&status=' + s for s in statuses])
+    six_h_ago = datetime.now(timezone.utc) - timedelta(hours=6)
+    query += '&date_created.from=' + datetime.strftime(six_h_ago, "%Y-%m-%d %H:%M")
+    recent_runs = ff_utils.search_metadata(query, key=my_auth)
+    n_runs_available = max(n_runs_max - len(recent_runs), 0)  # no negative results
+    if n_runs_available == 0:
+        check.status = 'PASS'
+        check.brief_output = ['Waiting (max 6h) due to Docker Hub rate limit']
+        check.summary = f'Limiting the number of workflow runs to {n_runs_max} every 6h'
+        check.full_output = {}
+    return check, n_runs_available
