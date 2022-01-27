@@ -110,6 +110,11 @@ def md5run_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
+    # check number of total workflow runs in the past 6h
+    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
+    if n_runs_available == 0:
+        return check
+
     # Build the query
     query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
     # add file type
@@ -138,7 +143,7 @@ def md5run_status(connection, **kwargs):
     my_s3_util = s3Utils(env=connection.ff_env)
     raw_bucket = my_s3_util.raw_file_bucket
     out_bucket = my_s3_util.outfile_bucket
-    for a_file in res:
+    for a_file in res[:n_runs_available]:
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -298,6 +303,11 @@ def fastqc_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
+    # check number of total workflow runs in the past 6h
+    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
+    if n_runs_available == 0:
+        return check
+
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=File&file_format.file_format=fastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
@@ -319,7 +329,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res[:n_runs_available], check, 'fastqc', my_auth, start)
     return check
 
 
@@ -1977,6 +1987,10 @@ def fastq_first_line_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
+    # check number of total workflow runs in the past 6h
+    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
+    if n_runs_available == 0:
+        return check
 
     query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'
              '&type=FileFastq&file_format.file_format=fastq&file_first_line=No value&status=restricted')
@@ -1993,7 +2007,7 @@ def fastq_first_line_status(connection, **kwargs):
     missing_run = []
 
     print('About to check for workflow runs for each file')
-    for a_file in res:
+    for a_file in res[:n_runs_available]:
         fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
