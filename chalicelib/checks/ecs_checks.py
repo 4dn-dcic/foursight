@@ -75,7 +75,7 @@ def update_ecs_application_versions(connection, **kwargs):
     cluster_name = kwargs.get('cluster_name')
     cluster_arns = client.list_ecs_clusters()
     if not cluster_name:
-        cgap_candidate = list(filter(lambda arn: 'cgap' in arn.lower(), cluster_arns))
+        cgap_candidate = list(filter(lambda arn: 'fourfront' in arn.lower(), cluster_arns))
         if not cgap_candidate:
             check.status = 'FAIL'
             check.summary = 'No clusters could be resolved from %s' % cluster_arns
