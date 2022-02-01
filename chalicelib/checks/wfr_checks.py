@@ -2152,6 +2152,7 @@ def bam_re_status(connection, **kwargs):
         check.summary += ', ' + message
         check.brief_output.insert(0, message)
         check.full_output['skipped_no_enzyme'] = [i['accession'] for i in no_nz]
+    check.summary = check.summary.lstrip(',').lstrip()
     return check
 
 
