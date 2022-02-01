@@ -827,7 +827,7 @@ def tcc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=False)
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False)
     return check
 
 
