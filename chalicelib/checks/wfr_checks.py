@@ -827,7 +827,7 @@ def tcc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False)
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=False)
     return check
 
 
@@ -2073,7 +2073,11 @@ def fastq_first_line_start(connection, **kwargs):
 
 @check_function()
 def bam_re_status(connection, **kwargs):
-    """Searches for fastq files that don't have bam_re"""
+    """Searches for fastq files that don't have bam_re
+    
+    If a file has an associated enzyme that isn't in the list of acceptable enzymes,
+    or if it has no associated enzyme, it will be added to the list of skipped files.
+    """
     # AluI pattern seems to be problematic and disabled until it its fixed
     # ChiA pet needs a new version of this check and disabled on this one
     start = datetime.utcnow()
@@ -2116,6 +2120,8 @@ def bam_re_status(connection, **kwargs):
     filtered_res = []
     # make a list of skipped files
     missing_nz_files = []
+    # files without enzyme info
+    no_nz = []
     # make a list of skipped enzymes
     missing_nz = []
     for a_file in res:
@@ -2123,11 +2129,12 @@ def bam_re_status(connection, **kwargs):
         nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
         if nz in acceptable_enzymes:
             filtered_res.append(a_file)
-        # make sure nz is not None 
-        elif nz:
+        # make sure nz is not None
+        else:
             missing_nz_files.append(a_file)
             if nz not in missing_nz:
-                missing_nz.append(nz)
+                missing_nz.append(str(nz))
+
 
     check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
