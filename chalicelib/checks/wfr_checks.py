@@ -2074,7 +2074,7 @@ def fastq_first_line_start(connection, **kwargs):
 @check_function()
 def bam_re_status(connection, **kwargs):
     """Searches for fastq files that don't have bam_re
-    
+
     If a file has an associated enzyme that isn't in the list of acceptable enzymes,
     or if it has no associated enzyme, it will be added to the list of skipped files.
     """
@@ -2130,10 +2130,12 @@ def bam_re_status(connection, **kwargs):
         if nz in acceptable_enzymes:
             filtered_res.append(a_file)
         # make sure nz is not None
-        else:
+        elif nz:
             missing_nz_files.append(a_file)
             if nz not in missing_nz:
-                missing_nz.append(str(nz))
+                missing_nz.append(nz)
+        else:
+            no_nz.append(a_file)
 
 
     check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
@@ -2145,6 +2147,11 @@ def bam_re_status(connection, **kwargs):
         check.brief_output.insert(0, message)
         check.full_output['skipped'] = [i['accession'] for i in missing_nz_files]
         check.status = 'WARN'
+    if no_nz:
+        message = 'INFO: skipping files ({}) without an associated enzyme'.format(len(no_nz))
+        check.summary += ', ' + message
+        check.brief_output.insert(0, message)
+        check.full_output['skipped_no_enzyme'] = [i['accession'] for i in no_nz]
     return check
 
 
