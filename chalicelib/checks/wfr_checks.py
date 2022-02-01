@@ -2123,7 +2123,8 @@ def bam_re_status(connection, **kwargs):
         nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
         if nz in acceptable_enzymes:
             filtered_res.append(a_file)
-        else:
+        # make sure nz is not None 
+        elif nz:
             missing_nz_files.append(a_file)
             if nz not in missing_nz:
                 missing_nz.append(nz)
