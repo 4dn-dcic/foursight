@@ -2073,7 +2073,11 @@ def fastq_first_line_start(connection, **kwargs):
 
 @check_function()
 def bam_re_status(connection, **kwargs):
-    """Searches for fastq files that don't have bam_re"""
+    """Searches for fastq files that don't have bam_re
+
+    If a file has an associated enzyme that isn't in the list of acceptable enzymes,
+    or if it has no associated enzyme, it will be added to the list of skipped files.
+    """
     # AluI pattern seems to be problematic and disabled until it its fixed
     # ChiA pet needs a new version of this check and disabled on this one
     start = datetime.utcnow()
@@ -2095,7 +2099,7 @@ def bam_re_status(connection, **kwargs):
                  # 'in+situ+ChIA-PET',
                  'PLAC-seq']
     query = ("/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&status!=uploading&status!=to be uploaded by workflow&tags!=skip_processing")
     exp_type_key = '&track_and_facet_info.experiment_type='
     exp_type_filter = exp_type_key + exp_type_key.join(exp_types)
     exclude_processed = '&percent_clipped_sites_with_re_motif=No value'
@@ -2116,6 +2120,8 @@ def bam_re_status(connection, **kwargs):
     filtered_res = []
     # make a list of skipped files
     missing_nz_files = []
+    # files without enzyme info
+    no_nz = []
     # make a list of skipped enzymes
     missing_nz = []
     for a_file in res:
@@ -2123,10 +2129,14 @@ def bam_re_status(connection, **kwargs):
         nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
         if nz in acceptable_enzymes:
             filtered_res.append(a_file)
-        else:
+        # make sure nz is not None
+        elif nz:
             missing_nz_files.append(a_file)
             if nz not in missing_nz:
                 missing_nz.append(nz)
+        else:
+            no_nz.append(a_file)
+
 
     check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
@@ -2137,6 +2147,13 @@ def bam_re_status(connection, **kwargs):
         check.brief_output.insert(0, message)
         check.full_output['skipped'] = [i['accession'] for i in missing_nz_files]
         check.status = 'WARN'
+    if no_nz:
+        message = 'INFO: skipping files ({}) without an associated enzyme'.format(len(no_nz))
+        check.summary += ', ' + message
+        check.brief_output.insert(0, message)
+        check.full_output['skipped_no_enzyme'] = [i['accession'] for i in no_nz]
+        check.status = 'WARN'
+    check.summary = check.summary.lstrip(',').lstrip()
     return check
 
 
