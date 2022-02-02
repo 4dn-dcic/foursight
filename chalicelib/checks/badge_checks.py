@@ -400,7 +400,7 @@ def repsets_have_bio_reps(connection, **kwargs):
     check.full_output = {'Add badge': to_add,
                          'Remove badge': to_remove,
                          'Keep badge and edit messages': to_edit,
-                         'Keep badge (no change)': ok}
+                         'Keep badge (no change)': len(ok)}
     check.brief_output = {REV_KEY: audits[REV_KEY]}
     check.brief_output[RELEASED_KEY] = {
         k: {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []} for k in check.full_output.keys()
@@ -412,7 +412,7 @@ def repsets_have_bio_reps(connection, **kwargs):
             for key in ["Add badge", 'Remove badge', 'Keep badge and edit messages']:
                 if name in check.full_output[key].keys():
                     check.brief_output[RELEASED_KEY][key][k].append(item)
-            if name in check.full_output['Keep badge (no change)']:
+            if name in ok:
                 nochg_cnt += 1
         check.brief_output[RELEASED_KEY]['Keep badge (no change)'][k] = nochg_cnt
     return check
