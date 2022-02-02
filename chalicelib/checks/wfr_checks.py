@@ -2099,7 +2099,7 @@ def bam_re_status(connection, **kwargs):
                  # 'in+situ+ChIA-PET',
                  'PLAC-seq']
     query = ("/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&status!=uploading&status!=to be uploaded by workflow&tags!=skip_processing")
     exp_type_key = '&track_and_facet_info.experiment_type='
     exp_type_filter = exp_type_key + exp_type_key.join(exp_types)
     exclude_processed = '&percent_clipped_sites_with_re_motif=No value'
@@ -2152,6 +2152,7 @@ def bam_re_status(connection, **kwargs):
         check.summary += ', ' + message
         check.brief_output.insert(0, message)
         check.full_output['skipped_no_enzyme'] = [i['accession'] for i in no_nz]
+        check.status = 'WARN'
     check.summary = check.summary.lstrip(',').lstrip()
     return check
 
