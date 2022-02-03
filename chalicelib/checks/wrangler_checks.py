@@ -273,7 +273,7 @@ def biorxiv_is_now_published(connection, **kwargs):
             do_author_search = True  # problem with request to pubmed
 
         if do_author_search and authors:
-            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(' ')[-1]) for a in authors])
+            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(',')[0]) for a in authors])
             author_query = pubmed_url + author_string
             time.sleep(1)
             res = requests.get(author_query)
