@@ -497,6 +497,47 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
 
 @check_function()
+def biorxiv_version_update(connection, **kwargs):
+    '''Collect current bioRxiv Publications (not yet replaced with PubmedID)
+    to re-index them. This will pull the latest version of the biorxiv record.
+    This is important in case the title or authors list change.'''
+    check = CheckResult(connection, 'biorxiv_version_update')
+    check.action = 'reindex_biorxiv'
+    query = '/search/?type=Publication&journal=bioRxiv&status=current'
+    result = ff_utils.search_metadata(query, key=connection.ff_keys)
+    check.status = 'PASS'  # never WARN, this is just to automate the action
+    if result:
+        check.allow_action = True
+        check.summary = f'{len(result)} current bioRxiv Publications found'
+        check.description = f'Will re-index {len(result)} bioRxiv Publications to make sure the record is up to date'
+    else:
+        check.summary = check.description = 'No current bioRxiv Publications'
+    check.brief_output = [item['short_attribution'] for item in result]
+    check.full_output = [item['uuid'] for item in result]
+    return check
+
+
+@action_function()
+def reindex_biorxiv(connection, **kwargs):
+    '''Empty-patch Publication to trigger _update in fourfront. Note that this
+    will cause reindexing of all associated items that are invalidated.'''
+    action = ActionResult(connection, 'reindex_biorxiv')
+    check_res = action.get_associated_check_result(kwargs)
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    for biorxiv_uuid in check_res.get('full_output', []):
+        empty_patch = {}
+        try:
+            ff_utils.patch_metadata(empty_patch, obj_id=biorxiv_uuid, key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({biorxiv_uuid: str(e)})
+        else:
+            action_logs['patch_success'].append(biorxiv_uuid)
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
+
+
+@check_function()
 def item_counts_by_type(connection, **kwargs):
     def process_counts(count_str):
         # specifically formatted for FF health page

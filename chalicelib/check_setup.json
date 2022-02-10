@@ -106,6 +106,20 @@
             }
         }
     },
+    "biorxiv_version_update": {
+        "title": "biorxiv version update",
+        "group": "Metadata checks",
+        "schedule": {
+            "monthly_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "biosource_cell_line_value": {
         "title": "Cell line biosources without cell_line metadata",
         "group": "Audit checks",
