@@ -557,7 +557,10 @@ def reindex_biorxiv(connection, **kwargs):
             action_logs['patch_failure'].append({biorxiv['uuid']: str(e)})
         else:
             action_logs['patch_success'].append(biorxiv['uuid'])
-    action.status = 'DONE'
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
     action.output = action_logs
     return action
 
