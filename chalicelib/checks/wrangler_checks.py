@@ -498,22 +498,47 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 
 @check_function()
 def biorxiv_version_update(connection, **kwargs):
-    '''Collect current bioRxiv Publications (not yet replaced with PubmedID)
-    to re-index them. This will pull the latest version of the biorxiv record.
-    This is important in case the title or authors list change.'''
+    '''Check if current bioRxiv Publications (not yet replaced with PubmedID)
+    have different title or authors and thus need an update.'''
     check = CheckResult(connection, 'biorxiv_version_update')
     check.action = 'reindex_biorxiv'
     query = '/search/?type=Publication&journal=bioRxiv&status=current'
-    result = ff_utils.search_metadata(query, key=connection.ff_keys)
-    check.status = 'PASS'  # never WARN, this is just to automate the action
-    if result:
+    query += ''.join(['&field=' + f for f in ['title', 'authors', 'short_attribution', 'uuid', 'ID']])
+    current_biorxivs = ff_utils.search_metadata(query, key=connection.ff_keys)
+
+    items_to_update = []
+    biorxiv_api = 'https://api.biorxiv.org/details/biorxiv/'
+    for publication in current_biorxivs:
+        if not publication['ID'].startswith('doi:'):
+            continue
+        doi = publication['ID'].split(':')[1]
+        for count in range(5):  # try fetching data a few times
+            r = requests.get(biorxiv_api + doi)
+            if r.status_code == 200:
+                break
+        else:
+            check.status = "FAIL"
+            check.description = "Too many biorxiv timeouts. Maybe they're down."
+            return check
+        record_dict = r.json()['collection'][-1]  # get latest version
+        publication['title_new'] = record_dict.get('title', '')
+        unformatted_authors = record_dict.get('authors', [])
+        # format authors according to 4DN schema
+        publication['authors_new'] = [a.replace(" ", "").replace(".", "").replace(",", " ") for a in unformatted_authors.split(";") if a]
+
+        if publication.get('title', '') != publication['title_new'] or publication.get('authors', []) != publication['authors_new']:
+            items_to_update.append(publication)
+
+    if items_to_update:
+        check.status = 'WARN'
+        check.summary = f'{len(items_to_update)} current bioRxiv Publications need update'
+        check.description = f'Will re-index {len(items_to_update)} bioRxiv Publications because title or authors changed'
+        check.brief_output = [i['short_attribution'] for i in items_to_update]
+        check.full_output = items_to_update
         check.allow_action = True
-        check.summary = f'{len(result)} current bioRxiv Publications found'
-        check.description = f'Will re-index {len(result)} bioRxiv Publications to make sure the record is up to date'
     else:
-        check.summary = check.description = 'No current bioRxiv Publications'
-    check.brief_output = [item['short_attribution'] for item in result]
-    check.full_output = [item['uuid'] for item in result]
+        check.status = 'PASS'
+        check.summary = check.description = 'All current bioRxiv Publications are up to date'
     return check
 
 
@@ -524,14 +549,14 @@ def reindex_biorxiv(connection, **kwargs):
     action = ActionResult(connection, 'reindex_biorxiv')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
-    for biorxiv_uuid in check_res.get('full_output', []):
+    for biorxiv in check_res.get('full_output', []):
         empty_patch = {}
         try:
-            ff_utils.patch_metadata(empty_patch, obj_id=biorxiv_uuid, key=connection.ff_keys)
+            ff_utils.patch_metadata(empty_patch, obj_id=biorxiv['uuid'], key=connection.ff_keys)
         except Exception as e:
-            action_logs['patch_failure'].append({biorxiv_uuid: str(e)})
+            action_logs['patch_failure'].append({biorxiv['uuid']: str(e)})
         else:
-            action_logs['patch_success'].append(biorxiv_uuid)
+            action_logs['patch_success'].append(biorxiv['uuid'])
     action.status = 'DONE'
     action.output = action_logs
     return action

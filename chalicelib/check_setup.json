@@ -110,7 +110,7 @@
         "title": "biorxiv version update",
         "group": "Metadata checks",
         "schedule": {
-            "monthly_checks": {
+            "monday_checks": {
                 "data": {
                     "dependencies": [],
                     "kwargs": {
