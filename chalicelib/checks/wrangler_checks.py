@@ -499,16 +499,16 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
 @check_function()
 def biorxiv_version_update(connection, **kwargs):
     '''Check if current bioRxiv Publications (not yet replaced with PubmedID)
-    have different title or authors and thus need an update.'''
+    are up to date with the bioRxiv database.'''
     check = CheckResult(connection, 'biorxiv_version_update')
     check.action = 'reindex_biorxiv'
     query = '/search/?type=Publication&journal=bioRxiv&status=current'
-    query += ''.join(['&field=' + f for f in ['title', 'authors', 'short_attribution', 'uuid', 'ID']])
+    query += ''.join(['&field=' + f for f in ['version', 'short_attribution', 'ID']])
     current_biorxivs = ff_utils.search_metadata(query, key=connection.ff_keys)
 
     items_to_update = []
     biorxiv_api = 'https://api.biorxiv.org/details/biorxiv/'
-    for publication in current_biorxivs:
+    for publication in current_biorxivs[:1]:
         if not publication['ID'].startswith('doi:'):
             continue
         doi = publication['ID'].split(':')[1]
@@ -521,18 +521,14 @@ def biorxiv_version_update(connection, **kwargs):
             check.description = "Too many biorxiv timeouts. Maybe they're down."
             return check
         record_dict = r.json()['collection'][-1]  # get latest version
-        publication['title_new'] = record_dict.get('title', '')
-        unformatted_authors = record_dict.get('authors', [])
-        # format authors according to 4DN schema
-        publication['authors_new'] = [a.replace(" ", "").replace(".", "").replace(",", " ") for a in unformatted_authors.split(";") if a]
-
-        if publication.get('title', '') != publication['title_new'] or publication.get('authors', []) != publication['authors_new']:
+        publication['version_new'] = record_dict.get('version', 0)
+        if int(publication.get('version', 0)) < int(publication['version_new']):
             items_to_update.append(publication)
 
     if items_to_update:
         check.status = 'WARN'
         check.summary = f'{len(items_to_update)} current bioRxiv Publications need update'
-        check.description = f'Will re-index {len(items_to_update)} bioRxiv Publications because title or authors changed'
+        check.description = f'Will re-index {len(items_to_update)} bioRxiv Publications because biorxiv version is higher'
         check.brief_output = [i['short_attribution'] for i in items_to_update]
         check.full_output = items_to_update
         check.allow_action = True
@@ -544,19 +540,18 @@ def biorxiv_version_update(connection, **kwargs):
 
 @action_function()
 def reindex_biorxiv(connection, **kwargs):
-    '''Empty-patch Publication to trigger _update in fourfront. Note that this
-    will cause reindexing of all associated items that are invalidated.'''
+    '''Empty-patch Publication to trigger _update in fourfront'''
     action = ActionResult(connection, 'reindex_biorxiv')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
     for biorxiv in check_res.get('full_output', []):
         empty_patch = {}
         try:
-            ff_utils.patch_metadata(empty_patch, obj_id=biorxiv['uuid'], key=connection.ff_keys)
+            ff_utils.patch_metadata(empty_patch, obj_id=biorxiv['@id'], key=connection.ff_keys)
         except Exception as e:
-            action_logs['patch_failure'].append({biorxiv['uuid']: str(e)})
+            action_logs['patch_failure'].append({biorxiv['@id']: str(e)})
         else:
-            action_logs['patch_success'].append(biorxiv['uuid'])
+            action_logs['patch_success'].append(biorxiv['@id'])
     if action_logs['patch_failure']:
         action.status = 'FAIL'
     else:
