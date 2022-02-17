@@ -2138,8 +2138,10 @@ def add_grouped_with_file_relation(connection, **kwargs):
 @check_function(days_back=1)
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
-        If any result is found, update the summary tables.
-    '''
+    If any actionable result is found, trigger update of all summary tables.
+    If only problematic results are found (e.g. due to dataset_label missing),
+    no action can be run.
+    Keeps a list of problematic results until they are fixed.'''
     check = CheckResult(connection, 'check_hic_summary_tables')
     check.action = 'patch_hic_summary_tables'
     query = ('search/?type=ExperimentSetReplicate&status=released' +
@@ -2149,7 +2151,23 @@ def check_hic_summary_tables(connection, **kwargs):
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
-    if len(new_sets) == 0:  # no update needed
+    # get problematic sets from the most recent successful primary check
+    for days in range(10):
+        # this is a daily check
+        last_result = check.get_closest_result(diff_hours=days*24)
+        if last_result['kwargs'].get('primary') and last_result['status'] != 'ERROR':
+            break
+    else:
+        # too many recent primary checks that errored
+        check.brief_output = 'Can not find a recent non-ERROR primary check'
+        check.full_output = {}
+        check.status = 'ERROR'
+        return check
+    previous_problematic_sets = False
+    if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+        previous_problematic_sets = True
+
+    if len(new_sets) == 0 and previous_problematic_sets is False:  # no update needed
         check.status = 'PASS'
         check.summary = check.description = "No update needed for Hi-C summary tables"
         return check
