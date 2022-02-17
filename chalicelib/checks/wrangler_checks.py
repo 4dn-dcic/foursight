@@ -2185,17 +2185,22 @@ def check_hic_summary_tables(connection, **kwargs):
             row.setdefault('Biosources', set()).add(biosource)
 
             journal_mapping = {
-                'Science (New York, N.Y.)': 'Science',
-                'Genome biology': 'Genome Biol',
-                'Nature biotechnology': 'Nat Biotechnol',
-                'Nature genetics': 'Nat Genet',
-                'Nature communications': 'Nat Commun',
-                'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
-                'The Journal of biological chemistry': 'J Biol Chem',
+                'bioRxiv : the preprint server for biology': 'bioRxiv',
+                'Cell research': 'Cell Res',
                 'The EMBO journal': 'EMBO J',
+                'Genome biology': 'Genome Biol',
+                'The Journal of biological chemistry': 'J Biol Chem',
                 'The Journal of cell biology': 'J Cell Biol',
+                'Molecular cell': 'Mol Cell',
+                'Nature biotechnology': 'Nat Biotechnol',
                 'Nature cell biology': 'Nat Cell Biol',
-                'Molecular cell': 'Mol Cell'
+                'Nature communications': 'Nat Commun',
+                'Nature genetics': 'Nat Genet',
+                'Nature methods': 'Nat Methods',
+                'Nature structural and molecular biology': 'Nat Struct Mol Biol',
+                'Nucleic acids research': 'Nucleic Acids Res',
+                'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
+                'Science (New York, N.Y.)': 'Science',
             }
             pub = expset.get('produced_in_pub')
             if pub:
