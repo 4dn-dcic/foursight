@@ -2152,17 +2152,18 @@ def check_hic_summary_tables(connection, **kwargs):
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
     # get problematic sets from the most recent successful primary check
-    for days in range(10):
-        # this is a daily check
+    last_result = check.get_primary_result()
+    days = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        days += 1
         last_result = check.get_closest_result(diff_hours=days*24)
-        if last_result['kwargs'].get('primary') and last_result['status'] != 'ERROR':
-            break
-    else:
-        # too many recent primary checks that errored
-        check.brief_output = 'Can not find a recent non-ERROR primary check'
-        check.full_output = {}
-        check.status = 'ERROR'
-        return check
+        if days > 10:
+            # too many recent primary checks that errored
+            check.brief_output = 'Can not find a recent non-ERROR primary check'
+            check.full_output = {}
+            check.status = 'ERROR'
+            return check
+
     previous_problematic_sets = False
     if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
         previous_problematic_sets = True
