@@ -2139,7 +2139,7 @@ def add_grouped_with_file_relation(connection, **kwargs):
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
     If any actionable result is found, trigger update of all summary tables.
-    If only problematic results are found (e.g. due to dataset_label missing),
+    If problematic results are found (e.g. due to dataset_label missing),
     no action can be run.
     Keeps a list of problematic results until they are fixed.'''
     check = CheckResult(connection, 'check_hic_summary_tables')
