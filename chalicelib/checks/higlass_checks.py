@@ -1739,7 +1739,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                         file_info['upload_key'] = extra['upload_key']
                         file_info['is_extra'] = True  # add a flag that this is an extra file that won't have it's own open_data_url
                         if extra_file_format == 'beddb':
-                            current_file_cat = "proc" # We assume that extra beddb files are always processed file and live in the outfile_bucket
+                            current_file_cat = "proc" # We assume that extra beddb files are always processed files and live in the outfile_bucket
                         break
                 if 'upload_key' not in file_info:
                     # bw or beddb file not found, do not consider this file for registration
