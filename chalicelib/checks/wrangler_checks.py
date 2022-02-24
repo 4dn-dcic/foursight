@@ -2138,8 +2138,10 @@ def add_grouped_with_file_relation(connection, **kwargs):
 @check_function(days_back=1)
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
-        If any result is found, update the summary tables.
-    '''
+    If any actionable result is found, trigger update of all summary tables.
+    If problematic results are found (e.g. due to dataset_label missing),
+    no action can be run.
+    Keeps a list of problematic results until they are fixed.'''
     check = CheckResult(connection, 'check_hic_summary_tables')
     check.action = 'patch_hic_summary_tables'
     query = ('search/?type=ExperimentSetReplicate&status=released' +
@@ -2149,7 +2151,24 @@ def check_hic_summary_tables(connection, **kwargs):
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
-    if len(new_sets) == 0:  # no update needed
+    # get problematic sets from the most recent successful primary check
+    last_result = check.get_primary_result()
+    days = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        days += 1
+        last_result = check.get_closest_result(diff_hours=days*24)
+        if days > 10:
+            # too many recent primary checks that errored
+            check.brief_output = 'Can not find a recent non-ERROR primary check'
+            check.full_output = {}
+            check.status = 'ERROR'
+            return check
+
+    previous_problematic_sets = False
+    if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+        previous_problematic_sets = True
+
+    if len(new_sets) == 0 and previous_problematic_sets is False:  # no update needed
         check.status = 'PASS'
         check.summary = check.description = "No update needed for Hi-C summary tables"
         return check
@@ -2176,7 +2195,7 @@ def check_hic_summary_tables(connection, **kwargs):
             row['Replicate Sets'][exp_type] = row['Replicate Sets'].get(exp_type, 0) + 1
 
             biosample = expset['experiments_in_set'][0]['biosample']
-            row.setdefault('Species', set()).add(biosample['biosource'][0].get('individual', {}).get('organism', {}).get('name', 'unknown species'))
+            row.setdefault('Species', set()).add(biosample['biosource'][0].get('organism', {}).get('name', 'unknown species'))
 
             if biosample['biosource'][0].get('cell_line'):
                 biosource = biosample['biosource'][0]['cell_line']['display_title']
@@ -2185,17 +2204,22 @@ def check_hic_summary_tables(connection, **kwargs):
             row.setdefault('Biosources', set()).add(biosource)
 
             journal_mapping = {
-                'Science (New York, N.Y.)': 'Science',
-                'Genome biology': 'Genome Biol',
-                'Nature biotechnology': 'Nat Biotechnol',
-                'Nature genetics': 'Nat Genet',
-                'Nature communications': 'Nat Commun',
-                'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
-                'The Journal of biological chemistry': 'J Biol Chem',
+                'bioRxiv : the preprint server for biology': 'bioRxiv',
+                'Cell research': 'Cell Res',
                 'The EMBO journal': 'EMBO J',
+                'Genome biology': 'Genome Biol',
+                'The Journal of biological chemistry': 'J Biol Chem',
                 'The Journal of cell biology': 'J Cell Biol',
+                'Molecular cell': 'Mol Cell',
+                'Nature biotechnology': 'Nat Biotechnol',
                 'Nature cell biology': 'Nat Cell Biol',
-                'Molecular cell': 'Mol Cell'
+                'Nature communications': 'Nat Commun',
+                'Nature genetics': 'Nat Genet',
+                'Nature methods': 'Nat Methods',
+                'Nature structural and molecular biology': 'Nat Struct Mol Biol',
+                'Nucleic acids research': 'Nucleic Acids Res',
+                'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
+                'Science (New York, N.Y.)': 'Science',
             }
             pub = expset.get('produced_in_pub')
             if pub:
