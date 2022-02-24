@@ -273,7 +273,7 @@ def biorxiv_is_now_published(connection, **kwargs):
             do_author_search = True  # problem with request to pubmed
 
         if do_author_search and authors:
-            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(' ')[-1]) for a in authors])
+            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(' ')[0]) for a in authors])
             author_query = pubmed_url + author_string
             time.sleep(1)
             res = requests.get(author_query)
@@ -1257,6 +1257,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "replication timing": "Replication timing",
         "proximity to cellular component": "Proximity-seq",
         "dna binding": "DNA binding",
+        "dna damage detection": "DNA damage detection",
         "open chromatin": "Open Chromatin",
         "open chromatin - single cell": "Open Chromatin",
         "dna-dna pairwise interactions": "Hi-C",
@@ -1294,15 +1295,15 @@ def check_assay_classification_short_names(connection, **kwargs):
             value = subclass_dict[exptype['assay_subclassification'].lower()]
         else:
             manual[exptype['@id']] = {
-                'classification': exptype['assay_classification'],
-                'subclassification': exptype['assay_subclassification'],
+                'classification': exptype.get('assay_classification'),
+                'subclassification': exptype.get('assay_subclassification'),
                 'current subclass_short': exptype.get('assay_subclass_short'),
                 'new subclass_short': 'N/A - Attention needed'
             }
         if value and exptype.get('assay_subclass_short') != value:
             auto_patch[exptype['@id']] = {
-                'classification': exptype['assay_classification'],
-                'subclassification': exptype['assay_subclassification'],
+                'classification': exptype.get('assay_classification'),
+                'subclassification': exptype.get('assay_subclassification'),
                 'current subclass_short': exptype.get('assay_subclass_short'),
                 'new subclass_short': value
             }

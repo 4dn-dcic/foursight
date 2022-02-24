@@ -872,7 +872,7 @@
         "title": "l) Fastq first line",
         "group": "Pipeline checks",
         "schedule": {
-            "hourly_checks_2": {
+            "hourly_checks_3": {
                 "data": {
                     "dependencies": [],
                     "kwargs": {
