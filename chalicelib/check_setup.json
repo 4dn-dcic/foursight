@@ -521,7 +521,8 @@
                 "data": {
                     "dependencies": [],
                     "kwargs": {
-                        "primary": true
+                        "primary": true,
+                        "queue_action": "prod"
                     }
                 }
             }

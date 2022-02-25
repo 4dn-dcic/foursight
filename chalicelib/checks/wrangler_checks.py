@@ -508,7 +508,7 @@ def biorxiv_version_update(connection, **kwargs):
 
     items_to_update = []
     biorxiv_api = 'https://api.biorxiv.org/details/biorxiv/'
-    for publication in current_biorxivs[:1]:
+    for publication in current_biorxivs:
         if not publication['ID'].startswith('doi:'):
             continue
         doi = publication['ID'].split(':')[1]
