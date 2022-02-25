@@ -1720,7 +1720,7 @@ def rna_strandedness_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (RNA-seq experiments)
-    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.individual.organism.name!=No+value'
+    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.organism.name!=No+value'
              '&status=pre-release&status=released&status=released to project&tags!=skip_processing')
 
     # The search
@@ -1732,7 +1732,7 @@ def rna_strandedness_status(connection, **kwargs):
                 file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
                 file_meta_keys = file_meta.keys()
                 if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
-                    org = re['biosample']['biosource'][0]['individual']['organism']['name']
+                    org = re['biosample']['biosource'][0]['organism']['name']
                     kmer_file = wfr_utils.re_kmer.get(org)
                     if kmer_file:
                         targets.append(file_meta)
@@ -1798,7 +1798,7 @@ def rna_strandedness_start(connection, **kwargs):
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
-        org = a_file['experiments'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+        org = a_file['experiments'][0]['biosample']['biosource'][0]['organism']['name']
         kmer_file = wfr_utils.re_kmer[org]
         # Add function to calculate resolution automatically
         inp_f = {'fastq': a_file['@id'], 'ACTB_reference': kmer_file}
@@ -2265,7 +2265,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 problematic_resolutions = qc_values.split('; ')
                 # verify if binsize is good
                 enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
-                organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+                organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
                 re_enz_size = wfr_utils.re_nz_sizes.get(enz)
                 if not re_enz_size:
                     if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
@@ -2649,7 +2649,7 @@ def compartments_caller_status(connection, **kwargs):
         elif workflow_status_report['status'].startswith("no complete run, too many"):
             problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif workflow_status_report['status'] != 'complete':
-            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
             gc_content_file = wfr_utils.gc_content_ref.get(organism)
             if not gc_content_file:
                 problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])

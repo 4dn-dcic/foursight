@@ -382,7 +382,7 @@ def extract_nz_chr(acc, auth):
         return (None, None, 'No enzyme or accepted exp type')
     # get organism
     biosample = exp_resp['biosample']
-    organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
+    organisms = list(set([bs['organism']['name'] for bs in biosample['biosource']]))
     chrsize = ''
     if len(organisms) == 1:
         chrsize = chr_size.get(organisms[0])
@@ -812,7 +812,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
         file_dict[exp['accession']] = []
         if not organisms:
             biosample = exp['biosample']
-            organisms = list(set([bs.get('individual', {}).get('organism', {}).get('name') for bs in biosample['biosource']]))
+            organisms = list(set([bs.get('organism', {}).get('name') for bs in biosample['biosource']]))
         exp_files = exp['files']
         enzyme = exp.get('digestion_enzyme')
         if enzyme:
@@ -2069,7 +2069,7 @@ def get_chip_info(f_exp_resp, all_items):
 
     # get organism
     biosample = f_exp_resp['biosample']
-    organism = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))[0]
+    organism = list(set([bs['organism']['name'] for bs in biosample['biosource']]))[0]
 
     # get control information
     exp_relation = f_exp_resp.get('experiment_relation')
