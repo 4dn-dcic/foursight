@@ -2009,11 +2009,18 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
-        'items_to_purge':[]
+        'items_to_purge':[],
+        'items_status_change': []
     }
 
     # associate the action with the check.
     check.action = 'purge_cypress_items'
+
+    status_change_search_query = '"/search/?type=Item&status!=deleted&tags=deleted_by_cypress_test"'
+    status_change_search_response = ff_utils.search_metadata(status_change_search_query, key=connection.ff_keys)
+
+    check.full_output['items_status_change'] = [ s["uuid"] for s in status_change_search_response ]
+
 
     # Search for all Higlass View Config that are deleted and have the deleted_by_cypress_test tag.
     search_query = '/search/?type=Item&status=deleted&tags=deleted_by_cypress_test'
@@ -2048,7 +2055,9 @@ def purge_cypress_items(connection, **kwargs):
     action = ActionResult(connection, 'purge_cypress_items')
     action_logs = {
         'items_purged':[],
-        'failed_to_purge':{}
+        'failed_to_purge':{},
+        'items_status_deleted':[],
+        'failed_to_status_deleted':{}
     }
 
     # get latest results
@@ -2061,6 +2070,22 @@ def purge_cypress_items(connection, **kwargs):
     # Checks expire after 280 seconds, so keep track of how long this task has lasted.
     start_time = time.time()
     time_expired = False
+
+    #tag deleted_by_cypress_test status deleted
+    for uuid in gen_check_result["full_output"]["items_status_change"]:
+        if time.time() -  start_time > 270:
+            time_expired = True
+            break
+        status_response = {}
+        try:
+            status_response = ff_utils.delete_metadata(uuid,key=connection.ff_keys)
+        except Exception as exc:
+            status_response['comment'] = str(exc)
+        if status_response.get('status') == 'success':
+            action_logs['items_status_deleted'].append(uuid)
+        else:
+            action_logs["failed_to_status_deleted"][uuid] =status_response['comment']
+        
 
     # Purge the deleted files.
     for view_conf_uuid in gen_check_result["full_output"]["items_to_purge"]:
