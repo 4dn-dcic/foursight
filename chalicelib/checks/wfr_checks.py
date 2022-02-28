@@ -233,6 +233,8 @@ def md5run_released_files(connection, **kwargs):
 
     if files['released_without_md5run'] or files['released_with_md5run']:
         check.status = 'WARN'
+        check.summary = 'Some files need md5 run before release'
+        check.description = 'Some files with status updloaded or higher are missing md5sum'
         check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
         check.full_output = files
         if files['released_without_md5run']:

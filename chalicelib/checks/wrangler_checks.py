@@ -2234,6 +2234,7 @@ def check_hic_summary_tables(connection, **kwargs):
 
     if len(new_sets) == 0 and previous_problematic_sets is False:  # no update needed
         check.status = 'PASS'
+        check.full_output = {}
         check.summary = check.description = "No update needed for Hi-C summary tables"
         return check
 
