@@ -575,7 +575,7 @@ def atacseq_status(connection, **kwargs):
         # have to do another get for control experiments if there is one
         f_exp_resp = [i for i in all_items['experiment_atacseq'] if i['uuid'] == f_exp][0]
         biosample = f_exp_resp['biosample']
-        organism = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))[0]
+        organism = list(set([bs['organism']['name'] for bs in biosample['biosource']]))[0]
         set_summary = " - ".join([set_acc, str(organism)])
         print(set_summary)
         # sanity checks

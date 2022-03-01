@@ -1601,7 +1601,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
     check.description = "not able to get data from fourfront"
     # keep track of mcool, bg, and bw files separately
     valid_filetypes = {
-        "raw": ['chromsizes', 'beddb', 'bed.multires.mv5'],
+        "raw": ['chromsizes', 'bed', 'beddb', 'bed.multires.mv5'],
         "proc": ['mcool', 'bg', 'bw', 'bed', 'bigbed'],
     }
 
@@ -1698,6 +1698,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
 
         # Query all possible files
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys)
+        current_file_cat = file_cat
 
         for procfile in possibly_reg:
             if kwargs['time_limit'] and time.time() - start_time > kwargs['time_limit']:
@@ -1731,11 +1732,14 @@ def files_not_registered_with_higlass(connection, **kwargs):
             if file_format in type2extra:
                 # Get the first extra file of the needed type that has an upload_key and has been published.
                 for extra in procfile.get('extra_files', []):
-                    if extra['file_format'].get('display_title') in type2extra[file_format] \
+                    extra_file_format = extra['file_format'].get('display_title')
+                    if extra_file_format in type2extra[file_format] \
                         and 'upload_key' in extra \
                             and extra.get("status", unpublished_statuses[-1]) not in unpublished_statuses:
                         file_info['upload_key'] = extra['upload_key']
                         file_info['is_extra'] = True  # add a flag that this is an extra file that won't have it's own open_data_url
+                        if extra_file_format == 'beddb':
+                            current_file_cat = "proc" # We assume that extra beddb files are always processed files and live in the outfile_bucket
                         break
                 if 'upload_key' not in file_info:
                     # bw or beddb file not found, do not consider this file for registration
@@ -1760,7 +1764,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 if not does_url_exist(file_info['open_data_url']):
                     not_found_s3.append(file_info)
                     continue
-            elif not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[file_cat]):
+            elif not connection.ff_s3.does_key_exist(file_info['upload_key'], bucket=typebucket_by_cat[current_file_cat]):
                 not_found_s3.append(file_info)
                 continue
 

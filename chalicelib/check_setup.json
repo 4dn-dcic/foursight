@@ -106,6 +106,20 @@
             }
         }
     },
+    "biorxiv_version_update": {
+        "title": "biorxiv version update",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "biosource_cell_line_value": {
         "title": "Cell line biosources without cell_line metadata",
         "group": "Audit checks",
@@ -507,7 +521,8 @@
                 "data": {
                     "dependencies": [],
                     "kwargs": {
-                        "primary": true
+                        "primary": true,
+                        "queue_action": "prod"
                     }
                 }
             }
@@ -872,7 +887,7 @@
         "title": "l) Fastq first line",
         "group": "Pipeline checks",
         "schedule": {
-            "hourly_checks_2": {
+            "hourly_checks_3": {
                 "data": {
                     "dependencies": [],
                     "kwargs": {
@@ -1153,6 +1168,20 @@
     },
     "md5run_status_extra_file": {
         "title": "a) MD5run extrafiles",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "md5run_released_files": {
+        "title": "a) MD5run released files",
         "group": "Pipeline checks",
         "schedule": {
             "morning_checks_4": {

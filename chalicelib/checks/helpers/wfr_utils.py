@@ -2,7 +2,7 @@ import json
 import time
 import random
 from dcicutils import ff_utils, s3Utils
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from operator import itemgetter
 from tibanna_4dn.core import API
 from . import wfrset_utils
@@ -382,7 +382,7 @@ def extract_nz_chr(acc, auth):
         return (None, None, 'No enzyme or accepted exp type')
     # get organism
     biosample = exp_resp['biosample']
-    organisms = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))
+    organisms = list(set([bs['organism']['name'] for bs in biosample['biosource']]))
     chrsize = ''
     if len(organisms) == 1:
         chrsize = chr_size.get(organisms[0])
@@ -812,7 +812,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
         file_dict[exp['accession']] = []
         if not organisms:
             biosample = exp['biosample']
-            organisms = list(set([bs.get('individual', {}).get('organism', {}).get('name') for bs in biosample['biosource']]))
+            organisms = list(set([bs.get('organism', {}).get('name') for bs in biosample['biosource']]))
         exp_files = exp['files']
         enzyme = exp.get('digestion_enzyme')
         if enzyme:
@@ -2069,7 +2069,7 @@ def get_chip_info(f_exp_resp, all_items):
 
     # get organism
     biosample = f_exp_resp['biosample']
-    organism = list(set([bs['individual']['organism']['name'] for bs in biosample['biosource']]))[0]
+    organism = list(set([bs['organism']['name'] for bs in biosample['biosource']]))[0]
 
     # get control information
     exp_relation = f_exp_resp.get('experiment_relation')
@@ -2154,3 +2154,22 @@ def select_best_2(file_list, all_files, all_qcs):
         scores.append((score, f))
     scores = sorted(scores, key=lambda x: -x[0])
     return [scores[0][1], scores[1][1]]
+
+
+def limit_number_of_runs(check, my_auth):
+    """Checks the number of workflow runs started in the past 6h. Return the
+    number of remaining runs before hitting the rate limit of pulls from Docker
+    Hub. This is currently 200 every 6 hours."""
+    n_runs_max = 180  # this is set below the actual limit, since only a few workflows check this before running
+    statuses = ['in review by lab', 'deleted', 'pre-release', 'released to project', 'released']
+    query = '/search/?type=WorkflowRunAwsem' + ''.join(['&status=' + s for s in statuses])
+    six_h_ago = datetime.now(timezone.utc) - timedelta(hours=6)
+    query += '&date_created.from=' + datetime.strftime(six_h_ago, "%Y-%m-%d %H:%M")
+    recent_runs = ff_utils.search_metadata(query, key=my_auth)
+    n_runs_available = max(n_runs_max - len(recent_runs), 0)  # no negative results
+    if n_runs_available == 0:
+        check.status = 'PASS'
+        check.brief_output = ['Waiting (max 6h) due to Docker Hub rate limit']
+        check.summary = f'Limiting the number of workflow runs to {n_runs_max} every 6h'
+        check.full_output = {}
+    return check, n_runs_available

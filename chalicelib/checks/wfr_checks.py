@@ -110,6 +110,11 @@ def md5run_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
+    # check number of total workflow runs in the past 6h
+    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
+    if n_runs_available == 0:
+        return check
+
     # Build the query
     query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
     # add file type
@@ -138,7 +143,7 @@ def md5run_status(connection, **kwargs):
     my_s3_util = s3Utils(env=connection.ff_env)
     raw_bucket = my_s3_util.raw_file_bucket
     out_bucket = my_s3_util.outfile_bucket
-    for a_file in res:
+    for a_file in res[:n_runs_available]:
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -204,6 +209,43 @@ def md5run_status(connection, **kwargs):
     return check
 
 
+@check_function()
+def md5run_released_files(connection, **kwargs):
+    """Search for (pre)released files that do not have md5sum (this should not happen)"""
+    check = CheckResult(connection, 'md5run_released_files')
+    my_auth = connection.ff_keys
+    check.action = "md5run_start"
+    check.status = 'PASS'
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query
+    statuses = ['pre-release', 'released',  # 'released to project', 'archived to project'
+                'uploaded', 'archived', 'replaced']
+    query = '/search/?type=File&md5sum=No+value' + ''.join(['&status=' + s for s in statuses])
+
+    files = {}
+    files['released_without_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+        query + '&workflow_run_inputs.workflow.title%21=md5+0.2.6', key=my_auth)]
+    files['released_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+        query + '&workflow_run_inputs.workflow.title=md5+0.2.6', key=my_auth)]
+
+    if files['released_without_md5run'] or files['released_with_md5run']:
+        check.status = 'WARN'
+        check.summary = 'Some files need md5 run before release'
+        check.description = 'Some files with status updloaded or higher are missing md5sum'
+        check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
+        check.full_output = files
+        if files['released_without_md5run']:
+            check.allow_action = True
+        if files['released_with_md5run']:
+            check.action_message = 'Files with previous md5run CANNOT be run automatically'
+    else:
+        check.summary = 'All Good!'
+    return check
+
+
 @action_function(start_missing=True, start_not_switched=True)
 def md5run_start(connection, **kwargs):
     """Start md5 runs by sending compiled input_json to run_workflow endpoint"""
@@ -216,6 +258,7 @@ def md5run_start(connection, **kwargs):
     targets = []
     if kwargs.get('start_missing'):
         targets.extend(md5run_check_result.get('files_without_md5run', []))
+        targets.extend(md5run_check_result.get('released_without_md5run', []))
     if kwargs.get('start_not_switched'):
         targets.extend(md5run_check_result.get('files_with_run_and_wrong_status', []))
     action_logs['targets'] = targets
@@ -262,6 +305,11 @@ def fastqc_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
+    # check number of total workflow runs in the past 6h
+    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
+    if n_runs_available == 0:
+        return check
+
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=File&file_format.file_format=fastq&quality_metric.uuid=No+value"
              "&status=pre-release&status=released&status=released%20to%20project&status=uploaded")
@@ -283,7 +331,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res[:n_runs_available], check, 'fastqc', my_auth, start)
     return check
 
 
@@ -1674,7 +1722,7 @@ def rna_strandedness_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (RNA-seq experiments)
-    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.individual.organism.name!=No+value'
+    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.organism.name!=No+value'
              '&status=pre-release&status=released&status=released to project&tags!=skip_processing')
 
     # The search
@@ -1686,7 +1734,7 @@ def rna_strandedness_status(connection, **kwargs):
                 file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
                 file_meta_keys = file_meta.keys()
                 if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
-                    org = re['biosample']['biosource'][0]['individual']['organism']['name']
+                    org = re['biosample']['biosource'][0]['organism']['name']
                     kmer_file = wfr_utils.re_kmer.get(org)
                     if kmer_file:
                         targets.append(file_meta)
@@ -1752,7 +1800,7 @@ def rna_strandedness_start(connection, **kwargs):
             break
         a_file = ff_utils.get_metadata(a_target, key=my_auth)
         attributions = wfr_utils.get_attribution(a_file)
-        org = a_file['experiments'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+        org = a_file['experiments'][0]['biosample']['biosource'][0]['organism']['name']
         kmer_file = wfr_utils.re_kmer[org]
         # Add function to calculate resolution automatically
         inp_f = {'fastq': a_file['@id'], 'ACTB_reference': kmer_file}
@@ -1941,6 +1989,10 @@ def fastq_first_line_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
+    # check number of total workflow runs in the past 6h
+    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
+    if n_runs_available == 0:
+        return check
 
     query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'
              '&type=FileFastq&file_format.file_format=fastq&file_first_line=No value&status=restricted')
@@ -1957,7 +2009,7 @@ def fastq_first_line_status(connection, **kwargs):
     missing_run = []
 
     print('About to check for workflow runs for each file')
-    for a_file in res:
+    for a_file in res[:n_runs_available]:
         fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
@@ -2023,7 +2075,11 @@ def fastq_first_line_start(connection, **kwargs):
 
 @check_function()
 def bam_re_status(connection, **kwargs):
-    """Searches for fastq files that don't have bam_re"""
+    """Searches for fastq files that don't have bam_re
+
+    If a file has an associated enzyme that isn't in the list of acceptable enzymes,
+    or if it has no associated enzyme, it will be added to the list of skipped files.
+    """
     # AluI pattern seems to be problematic and disabled until it its fixed
     # ChiA pet needs a new version of this check and disabled on this one
     start = datetime.utcnow()
@@ -2045,7 +2101,7 @@ def bam_re_status(connection, **kwargs):
                  # 'in+situ+ChIA-PET',
                  'PLAC-seq']
     query = ("/search/?file_format.file_format=bam&file_type=alignments&type=FileProcessed"
-             "&status!=uploading&status!=to be uploaded by workflow")
+             "&status!=uploading&status!=to be uploaded by workflow&tags!=skip_processing")
     exp_type_key = '&track_and_facet_info.experiment_type='
     exp_type_filter = exp_type_key + exp_type_key.join(exp_types)
     exclude_processed = '&percent_clipped_sites_with_re_motif=No value'
@@ -2066,6 +2122,8 @@ def bam_re_status(connection, **kwargs):
     filtered_res = []
     # make a list of skipped files
     missing_nz_files = []
+    # files without enzyme info
+    no_nz = []
     # make a list of skipped enzymes
     missing_nz = []
     for a_file in res:
@@ -2073,10 +2131,14 @@ def bam_re_status(connection, **kwargs):
         nz = a_file.get('experiments')[0].get('digestion_enzyme', {}).get('name')
         if nz in acceptable_enzymes:
             filtered_res.append(a_file)
-        else:
+        # make sure nz is not None
+        elif nz:
             missing_nz_files.append(a_file)
             if nz not in missing_nz:
                 missing_nz.append(nz)
+        else:
+            no_nz.append(a_file)
+
 
     check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
@@ -2087,6 +2149,13 @@ def bam_re_status(connection, **kwargs):
         check.brief_output.insert(0, message)
         check.full_output['skipped'] = [i['accession'] for i in missing_nz_files]
         check.status = 'WARN'
+    if no_nz:
+        message = 'INFO: skipping files ({}) without an associated enzyme'.format(len(no_nz))
+        check.summary += ', ' + message
+        check.brief_output.insert(0, message)
+        check.full_output['skipped_no_enzyme'] = [i['accession'] for i in no_nz]
+        check.status = 'WARN'
+    check.summary = check.summary.lstrip(',').lstrip()
     return check
 
 
@@ -2198,7 +2267,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 problematic_resolutions = qc_values.split('; ')
                 # verify if binsize is good
                 enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
-                organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+                organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
                 re_enz_size = wfr_utils.re_nz_sizes.get(enz)
                 if not re_enz_size:
                     if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
@@ -2582,7 +2651,7 @@ def compartments_caller_status(connection, **kwargs):
         elif workflow_status_report['status'].startswith("no complete run, too many"):
             problematic_run.append(['step1', a_res['accession'], pfile['accession']])
         elif workflow_status_report['status'] != 'complete':
-            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['individual']['organism']['name']
+            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
             gc_content_file = wfr_utils.gc_content_ref.get(organism)
             if not gc_content_file:
                 problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])

@@ -273,7 +273,7 @@ def biorxiv_is_now_published(connection, **kwargs):
             do_author_search = True  # problem with request to pubmed
 
         if do_author_search and authors:
-            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(' ')[-1]) for a in authors])
+            author_string = '&term=' + '%20'.join(['{}[Author]'.format(a.split(' ')[0]) for a in authors])
             author_query = pubmed_url + author_string
             time.sleep(1)
             res = requests.get(author_query)
@@ -493,6 +493,70 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
             action_log[buuid].update({'error': error})
     action.status = 'DONE'
     action.output = action_log
+    return action
+
+
+@check_function()
+def biorxiv_version_update(connection, **kwargs):
+    '''Check if current bioRxiv Publications (not yet replaced with PubmedID)
+    are up to date with the bioRxiv database.'''
+    check = CheckResult(connection, 'biorxiv_version_update')
+    check.action = 'reindex_biorxiv'
+    query = '/search/?type=Publication&journal=bioRxiv&status=current'
+    query += ''.join(['&field=' + f for f in ['version', 'short_attribution', 'ID']])
+    current_biorxivs = ff_utils.search_metadata(query, key=connection.ff_keys)
+
+    items_to_update = []
+    biorxiv_api = 'https://api.biorxiv.org/details/biorxiv/'
+    for publication in current_biorxivs:
+        if not publication['ID'].startswith('doi:'):
+            continue
+        doi = publication['ID'].split(':')[1]
+        for count in range(5):  # try fetching data a few times
+            r = requests.get(biorxiv_api + doi)
+            if r.status_code == 200:
+                break
+        else:
+            check.status = "FAIL"
+            check.description = "Too many biorxiv timeouts. Maybe they're down."
+            return check
+        record_dict = r.json()['collection'][-1]  # get latest version
+        publication['version_new'] = record_dict.get('version', 0)
+        if int(publication.get('version', 0)) < int(publication['version_new']):
+            items_to_update.append(publication)
+
+    if items_to_update:
+        check.status = 'WARN'
+        check.summary = f'{len(items_to_update)} current bioRxiv Publications need update'
+        check.description = f'Will re-index {len(items_to_update)} bioRxiv Publications because biorxiv version is higher'
+        check.brief_output = [i['short_attribution'] for i in items_to_update]
+        check.full_output = items_to_update
+        check.allow_action = True
+    else:
+        check.status = 'PASS'
+        check.summary = check.description = 'All current bioRxiv Publications are up to date'
+    return check
+
+
+@action_function()
+def reindex_biorxiv(connection, **kwargs):
+    '''Empty-patch Publication to trigger _update in fourfront'''
+    action = ActionResult(connection, 'reindex_biorxiv')
+    check_res = action.get_associated_check_result(kwargs)
+    action_logs = {'patch_failure': [], 'patch_success': []}
+    for biorxiv in check_res.get('full_output', []):
+        empty_patch = {}
+        try:
+            ff_utils.patch_metadata(empty_patch, obj_id=biorxiv['@id'], key=connection.ff_keys)
+        except Exception as e:
+            action_logs['patch_failure'].append({biorxiv['@id']: str(e)})
+        else:
+            action_logs['patch_success'].append(biorxiv['@id'])
+    if action_logs['patch_failure']:
+        action.status = 'FAIL'
+    else:
+        action.status = 'DONE'
+    action.output = action_logs
     return action
 
 
@@ -1257,6 +1321,7 @@ def check_assay_classification_short_names(connection, **kwargs):
         "replication timing": "Replication timing",
         "proximity to cellular component": "Proximity-seq",
         "dna binding": "DNA binding",
+        "dna damage detection": "DNA damage detection",
         "open chromatin": "Open Chromatin",
         "open chromatin - single cell": "Open Chromatin",
         "dna-dna pairwise interactions": "Hi-C",
@@ -1294,15 +1359,15 @@ def check_assay_classification_short_names(connection, **kwargs):
             value = subclass_dict[exptype['assay_subclassification'].lower()]
         else:
             manual[exptype['@id']] = {
-                'classification': exptype['assay_classification'],
-                'subclassification': exptype['assay_subclassification'],
+                'classification': exptype.get('assay_classification'),
+                'subclassification': exptype.get('assay_subclassification'),
                 'current subclass_short': exptype.get('assay_subclass_short'),
                 'new subclass_short': 'N/A - Attention needed'
             }
         if value and exptype.get('assay_subclass_short') != value:
             auto_patch[exptype['@id']] = {
-                'classification': exptype['assay_classification'],
-                'subclassification': exptype['assay_subclassification'],
+                'classification': exptype.get('assay_classification'),
+                'subclassification': exptype.get('assay_subclassification'),
                 'current subclass_short': exptype.get('assay_subclass_short'),
                 'new subclass_short': value
             }
@@ -2137,8 +2202,10 @@ def add_grouped_with_file_relation(connection, **kwargs):
 @check_function(days_back=1)
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
-        If any result is found, update the summary tables.
-    '''
+    If any actionable result is found, trigger update of all summary tables.
+    If problematic results are found (e.g. due to dataset_label missing),
+    no action can be run.
+    Keeps a list of problematic results until they are fixed.'''
     check = CheckResult(connection, 'check_hic_summary_tables')
     check.action = 'patch_hic_summary_tables'
     query = ('search/?type=ExperimentSetReplicate&status=released' +
@@ -2148,8 +2215,26 @@ def check_hic_summary_tables(connection, **kwargs):
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
-    if len(new_sets) == 0:  # no update needed
+    # get problematic sets from the most recent successful primary check
+    last_result = check.get_primary_result()
+    days = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        days += 1
+        last_result = check.get_closest_result(diff_hours=days*24)
+        if days > 10:
+            # too many recent primary checks that errored
+            check.brief_output = 'Can not find a recent non-ERROR primary check'
+            check.full_output = {}
+            check.status = 'ERROR'
+            return check
+
+    previous_problematic_sets = False
+    if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+        previous_problematic_sets = True
+
+    if len(new_sets) == 0 and previous_problematic_sets is False:  # no update needed
         check.status = 'PASS'
+        check.full_output = {}
         check.summary = check.description = "No update needed for Hi-C summary tables"
         return check
 
@@ -2175,7 +2260,7 @@ def check_hic_summary_tables(connection, **kwargs):
             row['Replicate Sets'][exp_type] = row['Replicate Sets'].get(exp_type, 0) + 1
 
             biosample = expset['experiments_in_set'][0]['biosample']
-            row.setdefault('Species', set()).add(biosample['biosource'][0].get('individual', {}).get('organism', {}).get('name', 'unknown species'))
+            row.setdefault('Species', set()).add(biosample['biosource'][0].get('organism', {}).get('name', 'unknown species'))
 
             if biosample['biosource'][0].get('cell_line'):
                 biosource = biosample['biosource'][0]['cell_line']['display_title']
@@ -2184,17 +2269,22 @@ def check_hic_summary_tables(connection, **kwargs):
             row.setdefault('Biosources', set()).add(biosource)
 
             journal_mapping = {
-                'Science (New York, N.Y.)': 'Science',
-                'Genome biology': 'Genome Biol',
-                'Nature biotechnology': 'Nat Biotechnol',
-                'Nature genetics': 'Nat Genet',
-                'Nature communications': 'Nat Commun',
-                'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
-                'The Journal of biological chemistry': 'J Biol Chem',
+                'bioRxiv : the preprint server for biology': 'bioRxiv',
+                'Cell research': 'Cell Res',
                 'The EMBO journal': 'EMBO J',
+                'Genome biology': 'Genome Biol',
+                'The Journal of biological chemistry': 'J Biol Chem',
                 'The Journal of cell biology': 'J Cell Biol',
+                'Molecular cell': 'Mol Cell',
+                'Nature biotechnology': 'Nat Biotechnol',
                 'Nature cell biology': 'Nat Cell Biol',
-                'Molecular cell': 'Mol Cell'
+                'Nature communications': 'Nat Commun',
+                'Nature genetics': 'Nat Genet',
+                'Nature methods': 'Nat Methods',
+                'Nature structural and molecular biology': 'Nat Struct Mol Biol',
+                'Nucleic acids research': 'Nucleic Acids Res',
+                'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
+                'Science (New York, N.Y.)': 'Science',
             }
             pub = expset.get('produced_in_pub')
             if pub:
