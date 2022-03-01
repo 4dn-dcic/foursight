@@ -2084,7 +2084,7 @@ def purge_cypress_items(connection, **kwargs):
         if status_response.get('status') == 'success':
             action_logs['items_status_change_deleted'].append(view_conf_uuid)
         else:
-            action_logs["failed_to_status_change_deleted"][view_conf_uuid] =status_response['comment']
+            action_logs["failed_to_status_change_deleted"][view_conf_uuid] = status_response['comment']
         
 
     # Purge the deleted files.
