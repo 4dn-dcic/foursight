@@ -2010,13 +2010,13 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
     check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
         'items_to_purge':[],
-        'items_status_change': []
+        'items_status_change': [],
     }
 
     # associate the action with the check.
     check.action = 'purge_cypress_items'
 
-    status_change_search_query = '"/search/?type=Item&status!=deleted&tags=deleted_by_cypress_test"'
+    status_change_search_query = '/search/?type=Item&status!=deleted&tags=deleted_by_cypress_test'
     status_change_search_response = ff_utils.search_metadata(status_change_search_query, key=connection.ff_keys)
 
     check.full_output['items_status_change'] = [ s["uuid"] for s in status_change_search_response ]
@@ -2056,8 +2056,8 @@ def purge_cypress_items(connection, **kwargs):
     action_logs = {
         'items_purged':[],
         'failed_to_purge':{},
-        'items_status_deleted':[],
-        'failed_to_status_deleted':{}
+        'items_status_change_deleted':[],
+        'failed_to_status_change_deleted':{}
     }
 
     # get latest results
@@ -2072,19 +2072,19 @@ def purge_cypress_items(connection, **kwargs):
     time_expired = False
 
     #tag deleted_by_cypress_test status deleted
-    for uuid in gen_check_result["full_output"]["items_status_change"]:
+    for view_conf_uuid in gen_check_result["full_output"]["items_status_change"]:
         if time.time() -  start_time > 270:
             time_expired = True
             break
         status_response = {}
         try:
-            status_response = ff_utils.delete_metadata(uuid,key=connection.ff_keys)
+            status_response = ff_utils.delete_metadata(view_conf_uuid,key=connection.ff_keys)
         except Exception as exc:
             status_response['comment'] = str(exc)
         if status_response.get('status') == 'success':
-            action_logs['items_status_deleted'].append(uuid)
+            action_logs['items_status_change_deleted'].append(view_conf_uuid)
         else:
-            action_logs["failed_to_status_deleted"][uuid] =status_response['comment']
+            action_logs["failed_to_status_change_deleted"][view_conf_uuid] =status_response['comment']
         
 
     # Purge the deleted files.
