@@ -2010,7 +2010,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
     check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
         'items_to_purge':[],
-        'items_status_change': [],
+        'items_status_change':[],
     }
 
     # associate the action with the check.
@@ -2029,7 +2029,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
     check.full_output['items_to_purge'] = [ s["uuid"] for s in search_response ]
 
     # Note the number of items ready to purge
-    num_viewconfigs = len(check.full_output['items_to_purge'])
+    num_viewconfigs = len(check.full_output['items_to_purge']) + len(check.full_output['items_status_change'])
     check.status = 'WARN'
 
     if num_viewconfigs == 0:
