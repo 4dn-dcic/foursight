@@ -2022,7 +2022,7 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
     check.full_output['items_status_change'] = [ s["uuid"] for s in status_change_search_response ]
 
 
-    # Search for all Higlass View Config that are deleted and have the deleted_by_cypress_test tag.
+    # Search for all Items that are deleted and have the deleted_by_cypress_test tag.
     search_query = '/search/?type=Item&status=deleted&tags=deleted_by_cypress_test'
     search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys)
 
