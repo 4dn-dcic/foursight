@@ -2009,8 +2009,8 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
-        'items_to_purge':[],
-        'items_status_change':[],
+        'items_to_purge': [],
+        'items_status_change': [],
     }
 
     # associate the action with the check.
@@ -2054,10 +2054,10 @@ def purge_cypress_items(connection, **kwargs):
 
     action = ActionResult(connection, 'purge_cypress_items')
     action_logs = {
-        'items_purged':[],
-        'failed_to_purge':{},
-        'items_status_change_deleted':[],
-        'failed_to_status_change_deleted':{}
+        'items_purged': [],
+        'failed_to_purge': {},
+        'items_status_change_deleted': [],
+        'failed_to_status_change_deleted': {}
     }
 
     # get latest results
@@ -2073,19 +2073,18 @@ def purge_cypress_items(connection, **kwargs):
 
     #tag deleted_by_cypress_test status deleted
     for view_conf_uuid in gen_check_result["full_output"]["items_status_change"]:
-        if time.time() -  start_time > 270:
+        if time.time() - start_time > 270:
             time_expired = True
             break
         status_response = {}
         try:
-            status_response = ff_utils.delete_metadata(view_conf_uuid,key=connection.ff_keys)
+            status_response = ff_utils.delete_metadata(view_conf_uuid, key=connection.ff_keys)
         except Exception as exc:
             status_response['comment'] = str(exc)
         if status_response.get('status') == 'success':
             action_logs['items_status_change_deleted'].append(view_conf_uuid)
         else:
             action_logs["failed_to_status_change_deleted"][view_conf_uuid] = status_response['comment']
-        
 
     # Purge the deleted files.
     for view_conf_uuid in gen_check_result["full_output"]["items_to_purge"]:
