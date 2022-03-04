@@ -1698,9 +1698,9 @@ def files_not_registered_with_higlass(connection, **kwargs):
 
         # Query all possible files
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys)
-        current_file_cat = file_cat
 
         for procfile in possibly_reg:
+            current_file_cat = file_cat
             if kwargs['time_limit'] and time.time() - start_time > kwargs['time_limit']:
                 time_expired = True
                 break
