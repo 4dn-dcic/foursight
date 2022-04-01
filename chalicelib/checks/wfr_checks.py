@@ -221,7 +221,7 @@ def md5run_released_files(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    statuses = ['pre-release', 'released',  # 'released to project', 'archived to project'
+    statuses = ['pre-release', 'released', 'released to project', 'archived to project',
                 'uploaded', 'archived', 'replaced']
     query = '/search/?type=File&md5sum=No+value' + ''.join(['&status=' + s for s in statuses])
 
@@ -233,6 +233,8 @@ def md5run_released_files(connection, **kwargs):
 
     if files['released_without_md5run'] or files['released_with_md5run']:
         check.status = 'WARN'
+        check.summary = 'Some files need md5 run before release'
+        check.description = 'Some files with status updloaded or higher are missing md5sum'
         check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
         check.full_output = files
         if files['released_without_md5run']:
@@ -1701,7 +1703,7 @@ def bed2multivec_start(connection, **kwargs):
 
 @check_function(lab_title=None, start_date=None)
 def rna_strandedness_status(connection, **kwargs):
-    """Searches for fastq files of experiment seq type that don't have beta_actin_count fields
+    """Searches for fastq files from RNA-seq that don't have beta_actin_count fields
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
@@ -1719,25 +1721,34 @@ def rna_strandedness_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # Build the query (RNA-seq experiments)
-    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.organism.name!=No+value'
-             '&status=pre-release&status=released&status=released to project&tags!=skip_processing')
+    # Get Fastq files from RNA-seq that are missing beta-actin counts
+    files = ff_utils.search_metadata(
+        '/search/?type=FileFastq&file_format.file_format=fastq&track_and_facet_info.experiment_type=RNA-seq'
+        + '&experiments.biosample.biosource.organism.name!=No+value'
+        + '&beta_actin_sense_count=No+value&beta_actin_antisense_count=No+value'
+        + '&status=pre-release&status=released&status=released to project',
+        key=my_auth)
+    # Get RNA-seq sets that are tagged with skip_processing
+    expsets_to_skip = ff_utils.search_metadata(
+        '/search/?type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=RNA-seq'
+        + '&experiments_in_set.biosample.biosource.organism.name!=No+value'
+        + '&status=pre-release&status=released&status=released to project'
+        + '&tags=skip_processing&field=accession',
+        key=my_auth)
+    expsets_acc_to_skip = [expset['accession'] for expset in expsets_to_skip]
 
-    # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
     targets = []
-    for re in res:
-        for a_re_file in re['files']:
-            if a_re_file['file_format']['display_title'] == 'fastq':
-                file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
-                file_meta_keys = file_meta.keys()
-                if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
-                    org = re['biosample']['biosource'][0]['organism']['name']
-                    kmer_file = wfr_utils.re_kmer.get(org)
-                    if kmer_file:
-                        targets.append(file_meta)
-                    else:
-                        problematic.append([file_meta['accession'], 'missing re_kmer reference file for %s'%(org)])
+    for a_file in files:
+        replicate_expsets = [es['accession'] for es in a_file['experiments'][0]['experiment_sets'] if es['experimentset_type'] == 'replicate']
+        if replicate_expsets and replicate_expsets[0] in expsets_acc_to_skip:
+            continue  # skip this file if the expset is tagged with skip_processing
+
+        org = a_file['experiments'][0]['biosample']['biosource'][0]['organism']['name']
+        kmer_file = wfr_utils.re_kmer.get(org)
+        if kmer_file:
+            targets.append(a_file)
+        else:
+            problematic.append([a_file['accession'], 'missing re_kmer reference file for %s'%(org)])
 
     if not targets and not problematic:
         check.summary = "All good!"
