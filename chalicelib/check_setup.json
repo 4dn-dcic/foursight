@@ -1183,8 +1183,8 @@
             }
         }
     },
-    "md5run_released_files": {
-        "title": "a) MD5run released files",
+    "md5run_uploaded_files": {
+        "title": "a) MD5run uploaded files",
         "group": "Pipeline checks",
         "schedule": {
             "morning_checks_4": {
