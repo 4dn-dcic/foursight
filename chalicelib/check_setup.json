@@ -682,7 +682,8 @@
                 "data": {
                     "dependencies": [],
                     "kwargs": {
-                        "primary": true
+                        "primary": true,
+                        "queue_action": "prod"
                     }
                 }
             }
@@ -1106,7 +1107,8 @@
                 "data": {
                     "dependencies": [],
                     "kwargs": {
-                        "primary": true
+                        "primary": true,
+                        "queue_action": "prod"
                     }
                 }
             }
@@ -1181,15 +1183,16 @@
             }
         }
     },
-    "md5run_released_files": {
-        "title": "a) MD5run released files",
+    "md5run_uploaded_files": {
+        "title": "a) MD5run uploaded files",
         "group": "Pipeline checks",
         "schedule": {
             "morning_checks_4": {
                 "data": {
                     "dependencies": [],
                     "kwargs": {
-                        "primary": true
+                        "primary": true,
+                        "queue_action": "prod"
                     }
                 }
             }
