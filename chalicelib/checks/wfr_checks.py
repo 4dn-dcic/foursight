@@ -2684,16 +2684,16 @@ def compartments_caller_status(connection, **kwargs):
                     completed['patch_opf'].append([a_res['accession'], patch_data])
                     completed['add_tag'] = [a_res['accession'], tag]
 
-                if running:
-                    check.full_output['running_runs'].append({a_res['accession']: running})
-                if missing_run:
-                    check.full_output['needs_runs'].append({a_res['accession']: missing_run})
-                if completed.get('add_tag'):
-                    assert not running
-                    assert not missing_run
-                    check.full_output['completed_runs'].append(completed)
-                if problematic_run:
-                    check.full_output['problematic_runs'].append({a_res['accession']: problematic_run})
+        if running:
+            check.full_output['running_runs'].append({a_res['accession']: running})
+        if missing_run:
+            check.full_output['needs_runs'].append({a_res['accession']: missing_run})
+        if completed.get('add_tag'):
+            assert not running
+            assert not missing_run
+            check.full_output['completed_runs'].append(completed)
+        if problematic_run:
+            check.full_output['problematic_runs'].append({a_res['accession']: problematic_run})
 
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
