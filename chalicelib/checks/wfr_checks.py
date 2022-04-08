@@ -2663,37 +2663,37 @@ def compartments_caller_status(connection, **kwargs):
                 #         skip = True
                 #         continue
                 workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
-        if skip:
-            continue
-        elif workflow_status_report['status'] == 'running':
-            running.append(pfile['accession'])
-        elif workflow_status_report['status'].startswith("no complete run, too many"):
-            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
-        elif workflow_status_report['status'] != 'complete':
-            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
-            gc_content_file = wfr_utils.gc_content_ref.get(organism)
-            if not gc_content_file:
-                problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
-            else:
-                overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
-                inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
-                missing_run.append(['step1', ['compartments-caller', organism, overwrite],
-                                    inp_f, a_res['accession']])
-        else:
-            patch_data = [workflow_status_report['bwfile']]
-            completed['patch_opf'].append([a_res['accession'], patch_data])
-            completed['add_tag'] = [a_res['accession'], tag]
+                if skip:
+                    continue
+                elif workflow_status_report['status'] == 'running':
+                    running.append(pfile['accession'])
+                elif workflow_status_report['status'].startswith("no complete run, too many"):
+                    problematic_run.append(['step1', a_res['accession'], pfile['accession']])
+                elif workflow_status_report['status'] != 'complete':
+                    organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
+                    gc_content_file = wfr_utils.gc_content_ref.get(organism)
+                    if not gc_content_file:
+                        problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
+                    else:
+                        overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
+                        inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
+                        missing_run.append(['step1', ['compartments-caller', organism, overwrite],
+                                            inp_f, a_res['accession']])
+                else:
+                    patch_data = [workflow_status_report['bwfile']]
+                    completed['patch_opf'].append([a_res['accession'], patch_data])
+                    completed['add_tag'] = [a_res['accession'], tag]
 
-        if running:
-            check.full_output['running_runs'].append({a_res['accession']: running})
-        if missing_run:
-            check.full_output['needs_runs'].append({a_res['accession']: missing_run})
-        if completed.get('add_tag'):
-            assert not running
-            assert not missing_run
-            check.full_output['completed_runs'].append(completed)
-        if problematic_run:
-            check.full_output['problematic_runs'].append({a_res['accession']: problematic_run})
+                if running:
+                    check.full_output['running_runs'].append({a_res['accession']: running})
+                if missing_run:
+                    check.full_output['needs_runs'].append({a_res['accession']: missing_run})
+                if completed.get('add_tag'):
+                    assert not running
+                    assert not missing_run
+                    check.full_output['completed_runs'].append(completed)
+                if problematic_run:
+                    check.full_output['problematic_runs'].append({a_res['accession']: problematic_run})
 
     if check.full_output['running_runs']:
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
