@@ -435,7 +435,8 @@ def check_help_page_urls(connection, **kwargs):
             if url.startswith(server.rstrip('/') + '/search/') or url.startswith(server.rstrip('/') + '/browse/'):
                 continue
             try:
-                request = requests.get(url.replace('&amp;', '&'), timeout=2)
+                headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+                request = requests.get(url.replace('&amp;', '&'), timeout=2, headers=headers)
                 if request.status_code == 403 and 'doi.org' in url:
                     # requests to doi.org that get redirected to biorxiv fail with 403
                     addl_exceptions.setdefault(result['@id'], {})

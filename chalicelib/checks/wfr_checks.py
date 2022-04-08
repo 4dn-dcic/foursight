@@ -210,9 +210,16 @@ def md5run_status(connection, **kwargs):
 
 
 @check_function()
-def md5run_released_files(connection, **kwargs):
-    """Search for (pre)released files that do not have md5sum (this should not happen)"""
-    check = CheckResult(connection, 'md5run_released_files')
+def md5run_uploaded_files(connection, **kwargs):
+    """
+    Search for Files with status uploaded (and higher) that do not have md5sum.
+
+    Since ENCODE pipelines do not add md5sum, ProcessedFiles from ATAC-seq,
+    ChIP-seq, and RNA-seq are expected to trigger this check.
+    All other files should have md5sum by the time they are uploaded, but this
+    check will find any exception.
+    """
+    check = CheckResult(connection, 'md5run_uploaded_files')
     my_auth = connection.ff_keys
     check.action = "md5run_start"
     check.status = 'PASS'
@@ -221,26 +228,27 @@ def md5run_released_files(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    statuses = ['pre-release', 'released',  # 'released to project', 'archived to project'
-                'uploaded', 'archived', 'replaced']
+    statuses = ['uploaded', 'pre-release', 'released to project', 'released',
+                'archived to project', 'archived', 'replaced']
     query = '/search/?type=File&md5sum=No+value' + ''.join(['&status=' + s for s in statuses])
 
     files = {}
-    files['released_without_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+    files['uploaded_without_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
         query + '&workflow_run_inputs.workflow.title%21=md5+0.2.6', key=my_auth)]
-    files['released_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+    files['uploaded_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
         query + '&workflow_run_inputs.workflow.title=md5+0.2.6', key=my_auth)]
 
-    if files['released_without_md5run'] or files['released_with_md5run']:
+    if files['uploaded_without_md5run'] or files['uploaded_with_md5run']:
         check.status = 'WARN'
         check.summary = 'Some files need md5 run before release'
         check.description = 'Some files with status updloaded or higher are missing md5sum'
         check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
         check.full_output = files
-        if files['released_without_md5run']:
+        if files['uploaded_without_md5run']:
             check.allow_action = True
-        if files['released_with_md5run']:
-            check.action_message = 'Files with previous md5run CANNOT be run automatically'
+        if files['uploaded_with_md5run']:
+            check.action_message = ('Action will only run on Files without previous md5 run. ' +
+                                    'You need to manually fix those with previous md5 run.')
     else:
         check.summary = 'All Good!'
     return check
@@ -257,8 +265,10 @@ def md5run_start(connection, **kwargs):
     action_logs['check_output'] = md5run_check_result
     targets = []
     if kwargs.get('start_missing'):
+        # get uploading files from md5run_status
         targets.extend(md5run_check_result.get('files_without_md5run', []))
-        targets.extend(md5run_check_result.get('released_without_md5run', []))
+        # get uploaded files from md5run_uploaded_files
+        targets.extend(md5run_check_result.get('uploaded_without_md5run', []))
     if kwargs.get('start_not_switched'):
         targets.extend(md5run_check_result.get('files_with_run_and_wrong_status', []))
     action_logs['targets'] = targets
@@ -1703,7 +1713,7 @@ def bed2multivec_start(connection, **kwargs):
 
 @check_function(lab_title=None, start_date=None)
 def rna_strandedness_status(connection, **kwargs):
-    """Searches for fastq files of experiment seq type that don't have beta_actin_count fields
+    """Searches for fastq files from RNA-seq that don't have beta_actin_count fields
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
@@ -1721,25 +1731,34 @@ def rna_strandedness_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # Build the query (RNA-seq experiments)
-    query = ('/search/?experiment_type.display_title=RNA-seq&type=ExperimentSeq&biosample.biosource.organism.name!=No+value'
-             '&status=pre-release&status=released&status=released to project&tags!=skip_processing')
+    # Get Fastq files from RNA-seq that are missing beta-actin counts
+    files = ff_utils.search_metadata(
+        '/search/?type=FileFastq&file_format.file_format=fastq&track_and_facet_info.experiment_type=RNA-seq'
+        + '&experiments.biosample.biosource.organism.name!=No+value'
+        + '&beta_actin_sense_count=No+value&beta_actin_antisense_count=No+value'
+        + '&status=pre-release&status=released&status=released to project',
+        key=my_auth)
+    # Get RNA-seq sets that are tagged with skip_processing
+    expsets_to_skip = ff_utils.search_metadata(
+        '/search/?type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=RNA-seq'
+        + '&experiments_in_set.biosample.biosource.organism.name!=No+value'
+        + '&status=pre-release&status=released&status=released to project'
+        + '&tags=skip_processing&field=accession',
+        key=my_auth)
+    expsets_acc_to_skip = [expset['accession'] for expset in expsets_to_skip]
 
-    # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
     targets = []
-    for re in res:
-        for a_re_file in re['files']:
-            if a_re_file['file_format']['display_title'] == 'fastq':
-                file_meta = ff_utils.get_metadata(a_re_file['accession'], key=my_auth)
-                file_meta_keys = file_meta.keys()
-                if 'beta_actin_sense_count' not in file_meta_keys and 'beta_actin_antisense_count' not in file_meta_keys:
-                    org = re['biosample']['biosource'][0]['organism']['name']
-                    kmer_file = wfr_utils.re_kmer.get(org)
-                    if kmer_file:
-                        targets.append(file_meta)
-                    else:
-                        problematic.append([file_meta['accession'], 'missing re_kmer reference file for %s'%(org)])
+    for a_file in files:
+        replicate_expsets = [es['accession'] for es in a_file['experiments'][0]['experiment_sets'] if es['experimentset_type'] == 'replicate']
+        if replicate_expsets and replicate_expsets[0] in expsets_acc_to_skip:
+            continue  # skip this file if the expset is tagged with skip_processing
+
+        org = a_file['experiments'][0]['biosample']['biosource'][0]['organism']['name']
+        kmer_file = wfr_utils.re_kmer.get(org)
+        if kmer_file:
+            targets.append(a_file)
+        else:
+            problematic.append([a_file['accession'], 'missing re_kmer reference file for %s'%(org)])
 
     if not targets and not problematic:
         check.summary = "All good!"

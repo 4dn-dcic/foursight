@@ -1698,9 +1698,9 @@ def files_not_registered_with_higlass(connection, **kwargs):
 
         # Query all possible files
         possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys)
-        current_file_cat = file_cat
 
         for procfile in possibly_reg:
+            current_file_cat = file_cat
             if kwargs['time_limit'] and time.time() - start_time > kwargs['time_limit']:
                 time_expired = True
                 break
@@ -2009,20 +2009,27 @@ def find_cypress_test_items_to_purge(connection, **kwargs):
 
     check = CheckResult(connection, 'find_cypress_test_items_to_purge')
     check.full_output = {
-        'items_to_purge':[]
+        'items_to_purge': [],
+        'items_status_change': [],
     }
 
     # associate the action with the check.
     check.action = 'purge_cypress_items'
 
-    # Search for all Higlass View Config that are deleted and have the deleted_by_cypress_test tag.
+    status_change_search_query = '/search/?type=Item&status!=deleted&tags=deleted_by_cypress_test'
+    status_change_search_response = ff_utils.search_metadata(status_change_search_query, key=connection.ff_keys)
+
+    check.full_output['items_status_change'] = [ s["uuid"] for s in status_change_search_response ]
+
+
+    # Search for all Items that are deleted and have the deleted_by_cypress_test tag.
     search_query = '/search/?type=Item&status=deleted&tags=deleted_by_cypress_test'
     search_response = ff_utils.search_metadata(search_query, key=connection.ff_keys)
 
     check.full_output['items_to_purge'] = [ s["uuid"] for s in search_response ]
 
     # Note the number of items ready to purge
-    num_viewconfigs = len(check.full_output['items_to_purge'])
+    num_viewconfigs = len(check.full_output['items_to_purge']) + len(check.full_output['items_status_change'])
     check.status = 'WARN'
 
     if num_viewconfigs == 0:
@@ -2047,8 +2054,10 @@ def purge_cypress_items(connection, **kwargs):
 
     action = ActionResult(connection, 'purge_cypress_items')
     action_logs = {
-        'items_purged':[],
-        'failed_to_purge':{}
+        'items_purged': [],
+        'failed_to_purge': {},
+        'items_status_change_deleted': [],
+        'failed_to_status_change_deleted': {}
     }
 
     # get latest results
@@ -2061,6 +2070,21 @@ def purge_cypress_items(connection, **kwargs):
     # Checks expire after 280 seconds, so keep track of how long this task has lasted.
     start_time = time.time()
     time_expired = False
+
+    #tag deleted_by_cypress_test status deleted
+    for view_conf_uuid in gen_check_result["full_output"]["items_status_change"]:
+        if time.time() - start_time > 270:
+            time_expired = True
+            break
+        status_response = {}
+        try:
+            status_response = ff_utils.delete_metadata(view_conf_uuid, key=connection.ff_keys)
+        except Exception as exc:
+            status_response['comment'] = str(exc)
+        if status_response.get('status') == 'success':
+            action_logs['items_status_change_deleted'].append(view_conf_uuid)
+        else:
+            action_logs["failed_to_status_change_deleted"][view_conf_uuid] = status_response['comment']
 
     # Purge the deleted files.
     for view_conf_uuid in gen_check_result["full_output"]["items_to_purge"]:
