@@ -210,9 +210,16 @@ def md5run_status(connection, **kwargs):
 
 
 @check_function()
-def md5run_released_files(connection, **kwargs):
-    """Search for (pre)released files that do not have md5sum (this should not happen)"""
-    check = CheckResult(connection, 'md5run_released_files')
+def md5run_uploaded_files(connection, **kwargs):
+    """
+    Search for Files with status uploaded (and higher) that do not have md5sum.
+
+    Since ENCODE pipelines do not add md5sum, ProcessedFiles from ATAC-seq,
+    ChIP-seq, and RNA-seq are expected to trigger this check.
+    All other files should have md5sum by the time they are uploaded, but this
+    check will find any exception.
+    """
+    check = CheckResult(connection, 'md5run_uploaded_files')
     my_auth = connection.ff_keys
     check.action = "md5run_start"
     check.status = 'PASS'
@@ -221,26 +228,27 @@ def md5run_released_files(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    statuses = ['pre-release', 'released', 'released to project', 'archived to project',
-                'uploaded', 'archived', 'replaced']
+    statuses = ['uploaded', 'pre-release', 'released to project', 'released',
+                'archived to project', 'archived', 'replaced']
     query = '/search/?type=File&md5sum=No+value' + ''.join(['&status=' + s for s in statuses])
 
     files = {}
-    files['released_without_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+    files['uploaded_without_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
         query + '&workflow_run_inputs.workflow.title%21=md5+0.2.6', key=my_auth)]
-    files['released_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
+    files['uploaded_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
         query + '&workflow_run_inputs.workflow.title=md5+0.2.6', key=my_auth)]
 
-    if files['released_without_md5run'] or files['released_with_md5run']:
+    if files['uploaded_without_md5run'] or files['uploaded_with_md5run']:
         check.status = 'WARN'
         check.summary = 'Some files need md5 run before release'
         check.description = 'Some files with status updloaded or higher are missing md5sum'
         check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
         check.full_output = files
-        if files['released_without_md5run']:
+        if files['uploaded_without_md5run']:
             check.allow_action = True
-        if files['released_with_md5run']:
-            check.action_message = 'Files with previous md5run CANNOT be run automatically'
+        if files['uploaded_with_md5run']:
+            check.action_message = ('Action will only run on Files without previous md5 run. ' +
+                                    'You need to manually fix those with previous md5 run.')
     else:
         check.summary = 'All Good!'
     return check
@@ -257,8 +265,10 @@ def md5run_start(connection, **kwargs):
     action_logs['check_output'] = md5run_check_result
     targets = []
     if kwargs.get('start_missing'):
+        # get uploading files from md5run_status
         targets.extend(md5run_check_result.get('files_without_md5run', []))
-        targets.extend(md5run_check_result.get('released_without_md5run', []))
+        # get uploaded files from md5run_uploaded_files
+        targets.extend(md5run_check_result.get('uploaded_without_md5run', []))
     if kwargs.get('start_not_switched'):
         targets.extend(md5run_check_result.get('files_with_run_and_wrong_status', []))
     action_logs['targets'] = targets
@@ -2653,26 +2663,26 @@ def compartments_caller_status(connection, **kwargs):
                 #         skip = True
                 #         continue
                 workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
-        if skip:
-            continue
-        elif workflow_status_report['status'] == 'running':
-            running.append(pfile['accession'])
-        elif workflow_status_report['status'].startswith("no complete run, too many"):
-            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
-        elif workflow_status_report['status'] != 'complete':
-            organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
-            gc_content_file = wfr_utils.gc_content_ref.get(organism)
-            if not gc_content_file:
-                problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
-            else:
-                overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
-                inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
-                missing_run.append(['step1', ['compartments-caller', organism, overwrite],
-                                    inp_f, a_res['accession']])
-        else:
-            patch_data = [workflow_status_report['bwfile']]
-            completed['patch_opf'].append([a_res['accession'], patch_data])
-            completed['add_tag'] = [a_res['accession'], tag]
+                if skip:
+                    continue
+                elif workflow_status_report['status'] == 'running':
+                    running.append(pfile['accession'])
+                elif workflow_status_report['status'].startswith("no complete run, too many"):
+                    problematic_run.append(['step1', a_res['accession'], pfile['accession']])
+                elif workflow_status_report['status'] != 'complete':
+                    organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
+                    gc_content_file = wfr_utils.gc_content_ref.get(organism)
+                    if not gc_content_file:
+                        problematic_run.append(['step1', a_res['accession'], pfile['accession'], 'missing reference track'])
+                    else:
+                        overwrite = {'parameters': {"binsize": binsize, "contact_type": contact_type}}
+                        inp_f = {'mcoolfile': pfile['accession'], "reference_track": gc_content_file}
+                        missing_run.append(['step1', ['compartments-caller', organism, overwrite],
+                                            inp_f, a_res['accession']])
+                else:
+                    patch_data = [workflow_status_report['bwfile']]
+                    completed['patch_opf'].append([a_res['accession'], patch_data])
+                    completed['add_tag'] = [a_res['accession'], tag]
 
         if running:
             check.full_output['running_runs'].append({a_res['accession']: running})
