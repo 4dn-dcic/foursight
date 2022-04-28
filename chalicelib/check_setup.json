@@ -1999,7 +1999,7 @@
         "group": "ECS Checks",
         "schedule": {
             "manual_checks": {
-                "mastertest": {
+                "all": {
                     "kwargs": {
                         "primary": true
                     },
@@ -2016,7 +2016,7 @@
         "group": "ECS Checks",
         "schedule": {
             "manual_checks": {
-                "mastertest": {
+                "all": {
                       "kwargs": {
                           "primary": true
                       },
@@ -2032,7 +2032,7 @@
         "title": "Triggers a CodeBuild run",
         "group": "ECS Checks",
         "schedule": {
-            "manual_checks": {
+            "all": {
                 "mastertest": {
                       "kwargs": {
                           "primary": true
