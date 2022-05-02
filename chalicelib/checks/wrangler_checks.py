@@ -2896,13 +2896,14 @@ def sync_users_oh_start(connection, **kwargs):
         if row == 1:
             for c, key in enumerate(line):
                 col = c + 1
-                gs_write.append(gspread.models.Cell(row, col, key))
+                gs_write.append(gspread.Cell(row=row, col=col, value=key))
         row = r + 2
         # write values
         for c, key in enumerate(line):
             col = c + 1
-            gs_write.append(gspread.models.Cell(row, col, line[key]))
+            gs_write.append(gspread.Cell(row=row, col=col, value=line[key]))
     # #Write the cells to the worksheet
+    import pdb; pdb.set_trace()
     try:
         worksheet.update_cells(gs_write)
     except Exception as e:
