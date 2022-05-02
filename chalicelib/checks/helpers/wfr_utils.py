@@ -2,6 +2,7 @@ import json
 import time
 import random
 from dcicutils import ff_utils, s3Utils
+from dcicutils.env_utils import FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER
 from datetime import datetime, timezone, timedelta
 from operator import itemgetter
 from tibanna_4dn.core import API
@@ -340,6 +341,9 @@ def check_indexing(check, connection):
     # return check, True
     # check indexing queue
     env = connection.ff_env
+    if env in [FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER]:
+        health = ff_utils.get_health_page(ff_env=env)
+        env = health['beanstalk_env']  # this is ENV_NAME and needs to match to get the correct queue
     indexing_queue = ff_utils.stuff_in_queues(env, check_secondary=True)
     if indexing_queue:
         check.status = 'PASS'  # maybe use warn?
