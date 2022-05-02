@@ -12,6 +12,7 @@
         "es:*",
         "rds:*",
         "ec2:*",
+        "ecs:*",
         "logs:*",
         "cloudformation:*",
         "cloudwatch:*",
