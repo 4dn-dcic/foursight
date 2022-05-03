@@ -211,36 +211,41 @@ def biorxiv_is_now_published(connection, **kwargs):
         check.description = "Could not retrieve biorxiv records from fourfront"
         return check
 
-    # here is where we get any previous or current false positives
-    last_result = check.get_primary_result()
-    # if last one was fail, find an earlier check with non-FAIL status
-    it = 0
-    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
-        it += 1
-        # this is a daily check, so look for checks with 12h iteration
-        hours = it * 12
-        last_result = check.get_closest_result(diff_hours=hours)
-        # if this is going forever kill it
-        if hours > 100:
-            err_msg = 'Can not find a non-FAIL check in last 100 hours'
-            check.brief_output = err_msg
-            check.full_output = {}
-            check.status = 'ERROR'
-            return check
-    last_result = last_result.get('full_output')
-    try:
-        false_pos = last_result.get('false_positives', {})
-    except AttributeError:  # if check errored last result is a list of error rather than a dict
+    # get false_positives from kwargs
+    reset_false_positives = False
+    fp_input = kwargs.get('false_positives', '')
+    fp_input_list = [fp.strip() for fp in fp_input.split(',')]
+    if 'RESET' in fp_input_list:
         false_pos = {}
-    fp_input = kwargs.get('false_positives')
-    if fp_input:
-        fps = [fp.strip() for fp in fp_input.split(',')]
-        for fp in fps:
-            if fp == 'RESET':  # reset the saved dict to empty
-                false_pos = {}
-                continue
+        reset_false_positives = True
+
+    # here is where we get any previous false positives
+    if not reset_false_positives:
+        last_result = check.get_primary_result()
+        # if last one was fail, find an earlier check with non-FAIL status
+        it = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            it += 1
+            # this is a daily check, so look for checks with 12h iteration
+            hours = it * 12
+            last_result = check.get_closest_result(diff_hours=hours)
+            # if this is going forever kill it
+            if hours > 100:
+                err_msg = 'Can not find a non-FAIL check in last 100 hours'
+                check.brief_output = err_msg
+                check.full_output = {}
+                check.status = 'ERROR'
+                return check
+        last_result = last_result.get('full_output')
+        try:
+            false_pos = last_result.get('false_positives', {})
+        except AttributeError:  # if check errored last result is a list of error rather than a dict
+            false_pos = {}
+        # add current input to previous false_positives
+        for fp in fp_input_list:
             id_vals = [i.strip() for i in fp.split(':')]
             false_pos.setdefault(id_vals[0], []).append(id_vals[1])
+
     fulloutput['false_positives'] = false_pos
     pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json'
     problems = {}
@@ -1973,7 +1978,7 @@ def add_suggested_enum_values(connection, **kwargs):
     return action
 
 
-@check_function(days_back=30)
+@check_function(days_back_as_string='30')
 def check_external_references_uri(connection, **kwargs):
     '''
     Check if external_references.uri is missing while external_references.ref
@@ -1981,7 +1986,7 @@ def check_external_references_uri(connection, **kwargs):
     '''
     check = CheckResult(connection, 'check_external_references_uri')
 
-    days_back = kwargs.get('days_back')
+    days_back = kwargs.get('days_back_as_string')
     from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=Item&external_references.ref%21=No+value' +
@@ -2008,7 +2013,7 @@ def check_external_references_uri(connection, **kwargs):
     return check
 
 
-@check_function(days_back=30)
+@check_function(days_back_as_string='30')
 def check_opf_lab_different_than_experiment(connection, **kwargs):
     '''
     Check if other processed files have lab (generating lab) that is different
@@ -2019,7 +2024,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
     check.action = 'add_contributing_lab_opf'
 
     # check only recently modified files, to reduce the number of items
-    days_back = kwargs.get('days_back')
+    days_back = kwargs.get('days_back_as_string')
     from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=FileProcessed' +
@@ -2199,7 +2204,7 @@ def add_grouped_with_file_relation(connection, **kwargs):
     return action
 
 
-@check_function(days_back=1)
+@check_function(days_back_as_string='1')
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
     If any actionable result is found, trigger update of all summary tables.
@@ -2212,27 +2217,30 @@ def check_hic_summary_tables(connection, **kwargs):
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
 
     # search if there is any new expset
-    from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back'))
+    from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back_as_string'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
-    # get problematic sets from the most recent successful primary check
-    last_result = check.get_primary_result()
-    days = 0
-    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
-        days += 1
-        last_result = check.get_closest_result(diff_hours=days*24)
-        if days > 10:
-            # too many recent primary checks that errored
-            check.brief_output = 'Can not find a recent non-ERROR primary check'
-            check.full_output = {}
-            check.status = 'ERROR'
-            return check
+    no_previous_results = True
+    if not from_date_query:
+        # run on all results
+        no_previous_results = False
+    else:
+        # run on recent results + get problematic sets from the most recent successful primary check
+        last_result = check.get_primary_result()
+        days = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            days += 1
+            last_result = check.get_closest_result(diff_hours=days*24)
+            if days > 10:
+                # too many recent primary checks that errored
+                check.brief_output = 'Can not find a recent non-ERROR primary check'
+                check.full_output = {}
+                check.status = 'ERROR'
+                return check
+        if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+            no_previous_results = False
 
-    previous_problematic_sets = False
-    if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
-        previous_problematic_sets = True
-
-    if len(new_sets) == 0 and previous_problematic_sets is False:  # no update needed
+    if len(new_sets) == 0 and no_previous_results:  # no update needed
         check.status = 'PASS'
         check.full_output = {}
         check.summary = check.description = "No update needed for Hi-C summary tables"
