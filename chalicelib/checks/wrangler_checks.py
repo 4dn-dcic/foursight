@@ -2220,24 +2220,27 @@ def check_hic_summary_tables(connection, **kwargs):
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
-    # get problematic sets from the most recent successful primary check
-    last_result = check.get_primary_result()
-    days = 0
-    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
-        days += 1
-        last_result = check.get_closest_result(diff_hours=days*24)
-        if days > 10:
-            # too many recent primary checks that errored
-            check.brief_output = 'Can not find a recent non-ERROR primary check'
-            check.full_output = {}
-            check.status = 'ERROR'
-            return check
+    no_previous_results = True
+    if not from_date_query:
+        # run on all results
+        no_previous_results = False
+    else:
+        # run on recent results + get problematic sets from the most recent successful primary check
+        last_result = check.get_primary_result()
+        days = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            days += 1
+            last_result = check.get_closest_result(diff_hours=days*24)
+            if days > 10:
+                # too many recent primary checks that errored
+                check.brief_output = 'Can not find a recent non-ERROR primary check'
+                check.full_output = {}
+                check.status = 'ERROR'
+                return check
+        if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+            no_previous_results = False
 
-    previous_problematic_sets = False
-    if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
-        previous_problematic_sets = True
-
-    if len(new_sets) == 0 and previous_problematic_sets is False:  # no update needed
+    if len(new_sets) == 0 and no_previous_results:  # no update needed
         check.status = 'PASS'
         check.full_output = {}
         check.summary = check.description = "No update needed for Hi-C summary tables"
