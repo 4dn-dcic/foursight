@@ -189,14 +189,14 @@ def expset_opf_unique_files_in_experiments(connection, **kwargs):
     return check
 
 
-@check_function(days_back=14)
+@check_function(days_back_as_string='14')
 def expset_opf_unique_files(connection, **kwargs):
     '''
     Checks Experiments and Experiment Sets with other_processed_files and looks
     if any opf is also present within the raw, processed or reference files.
     '''
     check = CheckResult(connection, 'expset_opf_unique_files')
-    days_back = kwargs.get('days_back')
+    days_back = kwargs.get('days_back_as_string')
     from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
     # opfs can be on Exps or ExpSets: search ExpSets for each case and merge results
     opf_query = ('other_processed_files.files.uuid%21=No+value' +
