@@ -1978,7 +1978,7 @@ def add_suggested_enum_values(connection, **kwargs):
     return action
 
 
-@check_function(days_back=30)
+@check_function(days_back_as_string='30')
 def check_external_references_uri(connection, **kwargs):
     '''
     Check if external_references.uri is missing while external_references.ref
@@ -1986,7 +1986,7 @@ def check_external_references_uri(connection, **kwargs):
     '''
     check = CheckResult(connection, 'check_external_references_uri')
 
-    days_back = kwargs.get('days_back')
+    days_back = kwargs.get('days_back_as_string')
     from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=Item&external_references.ref%21=No+value' +
@@ -2013,7 +2013,7 @@ def check_external_references_uri(connection, **kwargs):
     return check
 
 
-@check_function(days_back=30)
+@check_function(days_back_as_string='30')
 def check_opf_lab_different_than_experiment(connection, **kwargs):
     '''
     Check if other processed files have lab (generating lab) that is different
@@ -2024,7 +2024,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
     check.action = 'add_contributing_lab_opf'
 
     # check only recently modified files, to reduce the number of items
-    days_back = kwargs.get('days_back')
+    days_back = kwargs.get('days_back_as_string')
     from_date_query, from_text = wrangler_utils.last_modified_from(days_back)
 
     search = ('search/?type=FileProcessed' +
@@ -2204,7 +2204,7 @@ def add_grouped_with_file_relation(connection, **kwargs):
     return action
 
 
-@check_function(days_back=1)
+@check_function(days_back_as_string='1')
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
     If any actionable result is found, trigger update of all summary tables.
@@ -2217,7 +2217,7 @@ def check_hic_summary_tables(connection, **kwargs):
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
 
     # search if there is any new expset
-    from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back'))
+    from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back_as_string'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
 
     no_previous_results = True
