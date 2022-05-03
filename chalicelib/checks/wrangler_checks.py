@@ -211,36 +211,41 @@ def biorxiv_is_now_published(connection, **kwargs):
         check.description = "Could not retrieve biorxiv records from fourfront"
         return check
 
-    # here is where we get any previous or current false positives
-    last_result = check.get_primary_result()
-    # if last one was fail, find an earlier check with non-FAIL status
-    it = 0
-    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
-        it += 1
-        # this is a daily check, so look for checks with 12h iteration
-        hours = it * 12
-        last_result = check.get_closest_result(diff_hours=hours)
-        # if this is going forever kill it
-        if hours > 100:
-            err_msg = 'Can not find a non-FAIL check in last 100 hours'
-            check.brief_output = err_msg
-            check.full_output = {}
-            check.status = 'ERROR'
-            return check
-    last_result = last_result.get('full_output')
-    try:
-        false_pos = last_result.get('false_positives', {})
-    except AttributeError:  # if check errored last result is a list of error rather than a dict
+    # get false_positives from kwargs
+    reset_false_positives = False
+    fp_input = kwargs.get('false_positives', '')
+    fp_input_list = [fp.strip() for fp in fp_input.split(',')]
+    if 'RESET' in fp_input_list:
         false_pos = {}
-    fp_input = kwargs.get('false_positives')
-    if fp_input:
-        fps = [fp.strip() for fp in fp_input.split(',')]
-        for fp in fps:
-            if fp == 'RESET':  # reset the saved dict to empty
-                false_pos = {}
-                continue
+        reset_false_positives = True
+
+    # here is where we get any previous false positives
+    if not reset_false_positives:
+        last_result = check.get_primary_result()
+        # if last one was fail, find an earlier check with non-FAIL status
+        it = 0
+        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+            it += 1
+            # this is a daily check, so look for checks with 12h iteration
+            hours = it * 12
+            last_result = check.get_closest_result(diff_hours=hours)
+            # if this is going forever kill it
+            if hours > 100:
+                err_msg = 'Can not find a non-FAIL check in last 100 hours'
+                check.brief_output = err_msg
+                check.full_output = {}
+                check.status = 'ERROR'
+                return check
+        last_result = last_result.get('full_output')
+        try:
+            false_pos = last_result.get('false_positives', {})
+        except AttributeError:  # if check errored last result is a list of error rather than a dict
+            false_pos = {}
+        # add current input to previous false_positives
+        for fp in fp_input_list:
             id_vals = [i.strip() for i in fp.split(':')]
             false_pos.setdefault(id_vals[0], []).append(id_vals[1])
+
     fulloutput['false_positives'] = false_pos
     pubmed_url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json'
     problems = {}
