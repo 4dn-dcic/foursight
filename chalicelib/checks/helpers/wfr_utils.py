@@ -1,7 +1,8 @@
 import json
 import time
 import random
-from dcicutils import ff_utils, s3Utils
+from dcicutils import ff_utils
+from dcicutils.s3_utils import s3Utils
 from dcicutils.env_utils import FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER
 from datetime import datetime, timezone, timedelta
 from operator import itemgetter
