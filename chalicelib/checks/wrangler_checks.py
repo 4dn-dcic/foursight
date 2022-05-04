@@ -2911,7 +2911,6 @@ def sync_users_oh_start(connection, **kwargs):
             col = c + 1
             gs_write.append(gspread.Cell(row=row, col=col, value=line[key]))
     # #Write the cells to the worksheet
-    import pdb; pdb.set_trace()
     try:
         worksheet.update_cells(gs_write)
     except Exception as e:
