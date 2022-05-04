@@ -213,8 +213,8 @@ def biorxiv_is_now_published(connection, **kwargs):
 
     # get false_positives from kwargs
     reset_false_positives = False
-    fp_input = kwargs.get('false_positives', '')
-    fp_input_list = [fp.strip() for fp in fp_input.split(',')]
+    fp_input = kwargs.get('false_positives')
+    fp_input_list = [fp.strip() for fp in fp_input.split(',')] if fp_input else []
     if 'RESET' in fp_input_list:
         false_pos = {}
         reset_false_positives = True
