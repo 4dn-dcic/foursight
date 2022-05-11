@@ -1761,6 +1761,9 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 if 'is_extra' in file_info:  # reformat the url so it points to extra file
                     file_info['open_data_url'] = '/'.join(file_info['open_data_url'].split('/')[:-2]) + '/' + file_info['upload_key']
                     # 'https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/7c4f27a2-ff7e-4f7a-b3f5-bbe773e68614/4DNFIWSFMDXE.bed.gz'
+
+                    # If the URL points to the files folder, it is a reference file. However, the extra files live in the wfoutput folder
+                    file_info['open_data_url'] = file_info['open_data_url'].replace("/files/", "/wfoutput/")
                 if not does_url_exist(file_info['open_data_url']):
                     not_found_s3.append(file_info)
                     continue
