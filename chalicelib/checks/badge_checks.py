@@ -244,6 +244,7 @@ def yellow_flag_biosamples(connection, **kwargs):
                          'Remove badge': to_remove,
                          'Keep badge and edit messages': to_edit,
                          'Keep badge (no change)': ok}
+    import pdb; pdb.set_trace()
     check.brief_output[RELEASED_KEY] = {
         'Add badge': ['{} missing {}'.format(
             k, ', '.join([item[item.index('missing') + 8:] for item in flagged[k]])
