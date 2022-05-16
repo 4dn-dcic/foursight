@@ -211,7 +211,7 @@ def yellow_flag_biosamples(connection, **kwargs):
                     valid_fbs = ["VWR 97068-091 Lot 035B15 (phase 1)", "Peak Serum PS-FBS2 Lot 21E1202 (phase 2)", "VWR 89510-184 lot 310B19 (phase 2)"]
                     fbs_info = bcc.get('fbs_vendor_lot', '').strip()
                     if fbs_info not in valid_fbs:
-                        messages.append('Tiered cell line cultured after {} lacks required FBS vendor and lot info'.format(fbs_chk_date))
+                        messages.append('Tiered cell line cultured after {} missing required FBS vendor and lot info'.format(fbs_chk_date))
         if result.get('biosample_type') == 'In vitro differentiated cells' and not diff_auth:
             messages.append('Differentiated biosample missing differentiation authentication')
         if 'HAP-1' in result.get('biosource_summary') and not ploidy:
@@ -244,7 +244,6 @@ def yellow_flag_biosamples(connection, **kwargs):
                          'Remove badge': to_remove,
                          'Keep badge and edit messages': to_edit,
                          'Keep badge (no change)': ok}
-    import pdb; pdb.set_trace()
     check.brief_output[RELEASED_KEY] = {
         'Add badge': ['{} missing {}'.format(
             k, ', '.join([item[item.index('missing') + 8:] for item in flagged[k]])
