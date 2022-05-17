@@ -163,12 +163,15 @@ def yellow_flag_biosamples(connection, **kwargs):
     the first thaw of the original vial.
     4. Differentiation authentication for differentiated cells.
     5. HAP-1 biosamples must have ploidy authentication.
+    6. For phase 2 samples must include FBS info (post 2022-05-10)
     '''
     check = CheckResult(connection, 'yellow_flag_biosamples')
 
     results = ff_utils.search_metadata('search/?type=Biosample', key=connection.ff_keys)
     flagged = {}
     check.brief_output = {RELEASED_KEY: {}, REV_KEY: []}
+
+    fbs_chk_date = '2022-05-10'
     for result in results:
         messages = []
         bs_types = [bs.get('biosource_type') for bs in result.get('biosource', [])]
@@ -180,6 +183,7 @@ def yellow_flag_biosamples(connection, **kwargs):
             if len([t for t in bs_types if t in ['primary cell', 'tissue', 'multicellular organism']]) != len(bs_types):
                 messages.append('Biosample missing Cell Culture Details')
         else:
+            tier = re.search(r'\(Tier (1|2)\)', result.get('biosource_summary'))
             for bcc in bccs:
                 for item in [
                     'culture_harvest_date', 'doubling_number', 'passage_number', 'culture_duration', 'morphology_image'
@@ -203,6 +207,11 @@ def yellow_flag_biosamples(connection, **kwargs):
                         messages.append('Biosample is a stem cell line over 10 passages but missing karyotype')
                     elif not passages:
                         messages.append('Biosample is a stem cell line with unknown passage number missing karyotype')
+                if tier and bcc.get('culture_start_date', '2000-01-01') > fbs_chk_date:
+                    valid_fbs = ["VWR 97068-091 Lot 035B15 (phase 1)", "Peak Serum PS-FBS2 Lot 21E1202 (phase 2)", "VWR 89510-184 lot 310B19 (phase 2)"]
+                    fbs_info = bcc.get('fbs_vendor_lot', '').strip()
+                    if fbs_info not in valid_fbs:
+                        messages.append('Tiered cell line cultured after {} missing 4DN specified FBS vendor and lot info'.format(fbs_chk_date))
         if result.get('biosample_type') == 'In vitro differentiated cells' and not diff_auth:
             messages.append('Differentiated biosample missing differentiation authentication')
         if 'HAP-1' in result.get('biosource_summary') and not ploidy:
