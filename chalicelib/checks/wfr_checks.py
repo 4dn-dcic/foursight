@@ -616,7 +616,7 @@ def bed2beddb_status(connection, **kwargs):
         query += '&lab.display_title=' + lab
 
     # build a second query for checking failed ones
-    query_f = ("/search/?type=FileProcessed&file_format.file_format=bed"
+    query_f = ("/search/?type=File&file_format.file_format=bed"
                "&extra_files.file_format.display_title=beddb"
                "&extra_files.status=uploading"
                "&extra_files.status=to be uploaded by workflow"
