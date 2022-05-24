@@ -13,7 +13,7 @@ from .helpers.confchecks import *
 lambda_limit = wfr_utils.lambda_limit
 
 
-@check_function()
+@check_function(query='/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow&status!=archived&status!=archived to project&extra_files.status!=uploaded&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value&extra_files.md5sum=No value')
 def md5run_status_extra_file(connection, **kwargs):
     """Searches for extra files that are uploaded to s3, but not went though md5 run.
     no action is associated, we don't have any case so far.
@@ -26,9 +26,7 @@ def md5run_status_extra_file(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
-             '&status!=archived&status!=archived to project&extra_files.status!=uploaded'
-             '&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value&extra_files.md5sum=No value')
+    query = kwargs.get('query')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
