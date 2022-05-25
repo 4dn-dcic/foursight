@@ -2289,7 +2289,7 @@ def check_hic_summary_tables(connection, **kwargs):
                 'Nature communications': 'Nat Commun',
                 'Nature genetics': 'Nat Genet',
                 'Nature methods': 'Nat Methods',
-                'Nature structural and molecular biology': 'Nat Struct Mol Biol',
+                'Nature structural & molecular biology': 'Nat Struct Mol Biol',
                 'Nucleic acids research': 'Nucleic Acids Res',
                 'Proceedings of the National Academy of Sciences of the United States of America': 'PNAS',
                 'Science (New York, N.Y.)': 'Science',
