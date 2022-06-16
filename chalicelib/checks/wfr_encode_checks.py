@@ -207,7 +207,10 @@ def chipseq_status(connection, **kwargs):
             if control:
                 # control run on tf mode
                 # input_files = {'chip.ctl_fastqs': [exp_files]}
-                input_files['chip.ctl_fastqs'] = [exp_files]
+                
+                # exp_files is of the form [[Files]]
+                # for v1.1.1 chip.ctl_fastqs = [exp_files] ([[[Files]]]), for v2.1.6, just [[Files]]
+                input_files['chip.ctl_fastqs'] = exp_files
                 control_parameters = {
                     "chip.pipeline_type": 'tf',
                     "chip.choose_ctl.always_use_pooled_ctl": True,
@@ -239,7 +242,9 @@ def chipseq_status(connection, **kwargs):
             # run step1
             else:
                 # input_files = {'chip.fastqs': [exp_files]}
-                input_files['chip.fastqs'] = [exp_files]
+                # exp_files is of the form [[Files]]
+                # for v1.1.1 chip.fastqs = [exp_files] ([[[Files]]]), for v2.1.6, just [[Files]]
+                input_files['chip.fastqs'] = exp_files
                 exp_parameters = {
                     "chip.pipeline_type": target_type,
                     "chip.choose_ctl.always_use_pooled_ctl": True,
