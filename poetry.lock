@@ -140,7 +140,6 @@ jmespath = ">=0.9.3,<2.0.0"
 mypy-extensions = "0.4.3"
 pyyaml = ">=5.3.1,<7.0.0"
 six = ">=1.10.0,<2.0.0"
-typing = {version = "3.6.4", markers = "python_version < \"3.7\""}
 
 [package.extras]
 cdk = ["aws-cdk.aws-iam (>=1.85.0,<2.0)", "aws-cdk.aws-s3-assets (>=1.85.0,<2.0)", "aws-cdk.cloudformation-include (>=1.85.0,<2.0)", "aws-cdk.core (>=1.85.0,<2.0)"]
@@ -187,7 +186,7 @@ toml = ["tomli"]
 
 [[package]]
 name = "dcicutils"
-version = "3.13.0"
+version = "3.14.0.3b42"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
@@ -284,15 +283,15 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "0.6.0"
+version = "0.6.1.1b13"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
-python-versions = ">=3.6.1,<3.8"
+python-versions = ">=3.7,<3.9"
 
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
-dcicutils = ">=3.1.0,<4.0.0"
+dcicutils = ">=v3.14.0.3b42,<4.0.0.0"
 elasticsearch = ">=6.8.1,<7.0.0"
 elasticsearch-dsl = ">=6.4.0,<7.0.0"
 geocoder = "1.38.1"
@@ -958,14 +957,6 @@ optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
-name = "typing"
-version = "3.6.4"
-description = "Type Hints for Python"
-category = "dev"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "typing-extensions"
 version = "4.1.1"
 description = "Backported and Experimental Type Hints for Python 3.6+"
@@ -1071,8 +1062,8 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.6.1,<3.8"
-content-hash = "dbd83a8278782c21e4229091dc08a61bfc350f898f85385f41655593d6e349b5"
+python-versions = ">=3.7,<3.8"
+content-hash = "e05ebabaabb7bbb63115aa20db35f07eb60a7850cf825ffbf0bec04ea3a98e9b"
 
 [metadata.files]
 ansicon = [
@@ -1186,8 +1177,8 @@ coverage = [
     {file = "coverage-6.2.tar.gz", hash = "sha256:e2cad8093172b7d1595b4ad66f24270808658e11acf43a8f95b41276162eb5b8"},
 ]
 dcicutils = [
-    {file = "dcicutils-3.13.0-py3-none-any.whl", hash = "sha256:01e403cb6ca67f54bb17625632d01d54a576dcaec85c4ac33dff9931463e756e"},
-    {file = "dcicutils-3.13.0.tar.gz", hash = "sha256:dae2239705b23ebcce05a2a20f2a355b3a5ab0be62f25c5fba9dea02dfffdb5e"},
+    {file = "dcicutils-3.14.0.3b42-py3-none-any.whl", hash = "sha256:92ff5faab7edba1ce995e35ba1c4988840a5821921c7956bfffa9b6efde79468"},
+    {file = "dcicutils-3.14.0.3b42.tar.gz", hash = "sha256:c65b24272260848913c9538352be9f6a163c0f455cf2d7ccdee86cdd69631fb0"},
 ]
 decorator = [
     {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
@@ -1214,8 +1205,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight_core-0.6.0-py3-none-any.whl", hash = "sha256:aa381a76a80d65317eb6e64e9097e5719f66487d2b731fca1b6a5a0fc4cd97e4"},
-    {file = "foursight_core-0.6.0.tar.gz", hash = "sha256:98438b62f7282f37483ceb86bfa4c2dd6ed1cdb108084464a5e434adc7d60b50"},
+    {file = "foursight_core-0.6.1.1b13-py3-none-any.whl", hash = "sha256:48926755f47dae615496489e8256e11cf973b7a63f8f39e3829e9e662773d299"},
+    {file = "foursight_core-0.6.1.1b13.tar.gz", hash = "sha256:bcb5533170985b836c461915194fe265f51a7fbf691783d1eab96e8216ee17f3"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1631,11 +1622,6 @@ tibanna-ff = [
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
     {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
-]
-typing = [
-    {file = "typing-3.6.4-py2-none-any.whl", hash = "sha256:b2c689d54e1144bbcfd191b0832980a21c2dbcf7b5ff7a66248a60c90e951eb8"},
-    {file = "typing-3.6.4-py3-none-any.whl", hash = "sha256:3a887b021a77b292e151afb75323dea88a7bc1b3dfa92176cff8e44c8b68bddf"},
-    {file = "typing-3.6.4.tar.gz", hash = "sha256:d400a9344254803a2368533e4533a4200d21eb7b6b729c173bc38201a74db3f2"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.1.1-py3-none-any.whl", hash = "sha256:21c85e0fe4b9a155d0799430b0ad741cdce7e359660ccbd8b530613e8df88ce2"},

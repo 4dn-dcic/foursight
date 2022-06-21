@@ -1,6 +1,6 @@
 from datetime import datetime
 from dcicutils import ff_utils
-from dcicutils import s3Utils
+from dcicutils.s3_utils import s3Utils
 from .helpers import wfr_utils
 from .helpers import wfrset_utils
 
