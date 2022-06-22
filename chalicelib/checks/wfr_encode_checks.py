@@ -186,7 +186,7 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.bowtie2_idx_tar'] = '/files-reference/4DNFIMQPTYDY/'
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
-                input_file['chip.ref_fa'] = '/files-reference/files-reference/4DNFI823L888/'
+                input_files['chip.ref_fa'] = '/files-reference/files-reference/4DNFI823L888/'
                 input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}, "chip.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.bowtie2Index.tar"}}
             if organism == 'mouse':
                 org = 'mm'
@@ -194,7 +194,7 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.bowtie2_idx_tar'] = '/files-reference/4DNFI2493SDN/'
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
-                input_file['chip.ref_fa'] = '/files-reference/4DNFIC1NWMVJ/'
+                input_files['chip.ref_fa'] = '/files-reference/4DNFIC1NWMVJ/'
                 input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}, "chip.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.bowtie2Index.tar"}}
             # step1 Parameters
             parameters = {}
