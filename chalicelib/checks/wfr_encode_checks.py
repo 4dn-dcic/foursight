@@ -183,15 +183,19 @@ def chipseq_status(connection, **kwargs):
             if organism == 'human':
                 org = 'hs'
                 input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZQB369V/'
+                input_files['chip.bowtie2_idx_tar'] = '/files-reference/4DNFIMQPTYDY/'
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
-                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}}
+                input_file['chip.ref_fa'] = '/files-reference/files-reference/4DNFI823L888/'
+                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}, {"chip.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.bowtie2Index.tar"}}
             if organism == 'mouse':
                 org = 'mm'
                 input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZ2PWCC2/'
+                input_files['chip.bowtie2_idx_tar'] = '/files-reference/4DNFI2493SDN/'
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
-                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}}
+                input_file['chip.ref_fa'] = '/files-reference/4DNFIC1NWMVJ/'
+                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}, "chip.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.bowtie2Index.tar"}
             # step1 Parameters
             parameters = {}
             parameters["chip.gensz"] = org
@@ -213,12 +217,8 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.ctl_fastqs'] = exp_files
                 control_parameters = {
                     "chip.pipeline_type": 'tf',
-                    "chip.choose_ctl.always_use_pooled_ctl": True,
-                    "chip.bam2ta_ctl.regex_grep_v_ta": "chr[MUE]|random|alt",
-                    "chip.bwa_ctl.cpu": 8,
-                    "chip.merge_fastq_ctl.cpu": 8,
-                    "chip.filter_ctl.cpu": 8,
-                    "chip.bam2ta_ctl.cpu": 8,
+                    "chip.always_use_pooled_ctl": True,
+                    "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
                     "chip.align_only": True
                 }
                 parameters.update(control_parameters)
@@ -247,13 +247,8 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.fastqs'] = exp_files
                 exp_parameters = {
                     "chip.pipeline_type": target_type,
-                    "chip.choose_ctl.always_use_pooled_ctl": True,
-                    "chip.bam2ta.regex_grep_v_ta": "chr[MUE]|random|alt",
-                    "chip.bwa.cpu": 8,
-                    "chip.merge_fastq.cpu": 8,
-                    "chip.filter.cpu": 8,
-                    "chip.bam2ta.cpu": 8,
-                    "chip.xcor.cpu": 8,
+                    "chip.always_use_pooled_ctl": True,
+                    "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
                     "chip.align_only": True
                 }
                 parameters.update(exp_parameters)
@@ -393,8 +388,7 @@ def chipseq_status(connection, **kwargs):
                     "chip.paired_end": chip_p,
                     "chip.choose_ctl.always_use_pooled_ctl": True,
                     "chip.qc_report.desc": run_ids['desc'],
-                    "chip.gensz": org,
-                    "chip.xcor.cpu": 4,
+                    "chip.gensz": org
                 }
                 if paired == 'single':
                     frag_temp = [300]

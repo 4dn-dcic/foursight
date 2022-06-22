@@ -195,7 +195,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         "app_name": "encode-chipseq-aln-chip",
-        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-chip",
+        "workflow_uuid": "212a9c91-25d6-473f-b56b-8dd93958c580",
         "parameters": {},
         "config": {},
         'custom_pf_fields': {
