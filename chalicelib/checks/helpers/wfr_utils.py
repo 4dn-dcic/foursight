@@ -196,7 +196,7 @@ accepted_versions = {
     # OFFICIAL
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
-    'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1'],
+    'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1', 'ENCODE_ChIP_Pipeline_1.1.2'],
     # OFFICIAL
     'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
     'single cell Repli-seq': [''],

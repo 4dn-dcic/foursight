@@ -194,8 +194,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }
     },
     {
-        "app_name": "encode-chipseq-aln-alpha",
-        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-alpha",
+        "app_name": "encode-chipseq-aln-chip",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-chip",
         "parameters": {},
         "config": {},
         'custom_pf_fields': {
@@ -212,8 +212,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }
     },
     {
-        "app_name": "encode-chipseq-aln-ctl-alpha",
-        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl-alpha",
+        "app_name": "encode-chipseq-aln-ctl",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl",
         "parameters": {},
         "config": {},
         'custom_pf_fields': {
@@ -225,8 +225,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         }
     },
     {
-        "app_name": "encode-chipseq-postaln-alpha",
-        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-postaln-alpha",
+        "app_name": "encode-chipseq-postaln",
+        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-postaln",
         "parameters": {},
         "config": {},
         'custom_pf_fields': {

@@ -50,9 +50,9 @@ def chipseq_status(connection, **kwargs):
     # for control sets, run step1c on each experiment and finish
     # for non-control sets, run step1 on each experiment, check if control is ready, run step2 on set
     step0_name = 'merge-fastq'
-    step1_name = 'encode-chipseq-aln-alpha'
-    step1c_name = 'encode-chipseq-aln-ctl-alpha'
-    step2_name = 'encode-chipseq-postaln-alpha'
+    step1_name = 'encode-chipseq-aln-chip'
+    step1c_name = 'encode-chipseq-aln-ctl'
+    step2_name = 'encode-chipseq-postaln'
 
     for a_set in res:
         set_acc = a_set['accession']
