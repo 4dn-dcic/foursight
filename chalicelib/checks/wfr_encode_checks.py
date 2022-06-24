@@ -186,12 +186,12 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.bowtie2_idx_tar'] = '/files-reference/4DNFIMQPTYDY/'
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
-                input_files['chip.ref_fa'] = '/files-reference/files-reference/4DNFI823L888/'
+                input_files['chip.ref_fa'] = '/files-reference/4DNFI823L888/'
                 input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}, "chip.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.bowtie2Index.tar"}}
             if organism == 'mouse':
                 org = 'mm'
                 input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZ2PWCC2/'
-                input_files['chip.bowtie2_idx_tar'] = '/files-reference/4DNFI2493SDN/'
+                input_files['chip.bowtie2_idx_tar'] = '63e22058-79c6-4e24-8231-ca4afac29dda'
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
                 input_files['chip.ref_fa'] = '/files-reference/4DNFIC1NWMVJ/'
@@ -213,12 +213,13 @@ def chipseq_status(connection, **kwargs):
                 # input_files = {'chip.ctl_fastqs': [exp_files]}
                 
                 # exp_files is of the form [[Files]]
-                # for v1.1.1 chip.ctl_fastqs = [exp_files] ([[[Files]]]), for v2.1.6, just [[Files]]
-                input_files['chip.ctl_fastqs'] = exp_files
+                # for v1.1.1 chip.ctl_fastqs = [exp_files] ([[[Files]]]), for v2.1.6, just [Files]
+                input_files['chip.ctl_fastqs'] = exp_files[0]
                 control_parameters = {
                     "chip.pipeline_type": 'tf',
                     "chip.always_use_pooled_ctl": True,
                     "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
+                    "chip.mito_chr_name": "chrM",
                     "chip.align_only": True
                 }
                 parameters.update(control_parameters)
@@ -243,12 +244,13 @@ def chipseq_status(connection, **kwargs):
             else:
                 # input_files = {'chip.fastqs': [exp_files]}
                 # exp_files is of the form [[Files]]
-                # for v1.1.1 chip.fastqs = [exp_files] ([[[Files]]]), for v2.1.6, just [[Files]]
-                input_files['chip.fastqs'] = exp_files
+                # for v1.1.1 chip.fastqs = [exp_files] ([[[Files]]]), for v2.1.6, just [Files]
+                input_files['chip.fastqs'] = exp_files[0]
                 exp_parameters = {
                     "chip.pipeline_type": target_type,
                     "chip.always_use_pooled_ctl": True,
                     "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
+                    "chip.mito_chr_name": "chrM",
                     "chip.align_only": True
                 }
                 parameters.update(exp_parameters)
