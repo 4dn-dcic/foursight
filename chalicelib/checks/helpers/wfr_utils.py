@@ -74,15 +74,15 @@ workflow_details = {
     },
     "encode-chipseq-aln-chip": {
         "run_time": 200,
-        "accepted_versions": ["1.1.2"]
+        "accepted_versions": ["1.1.1", "1.1.2"]
     },
     "encode-chipseq-aln-ctl": {
         "run_time": 200,
-        "accepted_versions": ["1.1.2"]
+        "accepted_versions": ["1.1.1", "1.1.2"]
     },
     "encode-chipseq-postaln": {
         "run_time": 200,
-        "accepted_versions": ["1.1.2"]
+        "accepted_versions": ["1.1.1", "1.1.2"]
     },
     "encode-atacseq-aln": {
         "run_time": 200,
