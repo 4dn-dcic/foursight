@@ -126,7 +126,6 @@ def chipseq_status(connection, **kwargs):
             continue
         # collect results from step1 runs for step2
         ta = []
-        taxcor = []
         ta_cnt = []
         # track if all experiments completed step0 and step1
         ready_for_step2 = True
@@ -260,16 +259,14 @@ def chipseq_status(connection, **kwargs):
                 # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
                 keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
                                                                      'step1', s1_tag, exp_files,
-                                                                     s1_input_files, step1_name, ['chip.first_ta', 'chip.first_ta_xcor'],
+                                                                     s1_input_files, step1_name, ['chip.first_ta'],
                                                                      additional_input={'parameters': parameters}, organism=organism)
                 if step1_status == 'complete':
                     exp_ta_file = step1_output[0]
-                    exp_taxcor_file = step1_output[1]
                     # accumulate files to patch on experiment
                     patch_data = [exp_ta_file, ]
                     complete['patch_opf'].append([exp_id, patch_data])
                     ta.append(exp_ta_file)
-                    taxcor.append(exp_taxcor_file)
 
                     # find the control file if there is a control set found
                     if control_set:
@@ -333,14 +330,9 @@ def chipseq_status(connection, **kwargs):
                     continue
                 if len(ta) > 2:
                     ta_2 = []
-                    taxcor_2 = []
                     print('ExperimentSet has 3 experiments, selecting best 2')
                     ta_2 = wfr_utils.select_best_2(ta, all_files, all_qcs)
-                    # xcor does not have qc, use ta indexes to find the correct files
-                    for ta_f in ta_2:
-                        taxcor_2.append(taxcor[ta.index(ta_f)])
                     ta = ta_2
-                    taxcor = taxcor_2
                     # for control files ,also select best2
                     ta_cnt = wfr_utils.select_best_2(ta_cnt, all_files, all_qcs)
 
@@ -350,10 +342,15 @@ def chipseq_status(connection, **kwargs):
                     org = 'hs'
                     s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
                     s2_input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
+                    s2_input_files['chip.ref_fa'] = '/files-reference/4DNFI823L888/'
+                    s2_input_files['chip.bowtie2_idx_tar'] = '/files-reference/4DNFIMQPTYDY/'
+
                 if organism == 'mouse':
                     org = 'mm'
                     s2_input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                     s2_input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
+                    s2_input_files['chip.ref_fa'] = '/files-reference/4DNFIC1NWMVJ/'
+                    s2_input_files['chip.bowtie2_idx_tar'] = '63e22058-79c6-4e24-8231-ca4afac29dda'
 
                 def rename_chip(input_at_id_list):
                     # rename bed.gz to tagAlign.gz
@@ -363,11 +360,12 @@ def chipseq_status(connection, **kwargs):
                         renamed.append(acc + '.tagAlign.gz')
                     return renamed
 
+                # not used in new pipeline, but used in benchmarking
+                s2_input_files['chip.bam2ta_no_filt_R1.ta'] = ta
+
                 s2_input_files['additional_file_parameters'] = {}
                 s2_input_files['chip.tas'] = ta
                 s2_input_files['additional_file_parameters']['chip.tas'] = {"rename": rename_chip(ta)}
-                s2_input_files['chip.bam2ta_no_filt_R1.ta'] = taxcor
-                s2_input_files['additional_file_parameters']['chip.bam2ta_no_filt_R1.ta'] = {"rename": rename_chip(taxcor)}
                 if ta_cnt:
                     s2_input_files['chip.ctl_tas'] = ta_cnt
                     s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip(ta_cnt)}
@@ -388,8 +386,9 @@ def chipseq_status(connection, **kwargs):
                 parameters = {
                     "chip.pipeline_type": target_type,
                     "chip.paired_end": chip_p,
-                    "chip.choose_ctl.always_use_pooled_ctl": True,
-                    "chip.qc_report.desc": run_ids['desc'],
+                    "chip.always_use_pooled_ctl": True,
+                    "chip.mito_chr_name": "chrM",
+                    "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
                     "chip.gensz": org
                 }
                 if paired == 'single':
@@ -407,14 +406,14 @@ def chipseq_status(connection, **kwargs):
                 keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
                                                                      'step2', s2_tag, ta,
                                                                      s2_input_files, step2_name,
-                                                                     ['chip.optimal_peak', 'chip.conservative_peak', 'chip.sig_fc'],
+                                                                     ['chip.optimal_peak', 'chip.conservative_peak', 'chip.fc_bw'],
                                                                      additional_input={'parameters': parameters}, organism=organism)
                 if step2_status == 'complete':
                     set_opt_peak = step2_output[0]
                     set_cons_peak = step2_output[1]
-                    set_sig_fc = step2_output[2]
+                    set_fc_bw = step2_output[2]
                     # accumulate files to patch on experiment
-                    patch_data = [set_opt_peak, set_cons_peak, set_sig_fc]
+                    patch_data = [set_opt_peak, set_cons_peak, set_fc_bw]
                     complete['patch_opf'].append([set_acc, patch_data])
                     complete['add_tag'] = [set_acc, tag]
                     all_completed = True
