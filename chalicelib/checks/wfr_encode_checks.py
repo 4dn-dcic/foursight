@@ -213,9 +213,9 @@ def chipseq_status(connection, **kwargs):
                 
                 # exp_files is of the form [[Files]]
                 # for v1.1.1 chip.ctl_fastqs = [exp_files] ([[[Files]]]), for v2.1.6, just [Files]
-                input_files['chip.ctl_fastqs'] = exp_files[0]
+                input_files['chip.fastqs'] = exp_files[0]
                 control_parameters = {
-                    "chip.pipeline_type": 'tf',
+                    "chip.pipeline_type": 'control',
                     "chip.always_use_pooled_ctl": True,
                     "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
                     "chip.mito_chr_name": "chrM",
