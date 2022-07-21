@@ -11,7 +11,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.7,<3.8"
 click = "^7.1.2"
-dcicutils = "^v3.14.0.3b42"  # "^3.7.1"
+dcicutils = "^3.16.0.1b64"  # "^3.7.1"
 elasticsearch = "^6.8.1"
 elasticsearch-dsl = "^6.4.0"
 ## adding foursight-core
