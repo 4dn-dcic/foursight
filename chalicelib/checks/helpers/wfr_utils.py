@@ -2102,9 +2102,9 @@ def get_chip_info(f_exp_resp, all_items):
     return control, control_set, target_type, organism
 
 
-def get_chip_files(exp_resp, all_files):
+def get_chip_files(exp_resp, all_files, isChip):
     files = []
-    paired = ""
+    paired = []
     exp_files = exp_resp['files']
     for a_file in exp_files:
         f_t = []
@@ -2112,7 +2112,7 @@ def get_chip_files(exp_resp, all_files):
         # get pair end no
         pair_end = file_resp.get('paired_end')
         if pair_end == '2':
-            paired = 'paired'
+            paired.append('paired')
             continue
         # get paired file
         paired_with = ""
@@ -2122,22 +2122,22 @@ def get_chip_files(exp_resp, all_files):
         else:
             for relation in relations:
                 if relation['relationship_type'] == 'paired with':
-                    paired = 'paired'
+                    paired.append('paired')
                     paired_with = relation['file']['@id']
         # decide if data is not paired end reads
         if not paired_with:
             if not paired:
-                paired = 'single'
-            else:
-                if paired != 'single':
-                    print('inconsistent fastq pair info')
-                    continue
+                paired.append('single')
             f_t.append(file_resp['@id'])
         else:
             f2 = [i for i in all_files if i['@id'] == paired_with][0]
             f_t.append(file_resp['@id'])
             f_t.append(f2['@id'])
         files.append(f_t)
+
+    # needs to output a string for non-ChIP-seq usage
+    if not isChip:
+        paired = paired[0]
     return files, paired
 
 

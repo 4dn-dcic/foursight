@@ -127,6 +127,7 @@ def chipseq_status(connection, **kwargs):
         # collect results from step1 runs for step2
         ta = []
         ta_cnt = []
+        paired_ends = []
         # track if all experiments completed step0 and step1
         ready_for_step2 = True
         for an_exp in replicate_exps:
@@ -136,7 +137,7 @@ def chipseq_status(connection, **kwargs):
             control_ready = True
             exp_id = an_exp['replicate_exp']['accession']
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp_id][0]
-            exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files)
+            exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files, True)
             # if there are more then 2 files, we need to merge:
             print(exp_id, len(exp_files), paired)
             # if too many input, merge them
@@ -147,8 +148,10 @@ def chipseq_status(connection, **kwargs):
                     # first add paired end 1s
                     input_list.append([i[0] for i in exp_files])
                     input_list.append([i[1] for i in exp_files])
+                    paired_ends.append('true')
                 elif paired == 'single':
                     input_list.append([i[0] for i in exp_files])
+                    paired_ends.append('false')
                 # collect files for step1 and step1c
                 merged_files = []
                 step0_status = 'complete'
@@ -205,6 +208,8 @@ def chipseq_status(connection, **kwargs):
                 parameters['chip.paired_end'] = False
             elif paired == 'paired':
                 parameters['chip.paired_end'] = True
+            else:
+                parameters['chip.paired_ends'] = [True if pe=="paired" else False for pe in paired]
 
             # run step1 for control
             if control:
@@ -385,12 +390,15 @@ def chipseq_status(connection, **kwargs):
                 run_ids = {'desc': set_acc + a_set.get('description', '')}
                 parameters = {
                     "chip.pipeline_type": target_type,
-                    "chip.paired_end": chip_p,
                     "chip.always_use_pooled_ctl": True,
                     "chip.mito_chr_name": "chrM",
                     "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
                     "chip.gensz": org
                 }
+                if paired == 'paired' or paired == 'single':
+                    parameters['chip.paired_end'] = chip_p
+                else:
+                    parameters['chip.paired_ends'] = paired
                 if paired == 'single':
                     frag_temp = [300]
                     fraglist = frag_temp * len(ta)
@@ -596,7 +604,7 @@ def atacseq_status(connection, **kwargs):
             exp_id = an_exp['replicate_exp']['accession']
             exp_resp = [i for i in all_items['experiment_atacseq'] if i['accession'] == exp_id][0]
             # exp_files [[pair1,pair2], [pair1, pair2]]
-            exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files)
+            exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files, False)
             # if there are more then 2 files, we need to merge:
             print(exp_id, len(exp_files), paired)
             # if too many input, merge them
