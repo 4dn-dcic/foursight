@@ -175,7 +175,7 @@
                         "primary": true
                     }
                 },
-                "mastertest": {
+                "fourfront-mastertest": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -210,13 +210,13 @@
                         "queue_action": "prod"
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true,
@@ -237,13 +237,13 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -264,13 +264,13 @@
                         "queue_action": "prod"
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true,
@@ -292,13 +292,13 @@
                         "queue_action": "prod"
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true,
@@ -319,13 +319,13 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -431,13 +431,13 @@
                         "queue_action": "prod"
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -458,13 +458,13 @@
                         "queue_action": "prod"
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true,
@@ -485,13 +485,13 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -633,13 +633,13 @@
         "group": "System checks",
         "schedule": {
             "manual_checks": {
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "mastertest": {
+                "fourfront-mastertest": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -651,7 +651,7 @@
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -661,11 +661,11 @@
         }
     },
     "clean_up_webdev_wfrs": {
-        "title": "Clean up webdev workflows runs",
+        "title": "Clean up fourfront-webdev workflows runs",
         "group": "Metadata checks",
         "schedule": {
             "morning_checks_4": {
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -778,12 +778,12 @@
         "group": "Elasticsearch checks",
         "schedule": {
             "manual_checks": {
-                "hotseat": {
+                "fourfront-hotseat": {
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "mastertest": {
+                "fourfront-mastertest": {
                     "kwargs": {
                         "primary": true
                     }
@@ -793,7 +793,7 @@
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "kwargs": {
                         "primary": true
                     }
@@ -927,7 +927,7 @@
                         "queue_action": "prod"
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true,
@@ -965,7 +965,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [
                         "yellow_flag_biosamples"
                     ],
@@ -1010,7 +1010,7 @@
                         "queue_action": "prod"
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true,
@@ -1239,7 +1239,7 @@
                         "primary": true
                     }
                 },
-                "mastertest": {
+                "fourfront-mastertest": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1323,7 +1323,7 @@
                       "primary": true
                   }
               },
-              "hotseat": {
+              "fourfront-hotseat": {
                   "dependencies": [],
                   "kwargs": {
                       "primary": true
@@ -1349,7 +1349,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1375,7 +1375,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1401,7 +1401,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1427,7 +1427,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1453,7 +1453,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1493,7 +1493,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1519,7 +1519,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1545,7 +1545,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1712,13 +1712,13 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 },
-                "webdev": {
+                "fourfront-webdev": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1925,7 +1925,7 @@
                         "primary": true
                     }
                 },
-                "hotseat": {
+                "fourfront-hotseat": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -2011,7 +2011,7 @@
             }
         },
         "display": [
-            "mastertest"
+            "fourfront-mastertest"
         ]
   },
   "update_ecs_application_versions": {
@@ -2028,7 +2028,7 @@
             }
         },
         "display": [
-            "mastertest"
+            "fourfront-mastertest"
         ]
   },
     "trigger_codebuild_run": {
@@ -2036,7 +2036,7 @@
         "group": "ECS Checks",
         "schedule": {
             "all": {
-                "mastertest": {
+                "fourfront-mastertest": {
                       "kwargs": {
                           "primary": true
                       },
@@ -2045,7 +2045,7 @@
             }
         },
         "display": [
-            "mastertest"
+            "fourfront-mastertest"
         ]
     }
 }

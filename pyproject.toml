@@ -11,12 +11,12 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.7,<3.8"
 click = "^7.1.2"
-dcicutils = "^3.16.0.1b64"  # "^3.7.1"
+dcicutils = "3.16.0.3b68"  # "^3.7.1"
 elasticsearch = "^6.8.1"
 elasticsearch-dsl = "^6.4.0"
 ## adding foursight-core
 # use below for deployment
-foursight-core = "^0.6.1.2b16"  # "^0.6.0"
+foursight-core = "^0.6.1.2b23"  # "^0.6.0"
 # use below for tests but not for deployment
 # foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 geocoder = "1.38.1"
