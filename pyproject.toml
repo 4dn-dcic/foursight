@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "1.10.7.1b3"
+version = "2.0.0.1b0"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -16,7 +16,7 @@ elasticsearch = "^6.8.1"
 elasticsearch-dsl = "^6.4.0"
 ## adding foursight-core
 # use below for deployment
-foursight-core = "^0.6.1.2b23"  # "^0.6.0"
+foursight-core = "^0.7.0.1b4"  # "^0.6.0"
 # use below for tests but not for deployment
 # foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 geocoder = "1.38.1"
