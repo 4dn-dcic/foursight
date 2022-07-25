@@ -10,6 +10,8 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.8"
+botocore = ">=1.27.36"
+boto3 = ">=1.24.36"
 click = "^7.1.2"
 dcicutils = "^4.0.0"
 elasticsearch = "^6.8.1"
@@ -25,14 +27,17 @@ google-api-python-client = "^1.7.4"
 gspread = ">=3.6.0"
 Jinja2 = "2.10.1"
 MarkupSafe = "1.1.1"
+numpy = ">=1.21.6"
 oauth2client = ">=4.1.3"
-pandas = ">=1.1.4"
+pandas = ">=1.1.5"
 PyJWT = "1.5.3"
 pytest = "5.1.2"  # TODO: Should this be in dev-dependencies? -kmp 22-Jun-2022
 pytz = "^2020.1"
 tibanna_ff = ">=0.22.5"
 
 [tool.poetry.dev-dependencies]
+botocore-stubs = ">=1.27.36"
+boto3-stubs = ">=1.24.36"
 chalice = "^1.26.0"
 flaky = "3.6.1"
 pytest-cov = "2.7.1"
