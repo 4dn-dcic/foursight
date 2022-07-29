@@ -381,6 +381,7 @@ def chipseq_status(connection, **kwargs):
                     chip_p = False
                 elif paired == 'paired':
                     chip_p = True
+
                 if not control_set:
                     if target_type == 'histone':
                         set_summary += "| skipped - histone without control needs attention, ie change to tf"
@@ -398,7 +399,7 @@ def chipseq_status(connection, **kwargs):
                 if paired == 'paired' or paired == 'single':
                     parameters['chip.paired_end'] = chip_p
                 else:
-                    parameters['chip.paired_ends'] = paired
+                    parameters['chip.paired_ends'] = [True if pe=="paired" else False for pe in paired]
                 if paired == 'single':
                     frag_temp = [300]
                     fraglist = frag_temp * len(ta)
