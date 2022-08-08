@@ -74,15 +74,15 @@ workflow_details = {
     },
     "encode-chipseq-aln-chip": {
         "run_time": 200,
-        "accepted_versions": ["1.1.1", "1.1.2"]
+        "accepted_versions": ["1.1.1", "2.1.6"]
     },
     "encode-chipseq-aln-ctl": {
         "run_time": 200,
-        "accepted_versions": ["1.1.1", "1.1.2"]
+        "accepted_versions": ["1.1.1", "2.1.6"]
     },
     "encode-chipseq-postaln": {
         "run_time": 200,
-        "accepted_versions": ["1.1.1", "1.1.2"]
+        "accepted_versions": ["1.1.1", "2.1.6"]
     },
     "encode-atacseq-aln": {
         "run_time": 200,
@@ -196,7 +196,7 @@ accepted_versions = {
     # OFFICIAL
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
-    'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1', 'ENCODE_ChIP_Pipeline_1.1.2'],
+    'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1', 'ENCODE_ChIP_Pipeline_2.1.6'],
     # OFFICIAL
     'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
     'single cell Repli-seq': [''],
