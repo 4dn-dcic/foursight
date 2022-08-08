@@ -216,7 +216,7 @@ def view_route(environ):
     """
     req_dict = app.current_request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
-    return app_utils_obj.view_foursight(environ, app_utils_obj.check_authorization(req_dict, environ), domain, context)
+    return app_utils_obj.view_foursight(app.current_request, environ, app_utils_obj.check_authorization(req_dict, environ), domain, context)
 
 
 @app.route('/view/{environ}/{check}/{uuid}', methods=['GET'])
@@ -243,7 +243,7 @@ def history_route(environ, check):
     start = int(query_params.get('start', '0')) if query_params else 0
     limit = int(query_params.get('limit', '25')) if query_params else 25
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
-    return app_utils_obj.view_foursight_history(environ, check, start, limit,
+    return app_utils_obj.view_foursight_history(app.current_request, environ, check, start, limit,
                                   app_utils_obj.check_authorization(req_dict, environ), domain, context)
 
 
@@ -328,6 +328,14 @@ def delete_environment(environ):
     else:
         return app_utils_obj.forbidden_response()
 
+# dmichaels/2022-08-08:
+# For testing/debugging/troubleshooting.
+@app.route('/view/info', methods=['GET'])
+def get_view_info_route():
+    req_dict = app.current_request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(req_dict)
+    environ = os.environ.get("ENV_NAME")
+    return app_utils_obj.view_info(request=app.current_request, is_admin=app_utils_obj.check_authorization(req_dict, environ))
 
 ######### PURE LAMBDA FUNCTIONS #########
 
