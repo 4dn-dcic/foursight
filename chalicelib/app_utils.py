@@ -1,10 +1,10 @@
 from os.path import dirname
-from foursight_core.app_utils import AppUtils as AppUtils_from_core
+from foursight_core.app_utils import AppUtilsCore
 from .vars import FOURSIGHT_PREFIX, HOST
 from dcicutils.env_utils import public_url_for_app
 
 
-class AppUtils(AppUtils_from_core):
+class AppUtils(AppUtilsCore):
     
     # overwriting parent class
     prefix = FOURSIGHT_PREFIX

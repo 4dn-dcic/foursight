@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "1.10.8"
+version = "2.0.0.1b4"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -9,33 +9,38 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6.1,<3.8"
-dcicutils = "^3.7.1"
+python = ">=3.7,<3.8"
+botocore = ">=1.27.36"
+boto3 = ">=1.24.36"
 click = "^7.1.2"
-PyJWT = "1.5.3"
-Jinja2 = "2.10.1"
-MarkupSafe = "1.1.1"
-google-api-python-client = "^1.7.4"
-geocoder = "1.38.1"
+dcicutils = "^4.0.1"
 elasticsearch = "^6.8.1"
 elasticsearch-dsl = "^6.4.0"
-gitpython = "^3.1.2"
-pytz = "^2020.1"
-tibanna_ff = ">=0.22.5"
 ## adding foursight-core
 # use below for deployment
-foursight-core = "^0.6.0"
+foursight-core = "1.0.0.1b0"  # "^0.7.0"
 # use below for tests but not for deployment
 # foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
-pytest = "5.1.2"
+geocoder = "1.38.1"
+gitpython = "^3.1.2"
+google-api-python-client = "^1.7.4"
 gspread = ">=3.6.0"
+Jinja2 = "2.10.1"
+MarkupSafe = "1.1.1"
+numpy = ">=1.21.6"
 oauth2client = ">=4.1.3"
-pandas = ">=1.1.4"
+pandas = ">=1.1.5"
+PyJWT = "1.5.3"
+pytest = "5.1.2"  # TODO: Should this be in dev-dependencies? -kmp 22-Jun-2022
+pytz = "^2020.1"
+tibanna_ff = ">=0.22.5"
 
 [tool.poetry.dev-dependencies]
+botocore-stubs = ">=1.27.36"
+boto3-stubs = ">=1.24.36"
 chalice = "^1.26.0"
-pytest-cov = "2.7.1"
 flaky = "3.6.1"
+pytest-cov = "2.7.1"
 
 [build-system]
 requires = ["poetry>=0.12"]
