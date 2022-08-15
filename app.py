@@ -227,7 +227,7 @@ def view_check_route(environ, check, uuid):
     req_dict = app.current_request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
     if app_utils_obj.check_authorization(req_dict, environ):
-        return app_utils_obj.view_foursight_check(environ, check, uuid, True, domain, context)
+        return app_utils_obj.view_foursight_check(app.current_request, environ, check, uuid, True, domain, context)
     else:
         return app_utils_obj.forbidden_response()
 
@@ -331,7 +331,7 @@ def delete_environment(environ):
 
 # dmichaels/2022-08-08:
 # For testing/debugging/troubleshooting.
-@app.route('/view/info', methods=['GET'])
+@app.route('/info', methods=['GET'])
 def get_view_info_route():
     req_dict = app.current_request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
