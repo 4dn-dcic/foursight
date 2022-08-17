@@ -28,7 +28,8 @@ def md5run_status_extra_file(connection, **kwargs):
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
              '&status!=archived&status!=archived to project&extra_files.status!=uploaded'
-             '&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value&extra_files.md5sum=No value')
+             '&extra_files.status!=to be uploaded by workflow&extra_files.status!=upload failed'
+             '&extra_files.href!=No value&extra_files.md5sum=No value')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
