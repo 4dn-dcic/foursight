@@ -349,13 +349,12 @@ def get_view_user_route(environ, email):
 
 # dmichaels/2022-08-12:
 # For testing/debugging/troubleshooting.
-@app.route('/reload_lambda/{lambda_name}', methods=['GET'])
-def get_view_reload_lambda_route(lambda_name):
+@app.route('/reload_lambda/{environ}/{lambda_name}', methods=['GET'])
+def get_view_reload_lambda_route(environ, lambda_name):
     req_dict = app.current_request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
-    environ = os.environ.get("ENV_NAME")
     is_admin = app_utils_obj.check_authorization(req_dict, environ)
-    return app_utils_obj.view_reload_lambda(request=app.current_request, is_admin=is_admin, domain=domain, context=context, lambda_name=lambda_name)
+    return app_utils_obj.view_reload_lambda(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context, lambda_name=lambda_name)
 
 
 ######### PURE LAMBDA FUNCTIONS #########
