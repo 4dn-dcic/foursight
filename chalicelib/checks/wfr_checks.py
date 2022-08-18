@@ -28,7 +28,8 @@ def md5run_status_extra_file(connection, **kwargs):
     # Build the query
     query = ('/search/?type=File&status!=uploading&status!=upload failed&status!=to be uploaded by workflow'
              '&status!=archived&status!=archived to project&extra_files.status!=uploaded'
-             '&extra_files.status!=to be uploaded by workflow&extra_files.href!=No value&extra_files.md5sum=No value')
+             '&extra_files.status!=to be uploaded by workflow&extra_files.status!=upload failed'
+             '&extra_files.href!=No value&extra_files.md5sum=No value')
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -594,14 +595,14 @@ def bed2beddb_status(connection, **kwargs):
     check.summary = ''
 
     # These are the accepted file types for this check
-    accepted_types = ['LADs', 'boundaries', 'domain calls', 'peaks']
+    accepted_types = ['LADs', 'boundaries', 'domain calls', 'peaks', 'target regions']
 
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query (find bg files without bw files)
-    query = ("/search/?type=FileProcessed&file_format.file_format=bed"
+    query = ("/search/?type=File&file_format.file_format=bed"
              "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow"
              "&status!=archived&status!=archived to project")
@@ -616,7 +617,7 @@ def bed2beddb_status(connection, **kwargs):
         query += '&lab.display_title=' + lab
 
     # build a second query for checking failed ones
-    query_f = ("/search/?type=FileProcessed&file_format.file_format=bed"
+    query_f = ("/search/?type=File&file_format.file_format=bed"
                "&extra_files.file_format.display_title=beddb"
                "&extra_files.status=uploading"
                "&extra_files.status=to be uploaded by workflow"
