@@ -339,12 +339,20 @@ def get_view_info_route(environ):
     return app_utils_obj.view_info(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context)
 
 
-@app.route('/view/{environ}/user/{email}', methods=['GET'])
+@app.route('/users/{environ}/{email}', methods=['GET'])
 def get_view_user_route(environ, email):
     req_dict = app.current_request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
     is_admin = app_utils_obj.check_authorization(req_dict, environ)
     return app_utils_obj.view_user(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context, email=email)
+
+
+@app.route('/users/{environ}', methods=['GET'])
+def get_view_users_route(environ):
+    req_dict = app.current_request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(req_dict)
+    is_admin = app_utils_obj.check_authorization(req_dict, environ)
+    return app_utils_obj.view_users(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context)
 
 
 # dmichaels/2022-08-12:
