@@ -1,11 +1,15 @@
 import os
 from os.path import dirname
 from foursight_core.app_utils import AppUtils as AppUtils_from_core
+from foursight_core.identity import apply_identity_globally
 from .vars import FOURSIGHT_PREFIX, HOST
 from dcicutils.env_utils import public_url_for_app
 
 
 class AppUtils(AppUtils_from_core):
+
+    # dmichaels/C4-826: Apply identity globally.
+    apply_identity_globally()
 
     # Overridden from subclass.
     APP_PACKAGE_NAME = "foursight"
