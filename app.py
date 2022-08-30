@@ -365,6 +365,103 @@ def get_view_reload_lambda_route(environ, lambda_name):
     return app_utils_obj.view_reload_lambda(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context, lambda_name=lambda_name)
 
 
+######### EXPERIMENTAL REACT API FUNCTIONS #########
+# React experiment. See foursight-cgap and foursight-core..
+ROUTE_PREFIX = "/"
+ROUTE_EMPTY_PREFIX = "/"
+CORS = False
+
+# Experimental React UI.
+def react_serve_file(environ, **kwargs):
+    print(f"xyzzy:1:react_serve_file:/{environ}")
+    req_dict = app.current_request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(req_dict)
+    is_admin = app_utils_obj.check_authorization(req_dict, environ)
+    print(f"xyzzy:2:react_serve_file:/{environ}")
+    return app_utils_obj.react_serve_file(environ, **kwargs)
+
+
+@app.route(ROUTE_PREFIX + 'react/{environ}', cors=CORS)
+def get_react_0(environ):
+    print(f"xyzzy:get_react_0:/{environ}")
+    return react_serve_file(environ, **{})
+
+
+@app.route(ROUTE_PREFIX + 'react/{environ}/{path1}', cors=CORS)
+def get_react_1(environ, path1):
+    print(f"xyzzy:get_react_1:/{environ}")
+    return react_serve_file(environ, **{"path1": path1})
+
+
+@app.route(ROUTE_PREFIX + 'react/{environ}/{path1}/{path2}', cors=CORS)
+def get_react_2(environ, path1, path2):
+    print(f"xyzzy:get_react_2:/{environ}")
+    return react_serve_file(environ, **{"path1": path1, "path2": path2})
+
+
+@app.route(ROUTE_PREFIX + 'react/{environ}/{path1}/{path2}/{path3}', cors=CORS)
+def get_react_3(environ, path1, path2, path3):
+    print(f"xyzzy:get_react_3:/{environ}")
+    return react_serve_file(environ, **{"path1": path1, "path2": path2, "path3": path3})
+
+
+@app.route(ROUTE_PREFIX + 'react/{environ}/{path1}/{path2}/{path3}/{path4}', cors=CORS)
+def get_react_4(environ, path1, path2, path3, path4):
+    print(f"xyzzy:get_react_4:/{environ}")
+    return react_serve_file(environ, **{"path1": path1, "path2": path2, "path3": path3, "path4": path4})
+
+
+@app.route(ROUTE_PREFIX + 'reactapi/{environ}/users', cors=CORS)
+def react_get_users_route(environ):
+    request = app.current_request
+    request_dict = request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(request_dict)
+    is_admin = app_utils_obj.check_authorization(request_dict, environ)
+    return app_utils_obj.react_get_users(request=request, environ=environ, is_admin=is_admin, domain=domain, context=context)
+
+
+@app.route(ROUTE_PREFIX + 'reactapi/{environ}/users/{email}', cors=CORS)
+def react_get_user_route(environ, email):
+    request = app.current_request
+    request_dict = request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(request_dict)
+    is_admin = app_utils_obj.check_authorization(request_dict, environ)
+    return app_utils_obj.react_get_user(request=request, environ=environ, is_admin=is_admin, domain=domain, context=context, email=email)
+
+
+@app.route(ROUTE_PREFIX + 'reactapi/{environ}/info', cors=CORS)
+def react_get_info(environ):
+    request = app.current_request
+    request_dict = request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(request_dict)
+    is_admin = app_utils_obj.check_authorization(request_dict, environ)
+    return app_utils_obj.react_get_info(request=request, environ=environ, is_admin=is_admin, domain=domain, context=context)
+
+
+@app.route(ROUTE_PREFIX + 'reactapi/info', cors=CORS)
+def react_get_info_noenv():
+    request = app.current_request
+    request_dict = request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(request_dict)
+    is_admin = app_utils_obj.check_authorization(request_dict, DEFAULT_ENV)
+    return app_utils_obj.react_get_info(request=request, environ=DEFAULT_ENV, is_admin=is_admin, domain=domain, context=context)
+
+
+@app.route(ROUTE_PREFIX + 'reactapi/{environ}/header', cors=CORS)
+def react_get_header_info(environ):
+    request = app.current_request
+    request_dict = request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(request_dict)
+    return app_utils_obj.react_get_header_info(request=request, environ=environ, domain=domain, context=context)
+
+
+@app.route(ROUTE_PREFIX + 'reactapi/header', cors=CORS)
+def react_get_header_info_noenv():
+    request = app.current_request
+    request_dict = request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(request_dict)
+    return app_utils_obj.react_get_header(request=request, environ=DEFAULT_ENV, domain=domain, context=context)
+
 ######### PURE LAMBDA FUNCTIONS #########
 
 @app.lambda_function()
