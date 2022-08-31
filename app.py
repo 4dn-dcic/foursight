@@ -355,16 +355,6 @@ def get_view_users_route(environ):
     return app_utils_obj.view_users(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context)
 
 
-# dmichaels/2022-08-12:
-# For testing/debugging/troubleshooting.
-@app.route('/reload_lambda/{environ}/{lambda_name}', methods=['GET'])
-def get_view_reload_lambda_route(environ, lambda_name):
-    req_dict = app.current_request.to_dict()
-    domain, context = app_utils_obj.get_domain_and_context(req_dict)
-    is_admin = app_utils_obj.check_authorization(req_dict, environ)
-    return app_utils_obj.view_reload_lambda(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context, lambda_name=lambda_name)
-
-
 ######### EXPERIMENTAL REACT API FUNCTIONS #########
 # React experiment. See foursight-cgap and foursight-core..
 ROUTE_PREFIX = "/"
@@ -449,6 +439,7 @@ def react_get_info_noenv():
 
 @app.route(ROUTE_PREFIX + 'reactapi/{environ}/header', cors=CORS)
 def react_get_header_info(environ):
+    print("XYZZY:/REACTAPI/environ/HEADER")
     request = app.current_request
     request_dict = request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(request_dict)
@@ -470,6 +461,15 @@ def react_compare_gacs(environ, environ_compare):
     domain, context = app_utils_obj.get_domain_and_context(request_dict)
     is_admin = app_utils_obj.check_authorization(request_dict, environ)
     return app_utils_obj.react_compare_gacs(request=request, environ=environ, environ_compare=environ_compare, is_admin=is_admin, domain=domain, context=context)
+
+
+@app.route(ROUTE_PREFIX + 'reactapi/reloadlambda', cors=CORS)
+def react_reload_lambda():
+    print("XYZZY:/REACTAPI/RELOADLAMBDA")
+    request = app.current_request
+    request_dict = request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(request_dict)
+    return app_utils_obj.view_reload_lambda(request=request, environ=DEFAULT_ENV, domain=domain, context=context)
 
 
 ######### PURE LAMBDA FUNCTIONS #########
