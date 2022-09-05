@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "1.11.0.1b28"
+version = "1.11.0.1b29"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -24,7 +24,7 @@ pytz = "^2020.1"
 tibanna_ff = ">=0.22.5"
 ## adding foursight-core
 # use below for deployment
-foursight-core = "1.0.2.1b24"
+foursight-core = "1.0.2.1b25"
 # use below for tests but not for deployment
 # foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 pytest = "5.1.2"
