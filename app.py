@@ -54,6 +54,23 @@ foursight_cron_by_schedule = {
 }
 
 
+@app.lambda_function()
+def check_runner(event, context):
+    """
+    Pure lambda function to pull run and check information from SQS and run
+    the checks. Self propogates. event is a dict of information passed into
+    the lambda at invocation time.
+    """
+    print("XYZZY: checker_runner lambda called.")
+    if not event:
+        print("XYZZY: checker_runner lambda no event.")
+        return
+    print("XYZZY: checker_runner lambda no event.")
+    print(event)
+    print(context)
+    app_utils_obj.run_check_runner(event)
+
+
 @app.schedule(foursight_cron_by_schedule['ten_min_checks'])
 def ten_min_checks(event):
     if STAGE == 'dev':
