@@ -11,6 +11,7 @@ dist/
 htmlcov/
 coverage.xml
 .python-version
+.python-cmd
 *.ipynb
 !*LocalTest.ipynb
 requirements.txt
