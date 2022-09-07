@@ -216,7 +216,7 @@ def view_route(environ):
     """
     req_dict = app.current_request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
-    return app_utils_obj.view_foursight(environ, app_utils_obj.check_authorization(req_dict, environ), domain, context)
+    return app_utils_obj.view_foursight(app.current_request, environ, app_utils_obj.check_authorization(req_dict, environ), domain, context)
 
 
 @app.route('/view/{environ}/{check}/{uuid}', methods=['GET'])
@@ -227,7 +227,7 @@ def view_check_route(environ, check, uuid):
     req_dict = app.current_request.to_dict()
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
     if app_utils_obj.check_authorization(req_dict, environ):
-        return app_utils_obj.view_foursight_check(environ, check, uuid, True, domain, context)
+        return app_utils_obj.view_foursight_check(app.current_request, environ, check, uuid, True, domain, context)
     else:
         return app_utils_obj.forbidden_response()
 
@@ -243,7 +243,7 @@ def history_route(environ, check):
     start = int(query_params.get('start', '0')) if query_params else 0
     limit = int(query_params.get('limit', '25')) if query_params else 25
     domain, context = app_utils_obj.get_domain_and_context(req_dict)
-    return app_utils_obj.view_foursight_history(environ, check, start, limit,
+    return app_utils_obj.view_foursight_history(app.current_request, environ, check, start, limit,
                                   app_utils_obj.check_authorization(req_dict, environ), domain, context)
 
 
@@ -327,6 +327,42 @@ def delete_environment(environ):
         return app_utils_obj.run_delete_environment(environ)
     else:
         return app_utils_obj.forbidden_response()
+
+
+# dmichaels/2022-08-08:
+# For testing/debugging/troubleshooting.
+@app.route('/info/{environ}', methods=['GET'])
+def get_view_info_route(environ):
+    req_dict = app.current_request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(req_dict)
+    is_admin = app_utils_obj.check_authorization(req_dict, environ)
+    return app_utils_obj.view_info(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context)
+
+
+@app.route('/users/{environ}/{email}', methods=['GET'])
+def get_view_user_route(environ, email):
+    req_dict = app.current_request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(req_dict)
+    is_admin = app_utils_obj.check_authorization(req_dict, environ)
+    return app_utils_obj.view_user(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context, email=email)
+
+
+@app.route('/users/{environ}', methods=['GET'])
+def get_view_users_route(environ):
+    req_dict = app.current_request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(req_dict)
+    is_admin = app_utils_obj.check_authorization(req_dict, environ)
+    return app_utils_obj.view_users(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context)
+
+
+# dmichaels/2022-08-12:
+# For testing/debugging/troubleshooting.
+@app.route('/reload_lambda/{environ}/{lambda_name}', methods=['GET'])
+def get_view_reload_lambda_route(environ, lambda_name):
+    req_dict = app.current_request.to_dict()
+    domain, context = app_utils_obj.get_domain_and_context(req_dict)
+    is_admin = app_utils_obj.check_authorization(req_dict, environ)
+    return app_utils_obj.view_reload_lambda(request=app.current_request, environ=environ, is_admin=is_admin, domain=domain, context=context, lambda_name=lambda_name)
 
 
 ######### PURE LAMBDA FUNCTIONS #########
