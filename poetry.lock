@@ -185,6 +185,14 @@ python-versions = ">=3.7"
 toml = ["tomli"]
 
 [[package]]
+name = "cron-descriptor"
+version = "1.2.31"
+description = "A Python library that converts cron expressions into human readable strings."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "dcicutils"
 version = "4.4.0"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
@@ -284,7 +292,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "2.0.0"
+version = "1.0.2.1b26"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -292,6 +300,7 @@ python-versions = ">=3.7,<3.9"
 
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
+cron-descriptor = ">=1.2.31,<2.0.0"
 dcicutils = ">=4.0.2,<5.0.0"
 elasticsearch = ">=6.8.1,<7.0.0"
 elasticsearch-dsl = ">=6.4.0,<7.0.0"
@@ -300,6 +309,7 @@ gitpython = ">=3.1.2,<4.0.0"
 google-api-python-client = ">=1.12.5,<2.0.0"
 Jinja2 = "2.10.1"
 MarkupSafe = "1.1.1"
+pyDes = ">=2.0.1,<3.0.0"
 PyJWT = "1.5.3"
 pytz = ">=2020.1,<2021.0"
 
@@ -677,6 +687,14 @@ python-versions = "*"
 
 [package.dependencies]
 pyasn1 = ">=0.4.6,<0.5.0"
+
+[[package]]
+name = "pydes"
+version = "2.0.1"
+description = "Pure python implementation of DES and TRIPLE DES encryption algorithm"
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "pyjwt"
@@ -1080,7 +1098,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.9"
-content-hash = "e8ad822ba23df9e77c2446369c8f00ce6a7f2e9844e0bfb6ba67f51852b60da1"
+content-hash = "f2e24e895c378638fe1ede34a6ee14e666f8e294706a4b28cc378f1e16934a38"
 
 [metadata.files]
 ansicon = [
@@ -1186,6 +1204,9 @@ coverage = [
     {file = "coverage-6.4.3-pp36.pp37.pp38-none-any.whl", hash = "sha256:068d6f2a893af838291b8809c876973d885543411ea460f3e6886ac0ee941732"},
     {file = "coverage-6.4.3.tar.gz", hash = "sha256:ec2ae1f398e5aca655b7084392d23e80efb31f7a660d2eecf569fb9f79b3fb94"},
 ]
+cron-descriptor = [
+    {file = "cron_descriptor-1.2.31.tar.gz", hash = "sha256:8e83f08dbd76657a0b6ce1168b293bc27fa68be573ef8cb086ef0d9896340876"},
+]
 dcicutils = [
     {file = "dcicutils-4.4.0-py3-none-any.whl", hash = "sha256:995a7b0fb68cc2fd3cf886b56e48d9699346d14a212f632f22588b2e1662811d"},
     {file = "dcicutils-4.4.0.tar.gz", hash = "sha256:bc198aceb9894d9809d12703374cd1e64a10f55ed84fba5555195c6b450c7e9c"},
@@ -1215,8 +1236,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight-core-2.0.0.tar.gz", hash = "sha256:eaf3605276a851de7e5b7ed3667ab440a633fb0b4eee2773cf47a46c2adffb7b"},
-    {file = "foursight_core-2.0.0-py3-none-any.whl", hash = "sha256:917f0f3883e847e036c52e236c355911ad84aec41ccc25959673a246388681af"},
+    {file = "foursight-core-1.0.2.1b26.tar.gz", hash = "sha256:61cb39a8169e6a4625a1897d9c06118ad9c4117967419d8b7f0d4b85f86d51cd"},
+    {file = "foursight_core-1.0.2.1b26-py3-none-any.whl", hash = "sha256:62185f11f48be98ac4eca3265ec03d68e6f48f9b5cb73c1391a8397d691ff4e0"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1476,6 +1497,9 @@ pyasn1-modules = [
     {file = "pyasn1_modules-0.2.8-py3.5.egg", hash = "sha256:426edb7a5e8879f1ec54a1864f16b882c2837bfd06eee62f2c982315ee2473ed"},
     {file = "pyasn1_modules-0.2.8-py3.6.egg", hash = "sha256:cbac4bc38d117f2a49aeedec4407d23e8866ea4ac27ff2cf7fb3e5b570df19e0"},
     {file = "pyasn1_modules-0.2.8-py3.7.egg", hash = "sha256:c29a5e5cc7a3f05926aff34e097e84f8589cd790ce0ed41b67aed6857b26aafd"},
+]
+pydes = [
+    {file = "pyDes-2.0.1.tar.gz", hash = "sha256:e2ab8e21d2b83e90d90dbfdcb6fb8ac0000b813238b7ecaede04f8435c389012"},
 ]
 pyjwt = [
     {file = "PyJWT-1.5.3-py2.py3-none-any.whl", hash = "sha256:a4e5f1441e3ca7b382fd0c0b416777ced1f97c64ef0c33bfa39daf38505cfd2f"},
