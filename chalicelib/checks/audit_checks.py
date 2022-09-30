@@ -775,28 +775,29 @@ def check_validation_errors(connection, **kwargs):
 
 def _get_all_other_processed_files(item):
     toignore = []
-    # get directly linked other processed files
-    for pfinfo in item.get('properties').get('other_processed_files', []):
-        toignore.extend([pf for pf in pfinfo.get('files', []) if pf is not None])
-        # toignore.extend([pf['quality_metric'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
-        # qcs = [pf for pf in pfinfo.get('files', []) if pf is not None]
-        hgv = pfinfo.get('higlass_view_config')
+
+    def _get_items_in_opf_collection(opf_collection):
+        '''helper function to get all relevant items within an opf collection'''
+        items_list = []
+        for pf in opf_collection.get('files', []):
+            items_list.append(pf['uuid'])
+            items_list.extend([sc['uuid'] for sc in opf_collection.get('static_content', [])])
+            if pf.get('quality_metric'):
+                items_list.append(pf['quality_metric']['uuid'])
+        hgv = opf_collection.get('higlass_view_config')
         if hgv:
-            toignore.append(hgv)
+            items_list.append(hgv['uuid'])
+        return items_list
+
+    # get directly linked other processed files
+    for opf_expset in item.get('embedded').get('other_processed_files', []):
+        toignore.extend(_get_items_in_opf_collection(opf_expset))
+
     # experiment sets can also have linked opfs from experiment
-    for pfinfo in item['embedded'].get('other_processed_files', []):
-        toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files') if pf and pf.get('quality_metric')])
-    expts = item.get('embedded').get('experiments_in_set')
-    if expts is not None:
-        for exp in expts:
-            opfs = exp.get('other_processed_files')
-            if opfs is not None:
-                for pfinfo in opfs:
-                    toignore.extend([pf.get('uuid') for pf in pfinfo.get('files', []) if pf is not None])
-                    toignore.extend([pf['quality_metric']['uuid'] for pf in pfinfo.get('files', []) if pf and pf.get('quality_metric')])
-                    hgv = pfinfo.get('higlass_view_config')
-                    if hgv:
-                        toignore.append(hgv)
+    for exp in item.get('embedded').get('experiments_in_set', []):
+        for opf_exp in exp.get('other_processed_files', []):
+            toignore.extend(_get_items_in_opf_collection(opf_exp))
+
     return toignore
 
 
