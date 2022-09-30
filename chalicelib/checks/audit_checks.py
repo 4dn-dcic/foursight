@@ -784,6 +784,7 @@ def _get_all_other_processed_files(item):
             items_list.extend([sc['uuid'] for sc in opf_collection.get('static_content', [])])
             if pf.get('quality_metric'):
                 items_list.append(pf['quality_metric']['uuid'])
+                items_list.extend([qc_item['value']['uuid'] for qc_item in pf['quality_metric'].get('qc_list', [])])
         hgv = opf_collection.get('higlass_view_config')
         if hgv:
             items_list.append(hgv['uuid'])
