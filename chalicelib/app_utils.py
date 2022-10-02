@@ -27,4 +27,5 @@ class AppUtils(AppUtils_from_core):
     host = HOST
     package_name = 'chalicelib'
     check_setup_dir = dirname(__file__)
+    DEFAULT_ENV = os.environ.get("ENV_NAME", "foursight-fourfront-env-uninitialized")
     html_main_title = 'Foursight'
