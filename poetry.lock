@@ -292,7 +292,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "2.1.0.1b36"
+version = "2.1.0.1b37"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -309,7 +309,6 @@ gitpython = ">=3.1.2,<4.0.0"
 google-api-python-client = ">=1.12.5,<2.0.0"
 Jinja2 = "2.10.1"
 MarkupSafe = "1.1.1"
-pyDes = ">=2.0.1,<3.0.0"
 PyJWT = "2.5.0"
 pytz = ">=2020.1,<2021.0"
 
@@ -681,14 +680,6 @@ python-versions = "*"
 
 [package.dependencies]
 pyasn1 = ">=0.4.6,<0.5.0"
-
-[[package]]
-name = "pydes"
-version = "2.0.1"
-description = "Pure python implementation of DES and TRIPLE DES encryption algorithm"
-category = "main"
-optional = false
-python-versions = "*"
 
 [[package]]
 name = "pyjwt"
@@ -1093,7 +1084,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.9"
-content-hash = "3e64a17052b17795b52948bbef0b0c767f988df374bc54ba60c62426d58234e5"
+content-hash = "ee99496db379df0f754eb05e33a427d70c70a4cace7b5249208fc14ab0019ff8"
 
 [metadata.files]
 ansicon = [
@@ -1240,8 +1231,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight-core-2.1.0.1b36.tar.gz", hash = "sha256:43661a696b8cf1e55b480c60991d78d77929ca69558bf4912f173500a8b0a23c"},
-    {file = "foursight_core-2.1.0.1b36-py3-none-any.whl", hash = "sha256:e77d378d69d6aacc3eab8fdd244de4a8dbaf732f88eb0e43d22c914ae8899098"},
+    {file = "foursight-core-2.1.0.1b37.tar.gz", hash = "sha256:b88dd4461aae8dba55f13482ca1b1b4d682927c2c3c3eb1922f7534054a473f2"},
+    {file = "foursight_core-2.1.0.1b37-py3-none-any.whl", hash = "sha256:42f8cafe4061a67bb919776710980c3bd8de5e7cb0dcafbe8846fc70897df2d0"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1497,9 +1488,6 @@ pyasn1-modules = [
     {file = "pyasn1_modules-0.2.8-py3.5.egg", hash = "sha256:426edb7a5e8879f1ec54a1864f16b882c2837bfd06eee62f2c982315ee2473ed"},
     {file = "pyasn1_modules-0.2.8-py3.6.egg", hash = "sha256:cbac4bc38d117f2a49aeedec4407d23e8866ea4ac27ff2cf7fb3e5b570df19e0"},
     {file = "pyasn1_modules-0.2.8-py3.7.egg", hash = "sha256:c29a5e5cc7a3f05926aff34e097e84f8589cd790ce0ed41b67aed6857b26aafd"},
-]
-pydes = [
-    {file = "pyDes-2.0.1.tar.gz", hash = "sha256:e2ab8e21d2b83e90d90dbfdcb6fb8ac0000b813238b7ecaede04f8435c389012"},
 ]
 pyjwt = [
     {file = "PyJWT-2.5.0-py3-none-any.whl", hash = "sha256:8d82e7087868e94dd8d7d418e5088ce64f7daab4b36db654cbaedb46f9d1ca80"},
