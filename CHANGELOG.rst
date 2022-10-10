@@ -12,6 +12,7 @@ Change Log
 
 * Update ``check_status_mismatch`` to ignore higlass items linked to other_processed_files
   (both can have a status mismatch related to the Experiment Set).
+* Update dependencies.
 
 
 2.1.0
