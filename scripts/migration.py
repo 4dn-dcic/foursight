@@ -5,7 +5,7 @@ import json
 sys.path.append('..')
 import app
 from foursight_core.es_connection import ESConnection
-from chalicelib.vars import FOURSIGHT_PREFIX
+from chalicelib_fourfront.vars import FOURSIGHT_PREFIX
 
 # XXX: To use this script, run 'python migration.py <env> <stage>' in the root
 # directory of this repository.

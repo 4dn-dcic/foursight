@@ -25,7 +25,7 @@ class AppUtils(AppUtils_from_core):
     prefix = FOURSIGHT_PREFIX
     FAVICON = public_url_for_app('fourfront') + '/static/img/favicon-fs.ico'  # favicon acquired from prod
     host = HOST
-    package_name = 'chalicelib'
+    package_name = 'chalicelib_fourfront'
     check_setup_dir = dirname(__file__)
     DEFAULT_ENV = os.environ.get("ENV_NAME", "foursight-fourfront-env-uninitialized")
     html_main_title = 'Foursight'

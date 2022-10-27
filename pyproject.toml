@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "foursight"
-version = "2.2.0.1b58"
+version = "2.2.0.1b60"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
 packages = [
-  { include = "chalicelib" }
+  { include = "chalicelib_fourfront" }
 ]
 
 [tool.poetry.dependencies]

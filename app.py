@@ -1,6 +1,6 @@
 from chalice import Cron
 import os
-from chalicelib.app_utils import AppUtils
+from chalicelib_fourfront.app_utils import AppUtils
 from foursight_core.app_utils import app
 app.debug = True
 STAGE = os.environ.get('chalice_stage', 'dev')

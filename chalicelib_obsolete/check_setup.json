@@ -1,0 +1,2051 @@
+{
+    "atacseq_status": {
+        "title": "f) ATAC-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "bam_re_status": {
+        "title": "l) Restriction Enzyme Check",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "bamqc_status": {
+        "title": "b) BamQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "bed2beddb_status": {
+        "title": "c) Bed to Beddb",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "bed2multivec_status": {
+        "title": "c) Bed to multivec",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "bg2bw_status": {
+        "title": "c) BedGraph to BigWig",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "biorxiv_is_now_published": {
+        "title": "biorxiv is now published",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "biorxiv_version_update": {
+        "title": "biorxiv version update",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "biosource_cell_line_value": {
+        "title": "Cell line biosources without cell_line metadata",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "capture_hic_status": {
+        "title": "d) Capture Hi-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "change_in_item_counts": {
+        "title": "Change in item counts",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_4": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_assay_classification_short_names": {
+        "title": "Check Assay Classification Short Names",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "mastertest": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_bio_feature_organism_name": {
+        "title": "BioFeatures with missing or mismatched organism_name",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_expsets_otherprocessedfiles_for_new_higlass_items": {
+        "title": "Create/Update Items for ExpSets (Supplementary Files)",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "check_expsets_otherprocessedfiles_for_queried_files": {
+        "title": "Manually update Items for ExpSets (Supplementary Files)",
+        "group": "Higlass checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_modified_higlass_items": {
+        "title": "Update existing Items for ExpSets (Processed Files)",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_new_higlass_items": {
+        "title": "Create new Items for ExpSets (Processed Files)",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "check_expsets_processedfiles_for_queried_higlass_items": {
+        "title": "Manually update for ExpSets (Processed Files)",
+        "group": "Higlass checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_external_references_uri": {
+        "title": "Check dbxrefs links",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_fastq_read_id": {
+        "title": "Fastq files with integer read ids",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_for_ontology_updates": {
+        "title": "Check for Ontology Updates",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_for_strandedness_consistency": {
+        "title": "RNA-seq experiments without strandedness verification",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_help_page_urls": {
+        "title": "Static Section URL check",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_hic_summary_tables": {
+        "title": "Hi-C summary tables",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "check_higlass_items_for_modified_files": {
+        "title": "Update Items for modified Files",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_higlass_items_for_new_files": {
+        "title": "Create new Items for Files",
+        "group": "Higlass checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "check_higlass_items_for_queried_files": {
+        "title": "Manually update Items for Files",
+        "group": "Higlass checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_long_running_ec2s": {
+        "title": "Check Long-Running EC2s",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_opf_lab_different_than_experiment": {
+        "title": "Opf contributing lab",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "check_opf_status_mismatch": {
+        "title": "Experiment Sets containing Other Processed Files with mismatched status",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_search_urls": {
+        "title": "Static Section search URLs check",
+        "group": "Audit checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_status_mismatch": {
+        "title": "Experiment Sets containing Items with mismatch status",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_2": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_suggested_enum_values": {
+        "title": "Check fields with suggested enum",
+        "group": "Metadata checks",
+        "schedule": {
+            "monday_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "check_validation_errors": {
+        "title": "Search for Validation Errors",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_3": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "chia_pet_status": {
+        "title": "d) ChIA-PET",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "chipseq_status": {
+        "title": "g) ChIP-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "clean_s3_es_checks": {
+        "title": "Wipe Checks Older Than One Month",
+        "group": "System checks",
+        "schedule": {
+            "manual_checks": {
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "mastertest": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "clean_up_webdev_wfrs": {
+        "title": "Clean up webdev workflows runs",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_4": {
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "compartments_caller_status": {
+        "title": "m) Compartments",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "consistent_replicate_info": {
+        "title": "Replicate Experiment Sets with inconsistent replicate information",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "deploy_application_to_beanstalk": {
+        "title": "Deploy Version to ElasticBeanstalk",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "deploy_ff_staging": {
+        "title": "Deploy Fourfront master to staging.4dnucleome.org",
+        "group": "Deployment Checks",
+        "schedule": {
+            "deployment_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "dilution_hic_status": {
+        "title": "d) Dilution Hi-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "dnase_hic_status": {
+        "title": "d) DNAse Hi-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "elastic_search_space": {
+        "title": "ES Disk Space Check",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "kwargs": {
+                        "dependencies": [],
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "elasticsearch_s3_count_diff": {
+        "title": "S3/ES Check Count Differential",
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "manual_checks": {
+                "hotseat": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "mastertest": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "exp_has_raw_files": {
+        "title": "Experiments missing raw files",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks_2": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "expset_opf_unique_files": {
+        "title": "Experiment Sets with other processed files also present in files",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "expset_opf_unique_files_in_experiments": {
+        "title": "Other_processed_files collections with non-unique files",
+        "group": "Audit checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "dependencies": [
+                        "expset_opfsets_unique_titles"
+                    ],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "expset_opfsets_unique_titles": {
+        "title": "Experiment Sets with missing or duplicated titles for sets of other processed files",
+        "group": "Audit checks",
+        "schedule": {
+            "thirty_min_checks": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "external_expsets_without_pub": {
+        "title": "External experiment sets without a publication",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "external_submission_but_missing_dbxrefs": {
+        "title": "Items with external_submission but missing dbxrefs",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "fastq_first_line_status": {
+        "title": "l) Fastq first line",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "fastqc_status": {
+        "title": "b) FastQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "files_not_registered_with_higlass": {
+        "title": "Files not registered with higlass",
+        "group": "Higlass checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "find_cypress_test_items_to_purge": {
+        "title": "Find Cypress Test files to Purge",
+        "group": "Cleanup checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "gold_biosamples": {
+        "title": "Gold Biosamples",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [
+                        "yellow_flag_biosamples"
+                    ],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [
+                        "yellow_flag_biosamples"
+                    ],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [
+                        "yellow_flag_biosamples"
+                    ],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "grouped_with_file_relation_consistency": {
+        "title": "File relation 'grouped with'",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "identify_files_without_filesize": {
+        "title": "Files without filesize",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "in_situ_chia_pet_status": {
+        "title": "d) in situ ChIA-PET",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "in_situ_hic_status": {
+        "title": "d) in situ Hi-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "indexer_server_status": {
+        "title": "Indexer Server Status",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "indexing_progress": {
+        "title": "Indexing progress",
+        "conditions": [
+            "put_env"
+        ],
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "all": {
+                    "dependencies": [
+                        "item_counts_by_type"
+                    ],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "indexing_records": {
+        "title": "Indexing records",
+        "conditions": [
+            "put_env"
+        ],
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "insulation_scores_and_boundaries_status": {
+        "title": "m) insulation scores and boundaries",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "item_counts_by_type": {
+        "title": "Item counts by type",
+        "group": "Metadata checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "long_running_wfrs_fdn_status": {
+        "title": "x) Long Running Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "margi_status": {
+        "title": "h) MARGI",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "md5run_status": {
+        "title": "a) MD5run",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "md5run_status_extra_file": {
+        "title": "a) MD5run extrafiles",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "md5run_uploaded_files": {
+        "title": "a) MD5run uploaded files",
+        "group": "Pipeline checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "micro_c_status": {
+        "title": "d) Micro-C",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "nad_seq_status": {
+        "title": "e) NAD-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "new_or_updated_items": {
+        "title": "New or Modified Submissions",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "mastertest": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "page_children_routes": {
+        "title": "Pages with bad routes",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_2": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "paired_end_info_consistent": {
+        "title": "Fastq files with inconsistent paired end information",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_3": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "pairsqc_status": {
+        "title": "b) PairsQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "plac_seq_status": {
+        "title": "d) PLAC-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers": {
+        "title": "Prepare static headers",
+        "group": "Static headers checks",
+        "schedule": {
+          "manual_checks": {
+              "data": {
+                  "dependencies": [],
+                  "kwargs": {
+                      "primary": true
+                  }
+              },
+              "hotseat": {
+                  "dependencies": [],
+                  "kwargs": {
+                      "primary": true
+                  }
+              },
+              "staging": {
+                  "dependencies": [],
+                  "kwargs": {
+                      "primary": true
+                  }
+              }
+          }
+      }
+    },
+    "prepare_static_headers_DNase_HiC": {
+        "title": "DNase_HiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_FISH": {
+        "title": "FISH",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_MARGI": {
+        "title": "MARGI",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_SPRITE": {
+        "title": "SPRITE",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_SPT": {
+        "title": "SPT",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_data_use_guidelines": {
+        "title": "Data use guidelines",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_dilution_HiC": {
+        "title": "dilution Hi-C",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_inSitu_HiC": {
+        "title": "InSitu Hi-C",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "prepare_static_headers_sciHiC": {
+        "title": "sciHiC",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "problematic_wfrs_fdn_status": {
+        "title": "x) Errored Runs",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "data": {
+                    "kwargs": {"primary": true},
+                    "dependencies": []
+                }
+            }
+        }
+    },
+    "provision_indexer_environment": {
+        "title": "Provision Indexer Environment",
+        "group": "Deployment Checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "released_protected_data_files": {
+        "title": "Protected data fastq or bam files not restricted",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "released_output_from_restricted_input": {
+        "title": "Processed files not restricted",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "repli_2_stage_status": {
+        "title": "e) Repliseq - 2 Stage",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "repli_multi_stage_status": {
+        "title": "e) Repliseq - Multi Stage",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "repsets_have_bio_reps": {
+        "title": "Replicate experiment sets with replicate number issues",
+        "group": "Badge checks",
+          "schedule": {
+            "morning_checks_3": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "rna_seq_status": {
+        "title": "i) RNA-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "rna_strandedness_status": {
+        "title": "l) RNA Strandedness",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "say_my_name": {
+        "title": "Say my name",
+        "group": "System checks",
+        "schedule": {
+            "manual_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "snapshot_rds": {
+        "title": "Snapshot RDS",
+        "group": "System checks",
+        "schedule": {
+            "monthly_checks": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "webdev": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "staging_deployment": {
+        "title": "Staging deployment",
+        "group": "System checks",
+        "schedule": {
+            "manual_checks": {
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "states_files_without_higlass_defaults": {
+        "title": "states files without higlass_defaults",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "status_of_elasticsearch_indices": {
+        "title": "Status of elasticsearch indices",
+        "conditions": [
+            "put_env"
+        ],
+        "group": "Elasticsearch checks",
+        "schedule": {
+            "hourly_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "sync_google_analytics_data": {
+        "title": "Sync Google Analytics",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "tcc_status": {
+        "title": "d) TCC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "trac_loop_status": {
+        "title": "d) TrAC-loop",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "tsa_seq_status": {
+        "title": "e) TSA-seq",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "users_with_doppelganger": {
+        "title": "Users with Doppelgangers",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "users_with_pending_lab": {
+        "title": "Users with Pending Lab",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "validate_entrez_geneids": {
+        "title": "Check for problem Entrez Gene IDs in Gene records",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_4": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "wipe_ff_build_indices": {
+        "title": "Wipe FF build indices",
+        "group": "System checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "workflow_properties": {
+        "title": "Workflows with missing or duplicate steps properties",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_2": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "workflow_run_has_deleted_input_file": {
+        "title": "WorkflowRun linked to deleted Files",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_1": {
+                "all": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "yellow_flag_biosamples": {
+        "title": "Yellow Flag Biosamples",
+        "group": "Badge checks",
+        "schedule": {
+            "morning_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "sync_users_oh_status": {
+        "title": "Synch Users with OH",
+        "group": "Metadata checks",
+        "schedule": {
+            "morning_checks_4": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
+    "scale_down_elasticsearch_production": {
+        "title": "Scale down production ElasticSearch Cluster",
+        "group": "System checks",
+        "schedule": {
+            "friday_autoscaling_checks": {
+                "staging": {
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        },
+        "display": ["data", "staging"]
+    },
+    "scale_up_elasticsearch_production": {
+        "title": "Scale up production ElasticSearch Cluster",
+        "group": "System checks",
+        "schedule": {
+            "monday_autoscaling_checks": {
+                "staging": {
+                    "kwargs" : {
+                        "primary": true
+                    }
+                }
+            }
+        },
+        "display": ["data", "staging"]
+    },
+    "mcoolqc_status": {
+        "title": "b) McoolQC",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
+    "ecs_status": {
+        "title": "ECS Status",
+        "group": "ECS Checks",
+        "schedule": {
+            "manual_checks": {
+                "all": {
+                    "kwargs": {
+                        "primary": true
+                    },
+                "dependencies": []
+                }
+            }
+        },
+        "display": [
+            "mastertest"
+        ]
+  },
+  "update_ecs_application_versions": {
+        "title": "Update ECS Cluster Application Versions",
+        "group": "ECS Checks",
+        "schedule": {
+            "manual_checks": {
+                "all": {
+                      "kwargs": {
+                          "primary": true
+                      },
+                      "dependencies": []
+                }
+            }
+        },
+        "display": [
+            "mastertest"
+        ]
+  },
+    "trigger_codebuild_run": {
+        "title": "Triggers a CodeBuild run",
+        "group": "ECS Checks",
+        "schedule": {
+            "all": {
+                "mastertest": {
+                      "kwargs": {
+                          "primary": true
+                      },
+                      "dependencies": []
+                }
+            }
+        },
+        "display": [
+            "mastertest"
+        ]
+    }
+}

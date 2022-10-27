@@ -5,7 +5,7 @@ import json
 import argparse
 sys.path.append('..')
 import app
-from chalicelib.vars import DEV_ENV
+from chalicelib_fourfront.vars import DEV_ENV
 
 
 EPILOG = __doc__
