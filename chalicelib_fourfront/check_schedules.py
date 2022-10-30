@@ -48,8 +48,7 @@ foursight_cron_by_schedule = {
     'hourly_checks_1': Cron('5', '0/1', '*', '*', '?', '*'),
     'hourly_checks_2': Cron('25', '0/1', '*', '*', '?', '*'),
     'hourly_checks_3': Cron('45', '0/1', '*', '*', '?', '*'),
-### 'morning_checks_1': Cron('0', '6', '*', '*', '?', '*'),
-    'morning_checks_1': Cron('0/2', '*', '*', '*', '?', '*'), ###
+    'morning_checks_1': Cron('0', '6', '*', '*', '?', '*'),
     'morning_checks_2': Cron('0', '7', '*', '*', '?', '*'),
     'morning_checks_3': Cron('0', '8', '*', '*', '?', '*'),
     'morning_checks_4': Cron('0', '9', '*', '*', '?', '*'),
@@ -111,8 +110,8 @@ def hourly_checks_3(event):
 
 @app.schedule(foursight_cron_by_schedule['morning_checks_1'])
 def morning_checks_1(event):
-### if STAGE == 'dev':
-###     return  # do not schedule the deployment checks on dev
+    if STAGE == 'dev':
+        return  # do not schedule the deployment checks on dev
     app.core.queue_scheduled_checks('all', 'morning_checks_1')
 
 
