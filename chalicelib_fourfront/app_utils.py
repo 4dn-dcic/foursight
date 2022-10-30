@@ -31,24 +31,12 @@ class AppUtils_from_cgap_or_fourfront(AppUtils_from_core):
     check_setup_dir = dirname(__file__)
     check_setup_dir_fallback = dirname(__file__)
     DEFAULT_ENV = os.environ.get("ENV_NAME", "foursight-fourfront-env-uninitialized")
-    html_main_title = 'Foursight'
+    html_main_title = "Foursight" # Foursight CGAP vs Fourfront difference now conveyed in the upper left icon.
+
 
 # From 4dn-cloud-infra - TODO: merge with above after verify working ...
 
 from dcicutils.misc_utils import remove_suffix
-
-# TODO: How to really do this *right* at startup?
-def IS_FOURSIGHT_FOURFRONT():
-    if os.environ.get("FOURSIGHT_FOURFRONT", False):
-        return True
-    identity = os.environ.get("IDENTITY");
-    if identity:
-        identity = identity.lower()
-        if "fourfront" in identity:
-            print("xyzzy;IS-FOURFRONT")
-            return True
-    print("xyzzy;IS-NOT-FOURFRONT")
-    return False
 
 STAGE = os.environ.get('chalice_stage', 'dev')
 HOST = os.environ.get('ES_HOST', None)
@@ -70,12 +58,10 @@ class AppUtils(AppUtils_from_cgap_or_fourfront):
     prefix = FOURSIGHT_PREFIX
     FAVICON = 'https://cgap-dbmi.hms.harvard.edu/static/img/favicon-fs.ico'
     host = HOST
-    if IS_FOURSIGHT_FOURFRONT():
-        package_name = 'chalicelib_fourfront'
-    else:
-        package_name = 'chalicelib_cgap'
+    package_name = 'chalicelib_fourfront'
     # check_setup is moved to vendor/ where it will be automatically placed at top level
-    check_setup_dir = os.path.dirname(__file__)
+    # TODO: Better way to communicate this from 4dn-cloud-infra?
+    check_setup_dir = os.environ.get("FOURSIGHT_CHECK_SETUP_DIR") or os.path.dirname(__file__)
     # html_main_title = f'Foursight-{DEFAULT_ENV}-{STAGE}'.title()
     # html_main_title = 'Foursight-Fourfront';
     html_main_title = "Foursight" # Foursight CGAP vs Fourfront difference now conveyed in the upper left icon.
