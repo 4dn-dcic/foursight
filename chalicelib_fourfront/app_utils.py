@@ -62,6 +62,7 @@ class AppUtils(AppUtils_from_cgap_or_fourfront):
     # check_setup is moved to vendor/ where it will be automatically placed at top level
     # TODO: Better way to communicate this from 4dn-cloud-infra?
     check_setup_dir = os.environ.get("FOURSIGHT_CHECK_SETUP_DIR") or os.path.dirname(__file__)
+    check_setup_dir = "chalicelib_local" if os.environ.get("CHALICE_LOCAL") == "1" else check_setup_dir
     # html_main_title = f'Foursight-{DEFAULT_ENV}-{STAGE}'.title()
     # html_main_title = 'Foursight-Fourfront';
     html_main_title = "Foursight" # Foursight CGAP vs Fourfront difference now conveyed in the upper left icon.
