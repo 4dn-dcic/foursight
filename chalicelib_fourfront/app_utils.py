@@ -37,6 +37,19 @@ class AppUtils_from_cgap_or_fourfront(AppUtils_from_core):
 
 from dcicutils.misc_utils import remove_suffix
 
+# TODO: How to really do this *right* at startup?
+def IS_FOURSIGHT_FOURFRONT():
+    if os.environ.get("FOURSIGHT_FOURFRONT", False):
+        return True
+    identity = os.environ.get("IDENTITY");
+    if identity:
+        identity = identity.lower()
+        if "fourfront" in identity:
+            print("xyzzy;IS-FOURFRONT")
+            return True
+    print("xyzzy;IS-NOT-FOURFRONT")
+    return False
+
 STAGE = os.environ.get('chalice_stage', 'dev')
 HOST = os.environ.get('ES_HOST', None)
 
