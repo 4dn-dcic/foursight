@@ -7,7 +7,8 @@ from .vars import FOURSIGHT_PREFIX, HOST
 
 
 #TODO: Rename back to AppUtils with merged with 4dn-cloud-infra version below after verified working ...
-class AppUtils_from_cgap_or_fourfront(AppUtils_from_core):
+#class AppUtils_from_cgap_or_fourfront(AppUtils_from_core):
+class AppUtils(AppUtils_from_core):
 
     # dmichaels/C4-826: Apply identity globally.
     apply_identity_globally()
