@@ -168,15 +168,12 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "mastertest": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
-        }
+        },
+        "display": [
+            "mastertest"
+        ]
     },
     "check_bio_feature_organism_name": {
         "title": "BioFeatures with missing or mismatched organism_name",
