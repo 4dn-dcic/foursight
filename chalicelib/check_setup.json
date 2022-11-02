@@ -1328,12 +1328,6 @@
                   "kwargs": {
                       "primary": true
                   }
-              },
-              "staging": {
-                  "dependencies": [],
-                  "kwargs": {
-                      "primary": true
-                  }
               }
           }
       }
@@ -1350,12 +1344,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1380,12 +1368,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1402,12 +1384,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1432,12 +1408,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1454,12 +1424,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1498,12 +1462,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1524,12 +1482,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1546,12 +1498,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
