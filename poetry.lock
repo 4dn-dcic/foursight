@@ -188,6 +188,14 @@ python-versions = ">=3.7"
 toml = ["tomli"]
 
 [[package]]
+name = "cron-descriptor"
+version = "1.2.31"
+description = "A Python library that converts cron expressions into human readable strings."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "dcicutils"
 version = "4.8.0"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
@@ -287,16 +295,25 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "2.1.0.1b68"
+version = "2.1.0.1b70"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
-python-versions = "*"
-develop = true
+python-versions = ">=3.7,<3.9"
 
-[package.source]
-type = "directory"
-url = "../foursight-core"
+[package.dependencies]
+click = ">=7.1.2,<8.0.0"
+cron-descriptor = ">=1.2.31,<2.0.0"
+dcicutils = ">=4.0.2,<5.0.0"
+elasticsearch = ">=6.8.1,<7.0.0"
+elasticsearch-dsl = ">=6.4.0,<7.0.0"
+geocoder = "1.38.1"
+gitpython = ">=3.1.2,<4.0.0"
+google-api-python-client = ">=1.12.5,<2.0.0"
+Jinja2 = "2.10.1"
+MarkupSafe = "1.1.1"
+PyJWT = "2.5.0"
+pytz = ">=2020.1,<2021.0"
 
 [[package]]
 name = "future"
@@ -1105,7 +1122,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.9"
-content-hash = "ad0b68897d622561b09cc0235f61e85ded63f0f6614757cdc3fe1288c2759119"
+content-hash = "e79fdbf88f2e644cbee021855dca1107c28790df981d71d894f2fec57992f833"
 
 [metadata.files]
 ansicon = [
@@ -1218,6 +1235,9 @@ coverage = [
     {file = "coverage-6.5.0-pp36.pp37.pp38-none-any.whl", hash = "sha256:1431986dac3923c5945271f169f59c45b8802a114c8f548d611f2015133df77a"},
     {file = "coverage-6.5.0.tar.gz", hash = "sha256:f642e90754ee3e06b0e7e51bce3379590e76b7f76b708e1a71ff043f87025c84"},
 ]
+cron-descriptor = [
+    {file = "cron_descriptor-1.2.31.tar.gz", hash = "sha256:8e83f08dbd76657a0b6ce1168b293bc27fa68be573ef8cb086ef0d9896340876"},
+]
 dcicutils = [
     {file = "dcicutils-4.8.0-py3-none-any.whl", hash = "sha256:06707fde9077085abbdfe0577d61be4dd64106906d011b532f90f4379cfb4805"},
     {file = "dcicutils-4.8.0.tar.gz", hash = "sha256:7095b4109df42bcd45c76e8f4dc96777116e2c8d944b6b3fb4a2ede75f18a737"},
@@ -1246,7 +1266,10 @@ flaky = [
     {file = "flaky-3.6.1-py2.py3-none-any.whl", hash = "sha256:5471615b32b0f8086573de924475b1f0d31e0e8655a089eb9c38a0fbff3f11aa"},
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
-foursight-core = []
+foursight-core = [
+    {file = "foursight_core-2.1.0.1b70-py3-none-any.whl", hash = "sha256:58f93ec94f44435aa79da3710cf63a325c47baef2da7f93f5f554b32712e05f2"},
+    {file = "foursight_core-2.1.0.1b70.tar.gz", hash = "sha256:66fcb9d64449df8f7cafdfd7718e73976ce5c22768ce1f5f7492a2afd275a88f"},
+]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
 ]
