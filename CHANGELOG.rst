@@ -11,8 +11,15 @@ Change Log
 =====
 
 * Changes related to Foursight React.
-  * Moved all Chalice routes to foursight-core; same with foursight;
-    and app-cgap and app-fourfront.py in 4dn-cloud-infra.
+  * Renamed chalicelib directory to chalicelib_fourfront.
+  * Renamed target package (pyproject.toml) from chalicelib to chalicelib_fourfront.
+  * Moved all Chalice routes to foursight-core (same with foursight-cgap).
+  * Moved schedules to chalicelib_fourfront/check_schedules.py.
+  * Changed check_setup.json lookup (in chalicelib_fourfront/app_utils.py) to look
+    for check_setup.json in the directory specified by the FOURSIGHT_CHECK_SETUP_DIR
+    environment variable, if set, otherwise look in the local chalicelib_fourfront directory;
+    and setup a fallback directory for this lookup to this local chalicelib_fourfront directory,
+    which foursight-core will use if there is no (non-empty) check_setup.json in the specified directory.
 
 2.1.1
 =====
