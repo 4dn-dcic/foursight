@@ -97,12 +97,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -972,14 +966,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [
-                        "yellow_flag_biosamples"
-                    ],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1240,12 +1226,6 @@
                     }
                 },
                 "mastertest": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1872,12 +1852,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
