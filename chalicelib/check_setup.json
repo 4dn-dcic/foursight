@@ -97,12 +97,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -126,7 +120,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -534,7 +528,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -562,7 +556,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_2": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -590,7 +584,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_3": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -694,7 +688,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -720,7 +714,7 @@
         "title": "Deploy Fourfront master to staging.4dnucleome.org",
         "group": "Deployment Checks",
         "schedule": {
-            "deployment_checks": {
+            "manual_checks": {
                 "data": {
                     "kwargs": {
                         "primary": true
@@ -806,7 +800,7 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks_2": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -834,7 +828,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "data": {
                     "dependencies": [
                         "expset_opfsets_unique_titles"
                     ],
@@ -850,7 +844,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -864,7 +858,7 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -966,14 +960,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [
-                        "yellow_flag_biosamples"
-                    ],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [
                         "yellow_flag_biosamples"
                     ],
@@ -1244,12 +1230,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1328,12 +1308,6 @@
                   "kwargs": {
                       "primary": true
                   }
-              },
-              "staging": {
-                  "dependencies": [],
-                  "kwargs": {
-                      "primary": true
-                  }
               }
           }
       }
@@ -1350,12 +1324,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1380,12 +1348,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1402,12 +1364,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1432,12 +1388,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1458,12 +1408,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1473,7 +1417,7 @@
         "group": "Static headers checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1498,12 +1442,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1524,12 +1462,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1546,12 +1478,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1668,7 +1594,7 @@
         "group": "Badge checks",
           "schedule": {
             "morning_checks_3": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1884,7 +1810,7 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks_4": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1946,12 +1872,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true

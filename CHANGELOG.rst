@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+2.1.2
+=====
+
+* Update check schedule to reduce the number of metadata-related checks running on
+  staging and non-production environments.
+
+
 2.1.1
 =====
 
