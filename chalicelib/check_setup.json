@@ -127,7 +127,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "capture_hic_status": {
         "title": "d) Capture Hi-C",
@@ -532,7 +535,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "check_search_urls": {
         "title": "Static Section search URLs check",
@@ -560,7 +566,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "check_suggested_enum_values": {
         "title": "Check fields with suggested enum",
@@ -588,7 +597,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "chia_pet_status": {
         "title": "d) ChIA-PET",
@@ -692,7 +704,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "deploy_application_to_beanstalk": {
         "title": "Deploy Version to ElasticBeanstalk",
@@ -804,7 +819,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "expset_opf_unique_files": {
         "title": "Experiment Sets with other processed files also present in files",
@@ -834,7 +852,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "expset_opfsets_unique_titles": {
         "title": "Experiment Sets with missing or duplicated titles for sets of other processed files",
@@ -848,7 +869,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "external_expsets_without_pub": {
         "title": "External experiment sets without a publication",
@@ -862,7 +886,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "external_submission_but_missing_dbxrefs": {
         "title": "Items with external_submission but missing dbxrefs",
@@ -1569,7 +1596,7 @@
     "repsets_have_bio_reps": {
         "title": "Replicate experiment sets with replicate number issues",
         "group": "Badge checks",
-          "schedule": {
+        "schedule": {
             "morning_checks_3": {
                 "data": {
                     "dependencies": [],
@@ -1578,7 +1605,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "rna_seq_status": {
         "title": "i) RNA-seq",
@@ -1794,7 +1824,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "wipe_ff_build_indices": {
         "title": "Wipe FF build indices",
