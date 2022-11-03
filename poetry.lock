@@ -188,6 +188,14 @@ python-versions = ">=3.7"
 toml = ["tomli"]
 
 [[package]]
+name = "cron-descriptor"
+version = "1.2.31"
+description = "A Python library that converts cron expressions into human readable strings."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "dcicutils"
 version = "4.8.0"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
@@ -287,16 +295,27 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "2.1.0.1b78"
+version = "2.1.0.1b79"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
-python-versions = "*"
-develop = true
+python-versions = ">=3.7,<3.9"
 
-[package.source]
-type = "directory"
-url = "../foursight-core"
+[package.dependencies]
+click = ">=7.1.2,<8.0.0"
+cron-descriptor = ">=1.2.31,<2.0.0"
+dcicutils = ">=4.0.2,<5.0.0"
+elasticsearch = ">=6.8.1,<7.0.0"
+elasticsearch-dsl = ">=6.4.0,<7.0.0"
+geocoder = "1.38.1"
+gitpython = ">=3.1.2,<4.0.0"
+google = ">=3.0.0,<4.0.0"
+google-api-python-client = ">=1.12.5,<2.0.0"
+google-auth-oauthlib = ">=0.7.0,<0.8.0"
+Jinja2 = "2.10.1"
+MarkupSafe = "1.1.1"
+PyJWT = "2.5.0"
+pytz = ">=2020.1,<2021.0"
 
 [[package]]
 name = "future"
@@ -343,6 +362,17 @@ python-versions = ">=3.7"
 [package.dependencies]
 gitdb = ">=4.0.1,<5"
 typing-extensions = {version = ">=3.7.4.3", markers = "python_version < \"3.8\""}
+
+[[package]]
+name = "google"
+version = "3.0.0"
+description = "Python bindings to the Google search engine."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+beautifulsoup4 = "*"
 
 [[package]]
 name = "google-api-core"
@@ -1105,7 +1135,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.9"
-content-hash = "b7385dd58c07801c19ab0b9cf7be35c60b3dff344a4f1517e85952ba5f8a27cf"
+content-hash = "1daf086b3e50f13fc5814a7be1e90925e48ed49452e481adc3082e87781745fa"
 
 [metadata.files]
 ansicon = [
@@ -1218,6 +1248,9 @@ coverage = [
     {file = "coverage-6.5.0-pp36.pp37.pp38-none-any.whl", hash = "sha256:1431986dac3923c5945271f169f59c45b8802a114c8f548d611f2015133df77a"},
     {file = "coverage-6.5.0.tar.gz", hash = "sha256:f642e90754ee3e06b0e7e51bce3379590e76b7f76b708e1a71ff043f87025c84"},
 ]
+cron-descriptor = [
+    {file = "cron_descriptor-1.2.31.tar.gz", hash = "sha256:8e83f08dbd76657a0b6ce1168b293bc27fa68be573ef8cb086ef0d9896340876"},
+]
 dcicutils = [
     {file = "dcicutils-4.8.0-py3-none-any.whl", hash = "sha256:06707fde9077085abbdfe0577d61be4dd64106906d011b532f90f4379cfb4805"},
     {file = "dcicutils-4.8.0.tar.gz", hash = "sha256:7095b4109df42bcd45c76e8f4dc96777116e2c8d944b6b3fb4a2ede75f18a737"},
@@ -1246,7 +1279,10 @@ flaky = [
     {file = "flaky-3.6.1-py2.py3-none-any.whl", hash = "sha256:5471615b32b0f8086573de924475b1f0d31e0e8655a089eb9c38a0fbff3f11aa"},
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
-foursight-core = []
+foursight-core = [
+    {file = "foursight_core-2.1.0.1b79-py3-none-any.whl", hash = "sha256:209d6a446a91d5f861565a623756e20a20fe6b3cc856d954e952a1e0e5d25dc1"},
+    {file = "foursight_core-2.1.0.1b79.tar.gz", hash = "sha256:df2f73cbff2cf32294d8826b7e455a3c178ce9d4ff61b4299b759731ffa51df3"},
+]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
 ]
@@ -1261,6 +1297,10 @@ gitdb = [
 gitpython = [
     {file = "GitPython-3.1.29-py3-none-any.whl", hash = "sha256:41eea0deec2deea139b459ac03656f0dd28fc4a3387240ec1d3c259a2c47850f"},
     {file = "GitPython-3.1.29.tar.gz", hash = "sha256:cc36bfc4a3f913e66805a28e84703e419d9c264c1077e537b54f0e1af85dbefd"},
+]
+google = [
+    {file = "google-3.0.0-py2.py3-none-any.whl", hash = "sha256:889cf695f84e4ae2c55fbc0cfdaf4c1e729417fa52ab1db0485202ba173e4935"},
+    {file = "google-3.0.0.tar.gz", hash = "sha256:143530122ee5130509ad5e989f0512f7cb218b2d4eddbafbad40fd10e8d8ccbe"},
 ]
 google-api-core = [
     {file = "google-api-core-2.10.2.tar.gz", hash = "sha256:10c06f7739fe57781f87523375e8e1a3a4674bf6392cd6131a3222182b971320"},
