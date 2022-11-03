@@ -10,6 +10,8 @@ Change Log
 2.1.2
 =====
 
+`PR 507: Check schedule edits <https://github.com/4dn-dcic/foursight/pull/507>`_
+
 * Update check schedule to reduce the number of metadata-related checks running on
   staging and non-production environments.
 
