@@ -14,8 +14,6 @@ from foursight_core.deploy import Deploy
 # level, only within functions, below, but best not to use it at all here to reduce confusion.
 # --------------------------------------------------------------------------------------------------
 
-# TODO
-# This is how it was gotten in 4dn-cloud-infra. OK here?
 STAGE = os.environ.get('chalice_stage', 'dev')
 
 
@@ -169,25 +167,3 @@ def monday_autoscaling_checks(event):
     if STAGE == 'dev':
         return  # do not schedule autoscaling checks on dev
     app.core.queue_scheduled_checks('all', 'monday_autoscaling_checks')
-
-
-#def compute_valid_deploy_stages():
-#    # TODO: Will wants to know why "test" is here. -kmp 17-Aug-2021
-#    return list(Deploy.CONFIG_BASE['stages'].keys()) + ['test']
-#
-#
-#class InvalidDeployStage(InvalidParameterError):
-#
-#    @classmethod
-#    def compute_valid_options(cls):
-#        return compute_valid_deploy_stages()
-#
-#
-#def set_stage(stage):
-#    if stage not in compute_valid_deploy_stages():
-#        raise InvalidDeployStage(parameter='stage', value=stage)
-#    os.environ['chalice_stage'] = stage
-#
-#
-#def set_timeout(timeout):
-#    app.core.set_timeout(timeout)
