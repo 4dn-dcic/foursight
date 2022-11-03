@@ -25,14 +25,13 @@ class AppUtils(AppUtils_from_core):
     FAVICON = 'https://cgap-dbmi.hms.harvard.edu/static/img/favicon-fs.ico'
     host = HOST
     package_name = 'chalicelib_fourfront'
-    check_setup_dir_fallback = os.path.abspath(os.path.dirname(__file__))
-    if os.environ.get("CHALICE_LOCAL") == "1":
-        check_setup_dir = "chalicelib_local"
-    else:
-        check_setup_dir = os.environ.get("FOURSIGHT_CHECK_SETUP_DIR") or os.path.dirname(__file__)
-    check_setup_dir = os.path.abspath(check_setup_dir)
+
+    check_setup_file = AppUtils_from_core.locate_check_setup_file(os.path.dirname(__file__))
+    if not check_setup_file:
+        raise Exception("Unable to locate the check setup file!")
+    print(f"Using check setup file: {check_setup_file}")
+
     DEFAULT_ENV = os.environ.get("ENV_NAME", "foursight-fourfront-env-uninitialized")
-    html_main_title = "Foursight" # Foursight CGAP vs Fourfront difference now conveyed in the upper left icon.
 
 
 app_utils_obj = AppUtils.singleton(AppUtils)
