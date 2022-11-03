@@ -22,7 +22,7 @@ class AppUtils(AppUtils_from_core):
     
     # overwriting parent class
     prefix = FOURSIGHT_PREFIX
-    FAVICON = 'https://cgap-dbmi.hms.harvard.edu/static/img/favicon-fs.ico'
+    FAVICON = "https://data.4dnucleome.org/static/img/favicon-fs.ico"
     host = HOST
     package_name = 'chalicelib_fourfront'
 
