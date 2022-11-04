@@ -127,7 +127,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "capture_hic_status": {
         "title": "d) Capture Hi-C",
@@ -149,7 +152,7 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks_4": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -168,15 +171,12 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "mastertest": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
-        }
+        },
+        "display": [
+            "mastertest"
+        ]
     },
     "check_bio_feature_organism_name": {
         "title": "BioFeatures with missing or mismatched organism_name",
@@ -535,7 +535,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "check_search_urls": {
         "title": "Static Section search URLs check",
@@ -563,7 +566,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "check_suggested_enum_values": {
         "title": "Check fields with suggested enum",
@@ -591,7 +597,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "chia_pet_status": {
         "title": "d) ChIA-PET",
@@ -695,33 +704,10 @@
                     }
                 }
             }
-        }
-    },
-    "deploy_application_to_beanstalk": {
-        "title": "Deploy Version to ElasticBeanstalk",
-        "group": "Deployment Checks",
-        "schedule": {
-            "manual_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "deploy_ff_staging": {
-        "title": "Deploy Fourfront master to staging.4dnucleome.org",
-        "group": "Deployment Checks",
-        "schedule": {
-            "manual_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "dilution_hic_status": {
         "title": "d) Dilution Hi-C",
@@ -807,7 +793,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "expset_opf_unique_files": {
         "title": "Experiment Sets with other processed files also present in files",
@@ -837,7 +826,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "expset_opfsets_unique_titles": {
         "title": "Experiment Sets with missing or duplicated titles for sets of other processed files",
@@ -851,7 +843,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "external_expsets_without_pub": {
         "title": "External experiment sets without a publication",
@@ -865,7 +860,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "external_submission_but_missing_dbxrefs": {
         "title": "Items with external_submission but missing dbxrefs",
@@ -1036,19 +1034,6 @@
             }
         }
     },
-    "indexer_server_status": {
-        "title": "Indexer Server Status",
-        "group": "Deployment Checks",
-        "schedule": {
-            "manual_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "indexing_progress": {
         "title": "Indexing progress",
         "conditions": [
@@ -1057,7 +1042,15 @@
         "group": "Elasticsearch checks",
         "schedule": {
             "hourly_checks_1": {
-                "all": {
+                "data": {
+                    "dependencies": [
+                        "item_counts_by_type"
+                    ],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
                     "dependencies": [
                         "item_counts_by_type"
                     ],
@@ -1105,7 +1098,13 @@
         "group": "Metadata checks",
         "schedule": {
             "hourly_checks_1": {
-                "all": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1518,19 +1517,6 @@
             }
         }
     },
-    "provision_indexer_environment": {
-        "title": "Provision Indexer Environment",
-        "group": "Deployment Checks",
-        "schedule": {
-            "manual_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "released_protected_data_files": {
         "title": "Protected data fastq or bam files not restricted",
         "group": "Audit checks",
@@ -1592,7 +1578,7 @@
     "repsets_have_bio_reps": {
         "title": "Replicate experiment sets with replicate number issues",
         "group": "Badge checks",
-          "schedule": {
+        "schedule": {
             "morning_checks_3": {
                 "data": {
                     "dependencies": [],
@@ -1601,7 +1587,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "rna_seq_status": {
         "title": "i) RNA-seq",
@@ -1665,20 +1654,6 @@
                     }
                 },
                 "webdev": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "staging_deployment": {
-        "title": "Staging deployment",
-        "group": "System checks",
-        "schedule": {
-            "manual_checks": {
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1817,7 +1792,10 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "wipe_ff_build_indices": {
         "title": "Wipe FF build indices",
@@ -1893,34 +1871,6 @@
                 }
             }
         }
-    },
-    "scale_down_elasticsearch_production": {
-        "title": "Scale down production ElasticSearch Cluster",
-        "group": "System checks",
-        "schedule": {
-            "friday_autoscaling_checks": {
-                "staging": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        },
-        "display": ["data", "staging"]
-    },
-    "scale_up_elasticsearch_production": {
-        "title": "Scale up production ElasticSearch Cluster",
-        "group": "System checks",
-        "schedule": {
-            "monday_autoscaling_checks": {
-                "staging": {
-                    "kwargs" : {
-                        "primary": true
-                    }
-                }
-            }
-        },
-        "display": ["data", "staging"]
     },
     "mcoolqc_status": {
         "title": "b) McoolQC",
