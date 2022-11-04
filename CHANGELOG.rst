@@ -15,6 +15,7 @@ Change Log
   * Renamed target package (pyproject.toml) from chalicelib to chalicelib_fourfront.
   * Moved all Chalice routes to foursight-core (same with foursight-cgap).
   * Moved schedules to chalicelib_fourfront/check_schedules.py.
+  * Using new schedule decorator from foursight_core.schedule_decorator.
   * Changed check_setup.json lookup (in chalicelib_fourfront/app_utils.py) to look
     for check_setup.json in the directory specified by the FOURSIGHT_CHECK_SETUP_DIR
     environment variable, if set, otherwise look in the local chalicelib_fourfront directory;
