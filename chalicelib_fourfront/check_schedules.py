@@ -3,6 +3,7 @@ import os
 from dcicutils.exceptions import InvalidParameterError
 from foursight_core.app_utils import app  # Chalice object
 from foursight_core.deploy import Deploy
+from foursight_core.schedule_decorator import schedule, SCHEDULE_FOR_NEVER
 
 # --------------------------------------------------------------------------------------------------
 # Previously in: 4dn-cloud-infra
@@ -14,12 +15,10 @@ from foursight_core.deploy import Deploy
 # level, only within functions, below, but best not to use it at all here to reduce confusion.
 # --------------------------------------------------------------------------------------------------
 
-STAGE = os.environ.get('chalice_stage', 'dev')
+STAGE = os.environ.get("chalice_stage", "dev")
 
-
-def effectively_never():
-    """Every February 31st, a.k.a. 'never'."""
-    return Cron('0', '0', '31', '2', '?', '?')
+# Do not schedule the deployment checks on dev.
+DISABLED_STAGES = ["dev"]
 
 
 def end_of_day_on_weekdays():
@@ -37,10 +36,10 @@ def monday_at_2_am_est():
     return Cron('0', '6', '?', '*', 'MON', '*')  # 6 - 4 = 2AM
 
 
-# this dictionary defines the CRON schedules for the dev and prod foursight
-# stagger them to reduce the load on Fourfront. Times are UTC
-# info: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
-foursight_cron_by_schedule = {
+# This dictionary defines the CRON schedules for the dev and prod foursight
+# stagger them to reduce the load on Fourfront. Times are UTC.
+# Info: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+schedules = {
     'ten_min_checks': Cron('0/10', '*', '*', '*', '?', '*'),
     'thirty_min_checks': Cron('0/30', '*', '*', '*', '?', '*'),
     'hourly_checks_1': Cron('5', '0/1', '*', '*', '?', '*'),
@@ -54,9 +53,93 @@ foursight_cron_by_schedule = {
     'monthly_checks': Cron('0', '10', '1', '*', '?', '*'),
     'friday_autoscaling_checks': friday_at_8_pm_est(),
     'monday_autoscaling_checks': monday_at_2_am_est(),
-    'manual_checks': effectively_never(),
+    'manual_checks': SCHEDULE_FOR_NEVER,
     'deployment_checks': end_of_day_on_weekdays()
 }
+
+
+#@app.schedule(schedules['ten_min_checks'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def ten_min_checks(event):
+    app.core.queue_scheduled_checks('all', 'ten_min_checks')
+
+
+#@app.schedule(schedules['thirty_min_checks'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def thirty_min_checks(event):
+    app.core.queue_scheduled_checks('all', 'thirty_min_checks')
+
+
+#@app.schedule(schedules['hourly_checks_1'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def hourly_checks_1(event):
+    app.core.queue_scheduled_checks('all', 'hourly_checks_1')
+
+
+#@app.schedule(schedules['hourly_checks_2'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def hourly_checks_2(event):
+    app.core.queue_scheduled_checks('all', 'hourly_checks_2')
+
+
+#@app.schedule(schedules['hourly_checks_3'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def hourly_checks_3(event):
+    app.core.queue_scheduled_checks('all', 'hourly_checks_3')
+
+
+#@app.schedule(schedules['morning_checks_1'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def morning_checks_1(event):
+    app.core.queue_scheduled_checks('all', 'morning_checks_1')
+
+
+#@app.schedule(schedules['morning_checks_2'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def morning_checks_2(event):
+    app.core.queue_scheduled_checks('all', 'morning_checks_2')
+
+
+#@app.schedule(schedules['morning_checks_3'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def morning_checks_3(event):
+    app.core.queue_scheduled_checks('all', 'morning_checks_3')
+
+
+#@app.schedule(schedules['morning_checks_4'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def morning_checks_4(event):
+    app.core.queue_scheduled_checks('all', 'morning_checks_4')
+
+
+#@app.schedule(schedules['monday_checks'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def monday_checks(event):
+    app.core.queue_scheduled_checks('all', 'monday_checks')
+
+
+#@app.schedule(schedules['monthly_checks'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def monthly_checks(event):
+    app.core.queue_scheduled_checks('all', 'monthly_checks')
+
+
+#@app.schedule(schedules['deployment_checks'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def deployment_checks(event):
+    app.core.queue_scheduled_checks('all', 'deployment_checks')
+
+
+#@app.schedule(schedules['friday_autoscaling_checks'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def friday_autoscaling_checks(event):
+    app.core.queue_scheduled_checks('all', 'friday_autoscaling_checks')
+
+
+#@app.schedule(schedules['monday_autoscaling_checks'])
+@schedule(schedules, stage=STAGE, disabled_stages=DISABLED_STAGES)
+def monday_autoscaling_checks(event):
+    app.core.queue_scheduled_checks('all', 'monday_autoscaling_checks')
 
 
 @app.lambda_function()
@@ -69,101 +152,3 @@ def check_runner(event, context):
     if not event:
         return
     app.core.run_check_runner(event)
-
-
-@app.schedule(foursight_cron_by_schedule['ten_min_checks'])
-def ten_min_checks(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'ten_min_checks')
-
-
-@app.schedule(foursight_cron_by_schedule['thirty_min_checks'])
-def thirty_min_checks(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'thirty_min_checks')
-
-
-@app.schedule(foursight_cron_by_schedule['hourly_checks_1'])
-def hourly_checks_1(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'hourly_checks_1')
-
-
-@app.schedule(foursight_cron_by_schedule['hourly_checks_2'])
-def hourly_checks_2(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'hourly_checks_2')
-
-
-@app.schedule(foursight_cron_by_schedule['hourly_checks_3'])
-def hourly_checks_3(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'hourly_checks_3')
-
-
-@app.schedule(foursight_cron_by_schedule['morning_checks_1'])
-def morning_checks_1(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'morning_checks_1')
-
-
-@app.schedule(foursight_cron_by_schedule['morning_checks_2'])
-def morning_checks_2(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'morning_checks_2')
-
-
-@app.schedule(foursight_cron_by_schedule['morning_checks_3'])
-def morning_checks_3(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'morning_checks_3')
-
-
-@app.schedule(foursight_cron_by_schedule['morning_checks_4'])
-def morning_checks_4(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'morning_checks_4')
-
-
-@app.schedule(foursight_cron_by_schedule['monday_checks'])
-def monday_checks(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'monday_checks')
-
-
-@app.schedule(foursight_cron_by_schedule['monthly_checks'])
-def monthly_checks(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'monthly_checks')
-
-
-@app.schedule(foursight_cron_by_schedule['deployment_checks'])
-def deployment_checks(event):
-    if STAGE == 'dev':
-        return  # do not schedule the deployment checks on dev
-    app.core.queue_scheduled_checks('all', 'deployment_checks')
-
-
-@app.schedule(foursight_cron_by_schedule['friday_autoscaling_checks'])
-def friday_autoscaling_checks(event):
-    if STAGE == 'dev':
-        return  # do not schedule autoscaling checks on dev
-    app.core.queue_scheduled_checks('all', 'friday_autoscaling_checks')
-
-
-@app.schedule(foursight_cron_by_schedule['monday_autoscaling_checks'])
-def monday_autoscaling_checks(event):
-    if STAGE == 'dev':
-        return  # do not schedule autoscaling checks on dev
-    app.core.queue_scheduled_checks('all', 'monday_autoscaling_checks')
