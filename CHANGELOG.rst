@@ -22,6 +22,15 @@ Change Log
     and setup a fallback directory for this lookup to this local chalicelib_fourfront directory,
     which foursight-core will use if there is no (non-empty) check_setup.json in the specified directory.
 
+2.1.2
+=====
+
+`PR 507: Check schedule edits <https://github.com/4dn-dcic/foursight/pull/507>`_
+
+* Update check schedule to reduce the number of metadata-related checks running on
+  staging and non-production environments.
+
+
 2.1.1
 =====
 
