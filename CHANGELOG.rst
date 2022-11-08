@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+2.1.3
+=====
+
+Updated script wfr_utils to include Hi-Chip pipeline information. 
+Updated wfr_checks.py for Hi-Chip
+Updated wrf_checks.py for Hi-Chip 
+
+
 2.1.2
 =====
 
