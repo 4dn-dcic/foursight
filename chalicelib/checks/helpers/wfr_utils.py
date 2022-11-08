@@ -206,7 +206,7 @@ accepted_versions = {
     'sci-Hi-C': [''],
     'MC-3C': [''],
     'MC-Hi-C': [''],
-    'Hi-ChIP': [''],
+    'Hi-ChIP': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     'DamID-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
