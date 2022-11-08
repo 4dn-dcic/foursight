@@ -1,0 +1,67 @@
+#!/bin/bash
+
+do_confirm=yes
+
+while true; do
+    if [ "$1" = "--help" ]; then
+       echo "Syntax: $0 [ --noconfirm | --help ]*"
+       echo ""
+       echo "Publishes the repository to pypi, after doing various consistency checks."
+       echo ""
+       echo "By default, if all looks good, you will be asked interactively for confirmation."
+       echo "In a script, you may want --noconfirm to suppress this query."
+       exit 1
+    elif [ "$1" = "--noconfirm" ]; then
+       do_confirm=no
+       shift 1
+    elif [ $# -ne 0 ]; then
+       echo "Unexpected argument: $1"
+       exit 1
+    else
+       break
+    fi
+done
+
+if [ -z "$PYPI_USER" ]; then
+    echo '$PYPI_USER is not set.'
+    exit 1
+fi    
+
+if [ -z "$PYPI_PASSWORD" ]; then
+    echo '$PYPI_PASSWORD is not set.'
+    exit 1    
+fi
+
+changes=`git diff`
+
+if [ -n "${changes}" ]; then
+  echo "You have made changes to this branch that you have not committed."
+  exit 1
+fi
+
+staged_changes=`git diff --staged`
+
+if [ -n "${staged_changes}" ]; then
+  echo "You have staged changes to this branch that you have not committed."
+  exit 1
+fi
+
+tagged=`git log -1 --decorate | head -1 | grep 'tag:'`
+
+if [ -z "$tagged" ]; then
+  # We don't encourage people to tag it unless they have no changes pending.
+  echo "You can only publish a tagged commit."
+  exit 1
+fi
+
+if [ "${do_confirm}" = "yes" ]; then
+  read -p "Are you sure you want to publish $(poetry version) to PyPi? "
+  REPLY=`echo "$REPLY" | tr '[:upper:]' '[:lower:]'`
+  if [ "$REPLY" != 'y' ] && [ "$REPLY" != "yes" ]
+  then
+    echo "Publishing aborted."
+    exit 1
+  fi
+fi
+
+poetry publish --no-interaction --build --username=$PYPI_USER --password=$PYPI_PASSWORD

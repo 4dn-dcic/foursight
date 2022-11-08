@@ -26,3 +26,6 @@ info:
 	   $(info - Use 'make build' to install dependencies using poetry.)
 	   $(info - Use 'make test' to run tests with the normal options we use on travis)
 	   $(info - Use 'make update' to update dependencies)
+
+publish:
+	./scripts/publish
