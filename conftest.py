@@ -20,12 +20,12 @@ from foursight_core import (
     check_utils,
     decorators,
 )
-from chalicelib import (
+from chalicelib_fourfront import (
     app_utils,
 )
-from chalicelib.vars import *
-from chalicelib import __file__ as chalicelib_path
-from chalicelib.checks.helpers.confchecks import * 
+from chalicelib_fourfront.vars import *
+from chalicelib_fourfront import __file__ as chalicelib_path
+from chalicelib_fourfront.checks.helpers.confchecks import * 
 from dcicutils import s3_utils, ff_utils
 from contextlib import contextmanager
 import pytest

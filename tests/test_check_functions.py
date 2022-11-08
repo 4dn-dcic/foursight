@@ -1,6 +1,6 @@
 import pytest
 import difflib
-from chalicelib.checks.wrangler_checks import (
+from chalicelib_fourfront.checks.wrangler_checks import (
     get_tokens_to_string,
     string_label_similarity
 )

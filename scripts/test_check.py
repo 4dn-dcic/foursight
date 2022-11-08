@@ -5,7 +5,18 @@ import json
 import argparse
 sys.path.append('..')
 import app
-from chalicelib.vars import DEV_ENV
+from chalicelib_fourfront.vars import DEV_ENV
+
+
+# TODO
+# Not yet sure what to do about this refereneces to 'app' here.
+# We've removed app.py in (now) chalicelib_fourfront (previously chalicelib),
+# and the main app.py is just for chalice local (and equivalent to 4dn-cloud-infra/app.py).
+# But even before these changes app.py did not define anything with run_check_or_action
+# or init_connection; the former is defined in foursight_core.check_utils.CheckHandler
+# and the latter in foursight_core.app_utils.AppUtils. And references to set_stage
+# were previously defined via app.py but moved that to foursight_core.app_utils.
+# dmichaels/2022-11-02.
 
 
 EPILOG = __doc__
