@@ -10,6 +10,7 @@ Change Log
 =====
 
 * Update to wfr_utils.py, wfr_checks.py and wfr_checks.py to add HiChIP pipeline information
+* Add check/action to run the Hi-C pipeline on HiChIP datasets.
 
 2.2.0
 =====

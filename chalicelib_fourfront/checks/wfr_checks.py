@@ -1265,7 +1265,7 @@ def hichip_status(connection, **kwargs):
     start = datetime.utcnow()
     check = CheckResult(connection, 'hichip_status')
     my_auth = connection.ff_keys
-    check.action = "hichip_seq_start"
+    check.action = "hichip_start"
     check.description = "run missing steps and add processing results to processed files, match set status"
     check.brief_output = []
     check.summary = ""
@@ -1292,10 +1292,10 @@ def hichip_status(connection, **kwargs):
 
 
 @action_function(start_runs=True, patch_completed=True)
-def hichip_seq_start(connection, **kwargs):
+def hichip_start(connection, **kwargs):
     """Start runs by sending compiled input_json to run_workflow endpoint"""
     start = datetime.utcnow()
-    action = ActionResult(connection, 'hichip_seq_start')
+    action = ActionResult(connection, 'hichip_start')
     my_auth = connection.ff_keys
     my_env = connection.ff_env
     fs_env = connection.fs_env
