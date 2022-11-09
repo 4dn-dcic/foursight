@@ -1272,7 +1272,7 @@ def hichip_status(connection, **kwargs):
     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_type = 'Hi-ChIP'
+    exp_type = 'HiChIP'
     # completion tag
     tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
