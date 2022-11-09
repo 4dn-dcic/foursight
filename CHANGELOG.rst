@@ -11,6 +11,7 @@ Change Log
 =====
 
 * Changes related to Foursight React.
+
   * Renamed chalicelib directory to chalicelib_fourfront.
   * Renamed target package (pyproject.toml) from chalicelib to chalicelib_fourfront.
   * Moved all Chalice routes to foursight-core (same with foursight-cgap).
