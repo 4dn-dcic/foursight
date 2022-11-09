@@ -1,9 +1,8 @@
 import os
-from os.path import dirname
+from foursight_core.app_utils import app  # Chalice object
 from foursight_core.app_utils import AppUtils as AppUtils_from_core
 from foursight_core.identity import apply_identity_globally
 from .vars import FOURSIGHT_PREFIX, HOST
-from dcicutils.env_utils import public_url_for_app
 
 
 class AppUtils(AppUtils_from_core):
@@ -23,8 +22,16 @@ class AppUtils(AppUtils_from_core):
     
     # overwriting parent class
     prefix = FOURSIGHT_PREFIX
-    FAVICON = public_url_for_app('fourfront') + '/static/img/favicon-fs.ico'  # favicon acquired from prod
+    FAVICON = "https://data.4dnucleome.org/static/img/favicon-fs.ico"
     host = HOST
-    package_name = 'chalicelib'
-    check_setup_dir = dirname(__file__)
-    html_main_title = 'Foursight'
+    package_name = 'chalicelib_fourfront'
+
+    check_setup_file = AppUtils_from_core.locate_check_setup_file(os.path.dirname(__file__))
+    if not check_setup_file:
+        raise Exception("Unable to locate the check setup file!")
+    print(f"Using check setup file: {check_setup_file}")
+
+    DEFAULT_ENV = os.environ.get("ENV_NAME", "foursight-fourfront-env-uninitialized")
+
+
+app_utils_obj = AppUtils.singleton(AppUtils)

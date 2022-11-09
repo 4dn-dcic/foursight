@@ -7,7 +7,7 @@ from dcicutils.env_utils import public_url_for_app
 
 class TestAppUtils():
     """
-    Meant for non-route utilities in chalicelib/app_utils.py
+    Meant for non-route utilities in chalicelib_fourfront/app_utils.py
     """
     environ = DEV_ENV # hopefully this is up
     app_utils_obj = app_utils.AppUtils()
@@ -95,11 +95,11 @@ class TestAppUtils():
             "name": "Dummy",
             "iat": 1516239022
         }  # mock a 'correct' jwt decode
-        with mock.patch('chalicelib.app_utils.AppUtils.get_jwt', return_value='token'):
+        with mock.patch('chalicelib_fourfront.app_utils.AppUtils.get_jwt', return_value='token'):
             with mock.patch('jwt.decode', return_value=payload1):
                 auth = self.app_utils_obj.check_authorization({}, env=self.environ)
             assert auth
-        with mock.patch('chalicelib.app_utils.AppUtils.get_jwt', return_value='token'):
+        with mock.patch('chalicelib_fourfront.app_utils.AppUtils.get_jwt', return_value='token'):
             with mock.patch('jwt.decode', return_value=payload1):
                 # test authenticating on more than one env
                 auth = self.app_utils_obj.check_authorization({}, env=self.environ)
@@ -115,7 +115,7 @@ class TestAppUtils():
         }
         auth = self.app_utils_obj.check_authorization(ctx, env='all')
         assert auth
-        with mock.patch('chalicelib.app_utils.AppUtils.get_jwt', return_value='token'):
+        with mock.patch('chalicelib_fourfront.app_utils.AppUtils.get_jwt', return_value='token'):
             with mock.patch('jwt.decode', return_value=payload1):
                 auth = self.app_utils_obj.check_authorization({}, env='data,staging') # test more than one
             assert auth
