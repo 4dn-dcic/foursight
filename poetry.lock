@@ -295,7 +295,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "2.9.9.0b0"
+version = "2.9.9.0b1"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -1100,7 +1100,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "flake8 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.9"
-content-hash = "039e5e7fa622212b4d9ceb852a4f0209810abc18f8104c8da55dac91214f8d2e"
+content-hash = "8a3f806e3262487e7ddae33fa7161a5d1abe8e0871f852163a36568629cc3090"
 
 [metadata.files]
 ansicon = []
