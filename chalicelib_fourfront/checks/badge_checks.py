@@ -652,26 +652,8 @@ def consistent_replicate_info(connection, **kwargs):
         # now generate a message from the info_dict
         if info_dict:
             for field, values in info_dict.items():
-                # make values unique
-                info_dict[field] = set(values)
 
                 # create message
-
-                # check whether an update is needed
-
-                # if a new message needs to be added, replace @id with display_title so that it's easier to read
-
-                # replace @id with display_title
-                at_id_pattern = r"^/[^/]+/[^/]+/$"  # an approximate way to check for @id: start and end with "/", and with one more "/" in between
-                if any([re.fullmatch(at_id_pattern, v) for v in values]):
-                    new_values = []
-                    for v in values:
-                        if re.fullmatch(at_id_pattern, v):
-                            item = ff_utils.get_metadata(v, key=connection.ff_keys)
-                            new_values.append(item.get('display_title', item['@id']))
-                        else:
-                            new_values.append(v)
-                    info_dict[field] = new_values
 
             # info = sorted([f'{k}: {stringify(v)}' for k, v in info_dict.items()])
             # removed sorted and stringify
@@ -691,6 +673,20 @@ def consistent_replicate_info(connection, **kwargs):
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
         compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys
     )
+
+    def _resolve_at_id(value):
+        """ replace @id with display_title """
+        # an approximate way to check for @id: start and end with "/", and with one more "/" in between
+        at_id_pattern = r"^/[^/]+/[^/]+/$"
+        if isinstance(value, list):
+            return [_resolve_at_id(v) for v in value]
+        if re.fullmatch(at_id_pattern, value):
+            item = ff_utils.get_metadata(value, key=connection.ff_keys)
+            value = item.get('display_title', item['@id'])
+        return value
+
+    #todo: do the @id replacement
+
     key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
     for result in results.keys():
         for k, v in key_dict.items():
