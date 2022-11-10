@@ -20,7 +20,7 @@ def stringify(item):
     if isinstance(item, str):
         return item
     elif isinstance(item, list):
-        return ', '.join([stringify(i) for i in item])
+        return ', '.join([stringify(i) for i in sorted(item)])
     elif isinstance(item, dict):
         return ', '.join([f"{k}: {str(v)}" for k, v in sorted(item.items())])
     elif isinstance(item, float) and abs(item - int(item)) == 0:
@@ -525,18 +525,19 @@ def consistent_replicate_info(connection, **kwargs):
     '''
     check = CheckResult(connection, 'consistent_replicate_info')
 
-    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id&field=uuid&field=status&field=lab.display_title'
-    exp_url = 'search/?type=Experiment&frame=object'
-    bio_url = 'search/?type=Experiment&field=biosample'
-    imgpath_url = 'search/?type=ExperimentMic' + ''.join(
-        ['&field=imaging_paths.path.' + field for field in ['display_title', 'imaging_rounds', '@id']])
+    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id' + ''.join(
+        ['&field=' + field for field in ['uuid', 'status', 'lab.display_title']])
+    exps_url = 'search/?type=Experiment&frame=object'
+    exps_bio_url = 'search/?type=Experiment&field=biosample'
+    exps_path_url = 'search/?type=ExperimentMic&field=imaging_paths.channel' + ''.join(
+        ['&field=imaging_paths.path.' + field for field in ['display_title', 'imaging_rounds']])
     repsets = [item for item in ff_utils.search_metadata(repset_url, key=connection.ff_keys) if item.get('experiments_in_set')]
-    exps = ff_utils.search_metadata(exp_url, key=connection.ff_keys)
-    biosamples = ff_utils.search_metadata(bio_url, key=connection.ff_keys)
-    imaging_paths = ff_utils.search_metadata(imgpath_url, key=connection.ff_keys)
+    exps = ff_utils.search_metadata(exps_url, key=connection.ff_keys)
+    exps_w_biosamples = ff_utils.search_metadata(exps_bio_url, key=connection.ff_keys)
+    exps_w_paths = ff_utils.search_metadata(exps_path_url, key=connection.ff_keys)
     exp_keys = {exp['@id']: exp for exp in exps}
-    bio_keys = {bs['@id']: bs['biosample'] for bs in biosamples}
-    img_keys = {exp['@id']: exp for exp in imaging_paths}
+    bio_keys = {exp['@id']: exp['biosample'] for exp in exps_w_biosamples}
+    pth_keys = {exp['@id']: exp['imaging_paths'] for exp in exps_w_paths}
     fields2check = [
         'lab',  # @id
         'award',  # @id
@@ -562,13 +563,13 @@ def consistent_replicate_info(connection, **kwargs):
         'fragmentation_method',
         'fragment_size_selection_method',
         'rna_tag',
-        'targeted_regions',  # @id
+        'targeted_regions',  # @id list
+        'targeted_factor',  # @id list
         'dna_label',
         'labeling_time',
         'antibody',  # @id
         'antibody_lot_id',
         'microscopy_technique',
-        'imaging_paths',  # @id
     ]
     check.brief_output = {REV_KEY: {}, RELEASED_KEY: {
         'Add badge': {}, 'Remove badge': {}, 'Keep badge and edit messages': {}
@@ -581,7 +582,9 @@ def consistent_replicate_info(connection, **kwargs):
 
         # check Experiment fields
         for field in fields2check:
-            vals = [stringify(exp_keys[exp].get(field)) for exp in exp_list]
+            # vals = [stringify(exp_keys[exp_id].get(field)) for exp_id in exp_list]
+            vals = set([exp_keys[exp_id].get(field) for exp_id in exp_list])
+            # Todo: deal with lists
 
             # allow small deviations in average fragment size
             if field == 'average_fragment_size' and 'None' not in vals:
@@ -590,34 +593,63 @@ def consistent_replicate_info(connection, **kwargs):
                     continue
 
             # all replicates should have the same value, otherwise this is an inconsistency
-            if len(set(vals)) > 1:
+            if len(vals) > 1:
                 info_dict[field] = vals
 
         # check some Biosample fields
         for bfield in ['treatments_summary', 'modifications_summary']:
-            bvals = [stringify(bio_keys[exp].get(bfield)) for exp in exp_list]
-            if len(set(bvals)) > 1:
+            bvals = set([bio_keys[exp_id].get(bfield) for exp_id in exp_list])
+            if len(bvals) > 1:
                 info_dict[bfield] = bvals
 
-        # check imaging paths, only if they seem different
-        if 'imaging_paths' in info_dict.keys():
-            # compare display title and imaging rounds
-            # if they are the same, remove 'imaging_paths'
-            # otherwise replace @id with the actual different field
+        # check imaging paths (if an experiment has any)
+        if 'imaging_paths' in exp_keys[exp_list[0]]:
+            # NOTE: this compares path display_title and not path @id
+            img_path_configurations = set([pth_keys[exp_id] for exp_id in exp_list])
+            # check if more than 1 configuration across replicates
+            if len(img_path_configurations) > 1:  # configurations are different
+                # compare length
+                length_vals = set([len(conf) for conf in img_path_configurations])
+                if len(length_vals) > 1:
+                    info_dict['imaging_paths'] = 'different number of imaging paths'
+                else:
+                    # same length, compare fields 'channel', 'path.display_title', 'path.imaging_rounds'
+                    for i in range(length_vals[0]):
+                        # compare all paths in the same position i
+                        paths_i = [conf[i] for conf in img_path_configurations]
+                        channel_vals = set([p['channel'] for p in paths_i])
+                        if len(channel_vals) > 1:
+                            info_dict[f'imaging_paths {i} channel'] = channel_vals
+                        title_vals = set([p['path']['display_title'] for p in paths_i])
+                        if len(title_vals) > 1:
+                            info_dict[f'imaging_paths {i} path'] = title_vals
+                        round_vals = set([p['path']['imaging_rounds'] for p in paths_i])
+                        if len(round_vals) > 1:
+                            info_dict[f'imaging_paths {i} imaging_rounds'] = round_vals
 
-        biosource_vals = [stringify([item['@id'] for item in bio_keys[exp].get('biosource')]) for exp in exp_list]
-        if len(set(biosource_vals)) > 1:
-            info_dict['biosource'] = biosource_vals
-        if [True for exp in exp_list if bio_keys[exp].get('cell_culture_details')]:
-            for ccfield in ['synchronization_stage', 'differentiation_stage', 'follows_sop']:
-                ccvals = [stringify([item['@id'] for item in bio_keys[exp].get('cell_culture_details').get(ccfield)]) for exp in exp_list]
-                if len(set(ccvals)) > 1:
-                    info_dict[ccfield] = ccvals
-        if [True for exp in exp_list if bio_keys[exp].get('biosample_protocols')]:
-            bp_vals = [stringify([item['@id'] for item in bio_keys[exp].get('biosample_protocols', [])]) for exp in exp_list]
-            if len(set(bp_vals)) > 1:
-                info_dict['biosample_protocols'] = bp_vals
+        # check some biosource fields
+        biosource_vals = set([[biosource['@id'] for biosource in bio_keys[exp_id]['biosource']] for exp_id in exp_list])
+        if len(biosource_vals) > 1:
+            info_dict['biosource'] = biosource_vals  # list of list
 
+        # check cell_culture_details
+        if all([bio_keys[exp_id].get('cell_culture_details') for exp_id in exp_list]):
+            for ccfield in ['synchronization_stage', 'differentiation_state', 'follows_sop']:
+                ccvals = set([[ccdetail.get(ccfield) for ccdetail in bio_keys[exp_id]['cell_culture_details']] for exp_id in exp_list])
+                if len(ccvals) > 1:
+                    info_dict[ccfield] = ccvals  # list of list
+        else:
+            info_dict['cell_culture_details'] = 'some are missing'
+
+        # check biosample_protocols
+        if all([bio_keys[exp_id].get('biosample_protocols') for exp_id in exp_list]):
+            bp_vals = set([[protocol['@id'] for protocol in bio_keys[exp_id]['biosample_protocols']] for exp_id in exp_list])
+            if len(bp_vals) > 1:
+                info_dict['biosample_protocols'] = bp_vals  # list of list
+        else:
+            info_dict['biosample_protocols'] = 'some are missing'
+
+        # now generate a message from the info_dict
         if info_dict:
             for field, values in info_dict.items():
                 # make values unique
