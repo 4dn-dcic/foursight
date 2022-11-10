@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+2.3.0
+=====
+
+* Add check/action to run the Hi-C pipeline on HiChIP datasets.
+
 2.2.0
 =====
 
