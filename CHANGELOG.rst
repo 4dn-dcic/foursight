@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+2.3.1
+=====
+
+* Edit the ``consistent_replicate_info`` badge check to print a more readable message.
+
+
 2.3.0
 =====
 
@@ -47,6 +53,7 @@ Change Log
 
 2.1.0
 =====
+
 * Added this CHANGELOG.rst.
 * Spruced up Foursight UI a bit (virtually all in foursight-core but mentioning here).
 
