@@ -594,13 +594,13 @@ def consistent_replicate_info(connection, **kwargs):
                     continue
             # all replicates should have the same value, otherwise this is an inconsistency
             if len(vals) > 1:
-                info_dict[field] = vals  # list or list of lists
+                info_dict[field] = vals
 
         # check some Biosample fields
         for bfield in ['treatments_summary', 'modifications_summary']:
             bvals = list(set([bio_keys[exp_id].get(bfield) for exp_id in exp_list]))
             if len(bvals) > 1:
-                info_dict[bfield] = bvals  # list
+                info_dict[bfield] = bvals
 
         # check imaging paths (if an experiment has any)
         if 'imaging_paths' in exp_keys[exp_list[0]]:
@@ -628,23 +628,25 @@ def consistent_replicate_info(connection, **kwargs):
         # check some biosource fields
         biosource_vals = list(set([[biosource['@id'] for biosource in bio_keys[exp_id]['biosource']] for exp_id in exp_list]))
         if len(biosource_vals) > 1:
-            info_dict['biosource'] = biosource_vals  # list of list
+            info_dict['biosource'] = biosource_vals
 
         # check cell_culture_details
-        if all([bio_keys[exp_id].get('cell_culture_details') for exp_id in exp_list]):
+        all_cc_details = [bio_keys[exp_id].get('cell_culture_details') for exp_id in exp_list]
+        if all(all_cc_details):
             for ccfield in ['synchronization_stage', 'differentiation_state', 'follows_sop']:
-                ccvals = list(set([[ccdetail.get(ccfield) for ccdetail in bio_keys[exp_id]['cell_culture_details']] for exp_id in exp_list]))
+                ccvals = list(set([[bcc.get(ccfield) for bcc in cc_details] for cc_details in all_cc_details]))
                 if len(ccvals) > 1:
-                    info_dict[ccfield] = ccvals  # list of list
-        else:
+                    info_dict[ccfield] = ccvals
+        elif any(all_cc_details):
             info_dict['cell_culture_details'] = 'some are missing'
 
         # check biosample_protocols
-        if all([bio_keys[exp_id].get('biosample_protocols') for exp_id in exp_list]):
-            bp_vals = list(set([[protocol['@id'] for protocol in bio_keys[exp_id]['biosample_protocols']] for exp_id in exp_list]))
+        all_bs_prot = [bio_keys[exp_id].get('biosample_protocols') for exp_id in exp_list]
+        if all(all_bs_prot):
+            bp_vals = list(set([[protocol['@id'] for protocol in bs_prot] for bs_prot in all_bs_prot]))
             if len(bp_vals) > 1:
-                info_dict['biosample_protocols'] = bp_vals  # list of list
-        else:
+                info_dict['biosample_protocols'] = bp_vals
+        elif any(all_bs_prot):
             info_dict['biosample_protocols'] = 'some are missing'
 
         # now generate a message from the info_dict
