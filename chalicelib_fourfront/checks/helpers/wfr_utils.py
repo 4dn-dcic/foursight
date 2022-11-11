@@ -178,6 +178,8 @@ accepted_versions = {
     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network  # NO-NORM
+    'HiChIP': ["HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
     # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
@@ -206,7 +208,6 @@ accepted_versions = {
     'sci-Hi-C': [''],
     'MC-3C': [''],
     'MC-Hi-C': [''],
-    'Hi-ChIP': [''],
     'DamID-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
