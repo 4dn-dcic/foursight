@@ -20,9 +20,7 @@ def stringify(item):
     if isinstance(item, str):
         return item
     elif isinstance(item, list):
-        return ', '.join([stringify(i) for i in sorted(item)])
-    elif isinstance(item, dict):
-        return ', '.join([f"{k}: {str(v)}" for k, v in sorted(item.items())])
+        return ', '.join([stringify(i) for i in item])
     elif isinstance(item, float) and abs(item - int(item)) == 0:
         return str(int(item))
     return str(item)
@@ -588,34 +586,28 @@ def consistent_replicate_info(connection, **kwargs):
 
         # check Experiment fields
         for field in fields2check:
-            # vals = [stringify(exp_keys[exp_id].get(field)) for exp_id in exp_list]
-            vals = set([exp_keys[exp_id].get(field) for exp_id in exp_list])
-            # Todo: deal with lists
-
+            vals = list(set([exp_keys[exp_id].get(field) for exp_id in exp_list]))
             # allow small deviations in average fragment size
             if field == 'average_fragment_size' and 'None' not in vals:
                 int_vals = [int(val) for val in vals]
                 if (max(int_vals) - min(int_vals))/(sum(int_vals)/len(int_vals)) < 0.25:
                     continue
-
             # all replicates should have the same value, otherwise this is an inconsistency
             if len(vals) > 1:
-                info_dict[field] = vals
+                info_dict[field] = vals  # list or list of lists
 
         # check some Biosample fields
         for bfield in ['treatments_summary', 'modifications_summary']:
-            bvals = set([bio_keys[exp_id].get(bfield) for exp_id in exp_list])
+            bvals = list(set([bio_keys[exp_id].get(bfield) for exp_id in exp_list]))
             if len(bvals) > 1:
-                info_dict[bfield] = bvals
+                info_dict[bfield] = bvals  # list
 
         # check imaging paths (if an experiment has any)
         if 'imaging_paths' in exp_keys[exp_list[0]]:
             # NOTE: this compares path display_title and not path @id
-            img_path_configurations = set([pth_keys[exp_id] for exp_id in exp_list])
-            # check if more than 1 configuration across replicates
-            if len(img_path_configurations) > 1:  # configurations are different
-                # compare length
-                length_vals = set([len(conf) for conf in img_path_configurations])
+            img_path_configurations = list(set([pth_keys[exp_id] for exp_id in exp_list]))
+            if len(img_path_configurations) > 1:
+                length_vals = list(set([len(conf) for conf in img_path_configurations]))
                 if len(length_vals) > 1:
                     info_dict['imaging_paths'] = 'different number of imaging paths'
                 else:
@@ -623,25 +615,25 @@ def consistent_replicate_info(connection, **kwargs):
                     for i in range(length_vals[0]):
                         # compare all paths in the same position i
                         paths_i = [conf[i] for conf in img_path_configurations]
-                        channel_vals = set([p['channel'] for p in paths_i])
+                        channel_vals = list(set([p['channel'] for p in paths_i]))
                         if len(channel_vals) > 1:
                             info_dict[f'imaging_paths {i} channel'] = channel_vals
-                        title_vals = set([p['path']['display_title'] for p in paths_i])
+                        title_vals = list(set([p['path']['display_title'] for p in paths_i]))
                         if len(title_vals) > 1:
                             info_dict[f'imaging_paths {i} path'] = title_vals
-                        round_vals = set([p['path']['imaging_rounds'] for p in paths_i])
+                        round_vals = list(set([p['path']['imaging_rounds'] for p in paths_i]))
                         if len(round_vals) > 1:
                             info_dict[f'imaging_paths {i} imaging_rounds'] = round_vals
 
         # check some biosource fields
-        biosource_vals = set([[biosource['@id'] for biosource in bio_keys[exp_id]['biosource']] for exp_id in exp_list])
+        biosource_vals = list(set([[biosource['@id'] for biosource in bio_keys[exp_id]['biosource']] for exp_id in exp_list]))
         if len(biosource_vals) > 1:
             info_dict['biosource'] = biosource_vals  # list of list
 
         # check cell_culture_details
         if all([bio_keys[exp_id].get('cell_culture_details') for exp_id in exp_list]):
             for ccfield in ['synchronization_stage', 'differentiation_state', 'follows_sop']:
-                ccvals = set([[ccdetail.get(ccfield) for ccdetail in bio_keys[exp_id]['cell_culture_details']] for exp_id in exp_list])
+                ccvals = list(set([[ccdetail.get(ccfield) for ccdetail in bio_keys[exp_id]['cell_culture_details']] for exp_id in exp_list]))
                 if len(ccvals) > 1:
                     info_dict[ccfield] = ccvals  # list of list
         else:
@@ -649,7 +641,7 @@ def consistent_replicate_info(connection, **kwargs):
 
         # check biosample_protocols
         if all([bio_keys[exp_id].get('biosample_protocols') for exp_id in exp_list]):
-            bp_vals = set([[protocol['@id'] for protocol in bio_keys[exp_id]['biosample_protocols']] for exp_id in exp_list])
+            bp_vals = list(set([[protocol['@id'] for protocol in bio_keys[exp_id]['biosample_protocols']] for exp_id in exp_list]))
             if len(bp_vals) > 1:
                 info_dict['biosample_protocols'] = bp_vals  # list of list
         else:
@@ -657,22 +649,15 @@ def consistent_replicate_info(connection, **kwargs):
 
         # now generate a message from the info_dict
         if info_dict:
-            for field, values in info_dict.items():
-
-                # create message
-
-            # info = sorted([f'{k}: {stringify(v)}' for k, v in info_dict.items()])
-            # removed sorted and stringify
-            msgs = [f'Inconsistent replicate information in {field}: {values}' for field, values in info.info_dict.items()]
-
-            text = '{} - inconsistency in {}'.format(repset['@id'][-13:-1], ', '.join(list(info_dict.keys())))
+            for k, v in info_dict:
+                v = stringify(v)
+            msgs = [f"Inconsistent replicate information in {field}: {values}" for field, values in info_dict.items()]
+            text = f"{repset['@id'][-13:-1]} - inconsistency in {', '.join(list(info_dict.keys()))}"
             lab = repset['lab']['display_title']
             audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
             results[repset['@id']] = {'status': audit_key, 'lab': lab, 'info': text}
             if audit_key == REV_KEY:
-                if lab not in check.brief_output[audit_key]:
-                    check.brief_output[audit_key][lab] = []
-                check.brief_output[audit_key][lab].append(text)
+                check.brief_output[audit_key][lab] = check.brief_output[audit_key].setdefault(lab, []).append(text)
             if repset['status'] not in REV:
                 compare[repset['@id']] = msgs
 
@@ -680,29 +665,34 @@ def consistent_replicate_info(connection, **kwargs):
         compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys, ignore_details=True
     )
 
+    # do the @id replacement
     def _resolve_at_id(value, connection):
         """ replace @id with display_title """
         at_id_pattern = r"/[^/]+/[^/]+/"  # an approximate way to check for @id: start and end with "/", and with one more "/" in between
         at_id_list = re.findall(at_id_pattern, value)
         if len(at_id_list) > 0:
             # assumes the value contains only @id(s)
-            values = []
+            new_values = []
             for at_id in at_id_list:
                 item = ff_utils.get_metadata(at_id, key=connection.ff_keys, add_on='frame=raw')
-                values.append(item.get('display_title', item['@id']))
-            value = ", ".join(values)
+                new_values.append(item.get('display_title', item['@id']))
+            value = ", ".join(new_values)
         return value
 
-    # do the @id replacement
-    if any([to_add, to_edit]):
-        for dict_to_check in [to_add, to_edit]:
-            for badges in dict_to_check.values():
-                for a_badge in badges:
-                    if a_badge['badge'].endswith('inconsistent-replicate-info/'):
-                        for message in a_badge['messages']:
-                            mes_key, mes_val = message.split(": ", 1)
-                            mes_val_new = _resolve_at_id(mes_val, connection)
-                            message = mes_key + ": " + mes_val_new
+    def _replace_messages_content(messages, connection):
+        for message in messages:
+            mes_key, mes_val = message.split(": ", 1)
+            mes_val_new = _resolve_at_id(mes_val, connection)
+            message = mes_key + ": " + mes_val_new
+
+    if to_add:
+        for messages in to_add.values():
+            _replace_messages_content(messages, connection)
+    if to_edit:
+        for badges in to_edit.values():
+            for a_badge in badges:
+                if a_badge['badge'].endswith('inconsistent-replicate-info/'):
+                    _replace_messages_content(a_badge['messages'], connection)
 
     key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
     for result in results.keys():
