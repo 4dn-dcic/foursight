@@ -543,13 +543,13 @@ def consistent_replicate_info(connection, **kwargs):
     bio_keys = {exp['@id']: exp['biosample'] for exp in exps_w_biosamples}
     pth_keys = {exp['@id']: exp['imaging_paths'] for exp in exps_w_paths}
     fields2check = [
-        'lab',  # @id
-        'award',  # @id
-        'experiment_type',  # @id
+        'lab',
+        'award',
+        'experiment_type',
         'crosslinking_method',
         'crosslinking_time',
         'crosslinking_temperature',
-        'digestion_enzyme',  # @id
+        'digestion_enzyme',
         'enzyme_lot_number',
         'digestion_time',
         'digestion_temperature',
@@ -559,19 +559,19 @@ def consistent_replicate_info(connection, **kwargs):
         'ligation_temperature',
         'ligation_volume',
         'biotin_removed',
-        'protocol',  # @id
-        'protocol_variation',  # @id list
+        'protocol',
+        'protocol_variation',
         'follows_sop',
         'average_fragment_size',
         'fragment_size_range',
         'fragmentation_method',
         'fragment_size_selection_method',
         'rna_tag',
-        'targeted_regions',  # @id list
-        'targeted_factor',  # @id list
+        'targeted_regions',
+        'targeted_factor',
         'dna_label',
         'labeling_time',
-        'antibody',  # @id
+        'antibody',
         'antibody_lot_id',
         'microscopy_technique',
     ]
