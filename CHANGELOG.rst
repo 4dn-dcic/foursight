@@ -7,6 +7,19 @@ foursight
 Change Log
 ----------
 
+2.2.1
+=====
+* Changes related to a new experimental /accounts page in Foursight which can show summary
+  Foursight and Portal info from other AWS accounts. To take advantage of it there is an
+  accounts.json file in the chalicelib_fourfront directory which contains a simple list
+  of Foursight URLs for other AWS accounts. If this file is not present no harm.
+  This file has been manually encrypted, since it contains internal URLs, using
+  the ENCODED_AUTH0_SECRET value in the Global Application Configuration (GAC)
+  in the AWS Secrets Manager. There are convenience poetry scripts, to encrypt
+  and/or decrypt this file locally: encrypt-accounts-file, decrypt-accounts-file.
+  Currently this file contains just URL for 4dn-dcic dev and prod.
+  Again, this is experimental, and easily disabled (remove accounts.json).
+
 2.2.0
 =====
 

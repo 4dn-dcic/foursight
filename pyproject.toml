@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "2.2.0.2b7"
+version = "2.2.0.2b8"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -24,7 +24,7 @@ pytz = "^2020.1"
 tibanna_ff = ">=0.22.5"
 ## adding foursight-core
 # use below for deployment
-foursight-core = "2.1.0.2b7"
+foursight-core = "2.1.0.2b8"
 # use below for tests but not for deployment
 # foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 pytest = "5.1.2"
@@ -36,6 +36,10 @@ pandas = ">=1.1.4"
 chalice = "^1.26.0"
 pytest-cov = "2.7.1"
 flaky = "3.6.1"
+
+[tool.poetry.scripts]
+encrypt-accounts-file = "foursight_core.scripts.encrypt_accounts_file:main"
+decrypt-accounts-file = "foursight_core.scripts.decrypt_accounts_file:main"
 
 [build-system]
 requires = ["poetry>=0.12"]
