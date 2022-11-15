@@ -580,13 +580,25 @@ def consistent_replicate_info(connection, **kwargs):
     }}
     compare = {}
     results = {}
+
+    def _get_values_from_all_replicates(exp_id_dict, exp_id_list, field_name=None):
+        values_list = []
+        for exp_id in exp_id_list:
+            value = exp_id_dict[exp_id]
+            if field_name:
+                value = value.get(field_name)
+            # value can be of any type (including non-hashable types)
+            if value not in values_list:
+                values_list.append(value)
+        return values_list
+
     for repset in repsets:
         info_dict = {}
         exp_list = [item['@id'] for item in repset['experiments_in_set']]
 
         # check Experiment fields
         for field in fields2check:
-            vals = list(set([exp_keys[exp_id].get(field) for exp_id in exp_list]))
+            vals = _get_values_from_all_replicates(exp_keys, exp_list, field)
             # allow small deviations in average fragment size
             if field == 'average_fragment_size' and None not in vals:
                 int_vals = [int(val) for val in vals]
@@ -605,7 +617,7 @@ def consistent_replicate_info(connection, **kwargs):
         # check imaging paths (if an experiment has any)
         if 'imaging_paths' in exp_keys[exp_list[0]]:
             # NOTE: this compares path display_title and not path @id
-            img_path_configurations = list(set([pth_keys[exp_id] for exp_id in exp_list]))
+            img_path_configurations = _get_values_from_all_replicates(pth_keys, exp_list)
             if len(img_path_configurations) > 1:
                 length_vals = list(set([len(conf) for conf in img_path_configurations]))
                 if len(length_vals) > 1:
