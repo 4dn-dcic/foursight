@@ -1254,6 +1254,61 @@ def plac_seq_start(connection, **kwargs):
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
+@check_function(lab_title=None, start_date=None)
+def hichip_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'hichip_status')
+    my_auth = connection.ff_keys
+    check.action = "hichip_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'HiChIP'
+    # completion tag
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=True)
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def hichip_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'hichip_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    fs_env = connection.fs_env
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = hic_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = hic_check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
+    return action
+
 
 @check_function(lab_title=None, start_date=None)
 def repli_2_stage_status(connection, **kwargs):
