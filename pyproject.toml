@@ -37,10 +37,6 @@ chalice = "^1.26.0"
 pytest-cov = "2.7.1"
 flaky = "3.6.1"
 
-[tool.poetry.scripts]
-encrypt-accounts-file = "foursight_core.scripts.encrypt_accounts_file:main"
-decrypt-accounts-file = "foursight_core.scripts.decrypt_accounts_file:main"
-
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
