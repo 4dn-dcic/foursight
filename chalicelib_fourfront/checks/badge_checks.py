@@ -588,7 +588,7 @@ def consistent_replicate_info(connection, **kwargs):
         for field in fields2check:
             vals = list(set([exp_keys[exp_id].get(field) for exp_id in exp_list]))
             # allow small deviations in average fragment size
-            if field == 'average_fragment_size' and 'None' not in vals:
+            if field == 'average_fragment_size' and None not in vals:
                 int_vals = [int(val) for val in vals]
                 if (max(int_vals) - min(int_vals))/(sum(int_vals)/len(int_vals)) < 0.25:
                     continue
