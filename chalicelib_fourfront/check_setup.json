@@ -1291,6 +1291,21 @@
             }
         }
     },
+    "hichip_status": {
+        "title": "d) Hi-ChIP",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
     "prepare_static_headers": {
         "title": "Prepare static headers",
         "group": "Static headers checks",
