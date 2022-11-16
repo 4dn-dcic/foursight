@@ -581,13 +581,11 @@ def consistent_replicate_info(connection, **kwargs):
     compare = {}
     results = {}
 
-    def _get_values_from_all_replicates(exp_id_dict, exp_id_list, field_name=None):
+    def _get_unique_values(input_list):
+        """Given a list of any type of items (including non-hashable ones),
+        return a list of unique items"""
         values_list = []
-        for exp_id in exp_id_list:
-            value = exp_id_dict[exp_id]
-            if field_name:
-                value = value.get(field_name)
-            # value can be of any type (including non-hashable types)
+        for value in input_list:
             if value not in values_list:
                 values_list.append(value)
         return values_list
@@ -598,7 +596,7 @@ def consistent_replicate_info(connection, **kwargs):
 
         # check Experiment fields
         for field in fields2check:
-            vals = _get_values_from_all_replicates(exp_keys, exp_list, field)
+            vals = _get_unique_values([exp_keys[exp_id].get(field) for exp_id in exp_list])
             # allow small deviations in average fragment size
             if field == 'average_fragment_size' and None not in vals:
                 int_vals = [int(val) for val in vals]
@@ -617,7 +615,7 @@ def consistent_replicate_info(connection, **kwargs):
         # check imaging paths (if an experiment has any)
         if 'imaging_paths' in exp_keys[exp_list[0]]:
             # NOTE: this compares path display_title and not path @id
-            img_path_configurations = _get_values_from_all_replicates(pth_keys, exp_list)
+            img_path_configurations = _get_unique_values([pth_keys[exp_id] for exp_id in exp_list])
             if len(img_path_configurations) > 1:
                 length_vals = list(set([len(conf) for conf in img_path_configurations]))
                 if len(length_vals) > 1:
@@ -638,7 +636,8 @@ def consistent_replicate_info(connection, **kwargs):
                             info_dict[f'imaging_paths {i} imaging_rounds'] = round_vals
 
         # check some biosource fields
-        biosource_vals = list(set([[biosource['@id'] for biosource in bio_keys[exp_id]['biosource']] for exp_id in exp_list]))
+        biosource_vals = _get_unique_values(
+            [[biosource['@id'] for biosource in bio_keys[exp_id]['biosource']] for exp_id in exp_list])
         if len(biosource_vals) > 1:
             info_dict['biosource'] = biosource_vals
 
@@ -646,7 +645,8 @@ def consistent_replicate_info(connection, **kwargs):
         all_cc_details = [bio_keys[exp_id].get('cell_culture_details') for exp_id in exp_list]
         if all(all_cc_details):
             for ccfield in ['synchronization_stage', 'differentiation_state', 'follows_sop']:
-                ccvals = list(set([[bcc.get(ccfield) for bcc in cc_details] for cc_details in all_cc_details]))
+                ccvals = [[bcc.get(ccfield) for bcc in cc_details] for cc_details in all_cc_details]
+                ccvals = _get_unique_values(ccvals)
                 if len(ccvals) > 1:
                     info_dict[ccfield] = ccvals
         elif any(all_cc_details):
@@ -655,7 +655,7 @@ def consistent_replicate_info(connection, **kwargs):
         # check biosample_protocols
         all_bs_prot = [bio_keys[exp_id].get('biosample_protocols') for exp_id in exp_list]
         if all(all_bs_prot):
-            bp_vals = list(set([[protocol['@id'] for protocol in bs_prot] for bs_prot in all_bs_prot]))
+            bp_vals = _get_unique_values([[protocol['@id'] for protocol in bs_prot] for bs_prot in all_bs_prot])
             if len(bp_vals) > 1:
                 info_dict['biosample_protocols'] = bp_vals
         elif any(all_bs_prot):
