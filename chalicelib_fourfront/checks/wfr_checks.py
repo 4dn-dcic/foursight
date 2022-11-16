@@ -2303,7 +2303,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
     check.full_output = {'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C', 'DNase Hi-C']
     feature = 'insulation_scores_and_boundaries'
     # minimum number of reads in the mcool file (100M)
     reads_cutoff = 100000000
@@ -2345,7 +2345,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
                 re_enz_size = wfr_utils.re_nz_sizes.get(enz)
                 if not re_enz_size:
-                    if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
+                    if enz in ["MNase", "DNaseI"]:  # Treat MNase and DNaseI as 4-cutter enzymes to determine binsize
                         re_enz_size = "4"
                     else:
                         check.full_output['problematic_runs'].append({a_res['accession']: ['%s missing enz site length' % (enz)]})
@@ -2674,7 +2674,7 @@ def compartments_caller_status(connection, **kwargs):
     check.full_output = {'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C', 'DNase Hi-C']
     feature = 'compartments'
     contact_type = 'cis'
     binsize = 250000

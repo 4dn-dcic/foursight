@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+
+2.3.1
+=====
+
+`PR 512: Add DNase Hi-C to insulation and compartment pipes <https://github.com/4dn-dcic/foursight/pull/512>`
+
+* Added DNase Hi-C to experiment types that compartment caller and insulation scores and boundaries pipelines will run on
+
 2.3.0
 =====
 
