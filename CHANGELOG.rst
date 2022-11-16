@@ -19,6 +19,8 @@ Change Log
   and/or decrypt this file locally: encrypt-accounts-file, decrypt-accounts-file.
   Currently this file contains just URL for 4dn-dcic dev and prod.
   Again, this is experimental, and easily disabled (remove accounts.json).
+* Moved lookup of check_setup.json (and accounts.json) to foursight-core,
+  from foursight-cgap/chalicelib_cap/app_utils.py.
 
 2.2.0
 =====
