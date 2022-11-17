@@ -678,33 +678,33 @@ def consistent_replicate_info(connection, **kwargs):
     )
 
     # do the @id replacement
-    def _resolve_at_id(value, connection):
-        """ replace @id with display_title """
-        at_id_pattern = r"/[^/]+/[^/]+/"  # an approximate way to check for @id: start and end with "/", and with one more "/" in between
-        at_id_list = re.findall(at_id_pattern, value)
-        if len(at_id_list) > 0:
-            # assumes the value contains only @id(s)
-            new_values = []
-            for at_id in at_id_list:
-                item = ff_utils.get_metadata(at_id, key=connection.ff_keys, add_on='frame=object')
-                new_values.append(item.get('display_title', item['@id']))
-            value = ", ".join(new_values)
-        return value
+    def replace_messages_content(messages, connection):
+        """ replace any occurrence of @id with its display_title """
 
-    def _replace_messages_content(messages, connection):
+        # an approximate way to check for @id: start and end with "/", and with one more "/" in between
+        at_id_pattern = r"(/[^/]+/[^/]+/)"
+
+        def _get_db_item(matchobj):
+            at_id = matchobj.group(0)
+            if at_id is not None:
+                item = ff_utils.get_metadata(at_id, key=connection.ff_keys, add_on='frame=object')
+                return item.get('display_title', item['@id'])
+            else:
+                return matchobj
+
         for message in messages:
             mes_key, mes_val = message.split(": ", 1)
-            mes_val_new = _resolve_at_id(mes_val, connection)
+            mes_val_new = re.sub(at_id_pattern, _get_db_item, mes_val)
             message = mes_key + ": " + mes_val_new
 
     if to_add:
         for messages in to_add.values():
-            _replace_messages_content(messages, connection)
+            replace_messages_content(messages, connection)
     if to_edit:
         for badges in to_edit.values():
             for a_badge in badges:
                 if a_badge['badge'].endswith('inconsistent-replicate-info/'):
-                    _replace_messages_content(a_badge['messages'], connection)
+                    replace_messages_content(a_badge['messages'], connection)
 
     key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
     for result in results.keys():
