@@ -663,9 +663,7 @@ def consistent_replicate_info(connection, **kwargs):
 
         # now generate a message from the info_dict
         if info_dict:
-            for v in info_dict.values():
-                v = stringify(v)
-            msgs = [f"Inconsistent replicate information in {field}: {values}" for field, values in info_dict.items()]
+            msgs = [f"Inconsistent replicate information in {field}: {stringify(values)}" for field, values in info_dict.items()]
             text = f"{repset['@id'][-13:-1]} - inconsistency in {', '.join(list(info_dict.keys()))}"
             lab = repset['lab']['display_title']
             audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
