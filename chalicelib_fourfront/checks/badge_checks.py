@@ -69,10 +69,8 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys, ignore_d
             for a_badge in item['badges']:
                 if a_badge['badge'].endswith(badge + '/'):
                     if ignore_details:
-                        for a_message in a_badge.get('messages', []):
-                            a_message = a_message.split(":")[0]
-                        for a_message in obj_id_dict[item['@id']]:
-                            a_message = a_message.split(":")[0]
+                        a_badge['messages'] = [a_message.split(":")[0] for a_message in a_badge.get('messages', []) if a_message]
+                        obj_id_dict[item['@id']] = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
                     if a_badge.get('messages') == obj_id_dict[item['@id']]:
                         badge_ok.append(item['@id'])
                     else:
@@ -698,7 +696,6 @@ def consistent_replicate_info(connection, **kwargs):
             mes_val_new = re.sub(at_id_pattern, _get_db_item, mes_val)
             new_messages.append(mes_key + ": " + mes_val_new)
         return new_messages
-
 
     if to_add:
         for messages in to_add.values():
