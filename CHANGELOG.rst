@@ -7,10 +7,20 @@ foursight
 Change Log
 ----------
 
+2.3.2
+=====
+
+`PR 510: Edit consistent replicate info check <https://github.com/4dn-dcic/foursight/pull/510>`_
+
+* Edit the ``consistent_replicate_info`` badge check to print a more readable message.
+
+
 2.3.1
 =====
 
-* Edit the ``consistent_replicate_info`` badge check to print a more readable message.
+`PR 512: Add DNase Hi-C to insulation and compartment pipes <https://github.com/4dn-dcic/foursight/pull/512>`_
+
+* Added DNase Hi-C to experiment types that compartment caller and insulation scores and boundaries pipelines will run on
 
 
 2.3.0
