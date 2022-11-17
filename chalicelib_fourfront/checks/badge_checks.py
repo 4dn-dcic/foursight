@@ -688,7 +688,7 @@ def consistent_replicate_info(connection, **kwargs):
             # assumes the value contains only @id(s)
             new_values = []
             for at_id in at_id_list:
-                item = ff_utils.get_metadata(at_id, key=connection.ff_keys, add_on='frame=raw')
+                item = ff_utils.get_metadata(at_id, key=connection.ff_keys, add_on='frame=object')
                 new_values.append(item.get('display_title', item['@id']))
             value = ", ".join(new_values)
         return value
