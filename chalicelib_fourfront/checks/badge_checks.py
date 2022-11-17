@@ -692,19 +692,22 @@ def consistent_replicate_info(connection, **kwargs):
             else:
                 return matchobj
 
+        new_messages = []
         for message in messages:
             mes_key, mes_val = message.split(": ", 1)
             mes_val_new = re.sub(at_id_pattern, _get_db_item, mes_val)
-            message = mes_key + ": " + mes_val_new
+            new_messages.append(mes_key + ": " + mes_val_new)
+        return new_messages
+
 
     if to_add:
         for messages in to_add.values():
-            replace_messages_content(messages, connection)
+            messages = replace_messages_content(messages, connection)
     if to_edit:
         for badges in to_edit.values():
             for a_badge in badges:
                 if a_badge['badge'].endswith('inconsistent-replicate-info/'):
-                    replace_messages_content(a_badge['messages'], connection)
+                    a_badge['messages'] = replace_messages_content(a_badge['messages'], connection)
 
     key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
     for result in results.keys():
