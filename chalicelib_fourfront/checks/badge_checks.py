@@ -70,8 +70,10 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys, ignore_d
                 if a_badge['badge'].endswith(badge + '/'):
                     if ignore_details:
                         a_badge['messages'] = [a_message.split(":")[0] for a_message in a_badge.get('messages', []) if a_message]
-                        obj_id_dict[item['@id']] = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
-                    if a_badge.get('messages') == obj_id_dict[item['@id']]:
+                        messages_for_comparison = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
+                    else:
+                        messages_for_comparison = obj_id_dict[item['@id']]
+                    if a_badge.get('messages') == messages_for_comparison:
                         badge_ok.append(item['@id'])
                     else:
                         if a_badge.get('message'):
