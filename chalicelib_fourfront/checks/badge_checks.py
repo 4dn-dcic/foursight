@@ -518,15 +518,19 @@ def patch_badges_for_raw_files(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(ignore_details=True)
 def consistent_replicate_info(connection, **kwargs):
-    '''
+    """
     Check for replicate experiment sets that have discrepancies in metadata between
     replicate experiments.
 
     Action patches badges with a message detailing which fields have the inconsistencies
     and what the inconsistent values are.
-    '''
+
+    ignore_details argument (default: True) compares only part of the message,
+    up until the field name. Set this to False if the entire message needs to be compared
+    (note that the time to run the check might increase substantially).
+    """
     check = CheckResult(connection, 'consistent_replicate_info')
 
     repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id' + ''.join(
@@ -674,7 +678,7 @@ def consistent_replicate_info(connection, **kwargs):
                 compare[repset['@id']] = msgs
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
-        compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys, ignore_details=True
+        compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys, kwargs['ignore_details']
     )
 
     # do the @id replacement
