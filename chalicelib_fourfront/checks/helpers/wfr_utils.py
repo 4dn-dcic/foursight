@@ -170,19 +170,19 @@ accepted_versions = {
     'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # OFFICIAL  # NO-RE
     'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
+    # OFFICIAL  # NO-RE NO-NORM
     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
+    # OFFICIAL  # NO-NORM
     'in situ ChIA-PET': ["HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-RE NO-NORM
     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
-    # Preliminary - Released to network  # NO-NORM
+    # OFFICIAL  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
     'HiChIP': ["HiC_Pipeline_0.2.7"],
-    # bwa mem # handled manually for now
+    # OFFICIAL  # bwa mem
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
-    # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
+    # OFFICIAL  # NO-NORM
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
                       'RepliSeq_Pipeline_v16_step1'],
@@ -194,7 +194,7 @@ accepted_versions = {
     'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
                               'RepliSeq_Pipeline_v14_step1',
                               'RepliSeq_Pipeline_v16_step1'],
-    # Preliminary - Released to network
+    # OFFICIAL
     'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
