@@ -24,7 +24,7 @@ pytz = "^2020.1"
 tibanna_ff = "1.2.3b0"
 ## adding foursight-core
 # use below for deployment
-foursight-core = "2.1.0"
+foursight-core = "3.0.0"
 # use below for tests but not for deployment
 # foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 pytest = "5.1.2"
