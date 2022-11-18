@@ -1539,7 +1539,7 @@ def run_missing_wfr(input_json, input_files_and_params, run_name, auth, env, fs_
     # env should be either data, webdev or fourfront-webdev
 
     try:
-        res = API().run_workflow(input_json, sfn=sfn, verbose=False)
+        res = API().run_workflow(input_json, sfn=sfn)
         url = res['_tibanna']['url']
         return url
     except Exception as e:
