@@ -2535,8 +2535,7 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
                         which categories to delete with action, by default Rerun is deleted
      - limit_to_uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
                        should also work if a list item is provided as input
-     - days_back: (string) limit the search to recently created wfrs, up to n days ago.
-                  If 0 or any string different than an integer, search all wfrs.
+     - days_back: (string) limit the search to recently created wfrs, up to n days ago. If 0, search all wfrs.
     """
     check = CheckResult(connection, 'problematic_wfrs_fdn_status')
     my_auth = connection.ff_keys
