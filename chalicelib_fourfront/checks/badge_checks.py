@@ -518,7 +518,7 @@ def patch_badges_for_raw_files(connection, **kwargs):
     return action
 
 
-@check_function(ignore_details=True)
+@check_function(ignore_details=False)
 def consistent_replicate_info(connection, **kwargs):
     """
     Check for replicate experiment sets that have discrepancies in metadata between
@@ -527,9 +527,10 @@ def consistent_replicate_info(connection, **kwargs):
     Action patches badges with a message detailing which fields have the inconsistencies
     and what the inconsistent values are.
 
-    ignore_details argument (default: True) compares only part of the message,
-    up until the field name. Set this to False if the entire message needs to be compared
-    (note that the time to run the check might increase substantially).
+    ignore_details argument (default: False) can be used for faster check runs, comparing
+    only part of the message (field name, but not values). This will reduce the number of
+    get_metadata requests. This argument is set False right now (Nov 2022), as the check
+    runs fine, but it could be changed in the future if a lighter check is needed.
     """
     check = CheckResult(connection, 'consistent_replicate_info')
 
