@@ -7,7 +7,8 @@ foursight
 Change Log
 ----------
 
-2.2.1
+
+2.4.0
 =====
 * Changes related to a new experimental /accounts page in Foursight which can show summary
   Foursight and Portal info from other AWS accounts. To take advantage of it there is an
@@ -21,6 +22,18 @@ Change Log
   Again, this is experimental, and easily disabled (remove accounts.json).
 * Moved lookup of check_setup.json (and accounts.json) to foursight-core,
   from foursight-cgap/chalicelib_cap/app_utils.py.
+
+2.3.1
+=====
+
+`PR 512: Add DNase Hi-C to insulation and compartment pipes <https://github.com/4dn-dcic/foursight/pull/512>`
+
+* Added DNase Hi-C to experiment types that compartment caller and insulation scores and boundaries pipelines will run on
+
+2.3.0
+=====
+
+* Add check/action to run the Hi-C pipeline on HiChIP datasets.
 
 2.2.0
 =====
