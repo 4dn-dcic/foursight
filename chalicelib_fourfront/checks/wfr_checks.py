@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from dcicutils import ff_utils
 from dcicutils.s3_utils import s3Utils
 from .helpers import wfr_utils
@@ -2553,7 +2553,7 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
         try:
             days_back = int(kwargs['days_back'])
             if days_back != 0:
-                from_date = datetime.strftime(datetime.now(timezone.utc) - timedelta(days=days_back), "%Y-%m-%d")
+                from_date = datetime.strftime(datetime.utcnow() - timedelta(days=days_back), "%Y-%m-%d")
                 q += '&date_created.from=' + from_date
         except (ValueError, TypeError):
             # if any other value (e.g. a string) is provided, search all wfrs
