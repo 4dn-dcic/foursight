@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+2.3.2
+=====
+
+* Edited the check for errored workflow runs to only report recent ones.
+
+  * By default in the past 30 days. This can be modified using the ``days_back`` arg.
+  * Use any string different than a number to search all errored runs.
 
 2.3.1
 =====
