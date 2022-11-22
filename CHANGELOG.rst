@@ -7,13 +7,22 @@ foursight
 Change Log
 ----------
 
+2.3.3
+=====
+
+`PR 514: Errored runs chk edit <https://github.com/4dn-dcic/foursight/pull/514>`_
+
+* Edited the check for errored workflow runs to only report recent ones.
+
+  * By default in the past 30 days. This can be modified using the ``days_back`` arg.
+  * Use 0 to search all errored runs.
+
 2.3.2
 =====
 
 `PR 510: Edit consistent replicate info check <https://github.com/4dn-dcic/foursight/pull/510>`_
 
 * Edit the ``consistent_replicate_info`` badge check to print a more readable message.
-
 
 2.3.1
 =====
