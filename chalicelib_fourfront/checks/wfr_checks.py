@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from dcicutils import ff_utils
 from dcicutils.s3_utils import s3Utils
 from .helpers import wfr_utils
@@ -2525,7 +2525,7 @@ def long_running_wfrs_fdn_start(connection, **kwargs):
     return action
 
 
-@check_function(delete_categories='Rerun', limit_to_uuids="")
+@check_function(delete_categories='Rerun', limit_to_uuids="", days_back='30')
 def problematic_wfrs_fdn_status(connection, **kwargs):
     """
     Find all runs with run status error. Action will cleanup their metadata, and this action might
@@ -2535,6 +2535,7 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
                         which categories to delete with action, by default Rerun is deleted
      - limit_to_uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
                        should also work if a list item is provided as input
+     - days_back: (string) limit the search to recently created wfrs, up to n days ago. If 0, search all wfrs.
     """
     check = CheckResult(connection, 'problematic_wfrs_fdn_status')
     my_auth = connection.ff_keys
@@ -2547,6 +2548,16 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
     check.allow_action = False
     # find all errored runs
     q = '/search/?type=WorkflowRun&run_status=error'
+    if kwargs.get('days_back'):
+        try:
+            days_back = int(kwargs['days_back'])
+            if days_back != 0:
+                from_date = datetime.strftime(datetime.utcnow() - timedelta(days=days_back), "%Y-%m-%d")
+                q += '&date_created.from=' + from_date
+        except (ValueError, TypeError):
+            # if any other value (e.g. a string) is provided, search all wfrs
+            pass
+
     errored_wfrs = ff_utils.search_metadata(q, my_auth)
     # if a comma separated list of uuids is given, limit the result to them
     uuids = str(kwargs.get('limit_to_uuids'))

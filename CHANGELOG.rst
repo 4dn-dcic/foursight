@@ -7,6 +7,22 @@ foursight
 Change Log
 ----------
 
+2.3.3
+=====
+
+`PR 514: Errored runs chk edit <https://github.com/4dn-dcic/foursight/pull/514>`_
+
+* Edited the check for errored workflow runs to only report recent ones.
+
+  * By default in the past 30 days. This can be modified using the ``days_back`` arg.
+  * Use 0 to search all errored runs.
+
+2.3.2
+=====
+
+`PR 510: Edit consistent replicate info check <https://github.com/4dn-dcic/foursight/pull/510>`_
+
+* Edit the ``consistent_replicate_info`` badge check to print a more readable message.
 
 2.4.0
 =====
@@ -43,9 +59,10 @@ Change Log
 2.3.1
 =====
 
-`PR 512: Add DNase Hi-C to insulation and compartment pipes <https://github.com/4dn-dcic/foursight/pull/512>`
+`PR 512: Add DNase Hi-C to insulation and compartment pipes <https://github.com/4dn-dcic/foursight/pull/512>`_
 
 * Added DNase Hi-C to experiment types that compartment caller and insulation scores and boundaries pipelines will run on
+
 
 2.3.0
 =====
@@ -56,6 +73,7 @@ Change Log
 =====
 
 * Changes related to Foursight React.
+
   * Renamed chalicelib directory to chalicelib_fourfront.
   * Renamed target package (pyproject.toml) from chalicelib to chalicelib_fourfront.
   * Moved all Chalice routes to foursight-core (same with foursight-cgap).
@@ -86,6 +104,7 @@ Change Log
 
 2.1.0
 =====
+
 * Added this CHANGELOG.rst.
 * Spruced up Foursight UI a bit (virtually all in foursight-core but mentioning here).
 
