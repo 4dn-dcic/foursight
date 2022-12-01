@@ -118,7 +118,7 @@ class TestCheckResult():
         ignore_uuid = res['uuid']
         if check.connections['es'] is not None:
             check.connections['es'].refresh_index()
-        hist_10 = check.get_result_history(0, 10)
+        hist_10, total_unused = check.get_result_history(0, 10)
         assert isinstance(hist_10, list)
         for chk in hist_10:
             assert isinstance(chk[2], dict) and 'uuid' in chk[2]
@@ -132,14 +132,14 @@ class TestCheckResult():
         assert found_chks[0][2].get('test') == 'yea'
         if len(hist_10) != 10:
             return
-        hist_offset = check.get_result_history(1, 2)
-        hist_offset2 = check.get_result_history(2, 2)
+        hist_offset, total_unused = check.get_result_history(1, 2)
+        hist_offset2, total_unused = check.get_result_history(2, 2)
         assert len(hist_offset) == len(hist_offset2) == 2
         if hist_offset[1][2]['uuid'] == hist_offset2[0][2]['uuid']:
             assert hist_offset[0][2]['uuid'] != hist_offset2[0][2]['uuid']
         # test after_date param
         after_date = datetime.datetime.utcnow() - datetime.timedelta(days=1)
-        hist_after = check.get_result_history(0, 10, after_date=after_date)
+        hist_after, total_unused = check.get_result_history(0, 10, after_date=after_date)
         for chk in hist_after:
             chk_date = datetime.datetime.strptime(chk[2]['uuid'], '%Y-%m-%dT%H:%M:%S.%f')
             assert chk_date >= after_date
