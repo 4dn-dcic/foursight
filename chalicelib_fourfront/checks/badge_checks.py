@@ -20,7 +20,7 @@ def stringify(item):
     if isinstance(item, str):
         return item
     elif isinstance(item, list):
-        return ', '.join([stringify(i) for i in item])
+        return ', '.join(sorted([stringify(i) for i in item]))
     elif isinstance(item, float) and abs(item - int(item)) == 0:
         return str(int(item))
     return str(item)
