@@ -50,12 +50,11 @@ def compare_badges(obj_ids, item_type, badge, ff_keys):
     return needs_badge, remove_badge, badge_ok
 
 
-def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys, ignore_details=False):
+def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys):
     '''
     Compares items that should have a given badge to items that do have the given badge.
     Also compares badge messages to see if the message is the right one or needs to be updated.
     Input (first argument) should be a dictionary of item's @id and the badge message it should have.
-    ignore_details argument can be used to check only the first part of each message.
     '''
     search_url = f'search/?type={item_type}&badges.badge.@id=/badges/{badge}/'
     has_badge = ff_utils.search_metadata(search_url + '&frame=object', key=ff_keys)
@@ -68,12 +67,7 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys, ignore_d
             # handle differences in badge messages
             for a_badge in item['badges']:
                 if a_badge['badge'].endswith(badge + '/'):
-                    if ignore_details:
-                        a_badge['messages'] = [a_message.split(":")[0] for a_message in a_badge.get('messages', []) if a_message]
-                        messages_for_comparison = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
-                    else:
-                        messages_for_comparison = obj_id_dict[item['@id']]
-                    if a_badge.get('messages') == messages_for_comparison:
+                    if a_badge.get('messages') == obj_id_dict[item['@id']]:
                         badge_ok.append(item['@id'])
                     else:
                         if a_badge.get('message'):
@@ -88,6 +82,74 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys, ignore_d
     for key, val in obj_id_dict.items():
         if key not in badge_ok + list(badge_edit.keys()):
             needs_badge[key] = val
+    return needs_badge, remove_badge, badge_edit, badge_ok
+
+
+def replace_messages_content(messages, ff_keys):
+    """ replace any occurrence of @id with its display_title """
+
+    # an approximate way to check for @id: start and end with "/", and with one more "/" in between
+    at_id_pattern = r"(/[^/]+/[^/]+/)"
+
+    def _get_db_item(matchobj):
+        at_id = matchobj.group(0)
+        if at_id is not None:
+            item = ff_utils.get_metadata(at_id, key=ff_keys, add_on='frame=object')
+            return item.get('display_title', item['@id'])
+        else:
+            return matchobj
+
+    new_messages = []
+    for message in messages:
+        mes_key, mes_val = message.split(": ", 1)
+        mes_val_new = re.sub(at_id_pattern, _get_db_item, mes_val)
+        new_messages.append(mes_key + ": " + mes_val_new)
+    return new_messages
+
+
+def compare_badges_and_messages_and_replace_atids(obj_id_dict, item_type, badge, ff_keys, ignore_details=False):
+    """
+    Compares items that should have a given badge to items that do have the given badge.
+    Also compares badge messages to see if the message is the right one or needs to be updated.
+    Input (first argument) should be a dictionary of item's @id and the badge message it should have.
+    ignore_details argument can be used to check only the first part of each message.
+    """
+    search_url = f'search/?type={item_type}&badges.badge.@id=/badges/{badge}/'
+    has_badge = ff_utils.search_metadata(search_url + '&frame=object', key=ff_keys)
+    needs_badge = {}
+    badge_edit = {}
+    badge_ok = []
+    remove_badge = {}
+    for item in has_badge:
+        if item['@id'] in obj_id_dict.keys():
+            # handle differences in badge messages
+            for a_badge in item['badges']:
+                if a_badge['badge'].endswith(badge + '/'):
+                    new_messages = obj_id_dict[item['@id']]
+                    if ignore_details:
+                        a_badge['messages'] = [a_message.split(":")[0] for a_message in a_badge.get('messages', []) if a_message]
+                        new_messages = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
+
+                    if a_badge.get('messages') == new_messages:
+                        badge_ok.append(item['@id'])
+                    else:  # new message is different
+                        if not ignore_details:  # try replacing @id in messages and check again
+                            new_messages = replace_messages_content(new_messages, ff_keys)
+                            if a_badge.get('messages') == new_messages:
+                                badge_ok.append(item['@id'])
+                                break
+                        if a_badge.get('message'):
+                            del a_badge['message']
+                        a_badge['messages'] = replace_messages_content(obj_id_dict[item['@id']], ff_keys)
+                        badge_edit[item['@id']] = item['badges']
+                    break
+        else:
+            this_badge = [a_badge for a_badge in item['badges'] if badge in a_badge['badge']][0]
+            item['badges'].remove(this_badge)
+            remove_badge[item['@id']] = item['badges']
+    for key, val in obj_id_dict.items():
+        if key not in badge_ok + list(badge_edit.keys()):
+            needs_badge[key] = replace_messages_content(val, ff_keys)
     return needs_badge, remove_badge, badge_edit, badge_ok
 
 
@@ -579,6 +641,7 @@ def consistent_replicate_info(connection, **kwargs):
         'antibody',
         'antibody_lot_id',
         'microscopy_technique',
+        'microscope_configuration_master'
     ]
     check.brief_output = {REV_KEY: {}, RELEASED_KEY: {
         'Add badge': {}, 'Remove badge': {}, 'Keep badge and edit messages': {}
@@ -678,35 +741,11 @@ def consistent_replicate_info(connection, **kwargs):
             if repset['status'] not in REV:
                 compare[repset['@id']] = msgs
 
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
+    to_add, to_remove, to_edit, ok = compare_badges_and_messages_and_replace_atids(
         compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys, kwargs['ignore_details']
     )
 
     # do the @id replacement
-    def replace_messages_content(messages, connection):
-        """ replace any occurrence of @id with its display_title """
-
-        # an approximate way to check for @id: start and end with "/", and with one more "/" in between
-        at_id_pattern = r"(/[^/]+/[^/]+/)"
-
-        def _get_db_item(matchobj):
-            at_id = matchobj.group(0)
-            if at_id is not None:
-                item = ff_utils.get_metadata(at_id, key=connection.ff_keys, add_on='frame=object')
-                return item.get('display_title', item['@id'])
-            else:
-                return matchobj
-
-        new_messages = []
-        for message in messages:
-            mes_key, mes_val = message.split(": ", 1)
-            mes_val_new = re.sub(at_id_pattern, _get_db_item, mes_val)
-            new_messages.append(mes_key + ": " + mes_val_new)
-        return new_messages
-
-    if to_add:
-        for messages in to_add.values():
-            messages = replace_messages_content(messages, connection)
     if to_edit:
         for badges in to_edit.values():
             for a_badge in badges:
