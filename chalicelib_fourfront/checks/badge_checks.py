@@ -745,13 +745,6 @@ def consistent_replicate_info(connection, **kwargs):
         compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys, kwargs['ignore_details']
     )
 
-    # do the @id replacement
-    if to_edit:
-        for badges in to_edit.values():
-            for a_badge in badges:
-                if a_badge['badge'].endswith('inconsistent-replicate-info/'):
-                    a_badge['messages'] = replace_messages_content(a_badge['messages'], connection)
-
     key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
     for result in results.keys():
         for k, v in key_dict.items():
