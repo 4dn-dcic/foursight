@@ -198,9 +198,10 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
                 input_files['chip.ref_fa'] = '/files-reference/4DNFIC1NWMVJ/'
                 input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}, "chip.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.bowtie2Index.tar"}}
-            # step1 Parameters
+            # step1 parameters
             parameters = {}
             parameters["chip.gensz"] = org
+            parameters["chip.filter_chrs"] = ["chr[MUE]","random","alt"]
             if paired == 'single':
                 frag_temp = [300]
                 fraglist = frag_temp * len(exp_files)
@@ -222,7 +223,7 @@ def chipseq_status(connection, **kwargs):
                 control_parameters = {
                     "chip.pipeline_type": 'control',
                     "chip.always_use_pooled_ctl": True,
-                    "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
+                    "chip.regex_bfilt_peak_chr_name": "chr[\dXY]+",
                     "chip.mito_chr_name": "chrM",
                     "chip.align_only": True
                 }
@@ -232,7 +233,7 @@ def chipseq_status(connection, **kwargs):
                 s1c_tag = exp_id
                 keep, step1c_status, step1c_output = wfr_utils.stepper(library, keep,
                                                                        'step1c', s1c_tag, exp_files,
-                                                                       s1c_input_files, step1c_name, 'chip.first_ta_ctl',
+                                                                       s1c_input_files, step1c_name, 'chip.first_ta',
                                                                        additional_input={'parameters': parameters}, organism=organism)
                 if step1c_status == 'complete':
                     # accumulate files to patch on experiment
@@ -253,7 +254,7 @@ def chipseq_status(connection, **kwargs):
                 exp_parameters = {
                     "chip.pipeline_type": target_type,
                     "chip.always_use_pooled_ctl": True,
-                    "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
+                    "chip.regex_bfilt_peak_chr_name": "chr[\dXY]+",
                     "chip.mito_chr_name": "chrM",
                     "chip.align_only": True
                 }
@@ -287,7 +288,7 @@ def chipseq_status(connection, **kwargs):
                             print('Multiple controls for this exp', exp_id)
                             continue
                         exp_cnt_id = exp_cnt_ids[0]
-                        print('controled by set', exp_cnt_id)
+                        print('controlled by set', exp_cnt_id)
                         # have to do a get for the control experiment
                         exp_cnt_resp = [i for i in all_items['experiment_seq'] if i['@id'] == exp_cnt_id][0]
                         cont_file = ''
@@ -365,9 +366,6 @@ def chipseq_status(connection, **kwargs):
                         renamed.append(acc + '.tagAlign.gz')
                     return renamed
 
-                # not used in new pipeline, but used in benchmarking
-                s2_input_files['chip.bam2ta_no_filt_R1.ta'] = ta
-
                 s2_input_files['additional_file_parameters'] = {}
                 s2_input_files['chip.tas'] = ta
                 s2_input_files['additional_file_parameters']['chip.tas'] = {"rename": rename_chip(ta)}
@@ -393,13 +391,29 @@ def chipseq_status(connection, **kwargs):
                     "chip.pipeline_type": target_type,
                     "chip.always_use_pooled_ctl": True,
                     "chip.mito_chr_name": "chrM",
-                    "chip.regex_bfilt_peak_chr_name": "chr[MUE]|random|alt",
+                    "chip.regex_bfilt_peak_chr_name": "chr[\dXY]+",
                     "chip.gensz": org
                 }
                 if paired == 'paired' or paired == 'single':
                     parameters['chip.paired_end'] = chip_p
+                    parameters['chip.ctl_paired_end'] = chip_p
+
+                # assumes paired is instead a list
+                # if all strings are the same, define paired_end using the first string
+                elif len(set(paired)) == 1:
+                    chip_p = (paired[0] == 'paired')
+                    parameters['chip.paired_end'] = chip_p
+                    parameters['chip.ctl_paired_end'] = chip_p
+
+                # in the case of neither, define paired_ends
                 else:
+                    print("Mixed endedness here!")
                     parameters['chip.paired_ends'] = [True if pe=="paired" else False for pe in paired]
+                    parameters['chip.ctl_paired_ends'] = [True if pe=="paired" else False for pe in paired]
+                    parameters['chip.ctl_depth_limit'] = 0
+                    parameters['chip.exp_ctl_depth_limit'] = 0
+                    parameters['ctl_subsample_reads'] = 15000000
+
                 if paired == 'single':
                     frag_temp = [300]
                     fraglist = frag_temp * len(ta)
