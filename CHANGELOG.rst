@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+3.1.0
+=====
+* Updated foursight-core version; changes there related to /accounts page.
+* Moved lookup of check_setup.json (and accounts.json) to foursight-core,
+  from foursight/chalicelib_fourfront/app_utils.py.
+
 2.3.3
 =====
 
