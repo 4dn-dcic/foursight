@@ -301,7 +301,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "3.0.0.1b33"
+version = "3.1.1.1b1"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -310,7 +310,7 @@ python-versions = ">=3.7,<3.10"
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
-dcicutils = ">=6.0.0,<7.0.0"
+dcicutils = ">=6.1.0,<7.0.0"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -480,7 +480,7 @@ grpc = ["grpcio (>=1.44.0,<2.0.0dev)"]
 
 [[package]]
 name = "gspread"
-version = "5.7.1"
+version = "5.7.2"
 description = "Google Spreadsheets Python API"
 category = "main"
 optional = false
@@ -1137,7 +1137,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "6f6714b06edb2757520e8a9da3f48f9c5db50545ba3b75c49a21ba8c7eb9969f"
+content-hash = "502fb5e723f46ea8bb760353de3b10f831b2e9c21982986d3fdc3d6e045a236c"
 
 [metadata.files]
 ansicon = [
@@ -1282,8 +1282,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight_core-3.0.0.1b33-py3-none-any.whl", hash = "sha256:3d68845528d39a3953cb6f31340acee45f7170a9e343f614b8007bb3f362cea1"},
-    {file = "foursight_core-3.0.0.1b33.tar.gz", hash = "sha256:2dce66971c5a90dd2388fde8a8cc3e05202a59789a1a4f7c7353e1e13e1d0561"},
+    {file = "foursight_core-3.1.1.1b1-py3-none-any.whl", hash = "sha256:e5f5e2317ae3562b20b8413795559b920e7c905b3504b7cb82c7e77d357c66d8"},
+    {file = "foursight_core-3.1.1.1b1.tar.gz", hash = "sha256:37db1b1f309ea6a534edc31ef012f6b2b55781650a409f4b463296bb0c9aef9c"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1329,8 +1329,8 @@ googleapis-common-protos = [
     {file = "googleapis_common_protos-1.57.0-py2.py3-none-any.whl", hash = "sha256:a9f4a1d7f6d9809657b7f1316a1aa527f6664891531bcfcc13b6696e685f443c"},
 ]
 gspread = [
-    {file = "gspread-5.7.1-py3-none-any.whl", hash = "sha256:303b182f90d54222b3778d9f344cc24efa59eaf6b4b15679790bd8780cf3a454"},
-    {file = "gspread-5.7.1.tar.gz", hash = "sha256:5f39d7a218343b6514f06e2250e0c413eb4e814dde6aabf485dacb6aa31caab0"},
+    {file = "gspread-5.7.2-py3-none-any.whl", hash = "sha256:dbeedd08c6a7f7b0bfc1a54e17c29205362250c77bf98e11125c5d99fd7f4ba7"},
+    {file = "gspread-5.7.2.tar.gz", hash = "sha256:ce76f9c16b88ccb792350142224a59afa8e69f7463f3d3417148cbe892efc7cb"},
 ]
 httplib2 = [
     {file = "httplib2-0.21.0-py3-none-any.whl", hash = "sha256:987c8bb3eb82d3fa60c68699510a692aa2ad9c4bd4f123e51dfb1488c14cdd01"},
