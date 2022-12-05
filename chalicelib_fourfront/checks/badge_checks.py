@@ -93,17 +93,17 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys,
             # handle differences in badge messages
             for a_badge in item['badges']:
                 if a_badge['badge'].endswith(badge + '/'):
-                    new_messages = obj_id_dict[item['@id']]
+                    messages_for_comparison = obj_id_dict[item['@id']]
                     if ignore_details:
                         a_badge['messages'] = [a_message.split(":")[0] for a_message in a_badge.get('messages', []) if a_message]
-                        new_messages = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
+                        messages_for_comparison = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
 
-                    if a_badge.get('messages') == new_messages:
+                    if a_badge.get('messages') == messages_for_comparison:
                         badge_ok.append(item['@id'])
                     else:  # new message is different
                         if not ignore_details and replace_messages:  # try replacing @id in messages and check again
-                            new_messages = replace_messages_content(new_messages, ff_keys)
-                            if a_badge.get('messages') == new_messages:
+                            messages_for_comparison = replace_messages_content(messages_for_comparison, ff_keys)
+                            if a_badge.get('messages') == messages_for_comparison:
                                 badge_ok.append(item['@id'])
                                 break
                         if a_badge.get('message'):
