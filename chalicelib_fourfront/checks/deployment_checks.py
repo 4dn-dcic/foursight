@@ -66,7 +66,7 @@ def are_counts_even(env):
     return True, totals
 
 
-@check_function(env='fourfront-hotseat')
+@check_function(env='fourfront-hotseat', action="terminate_indexer_server")
 def indexer_server_status(connection, **kwargs):
     """ Checks the status of index servers (if any are up) """
     check = CheckResult(connection, 'indexer_server_status')

@@ -28,7 +28,7 @@ from .helpers.confchecks import *
 random_wait = 20
 
 
-@check_function(cmp_to_last=False)
+@check_function(cmp_to_last=False, action="patch_workflow_run_to_deleted")
 def workflow_run_has_deleted_input_file(connection, **kwargs):
     """Checks all wfrs that are not deleted, and have deleted input files
     There is an option to compare to the last, and only report new cases (cmp_to_last)
@@ -149,7 +149,7 @@ def get_transfer_fields(biorxiv_meta):
     return {f: biorxiv_meta.get(f) for f in fields2transfer if biorxiv_meta.get(f) is not None}
 
 
-@check_function(uuid_list=None, false_positives=None, add_to_result=None)
+@check_function(uuid_list=None, false_positives=None, add_to_result=None, action="add_pub_and_replace_biorxiv")
 def biorxiv_is_now_published(connection, **kwargs):
     ''' To restrict the check to just certain biorxivs use a comma separated list
         of biorxiv uuids in uuid_list kwarg.  This is useful if you want to
@@ -501,7 +501,7 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="reindex_biorxiv")
 def biorxiv_version_update(connection, **kwargs):
     '''Check if current bioRxiv Publications (not yet replaced with PubmedID)
     are up to date with the bioRxiv database.'''
@@ -704,7 +704,7 @@ def change_in_item_counts(connection, **kwargs):
     return check
 
 
-@check_function(file_type=None, status=None, file_format=None, search_add_on=None)
+@check_function(file_type=None, status=None, file_format=None, search_add_on=None, action="patch_file_size")
 def identify_files_without_filesize(connection, **kwargs):
     check = CheckResult(connection, 'identify_files_without_filesize')
     # add random wait
@@ -1066,7 +1066,7 @@ def validate_entrez_geneids(connection, **kwargs):
     return check
 
 
-@check_function(scope='all')
+@check_function(scope='all', action="finalize_user_pending_labs")
 def users_with_pending_lab(connection, **kwargs):
     """Define comma seperated emails in scope
     if you want to work on a subset of all the results"""
@@ -1315,7 +1315,7 @@ def users_with_doppelganger(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(action="patch_assay_subclass_short")
 def check_assay_classification_short_names(connection, **kwargs):
     check = CheckResult(connection, 'check_assay_classification_short_names')
     check.action = 'patch_assay_subclass_short'
@@ -1529,7 +1529,7 @@ def check_for_ontology_updates(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(action="patch_states_files_higlass_defaults")
 def states_files_without_higlass_defaults(connection, **kwargs):
     check = CheckResult(connection, 'states_files_without_higlass_defaults')
     check.action = 'patch_states_files_higlass_defaults'
@@ -1605,7 +1605,7 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="patch_strandedness_consistency_info")
 def check_for_strandedness_consistency(connection, **kwargs):
     check = CheckResult(connection, 'check_for_strandedness_consistency')
     check.action = 'patch_strandedness_consistency_info'
@@ -1742,7 +1742,7 @@ def patch_strandedness_consistency_info(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="add_suggested_enum_values")
 def check_suggested_enum_values(connection, **kwargs):
     """On our schemas we have have a list of suggested fields for
     suggested_enum tagged fields. A value that is not listed in this list
@@ -2013,7 +2013,7 @@ def check_external_references_uri(connection, **kwargs):
     return check
 
 
-@check_function(days_back_as_string='30')
+@check_function(days_back_as_string='30', action="add_contributing_lab_opf")
 def check_opf_lab_different_than_experiment(connection, **kwargs):
     '''
     Check if other processed files have lab (generating lab) that is different
@@ -2112,7 +2112,7 @@ def add_contributing_lab_opf(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="add_grouped_with_file_relation")
 def grouped_with_file_relation_consistency(connection, **kwargs):
     ''' Check if "grouped with" file relationships are reciprocal and complete.
         While other types of file relationships are automatically updated on
@@ -2204,7 +2204,7 @@ def add_grouped_with_file_relation(connection, **kwargs):
     return action
 
 
-@check_function(days_back_as_string='1')
+@check_function(days_back_as_string='1', action="patch_hic_summary_tables")
 def check_hic_summary_tables(connection, **kwargs):
     ''' Check for recently modified Hi-C Experiment Sets that are released.
     If any actionable result is found, trigger update of all summary tables.
@@ -2415,7 +2415,7 @@ def get_oh_google_sheet():
     return worksheet
 
 
-@check_function()
+@check_function(action="sync_users_oh_start")
 def sync_users_oh_status(connection, **kwargs):
     """
     Check users on database and OH google sheet, synchronize them
@@ -2930,7 +2930,7 @@ def sync_users_oh_start(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="replace_name_start")
 def replace_name_status(connection, **kwargs):
     """
     Use replace function to replace `replace_name` and your check/action name to have a quick setup

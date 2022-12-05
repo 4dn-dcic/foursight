@@ -156,7 +156,7 @@ def patch_badges(full_output, badge_name, ff_keys, single_message=''):
     return patches
 
 
-@check_function()
+@check_function(action="patch_biosample_warning_badges")
 def yellow_flag_biosamples(connection, **kwargs):
     '''
     Checks biosamples for required metadata:
@@ -277,7 +277,7 @@ def patch_biosample_warning_badges(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="patch_gold_biosample_badges")
 def gold_biosamples(connection, **kwargs):
     '''
     Gold level commendation criteria:
@@ -338,7 +338,7 @@ def patch_gold_biosample_badges(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="patch_badges_for_replicate_numbers")
 def repsets_have_bio_reps(connection, **kwargs):
     '''
     Check for replicate experiment sets that have one of the following issues:
@@ -446,7 +446,7 @@ def patch_badges_for_replicate_numbers(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="patch_badges_for_raw_files")
 def exp_has_raw_files(connection, **kwargs):
     '''
     Check for sequencing experiments that don't have raw files
@@ -518,7 +518,7 @@ def patch_badges_for_raw_files(connection, **kwargs):
     return action
 
 
-@check_function(ignore_details=False)
+@check_function(ignore_details=False, action="patch_badges_for_inconsistent_replicate_info")
 def consistent_replicate_info(connection, **kwargs):
     """
     Check for replicate experiment sets that have discrepancies in metadata between

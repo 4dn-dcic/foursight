@@ -103,7 +103,8 @@ def patch_items_with_headers(connection, action, kwargs):
     add_search='',
     remove_search='',
     header_at_id='',
-    append=True
+    append=True,
+    action="patch_static_headers"
 )
 def prepare_static_headers(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers')
@@ -122,7 +123,7 @@ def patch_static_headers(connection, **kwargs):
 
 
 # Data Use Guidelines
-@check_function()
+@check_function(action="patch_static_headers_data_use_guidelines")
 def prepare_static_headers_data_use_guidelines(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_data_use_guidelines')
     # only check experiment sets that are released, released to project, or in pre-release
@@ -146,7 +147,7 @@ def patch_static_headers_data_use_guidelines(connection, **kwargs):
 
 
 # InSitu Hi-C experiment Sets
-@check_function()
+@check_function(action="patch_static_headers_inSitu_HiC")
 def prepare_static_headers_inSitu_HiC(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_inSitu_HiC')
     add_search = '/search/?experiments_in_set.experiment_type=in+situ+Hi-C&type=ExperimentSet&frame=object'
@@ -167,7 +168,7 @@ def patch_static_headers_inSitu_HiC(connection, **kwargs):
 
 
 # Dilution Hi-C Experiment Sets
-@check_function()
+@check_function(action="patch_static_headers_dilution_HiC")
 def prepare_static_headers_dilution_HiC(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_dilution_HiC')
     add_search = '/search/?experiments_in_set.experiment_type=Dilution+Hi-C&type=ExperimentSet&frame=object'
@@ -188,7 +189,7 @@ def patch_static_headers_dilution_HiC(connection, **kwargs):
 
 
 # FISH
-@check_function()
+@check_function(action="patch_static_headers_FISH")
 def prepare_static_headers_FISH(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_FISH')
     add_search = '/search/?experiments_in_set.experiment_type=DNA+FISH&type=ExperimentSet&frame=object'
@@ -209,7 +210,7 @@ def patch_static_headers_FISH(connection, **kwargs):
 
 
 # SPT
-@check_function()
+@check_function(action="patch_static_headers_SPT")
 def prepare_static_headers_SPT(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_SPT')
     add_search = '/search/?experiments_in_set.experiment_type=SPT&type=ExperimentSet&frame=object'
@@ -230,7 +231,7 @@ def patch_static_headers_SPT(connection, **kwargs):
 
 
 # SPRITE
-@check_function()
+@check_function(action="patch_static_headers_SPRITE")
 def prepare_static_headers_SPRITE(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_SPRITE')
     add_search = '/search/?experiments_in_set.experiment_type=DNA+SPRITE&type=ExperimentSet&frame=object'
@@ -251,7 +252,7 @@ def patch_static_headers_SPRITE(connection, **kwargs):
 
 
 # MARGI
-@check_function()
+@check_function(action="patch_static_headers_MARGI")
 def prepare_static_headers_MARGI(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_MARGI')
     add_search = '/search/?experiments_in_set.experiment_type=MARGI&type=ExperimentSet&frame=object'
@@ -272,7 +273,7 @@ def patch_static_headers_MARGI(connection, **kwargs):
 
 
 # sci-HiC
-@check_function()
+@check_function(action="patch_static_headers_sciHiC")
 def prepare_static_headers_sciHiC(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_sciHiC')
     add_search = '/search/?experiments_in_set.experiment_type=sci-Hi-C&type=ExperimentSet&frame=object'
@@ -293,7 +294,7 @@ def patch_static_headers_sciHiC(connection, **kwargs):
 
 
 # DNase Hi-C
-@check_function()
+@check_function(action="patch_static_headers_DNase_HiC")
 def prepare_static_headers_DNase_HiC(connection, **kwargs):
     check = CheckResult(connection, 'prepare_static_headers_DNase_HiC')
     add_search = '/search/?experiments_in_set.experiment_type=DNase+Hi-C&type=ExperimentSet&frame=object'

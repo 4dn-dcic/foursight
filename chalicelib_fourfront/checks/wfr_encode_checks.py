@@ -13,7 +13,7 @@ from .helpers.confchecks import *
 lambda_limit = wfr_utils.lambda_limit
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="chipseq_start")
 def chipseq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -488,7 +488,7 @@ def chipseq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, pick_best_2=False)
+@check_function(lab_title=None, start_date=None, pick_best_2=False, action="atacseq_start")
 def atacseq_status(connection, **kwargs):
     """
     Keyword arguments:
