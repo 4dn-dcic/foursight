@@ -14,6 +14,8 @@ Change Log
 
 * The ``consistent_replicate_info`` badge check was updating messages for all
   linked items (e.g. protocols), when there was no need to. Bug fixed.
+* Fix ``app_utils_obj`` import.
+* Add ``microscope_configuration_master`` to the list of fields to compare.
 
 3.1.0
 =====
