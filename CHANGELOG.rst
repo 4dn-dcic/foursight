@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+3.1.1
+=====
+
+`PR 515: Bug fix consistent rep info check <https://github.com/4dn-dcic/foursight/pull/515>`_
+
+* The ``consistent_replicate_info`` badge check was updating messages for all
+  linked items (e.g. protocols), when there was no need to. Bug fixed.
+
 3.1.0
 =====
 * Updated foursight-core version; changes there related to /accounts page.
