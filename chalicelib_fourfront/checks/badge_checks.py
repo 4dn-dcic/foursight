@@ -20,9 +20,7 @@ def stringify(item):
     if isinstance(item, str):
         return item
     elif isinstance(item, list):
-        return '[' + ', '.join([stringify(i) for i in item]) + ']'
-    elif isinstance(item, dict):
-        return '{' + ', '.join(['{}: {}'.format(k, str(v)) for k, v in sorted(item.items())]) + '}'
+        return ', '.join([stringify(i) for i in item])
     elif isinstance(item, float) and abs(item - int(item)) == 0:
         return str(int(item))
     return str(item)
@@ -52,13 +50,14 @@ def compare_badges(obj_ids, item_type, badge, ff_keys):
     return needs_badge, remove_badge, badge_ok
 
 
-def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys):
+def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys, ignore_details=False):
     '''
     Compares items that should have a given badge to items that do have the given badge.
     Also compares badge messages to see if the message is the right one or needs to be updated.
     Input (first argument) should be a dictionary of item's @id and the badge message it should have.
+    ignore_details argument can be used to check only the first part of each message.
     '''
-    search_url = 'search/?type={}&badges.badge.@id=/badges/{}/'.format(item_type, badge)
+    search_url = f'search/?type={item_type}&badges.badge.@id=/badges/{badge}/'
     has_badge = ff_utils.search_metadata(search_url + '&frame=object', key=ff_keys)
     needs_badge = {}
     badge_edit = {}
@@ -69,7 +68,12 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys):
             # handle differences in badge messages
             for a_badge in item['badges']:
                 if a_badge['badge'].endswith(badge + '/'):
-                    if a_badge.get('messages') == obj_id_dict[item['@id']]:
+                    if ignore_details:
+                        a_badge['messages'] = [a_message.split(":")[0] for a_message in a_badge.get('messages', []) if a_message]
+                        messages_for_comparison = [a_message.split(":")[0] for a_message in obj_id_dict[item['@id']] if a_message]
+                    else:
+                        messages_for_comparison = obj_id_dict[item['@id']]
+                    if a_badge.get('messages') == messages_for_comparison:
                         badge_ok.append(item['@id'])
                     else:
                         if a_badge.get('message'):
@@ -514,25 +518,35 @@ def patch_badges_for_raw_files(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(ignore_details=False)
 def consistent_replicate_info(connection, **kwargs):
-    '''
+    """
     Check for replicate experiment sets that have discrepancies in metadata between
     replicate experiments.
 
     Action patches badges with a message detailing which fields have the inconsistencies
     and what the inconsistent values are.
-    '''
+
+    ignore_details argument (default: False) can be used for faster check runs, comparing
+    only part of the message (field name, but not values). This will reduce the number of
+    get_metadata requests. This argument is set False right now (Nov 2022), as the check
+    runs fine, but it could be changed in the future if a lighter check is needed.
+    """
     check = CheckResult(connection, 'consistent_replicate_info')
 
-    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id&field=uuid&field=status&field=lab.display_title'
-    exp_url = 'search/?type=Experiment&frame=object'
-    bio_url = 'search/?type=Experiment&field=biosample'
+    repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id' + ''.join(
+        ['&field=' + field for field in ['uuid', 'status', 'lab.display_title']])
+    exps_url = 'search/?type=Experiment&frame=object'
+    exps_bio_url = 'search/?type=Experiment&field=biosample'
+    exps_path_url = 'search/?type=ExperimentMic&field=imaging_paths.channel' + ''.join(
+        ['&field=imaging_paths.path.' + field for field in ['display_title', 'imaging_rounds']])
     repsets = [item for item in ff_utils.search_metadata(repset_url, key=connection.ff_keys) if item.get('experiments_in_set')]
-    exps = ff_utils.search_metadata(exp_url, key=connection.ff_keys)
-    biosamples = ff_utils.search_metadata(bio_url, key=connection.ff_keys)
+    exps = ff_utils.search_metadata(exps_url, key=connection.ff_keys)
+    exps_w_biosamples = ff_utils.search_metadata(exps_bio_url, key=connection.ff_keys)
+    exps_w_paths = ff_utils.search_metadata(exps_path_url, key=connection.ff_keys)
     exp_keys = {exp['@id']: exp for exp in exps}
-    bio_keys = {bs['@id']: bs['biosample'] for bs in biosamples}
+    bio_keys = {exp['@id']: exp['biosample'] for exp in exps_w_biosamples}
+    pth_keys = {exp['@id']: exp['imaging_paths'] for exp in exps_w_paths}
     fields2check = [
         'lab',
         'award',
@@ -558,64 +572,147 @@ def consistent_replicate_info(connection, **kwargs):
         'fragmentation_method',
         'fragment_size_selection_method',
         'rna_tag',
-        'target_regions',
+        'targeted_regions',
+        'targeted_factor',
         'dna_label',
         'labeling_time',
         'antibody',
         'antibody_lot_id',
         'microscopy_technique',
-        'imaging_paths',
     ]
     check.brief_output = {REV_KEY: {}, RELEASED_KEY: {
         'Add badge': {}, 'Remove badge': {}, 'Keep badge and edit messages': {}
     }}
     compare = {}
     results = {}
+
+    def _get_unique_values(input_list):
+        """Given a list of any type of items (including non-hashable ones),
+        return a list of unique items"""
+        values_list = []
+        for value in input_list:
+            if value not in values_list:
+                values_list.append(value)
+        return values_list
+
     for repset in repsets:
         info_dict = {}
         exp_list = [item['@id'] for item in repset['experiments_in_set']]
+
+        # check Experiment fields
         for field in fields2check:
-            vals = [stringify(exp_keys[exp].get(field)) for exp in exp_list]
-            if field == 'average_fragment_size' and 'None' not in vals:
+            vals = _get_unique_values([exp_keys[exp_id].get(field) for exp_id in exp_list])
+            # allow small deviations in average fragment size
+            if field == 'average_fragment_size' and None not in vals:
                 int_vals = [int(val) for val in vals]
                 if (max(int_vals) - min(int_vals))/(sum(int_vals)/len(int_vals)) < 0.25:
                     continue
-            if len(set(vals)) > 1:
+            # all replicates should have the same value, otherwise this is an inconsistency
+            if len(vals) > 1:
                 info_dict[field] = vals
+
+        # check some Biosample fields
         for bfield in ['treatments_summary', 'modifications_summary']:
-            bvals = [stringify(bio_keys[exp].get(bfield)) for exp in exp_list]
-            if len(set(bvals)) > 1:
+            bvals = list(set([bio_keys[exp_id].get(bfield) for exp_id in exp_list]))
+            if len(bvals) > 1:
                 info_dict[bfield] = bvals
-        biosource_vals = [stringify([item['@id'] for item in bio_keys[exp].get('biosource')]) for exp in exp_list]
-        if len(set(biosource_vals)) > 1:
+
+        # check imaging paths (if an experiment has any)
+        if 'imaging_paths' in exp_keys[exp_list[0]]:
+            # NOTE: this compares path display_title and not path @id
+            img_path_configurations = _get_unique_values([pth_keys[exp_id] for exp_id in exp_list])
+            if len(img_path_configurations) > 1:
+                length_vals = list(set([len(conf) for conf in img_path_configurations]))
+                if len(length_vals) > 1:
+                    info_dict['imaging_paths'] = 'different number of imaging paths'
+                else:
+                    # same length, compare fields 'channel', 'path.display_title', 'path.imaging_rounds'
+                    for i in range(length_vals[0]):
+                        # compare all paths in the same position i
+                        paths_i = [conf[i] for conf in img_path_configurations]
+                        channel_vals = list(set([p['channel'] for p in paths_i]))
+                        if len(channel_vals) > 1:
+                            info_dict[f'imaging_paths {i} channel'] = channel_vals
+                        title_vals = list(set([p['path']['display_title'] for p in paths_i]))
+                        if len(title_vals) > 1:
+                            info_dict[f'imaging_paths {i} path'] = title_vals
+                        round_vals = list(set([p['path']['imaging_rounds'] for p in paths_i]))
+                        if len(round_vals) > 1:
+                            info_dict[f'imaging_paths {i} imaging_rounds'] = round_vals
+
+        # check some biosource fields
+        biosource_vals = _get_unique_values(
+            [[biosource['@id'] for biosource in bio_keys[exp_id]['biosource']] for exp_id in exp_list])
+        if len(biosource_vals) > 1:
             info_dict['biosource'] = biosource_vals
-        if [True for exp in exp_list if bio_keys[exp].get('cell_culture_details')]:
-            for ccfield in ['synchronization_stage', 'differentiation_stage', 'follows_sop']:
-                ccvals = [stringify([item['@id'] for item in bio_keys[exp].get('cell_culture_details').get(ccfield)]) for exp in exp_list]
-                if len(set(ccvals)) > 1:
+
+        # check cell_culture_details
+        all_cc_details = [bio_keys[exp_id].get('cell_culture_details') for exp_id in exp_list]
+        if all(all_cc_details):
+            for ccfield in ['synchronization_stage', 'differentiation_state', 'follows_sop']:
+                ccvals = [[bcc.get(ccfield) for bcc in cc_details] for cc_details in all_cc_details]
+                ccvals = _get_unique_values(ccvals)
+                if len(ccvals) > 1:
                     info_dict[ccfield] = ccvals
-        if [True for exp in exp_list if bio_keys[exp].get('biosample_protocols')]:
-            bp_vals = [stringify([item['@id'] for item in bio_keys[exp].get('biosample_protocols', [])]) for exp in exp_list]
-            if len(set(bp_vals)) > 1:
+        elif any(all_cc_details):
+            info_dict['cell_culture_details'] = 'some are missing'
+
+        # check biosample_protocols
+        all_bs_prot = [bio_keys[exp_id].get('biosample_protocols') for exp_id in exp_list]
+        if all(all_bs_prot):
+            bp_vals = _get_unique_values([[protocol['@id'] for protocol in bs_prot] for bs_prot in all_bs_prot])
+            if len(bp_vals) > 1:
                 info_dict['biosample_protocols'] = bp_vals
+        elif any(all_bs_prot):
+            info_dict['biosample_protocols'] = 'some are missing'
+
+        # now generate a message from the info_dict
         if info_dict:
-            info = sorted(['{}: {}'.format(k, stringify(v)) for k, v in info_dict.items()])
-            #msg = 'Inconsistent replicate information in field(s) - ' + '; '.join(info)
-            msgs = ['Inconsistent replicate information in ' + item for item in info]
-            text = '{} - inconsistency in {}'.format(repset['@id'][-13:-1], ', '.join(list(info_dict.keys())))
+            msgs = [f"Inconsistent replicate information in {field}: {stringify(values)}" for field, values in info_dict.items()]
+            text = f"{repset['@id'][-13:-1]} - inconsistency in {', '.join(list(info_dict.keys()))}"
             lab = repset['lab']['display_title']
             audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
             results[repset['@id']] = {'status': audit_key, 'lab': lab, 'info': text}
             if audit_key == REV_KEY:
-                if lab not in check.brief_output[audit_key]:
-                    check.brief_output[audit_key][lab] = []
-                check.brief_output[audit_key][lab].append(text)
+                check.brief_output[audit_key][lab] = check.brief_output[audit_key].setdefault(lab, []).append(text)
             if repset['status'] not in REV:
                 compare[repset['@id']] = msgs
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
-        compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys
+        compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys, kwargs['ignore_details']
     )
+
+    # do the @id replacement
+    def replace_messages_content(messages, connection):
+        """ replace any occurrence of @id with its display_title """
+
+        # an approximate way to check for @id: start and end with "/", and with one more "/" in between
+        at_id_pattern = r"(/[^/]+/[^/]+/)"
+
+        def _get_db_item(matchobj):
+            at_id = matchobj.group(0)
+            if at_id is not None:
+                item = ff_utils.get_metadata(at_id, key=connection.ff_keys, add_on='frame=object')
+                return item.get('display_title', item['@id'])
+            else:
+                return matchobj
+
+        new_messages = []
+        for message in messages:
+            mes_key, mes_val = message.split(": ", 1)
+            mes_val_new = re.sub(at_id_pattern, _get_db_item, mes_val)
+            new_messages.append(mes_key + ": " + mes_val_new)
+        return new_messages
+
+    if to_add:
+        for messages in to_add.values():
+            messages = replace_messages_content(messages, connection)
+    if to_edit:
+        for badges in to_edit.values():
+            for a_badge in badges:
+                if a_badge['badge'].endswith('inconsistent-replicate-info/'):
+                    a_badge['messages'] = replace_messages_content(a_badge['messages'], connection)
+
     key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
     for result in results.keys():
         for k, v in key_dict.items():

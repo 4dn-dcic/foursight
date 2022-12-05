@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from dcicutils import ff_utils
-from dcicutils import s3Utils
+from dcicutils.s3_utils import s3Utils
 from .helpers import wfr_utils
 from .helpers import wfrset_utils
 
@@ -1254,6 +1254,61 @@ def plac_seq_start(connection, **kwargs):
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
+@check_function(lab_title=None, start_date=None)
+def hichip_status(connection, **kwargs):
+    """
+    Keyword arguments:
+    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    run_time -- assume runs beyond run_time are dead
+    """
+    start = datetime.utcnow()
+    check = CheckResult(connection, 'hichip_status')
+    my_auth = connection.ff_keys
+    check.action = "hichip_start"
+    check.description = "run missing steps and add processing results to processed files, match set status"
+    check.brief_output = []
+    check.summary = ""
+    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+                         'completed_runs': [], 'problematic_runs': []}
+    check.status = 'PASS'
+    exp_type = 'HiChIP'
+    # completion tag
+    tag = wfr_utils.accepted_versions[exp_type][-1]
+    # check indexing queue
+    check, skip = wfr_utils.check_indexing(check, connection)
+    if skip:
+        return check
+    # Build the query, add date and lab if available
+    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+
+    # The search
+    res = ff_utils.search_metadata(query, key=my_auth)
+    if not res:
+        check.summary = 'All Good!'
+        return check
+    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=True)
+    return check
+
+
+@action_function(start_runs=True, patch_completed=True)
+def hichip_start(connection, **kwargs):
+    """Start runs by sending compiled input_json to run_workflow endpoint"""
+    start = datetime.utcnow()
+    action = ActionResult(connection, 'hichip_start')
+    my_auth = connection.ff_keys
+    my_env = connection.ff_env
+    fs_env = connection.fs_env
+    hic_check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+    missing_runs = []
+    patch_meta = []
+    if kwargs.get('start_runs'):
+        missing_runs = hic_check_result.get('needs_runs')
+    if kwargs.get('patch_completed'):
+        patch_meta = hic_check_result.get('completed_runs')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
+    return action
+
 
 @check_function(lab_title=None, start_date=None)
 def repli_2_stage_status(connection, **kwargs):
@@ -2248,7 +2303,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
     check.full_output = {'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C', 'DNase Hi-C']
     feature = 'insulation_scores_and_boundaries'
     # minimum number of reads in the mcool file (100M)
     reads_cutoff = 100000000
@@ -2290,7 +2345,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
                 re_enz_size = wfr_utils.re_nz_sizes.get(enz)
                 if not re_enz_size:
-                    if enz == "MNase":  # Treat MNase as a 4-cutter enzyme to determine binsize
+                    if enz in ["MNase", "DNaseI"]:  # Treat MNase and DNaseI as 4-cutter enzymes to determine binsize
                         re_enz_size = "4"
                     else:
                         check.full_output['problematic_runs'].append({a_res['accession']: ['%s missing enz site length' % (enz)]})
@@ -2470,7 +2525,7 @@ def long_running_wfrs_fdn_start(connection, **kwargs):
     return action
 
 
-@check_function(delete_categories='Rerun', limit_to_uuids="")
+@check_function(delete_categories='Rerun', limit_to_uuids="", days_back='30')
 def problematic_wfrs_fdn_status(connection, **kwargs):
     """
     Find all runs with run status error. Action will cleanup their metadata, and this action might
@@ -2480,6 +2535,7 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
                         which categories to delete with action, by default Rerun is deleted
      - limit_to_uuids: comma separated uuids to be returned to be deleted, to be used when a subset of runs needs cleanup
                        should also work if a list item is provided as input
+     - days_back: (string) limit the search to recently created wfrs, up to n days ago. If 0, search all wfrs.
     """
     check = CheckResult(connection, 'problematic_wfrs_fdn_status')
     my_auth = connection.ff_keys
@@ -2492,6 +2548,16 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
     check.allow_action = False
     # find all errored runs
     q = '/search/?type=WorkflowRun&run_status=error'
+    if kwargs.get('days_back'):
+        try:
+            days_back = int(kwargs['days_back'])
+            if days_back != 0:
+                from_date = datetime.strftime(datetime.utcnow() - timedelta(days=days_back), "%Y-%m-%d")
+                q += '&date_created.from=' + from_date
+        except (ValueError, TypeError):
+            # if any other value (e.g. a string) is provided, search all wfrs
+            pass
+
     errored_wfrs = ff_utils.search_metadata(q, my_auth)
     # if a comma separated list of uuids is given, limit the result to them
     uuids = str(kwargs.get('limit_to_uuids'))
@@ -2619,7 +2685,7 @@ def compartments_caller_status(connection, **kwargs):
     check.full_output = {'running_runs': [], 'needs_runs': [],
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
-    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C']
+    exp_types = ['in situ Hi-C', 'Dilution Hi-C', 'Micro-C', 'DNase Hi-C']
     feature = 'compartments'
     contact_type = 'cis'
     binsize = 250000

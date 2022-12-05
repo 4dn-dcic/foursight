@@ -97,12 +97,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -126,14 +120,17 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "capture_hic_status": {
         "title": "d) Capture Hi-C",
@@ -155,7 +152,7 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks_4": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -174,15 +171,12 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "mastertest": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
-        }
+        },
+        "display": [
+            "mastertest"
+        ]
     },
     "check_bio_feature_organism_name": {
         "title": "BioFeatures with missing or mismatched organism_name",
@@ -534,14 +528,17 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "check_search_urls": {
         "title": "Static Section search URLs check",
@@ -562,14 +559,17 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_2": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "check_suggested_enum_values": {
         "title": "Check fields with suggested enum",
@@ -590,14 +590,17 @@
         "group": "Audit checks",
         "schedule": {
             "morning_checks_3": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "chia_pet_status": {
         "title": "d) ChIA-PET",
@@ -694,40 +697,17 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
-    },
-    "deploy_application_to_beanstalk": {
-        "title": "Deploy Version to ElasticBeanstalk",
-        "group": "Deployment Checks",
-        "schedule": {
-            "manual_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "deploy_ff_staging": {
-        "title": "Deploy Fourfront master to staging.4dnucleome.org",
-        "group": "Deployment Checks",
-        "schedule": {
-            "deployment_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "dilution_hic_status": {
         "title": "d) Dilution Hi-C",
@@ -806,14 +786,17 @@
         "group": "Badge checks",
         "schedule": {
             "morning_checks_2": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "expset_opf_unique_files": {
         "title": "Experiment Sets with other processed files also present in files",
@@ -834,7 +817,7 @@
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "data": {
                     "dependencies": [
                         "expset_opfsets_unique_titles"
                     ],
@@ -843,35 +826,44 @@
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "expset_opfsets_unique_titles": {
         "title": "Experiment Sets with missing or duplicated titles for sets of other processed files",
         "group": "Audit checks",
         "schedule": {
             "thirty_min_checks": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "external_expsets_without_pub": {
         "title": "External experiment sets without a publication",
         "group": "Audit checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "external_submission_but_missing_dbxrefs": {
         "title": "Items with external_submission but missing dbxrefs",
@@ -972,14 +964,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [
-                        "yellow_flag_biosamples"
-                    ],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1050,19 +1034,6 @@
             }
         }
     },
-    "indexer_server_status": {
-        "title": "Indexer Server Status",
-        "group": "Deployment Checks",
-        "schedule": {
-            "manual_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
     "indexing_progress": {
         "title": "Indexing progress",
         "conditions": [
@@ -1071,7 +1042,15 @@
         "group": "Elasticsearch checks",
         "schedule": {
             "hourly_checks_1": {
-                "all": {
+                "data": {
+                    "dependencies": [
+                        "item_counts_by_type"
+                    ],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
                     "dependencies": [
                         "item_counts_by_type"
                     ],
@@ -1119,7 +1098,13 @@
         "group": "Metadata checks",
         "schedule": {
             "hourly_checks_1": {
-                "all": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1244,12 +1229,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1312,6 +1291,21 @@
             }
         }
     },
+    "hichip_status": {
+        "title": "d) Hi-ChIP",
+        "group": "Pipeline checks",
+        "schedule": {
+            "hourly_checks_2": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true,
+                        "queue_action": "prod"
+                    }
+                }
+            }
+        }
+    },
     "prepare_static_headers": {
         "title": "Prepare static headers",
         "group": "Static headers checks",
@@ -1324,12 +1318,6 @@
                   }
               },
               "hotseat": {
-                  "dependencies": [],
-                  "kwargs": {
-                      "primary": true
-                  }
-              },
-              "staging": {
                   "dependencies": [],
                   "kwargs": {
                       "primary": true
@@ -1354,12 +1342,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1376,12 +1358,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1406,12 +1382,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1428,12 +1398,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1458,12 +1422,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1473,7 +1431,7 @@
         "group": "Static headers checks",
         "schedule": {
             "morning_checks_1": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1498,12 +1456,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1520,12 +1472,6 @@
                     }
                 },
                 "hotseat": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                },
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1550,12 +1496,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1568,19 +1508,6 @@
                 "data": {
                     "kwargs": {"primary": true},
                     "dependencies": []
-                }
-            }
-        }
-    },
-    "provision_indexer_environment": {
-        "title": "Provision Indexer Environment",
-        "group": "Deployment Checks",
-        "schedule": {
-            "manual_checks": {
-                "data": {
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1646,16 +1573,19 @@
     "repsets_have_bio_reps": {
         "title": "Replicate experiment sets with replicate number issues",
         "group": "Badge checks",
-          "schedule": {
+        "schedule": {
             "morning_checks_3": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "rna_seq_status": {
         "title": "i) RNA-seq",
@@ -1719,20 +1649,6 @@
                     }
                 },
                 "webdev": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        }
-    },
-    "staging_deployment": {
-        "title": "Staging deployment",
-        "group": "System checks",
-        "schedule": {
-            "manual_checks": {
-                "staging": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
@@ -1864,14 +1780,17 @@
         "group": "Metadata checks",
         "schedule": {
             "morning_checks_4": {
-                "all": {
+                "data": {
                     "dependencies": [],
                     "kwargs": {
                         "primary": true
                     }
                 }
             }
-        }
+        },
+        "display": [
+            "all"
+        ]
     },
     "wipe_ff_build_indices": {
         "title": "Wipe FF build indices",
@@ -1930,12 +1849,6 @@
                     "kwargs": {
                         "primary": true
                     }
-                },
-                "staging": {
-                    "dependencies": [],
-                    "kwargs": {
-                        "primary": true
-                    }
                 }
             }
         }
@@ -1953,34 +1866,6 @@
                 }
             }
         }
-    },
-    "scale_down_elasticsearch_production": {
-        "title": "Scale down production ElasticSearch Cluster",
-        "group": "System checks",
-        "schedule": {
-            "friday_autoscaling_checks": {
-                "staging": {
-                    "kwargs": {
-                        "primary": true
-                    }
-                }
-            }
-        },
-        "display": ["data", "staging"]
-    },
-    "scale_up_elasticsearch_production": {
-        "title": "Scale up production ElasticSearch Cluster",
-        "group": "System checks",
-        "schedule": {
-            "monday_autoscaling_checks": {
-                "staging": {
-                    "kwargs" : {
-                        "primary": true
-                    }
-                }
-            }
-        },
-        "display": ["data", "staging"]
     },
     "mcoolqc_status": {
         "title": "b) McoolQC",

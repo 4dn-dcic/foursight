@@ -1,8 +1,9 @@
 import json
 import time
 import random
-from dcicutils import ff_utils, s3Utils
-from dcicutils.env_utils import FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER
+from dcicutils import ff_utils
+from dcicutils.s3_utils import s3Utils
+from dcicutils.env_utils_legacy import FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER
 from datetime import datetime, timezone, timedelta
 from operator import itemgetter
 from tibanna_4dn.core import API
@@ -177,6 +178,8 @@ accepted_versions = {
     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
     # Preliminary - Released to network  # NO-NORM
     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    # Preliminary - Released to network  # NO-NORM
+    'HiChIP': ["HiC_Pipeline_0.2.7"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
     # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
@@ -205,7 +208,6 @@ accepted_versions = {
     'sci-Hi-C': [''],
     'MC-3C': [''],
     'MC-Hi-C': [''],
-    'Hi-ChIP': [''],
     'DamID-seq': [''],
     'DNA SPRITE': [''],
     'RNA-DNA SPRITE': [''],
