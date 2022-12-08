@@ -676,7 +676,7 @@ def sync_google_analytics_data(connection, **kwargs):
         return check
 
     recent_passing_run = False
-    recent_runs = check.get_result_history(0, 20, after_date=datetime.datetime.now() - datetime.timedelta(hours=3))
+    recent_runs, total_unused = check.get_result_history(0, 20, after_date=datetime.datetime.now() - datetime.timedelta(hours=3))
     for run in recent_runs:
         # recent_runs is a list of lists. [status, None, kwargdict]
         # Status is at index 0.

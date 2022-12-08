@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+
+3.2.0
+=====
+* Changes related to support for running actions in Foursight React.
+
 3.1.1
 =====
 

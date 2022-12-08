@@ -151,11 +151,11 @@ event-file-poller = ["watchdog (==0.9.0)"]
 
 [[package]]
 name = "charset-normalizer"
-version = "2.0.12"
+version = "2.1.1"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 category = "main"
 optional = false
-python-versions = ">=3.5.0"
+python-versions = ">=3.6.0"
 
 [package.extras]
 unicode-backport = ["unicodedata2"]
@@ -301,7 +301,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "3.1.1"
+version = "3.1.3.1b1"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -310,7 +310,7 @@ python-versions = ">=3.7,<3.10"
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
-dcicutils = ">=6.0.0,<7.0.0"
+dcicutils = ">=6.1.0,<7.0.0"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -862,21 +862,21 @@ setuptools = ">=41.0"
 
 [[package]]
 name = "requests"
-version = "2.27.1"
+version = "2.28.1"
 description = "Python HTTP for Humans."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
+python-versions = ">=3.7, <4"
 
 [package.dependencies]
 certifi = ">=2017.4.17"
-charset-normalizer = {version = ">=2.0.0,<2.1.0", markers = "python_version >= \"3\""}
-idna = {version = ">=2.5,<4", markers = "python_version >= \"3\""}
+charset-normalizer = ">=2,<3"
+idna = ">=2.5,<4"
 urllib3 = ">=1.21.1,<1.27"
 
 [package.extras]
-socks = ["PySocks (>=1.5.6,!=1.5.7)", "win-inet-pton"]
-use-chardet-on-py3 = ["chardet (>=3.0.2,<5)"]
+socks = ["PySocks (>=1.5.6,!=1.5.7)"]
+use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "requests-oauthlib"
@@ -985,35 +985,31 @@ tests = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest (>=3.3.0)", "pyth
 
 [[package]]
 name = "tibanna"
-version = "2.2.6"
+version = "1.9.2"
 description = "Tibanna runs portable pipelines (in CWL/WDL) on the AWS Cloud."
 category = "main"
 optional = false
-python-versions = ">=3.7,<3.9"
+python-versions = "*"
 
 [package.dependencies]
-Benchmark-4dn = ">=0.5.8,<0.6.0"
-boto3 = ">=1.9.0,<2.0.0"
-botocore = ">=1.12.1,<2.0.0"
+Benchmark-4dn = ">=0.5.8"
+boto3 = ">=1.9.0"
+botocore = ">=1.12.1"
 python-lambda-4dn = "0.12.3"
-requests = "2.27.1"
-tomlkit = ">=0.11.0,<0.12.0"
+requests = ">=2.22.0"
+urllib3 = ">=1.24"
 
 [[package]]
 name = "tibanna-ff"
-version = "1.2.3"
+version = "1.0.0"
 description = "Tibanna runs portable pipelines (in CWL/WDL) on the AWS Cloud."
 category = "main"
 optional = false
-python-versions = ">=3.7,<3.9"
+python-versions = "*"
 
 [package.dependencies]
-boto3 = ">=1.9.0,<2.0.0"
-botocore = ">=1.12.1,<2.0.0"
-dcicutils = ">=6.0.0,<7.0.0"
-requests = "2.27.1"
-tibanna = ">=2.2.6,<3.0.0"
-tomlkit = ">=0.11.0,<0.12.0"
+dcicutils = ">=3.5.0"
+tibanna = ">=1.9.0.0b22"
 
 [[package]]
 name = "toml"
@@ -1022,14 +1018,6 @@ description = "Python Library for Tom's Obvious, Minimal Language"
 category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-
-[[package]]
-name = "tomlkit"
-version = "0.11.6"
-description = "Style preserving TOML library"
-category = "main"
-optional = false
-python-versions = ">=3.6"
 
 [[package]]
 name = "typing-extensions"
@@ -1148,8 +1136,8 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.7.1,<3.9"
-content-hash = "6c87e36cf47629400163e357abfd20a4cdf40c886a627d3183088e97a393c93d"
+python-versions = ">=3.7.1,<3.10"
+content-hash = "d014404b5139d602485665f66288d87c627d62b4a7e5fe2760e7e2ec82f000d6"
 
 [metadata.files]
 ansicon = [
@@ -1199,8 +1187,8 @@ chalice = [
     {file = "chalice-1.27.3.tar.gz", hash = "sha256:58ccf0ada3727de1b93fd1d5c6e9e17d92a3e929ff37cb14cfaa6fc9e729c92e"},
 ]
 charset-normalizer = [
-    {file = "charset-normalizer-2.0.12.tar.gz", hash = "sha256:2857e29ff0d34db842cd7ca3230549d1a697f96ee6d3fb071cfa6c7393832597"},
-    {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
+    {file = "charset-normalizer-2.1.1.tar.gz", hash = "sha256:5a3d016c7c547f69d6f81fb0db9449ce888b418b5b9952cc5e6e66843e9dd845"},
+    {file = "charset_normalizer-2.1.1-py3-none-any.whl", hash = "sha256:83e9a75d1911279afd89352c68b45348559d1fc0506b054b346651b5e7fee29f"},
 ]
 click = [
     {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
@@ -1294,8 +1282,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight_core-3.1.1-py3-none-any.whl", hash = "sha256:02dd88417a3b3d6515c56766f024cb57587eebfb8fa27dcced33b88a4ff970e9"},
-    {file = "foursight_core-3.1.1.tar.gz", hash = "sha256:4b75cadb55314941aa50d39f682dd66c6bd674ac96d79119c38cdfb1eb021f55"},
+    {file = "foursight_core-3.1.3.1b1-py3-none-any.whl", hash = "sha256:a99e43cba1ccadf9a65e02a45c17af414335ef65ea1195356d77679c94899828"},
+    {file = "foursight_core-3.1.3.1b1.tar.gz", hash = "sha256:cc73b8efbfcda39ba1d0d49315f720787db53c391f19718246c46d6a0839c854"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1628,8 +1616,8 @@ readchar = [
     {file = "readchar-4.0.3.tar.gz", hash = "sha256:1d920d0e9ab76ec5d42192a68d15af2562663b5dfbf4a67cf9eba520e1ca57e6"},
 ]
 requests = [
-    {file = "requests-2.27.1-py2.py3-none-any.whl", hash = "sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d"},
-    {file = "requests-2.27.1.tar.gz", hash = "sha256:68d7c56fd5a8999887728ef304a6d12edc7be74f1cfa47714fc8b414525c9a61"},
+    {file = "requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"},
+    {file = "requests-2.28.1.tar.gz", hash = "sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983"},
 ]
 requests-oauthlib = [
     {file = "requests-oauthlib-1.3.1.tar.gz", hash = "sha256:75beac4a47881eeb94d5ea5d6ad31ef88856affe2332b9aafb52c6452ccf0d7a"},
@@ -1668,20 +1656,16 @@ structlog = [
     {file = "structlog-19.2.0.tar.gz", hash = "sha256:4287058cf4ce1a59bc5dea290d6386d37f29a37529c9a51cdf7387e51710152b"},
 ]
 tibanna = [
-    {file = "tibanna-2.2.6-py3-none-any.whl", hash = "sha256:1ef6c8e59e23d9eec3c798b483e628b5819d923dbc792fc4267aa2ebc2d8fcf9"},
-    {file = "tibanna-2.2.6.tar.gz", hash = "sha256:12a08b30c90b6f258c3e7715c113a6eee0b2a0495b88125ba1be7032994fa691"},
+    {file = "tibanna-1.9.2-py3-none-any.whl", hash = "sha256:4c2ac3f16ecc27d4dcdd2668c2057ac364262f933d3625438a4ef9f81e92dfeb"},
+    {file = "tibanna-1.9.2.tar.gz", hash = "sha256:b31f9a4ffc007a50e2d714b163a12d31b0f626df097ea8f68471a5b55badc38b"},
 ]
 tibanna-ff = [
-    {file = "tibanna_ff-1.2.3-py3-none-any.whl", hash = "sha256:9772aee45dea3c1420fec8639160c793fcba333f5d011a08f6e0ade1fdbbe83d"},
-    {file = "tibanna_ff-1.2.3.tar.gz", hash = "sha256:0a9184b78b2142970dfde57fd7bc6def06a874b9cd1e616052141a4822b6e1e0"},
+    {file = "tibanna_ff-1.0.0-py3-none-any.whl", hash = "sha256:4dbd0ae7ac0afb39ecf00eaabdbb47ec1e66ea39d2197eab38fe6779a38d55f7"},
+    {file = "tibanna_ff-1.0.0.tar.gz", hash = "sha256:b74cb2eed252cf9c09430c789e714d182bdc44f769e396cbaadc7398882a7e76"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
     {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
-]
-tomlkit = [
-    {file = "tomlkit-0.11.6-py3-none-any.whl", hash = "sha256:07de26b0d8cfc18f871aec595fda24d95b08fef89d147caa861939f37230bf4b"},
-    {file = "tomlkit-0.11.6.tar.gz", hash = "sha256:71b952e5721688937fb02cf9d354dbcf0785066149d2855e44531ebdd2b65d73"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.4.0-py3-none-any.whl", hash = "sha256:16fa4864408f655d35ec496218b85f79b3437c829e93320c7c9215ccfd92489e"},

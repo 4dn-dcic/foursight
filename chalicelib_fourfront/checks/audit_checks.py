@@ -802,7 +802,7 @@ def _get_all_other_processed_files(item):
     return toignore
 
 
-@check_function()
+@check_function(action="patch_bio_feature_organism_name")
 def check_bio_feature_organism_name(connection, **kwargs):
     '''
     Attempts to identify an organism to add to the organism_name field in BioFeature items
@@ -1000,7 +1000,7 @@ def check_fastq_read_id(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(action="restrict_files")
 def released_protected_data_files(connection, **kwargs):
     '''
     Check if fastq or bam files from IndividualHuman with protected_data=True
@@ -1044,7 +1044,7 @@ def released_protected_data_files(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(action="restrict_files")
 def released_output_from_restricted_input(connection, **kwargs):
     '''
     Check if fastq or bam files produced by workflows with restricted input

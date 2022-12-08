@@ -88,7 +88,7 @@ def md5run_extra_file_start(connection, **kwargs):
     return action
 
 
-@check_function(file_type='File', lab_title=None, start_date=None)
+@check_function(file_type='File', lab_title=None, start_date=None, action="md5run_start")
 def md5run_status(connection, **kwargs):
     """Searches for files that are uploaded to s3, but not went though md5 run.
     This check makes certain assumptions
@@ -210,7 +210,7 @@ def md5run_status(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(action="md5run_start")
 def md5run_uploaded_files(connection, **kwargs):
     """
     Search for Files with status uploaded (and higher) that do not have md5sum.
@@ -297,7 +297,7 @@ def md5run_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="fastqc_start")
 def fastqc_status(connection, **kwargs):
     """Searches for fastq files that don't have fastqc
     Keyword arguments:
@@ -380,7 +380,7 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="pairsqc_start")
 def pairsqc_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have pairsqc
     Keyword arguments:
@@ -477,7 +477,7 @@ def pairsqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="bg2bw_start")
 def bg2bw_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have bg2bw
     Keyword arguments:
@@ -577,7 +577,7 @@ def bg2bw_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="bed2beddb_start")
 def bed2beddb_status(connection, **kwargs):
     """Searches for small bed files uploaded by user in certain types
     Keyword arguments:
@@ -693,7 +693,7 @@ def bed2beddb_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="in_situ_hic_start")
 def in_situ_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -749,7 +749,7 @@ def in_situ_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="dilution_hic_start")
 def dilution_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -807,7 +807,7 @@ def dilution_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="tcc_start")
 def tcc_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -863,7 +863,7 @@ def tcc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="dnase_hic_start")
 def dnase_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -919,7 +919,7 @@ def dnase_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="capture_hic_start")
 def capture_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -975,7 +975,7 @@ def capture_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="micro_c_start")
 def micro_c_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1031,7 +1031,7 @@ def micro_c_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="chia_pet_start")
 def chia_pet_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1087,7 +1087,7 @@ def chia_pet_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="in_situ_chia_pet_start")
 def in_situ_chia_pet_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1143,7 +1143,7 @@ def in_situ_chia_pet_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="trac_loop_start")
 def trac_loop_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1199,7 +1199,7 @@ def trac_loop_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="plac_seq_start")
 def plac_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1254,7 +1254,7 @@ def plac_seq_start(connection, **kwargs):
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="hichip_start")
 def hichip_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1310,7 +1310,7 @@ def hichip_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="repli_2_stage_start")
 def repli_2_stage_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1364,7 +1364,7 @@ def repli_2_stage_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="repli_multi_stage_start")
 def repli_multi_stage_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1418,7 +1418,7 @@ def repli_multi_stage_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="tsa_seq_start")
 def tsa_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1473,7 +1473,7 @@ def tsa_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="nad_seq_start")
 def nad_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1527,7 +1527,7 @@ def nad_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="atac_seq_start")
 def atac_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1572,7 +1572,7 @@ def atac_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="margi_start")
 def margi_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1630,7 +1630,7 @@ def margi_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="bed2multivec_start")
 def bed2multivec_status(connection, **kwargs):
     """Searches for bed files states types that don't have bed2multivec
     Keyword arguments:
@@ -1767,7 +1767,7 @@ def bed2multivec_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="rna_strandedness_start")
 def rna_strandedness_status(connection, **kwargs):
     """Searches for fastq files from RNA-seq that don't have beta_actin_count fields
     Keyword arguments:
@@ -1895,7 +1895,7 @@ def rna_strandedness_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, query='')
+@check_function(lab_title=None, start_date=None, query='', action="rna_seq_start")
 def rna_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1956,7 +1956,7 @@ def rna_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="bamqc_start")
 def bamqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
@@ -2044,7 +2044,7 @@ def bamqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="fastq_first_line_start")
 def fastq_first_line_status(connection, **kwargs):
     print('Entering the check function')
     """Searches for fastq files that don't have file_first_line field
@@ -2148,7 +2148,7 @@ def fastq_first_line_start(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="bam_re_start")
 def bam_re_status(connection, **kwargs):
     """Searches for fastq files that don't have bam_re
 
@@ -2290,7 +2290,7 @@ def bam_re_start(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="insulation_scores_and_boundaries_start")
 def insulation_scores_and_boundaries_status(connection, **kwargs):
     """Calls insulation scores and boundaries on mcool files produced by the Hi-C pipeline"""
 
@@ -2427,7 +2427,7 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     return action
 
 
-@check_function(limit_to_uuids="")
+@check_function(limit_to_uuids="", action="long_running_wfrs_fdn_start")
 def long_running_wfrs_fdn_status(connection, **kwargs):
     """
     Find all runs with run status running/started. Action will cleanup their metadata, and this action might
@@ -2525,7 +2525,7 @@ def long_running_wfrs_fdn_start(connection, **kwargs):
     return action
 
 
-@check_function(delete_categories='Rerun', limit_to_uuids="", days_back='30')
+@check_function(delete_categories='Rerun', limit_to_uuids="", days_back='30', action="problematic_wfrs_fdn_start")
 def problematic_wfrs_fdn_status(connection, **kwargs):
     """
     Find all runs with run status error. Action will cleanup their metadata, and this action might
@@ -2672,7 +2672,7 @@ def problematic_wfrs_fdn_start(connection, **kwargs):
     return action
 
 
-@check_function()
+@check_function(action="compartments_caller_start")
 def compartments_caller_status(connection, **kwargs):
     """Calls compartments on mcool files produced by the Hi-C pipeline"""
 
@@ -2799,7 +2799,7 @@ def compartments_caller_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None)
+@check_function(lab_title=None, start_date=None, action="mcoolqc_start")
 def mcoolqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
@@ -2889,7 +2889,7 @@ def mcoolqc_start(connection, **kwargs):
 # TEMPLATES
 
 # ##Template for qc type runs
-@check_function()
+@check_function(action="template_start")
 def template_status(connection, **kwargs):
     """Searches for fastq files that don't have template"""
     start = datetime.utcnow()
