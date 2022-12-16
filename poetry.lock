@@ -200,7 +200,7 @@ dev = ["polib"]
 
 [[package]]
 name = "dcicutils"
-version = "6.2.0"
+version = "6.3.0"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
@@ -213,6 +213,7 @@ botocore = ">=1.20.39,<2.0.0"
 docker = ">=4.4.4,<5.0.0"
 elasticsearch = "7.13.4"
 gitpython = ">=3.1.2,<4.0.0"
+opensearch-py = ">=2.0.1,<3.0.0"
 pytz = ">=2020.4"
 PyYAML = ">=5.1,<5.5"
 requests = ">=2.21.0,<3.0.0"
@@ -301,7 +302,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "3.1.3.1b25"
+version = "3.1.4.1b1"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -310,7 +311,7 @@ python-versions = ">=3.7,<3.10"
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
-dcicutils = ">=6.1.0,<7.0.0"
+dcicutils = ">=6.3.0,<7.0.0"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -623,6 +624,24 @@ python-versions = ">=3.6"
 rsa = ["cryptography (>=3.0.0)"]
 signals = ["blinker (>=1.4.0)"]
 signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
+
+[[package]]
+name = "opensearch-py"
+version = "2.0.1"
+description = "Python low-level client for OpenSearch"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4"
+
+[package.dependencies]
+certifi = "*"
+requests = ">=2.4.0,<3.0.0"
+urllib3 = ">=1.21.1,<2"
+
+[package.extras]
+async = ["aiohttp (>=3,<4)"]
+develop = ["black", "botocore", "coverage", "jinja2", "mock", "myst-parser", "pytest", "pytest-cov", "pyyaml", "requests (>=2.0.0,<3.0.0)", "sphinx", "sphinx-copybutton", "sphinx-rtd-theme"]
+docs = ["myst-parser", "sphinx", "sphinx-copybutton", "sphinx-rtd-theme"]
 
 [[package]]
 name = "packaging"
@@ -1137,7 +1156,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "25dbebed80d336a267dadd0cb1687d0377e864777221b0dbd9b97a5f94167760"
+content-hash = "7f5185dc06022058b2e5cc85cc9fb2bd5c21813f8d3125f8b81bf1bd63271340"
 
 [metadata.files]
 ansicon = [
@@ -1254,8 +1273,8 @@ cron-descriptor = [
     {file = "cron_descriptor-1.2.32.tar.gz", hash = "sha256:a8554e91483f9977c3e5fa90a3c7a06fb97472ec9b160df6fe89f3114658236d"},
 ]
 dcicutils = [
-    {file = "dcicutils-6.2.0-py3-none-any.whl", hash = "sha256:7ba964d3e62a937171f7b8a03fdc2a9022dc8923e82cb515f4a3254025fb9ceb"},
-    {file = "dcicutils-6.2.0.tar.gz", hash = "sha256:13302747e23bd5d859c718f1374d2bdac6e7b967c0d9627488782ee1b139aa2a"},
+    {file = "dcicutils-6.3.0-py3-none-any.whl", hash = "sha256:5bd7051a5c69e52190dc353e3a53839813bbeb90c655ba9c8073daaead467743"},
+    {file = "dcicutils-6.3.0.tar.gz", hash = "sha256:98ecab3179df8548e91c3bb8244efd4aaf84a787eabf26f168b9c7e46465dc4f"},
 ]
 decorator = [
     {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
@@ -1282,8 +1301,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight_core-3.1.3.1b25-py3-none-any.whl", hash = "sha256:af045c02262a281286083b428038042f93994605cdc40bc1e8266e0edfa1be09"},
-    {file = "foursight_core-3.1.3.1b25.tar.gz", hash = "sha256:4ab4024db87af893f8bbf548bd92d282288fcfb810f71836539c325e378e9d4e"},
+    {file = "foursight_core-3.1.4.1b1-py3-none-any.whl", hash = "sha256:20174a2649a920473e138b4a165443410275948b7c59d8215d81d40d9769bd52"},
+    {file = "foursight_core-3.1.4.1b1.tar.gz", hash = "sha256:f5a68b6de37427386967bd201f1d28de1daeb52888eba3f6d0d836170fa8405b"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1458,6 +1477,10 @@ oauth2client = [
 oauthlib = [
     {file = "oauthlib-3.2.2-py3-none-any.whl", hash = "sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca"},
     {file = "oauthlib-3.2.2.tar.gz", hash = "sha256:9859c40929662bec5d64f34d01c99e093149682a3f38915dc0655d5a633dd918"},
+]
+opensearch-py = [
+    {file = "opensearch-py-2.0.1.tar.gz", hash = "sha256:884be795af6a1d31e63cf45fceb51334108e4c74eac73a5df18ce9851e9c9da4"},
+    {file = "opensearch_py-2.0.1-py2.py3-none-any.whl", hash = "sha256:daa5eb2279b89bf15d63312a922bd5ab7f266d3c2737e48dec6ff862d7b1838a"},
 ]
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
