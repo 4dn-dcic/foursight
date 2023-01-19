@@ -33,6 +33,33 @@ def ecs_status(connection, **kwargs):
     return check
 
 
+@check_function(build_name=None, branch=None)
+def trigger_codebuild_run(connection, **kwargs):
+    """ This checks triggers a run of the CodeBuild pipeline
+        Usually, there is only 1 CodeBuild pipeline per account - this function
+        will work out of the box where there is only 1, and will require kwarg
+        if there are multiple.
+    """
+    check = CheckResult(connection, 'trigger_codebuild_run')
+    client = CodeBuildUtils()
+    projects = client.list_projects()
+    build_name = kwargs.get('build_name', None)
+    if len(projects) == 1:
+        resp = client.run_project_build(project_name=projects[0])
+        check.full_output = resp
+        check.status = 'PASS'
+        check.summary = f'Triggered build {projects[0]}'
+    elif build_name:
+        resp = client.run_project_build(project_name=build_name)
+        check.full_output = resp
+        check.status = 'PASS'
+        check.summary = f'Triggered build {build_name}'
+    else:
+        check.status = 'FAIL'
+        check.summary = f'Cannot resolve which build you want: {projects}'
+    return check
+
+
 @check_function(cluster_name=None)
 def update_ecs_application_versions(connection, **kwargs):
     """ This check is intended to be run AFTER the user has finished pushing
