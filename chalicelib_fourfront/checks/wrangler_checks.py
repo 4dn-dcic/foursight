@@ -1454,6 +1454,7 @@ def check_for_ontology_updates(connection, **kwargs):
         } for o in ontologies
     }
     for o in ontologies:
+        import pdb; pdb.set_trace()
         owl = None
         if o['ontology_prefix'] == 'UBERON':
             # UBERON needs different URL for version info
