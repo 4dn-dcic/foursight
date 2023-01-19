@@ -7,6 +7,9 @@ foursight
 Change Log
 ----------
 
+3.2.1
+=====
+* bug fix for check_for_ontology_updates - request more of the file header to get version info
 
 3.2.0
 =====

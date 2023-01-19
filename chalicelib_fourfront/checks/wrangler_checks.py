@@ -1456,9 +1456,8 @@ def check_for_ontology_updates(connection, **kwargs):
     for o in ontologies:
         owl = None
         if o['ontology_prefix'] == 'UBERON':
-            import pdb; pdb.set_trace()
             # UBERON needs different URL for version info
-            owl = requests.get('http://purl.obolibrary.org/obo/uberon.owl', headers={"Range": "bytes=0-5000"})
+            owl = requests.get('http://purl.obolibrary.org/obo/uberon.owl', headers={"Range": "bytes=0-10000"})
         elif o.get('download_url'):
             # instead of repos etc, check download url for ontology header to get version
             owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
