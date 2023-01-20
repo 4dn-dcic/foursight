@@ -10,7 +10,7 @@ Change Log
 3.2.1
 =====
 
-`PR 519: Bug fix ont upd check https://github.com/4dn-dcic/foursight/pull/519`_
+`PR 519: Bug fix ont upd check https://github.com/4dn-dcic/foursight/pull/519>`_
 
 * bug fix for check_for_ontology_updates - request more of the file header to get version info
 
