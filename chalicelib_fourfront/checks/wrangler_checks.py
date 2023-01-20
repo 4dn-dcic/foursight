@@ -1457,7 +1457,7 @@ def check_for_ontology_updates(connection, **kwargs):
         owl = None
         if o['ontology_prefix'] == 'UBERON':
             # UBERON needs different URL for version info
-            owl = requests.get('http://purl.obolibrary.org/obo/uberon.owl', headers={"Range": "bytes=0-2000"})
+            owl = requests.get('http://purl.obolibrary.org/obo/uberon.owl', headers={"Range": "bytes=0-10000"})
         elif o.get('download_url'):
             # instead of repos etc, check download url for ontology header to get version
             owl = requests.get(o['download_url'], headers={"Range": "bytes=0-2000"})
