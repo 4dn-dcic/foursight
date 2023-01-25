@@ -641,6 +641,10 @@ def bed2beddb_status(connection, **kwargs):
             missing.append(a_file['accession'])
     res_all = [i for i in res_all if i.get('genome_assembly')]
 
+    if not res_all:
+        check.summary = 'All Good!'
+        return check
+
     # check for previous runs if file is FileReference (as this type does not track wfr inputs)
     previous = []
     for a_file in [f for f in res_all]:
@@ -654,9 +658,6 @@ def bed2beddb_status(connection, **kwargs):
                 previous.append(a_file)
                 res_all.remove(a_file)
 
-    if not res_all:
-        check.summary = 'All Good!'
-        return check
     check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
     if missing:
         check.full_output['missing_assembly'] = missing
