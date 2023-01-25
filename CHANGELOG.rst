@@ -12,6 +12,13 @@ Change Log
 * Changes related editing user projects/institutions.
 * Removed the trigger_codebuild_run check (in foursight-core now).
 
+3.2.1
+=====
+
+`PR 519: Bug fix ont upd check https://github.com/4dn-dcic/foursight/pull/519>`_
+
+* bug fix for check_for_ontology_updates - request more of the file header to get version info
+
 3.2.0
 =====
 * Changes related to support for running actions in Foursight React.
