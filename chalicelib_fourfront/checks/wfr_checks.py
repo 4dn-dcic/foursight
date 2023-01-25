@@ -640,6 +640,20 @@ def bed2beddb_status(connection, **kwargs):
         if not a_file.get('genome_assembly'):
             missing.append(a_file['accession'])
     res_all = [i for i in res_all if i.get('genome_assembly')]
+
+    # check for previous runs if file is FileReference (as this type does not track wfr inputs)
+    previous = []
+    for a_file in [f for f in res_all]:
+        if a_file['@type'][0] in ['FileReference']:
+            failed_runs_query = ("/search/?type=WorkflowRunAwsem&awsem_app_name=bedtobeddb"
+                                 f"&input_files.value.accession={a_file['accession']}")
+            n_runs = len(ff_utils.search_metadata(failed_runs_query + '&field=@id', key=my_auth))
+            if n_runs > 1:
+                # two or more previous runs: do not start a new one
+                # note that these could be running, completed, failed, or any other run status
+                previous.append(a_file)
+                res_all.remove(a_file)
+
     if not res_all:
         check.summary = 'All Good!'
         return check
@@ -648,6 +662,12 @@ def bed2beddb_status(connection, **kwargs):
         check.full_output['missing_assembly'] = missing
         msg = str(len(missing)) + ' files missing genome assembly'
         check.brief_output.insert(0, msg)
+        check.status = 'WARN'
+    if previous:
+        check.full_output['previous_runs'] = previous
+        msg = str(len(previous)) + ' reference files have multiple previous runs'
+        check.brief_output.insert(0, msg)
+        check.status = 'WARN'
     return check
 
 
