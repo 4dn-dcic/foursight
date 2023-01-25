@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+3.3.1
+=====
+
+`PR 522: limit beddb reruns for reference files <https://github.com/4dn-dcic/foursight/pull/522>`_
+
+* Bug fix: prevent automatic execution of bedtobeddb workflow on FileReference
+  items when at least 2 previous runs exist.
+
 3.3.0
 =====
 * Changes related editing user projects/institutions.
@@ -15,7 +23,7 @@ Change Log
 3.2.1
 =====
 
-`PR 519: Bug fix ont upd check https://github.com/4dn-dcic/foursight/pull/519>`_
+`PR 519: Bug fix ont upd check <https://github.com/4dn-dcic/foursight/pull/519>`_
 
 * bug fix for check_for_ontology_updates - request more of the file header to get version info
 
