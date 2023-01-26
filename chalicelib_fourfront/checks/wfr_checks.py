@@ -649,9 +649,9 @@ def bed2beddb_status(connection, **kwargs):
     previous = []
     for a_file in [f for f in res_all]:
         if a_file['@type'][0] in ['FileReference']:
-            failed_runs_query = ("/search/?type=WorkflowRunAwsem&awsem_app_name=bedtobeddb"
-                                 f"&input_files.value.accession={a_file['accession']}")
-            n_runs = len(ff_utils.search_metadata(failed_runs_query + '&field=@id', key=my_auth))
+            previous_runs_query = ("/search/?type=WorkflowRunAwsem&awsem_app_name=bedtobeddb"
+                                   f"&input_files.value.accession={a_file['accession']}")
+            n_runs = len(ff_utils.search_metadata(previous_runs_query + '&field=@id', key=my_auth))
             if n_runs > 1:
                 # two or more previous runs: do not start a new one
                 # note that these could be running, completed, failed, or any other run status
