@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.3.2
+=====
+* Lock dcicutils==6.5.0.1b0; fix for Andrea 2022-01-26 ~11:15am.
+
+
 3.3.1
 =====
 
