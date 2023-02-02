@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+3.3.2
+=====
+* Update to foursight-core 3.3.1 (and dcicutils 6.7.0).
+
 3.3.1
 =====
 
