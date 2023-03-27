@@ -2153,14 +2153,21 @@ def select_best_2(file_list, all_files, all_qcs):
         f_resp = [i for i in all_files if i['@id'] == f][0]
         qc = f_resp['quality_metric']
         qc_resp = [i for i in all_qcs if i['uuid'] == qc['uuid']][0]
-        try:
-            score = qc_resp['nodup_flagstat_qc'][0]['mapped']
-        except Exception:
-            score = qc_resp['ctl_nodup_flagstat_qc'][0]['mapped']
+        if 'nodup_flagstat_qc' in qc_resp:
+            try:
+                score = qc_resp['nodup_flagstat_qc'][0]['mapped']
+            except Exception:
+                score = qc_resp['ctl_nodup_flagstat_qc'][0]['mapped']
+        if 'align' in qc_resp:
+            try:
+                score = qc_resp['align']['nodup_samstat']['rep1']['mapped_reads']
+            except Exception:
+                score = qc_resp['align']['ctl_nodup_samstat']['rep1']['mapped_reads']
+        else:
+            raise Exception('no mapped qc statistics found')
         scores.append((score, f))
     scores = sorted(scores, key=lambda x: -x[0])
     return [scores[0][1], scores[1][1]]
-
 
 def limit_number_of_runs(check, my_auth):
     """Checks the number of workflow runs started in the past 6h. Return the

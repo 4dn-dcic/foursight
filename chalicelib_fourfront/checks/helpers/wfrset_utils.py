@@ -228,7 +228,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "encode-chipseq-postaln",
         "workflow_uuid": "291d4c64-75de-434a-9d98-01f40d19e15e",
         "parameters": {},
-        "config": {"instance_type": "c5.2xlarge", "ebs_size": 100},
+        "config": {"ebs_size": 100},
         'custom_pf_fields': {
             'chip.optimal_peak': {
                 'genome_assembly': genome,
