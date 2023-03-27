@@ -207,7 +207,7 @@ def add_viewconf_static_content_to_file(connection, item_uuid, higlass_item_uuid
         return False, str(e)
     return True, ""
 
-@check_function()
+@check_function(action="patch_higlass_items_for_new_files")
 def check_higlass_items_for_new_files(connection, **kwargs):
     """
     Find files without Higlass Items.
@@ -247,7 +247,7 @@ def patch_higlass_items_for_new_files(connection, **kwargs):
         action_name="patch_higlass_items_for_new_files",
     )
 
-@check_function(minutes_leeway=15)
+@check_function(minutes_leeway=15, action="patch_higlass_items_for_modified_files")
 def check_higlass_items_for_modified_files(connection, **kwargs):
     """
     Find files modified since the last time the action completed.
@@ -289,7 +289,7 @@ def patch_higlass_items_for_modified_files(connection, **kwargs):
         action_name="patch_higlass_items_for_modified_files",
     )
 
-@check_function(search_queries=[],minutes_leeway=1)
+@check_function(search_queries=[], minutes_leeway=1, action="patch_higlass_items_for_queried_files")
 def check_higlass_items_for_queried_files(connection, **kwargs):
     """
     Create or Update HiGlass Items for files found in the given query.
@@ -653,7 +653,7 @@ def gather_processedfiles_for_expset(expset):
         "genome_assembly": processed_files[0]["genome_assembly"]
     }
 
-@check_function()
+@check_function(action="patch_expsets_processedfiles_for_new_higlass_items")
 def check_expsets_processedfiles_for_new_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
         ExpSets are chosen based on the search queries.
@@ -694,7 +694,7 @@ def patch_expsets_processedfiles_for_new_higlass_items(connection, **kwargs):
         action_name="patch_expsets_processedfiles_for_new_higlass_items"
     )
 
-@check_function(minutes_leeway=15)
+@check_function(minutes_leeway=15, action="patch_expsets_processedfiles_for_modified_higlass_items")
 def check_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
         ExpSets are chosen based on the search queries.
@@ -748,7 +748,7 @@ def patch_expsets_processedfiles_for_modified_higlass_items(connection, **kwargs
         action_name="patch_expsets_processedfiles_for_modified_higlass_items"
     )
 
-@check_function(search_queries=[],minutes_leeway=1)
+@check_function(search_queries=[], minutes_leeway=1, action="patch_expsets_processedfiles_for_queried_higlass_items")
 def check_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Processed Files that need to be updated.
         ExpSets are chosen based on the search queries.
@@ -1071,7 +1071,7 @@ def update_expsets_processedfiles_requiring_higlass_items(connection, check_name
     action.status = "DONE"
     return action
 
-@check_function(minutes_leeway=15)
+@check_function(minutes_leeway=15, action="patch_expsets_otherprocessedfiles_for_new_higlass_items")
 def check_expsets_otherprocessedfiles_for_new_higlass_items(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files) that need to be updated.
 
@@ -1112,7 +1112,7 @@ def patch_expsets_otherprocessedfiles_for_new_higlass_items(connection, **kwargs
         action_name="patch_expsets_otherprocessedfiles_for_new_higlass_items",
     )
 
-@check_function(search_queries=[],minutes_leeway=1)
+@check_function(search_queries=[], minutes_leeway=1, action="patch_expsets_otherprocessedfiles_for_queried_files")
 def check_expsets_otherprocessedfiles_for_queried_files(connection, **kwargs):
     """ Search for Higlass Items from Experiment Set Other Processed Files (aka Supplementary Files) that match the given query.
 
@@ -1566,7 +1566,7 @@ def update_expsets_otherprocessedfiles_for_higlass_items(connection, check_name,
     action.output = action_logs
     return action
 
-@check_function(confirm_on_higlass=False, filetype='all', higlass_server=None, time_limit=870)
+@check_function(confirm_on_higlass=False, filetype='all', higlass_server=None, time_limit=870, action="patch_file_higlass_uid")
 def files_not_registered_with_higlass(connection, **kwargs):
     """
     Used to check registration of files on higlass and also register them
@@ -1999,7 +1999,7 @@ def patch_file_higlass_uid(connection, **kwargs):
     action.output = action_logs
     return action
 
-@check_function()
+@check_function(action="purge_cypress_items")
 def find_cypress_test_items_to_purge(connection, **kwargs):
     """ Looks for all items that are deleted and marked for purging by cypress test.
     Args:

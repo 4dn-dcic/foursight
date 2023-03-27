@@ -7,6 +7,44 @@ foursight
 Change Log
 ----------
 
+3.3.2
+=====
+* Update to foursight-core 3.3.2 (and dcicutils 6.8.0).
+
+3.3.1
+=====
+
+`PR 522: limit beddb reruns for reference files <https://github.com/4dn-dcic/foursight/pull/522>`_
+
+* Bug fix: prevent automatic execution of bedtobeddb workflow on FileReference
+  items when at least 2 previous runs exist.
+
+3.3.0
+=====
+* Changes related editing user projects/institutions.
+* Removed the trigger_codebuild_run check (in foursight-core now).
+
+3.2.1
+=====
+
+`PR 519: Bug fix ont upd check <https://github.com/4dn-dcic/foursight/pull/519>`_
+
+* bug fix for check_for_ontology_updates - request more of the file header to get version info
+
+3.2.0
+=====
+* Changes related to support for running actions in Foursight React.
+
+3.1.1
+=====
+
+`PR 515: Bug fix consistent rep info check <https://github.com/4dn-dcic/foursight/pull/515>`_
+
+* The ``consistent_replicate_info`` badge check was updating messages for all
+  linked items (e.g. protocols), when there was no need to. Bug fixed.
+* Fix ``app_utils_obj`` import.
+* Add ``microscope_configuration_master`` to the list of fields to compare.
+
 3.1.0
 =====
 * Updated foursight-core version; changes there related to /accounts page.

@@ -8,7 +8,7 @@ import datetime
 from .helpers.confchecks import *
 
 
-@check_function()
+@check_function(action="migrate_checks_to_es")
 def elasticsearch_s3_count_diff(connection, **kwargs):
     """ Reports the difference between the number of files on s3 and es """
     check = CheckResult(connection, 'elasticsearch_s3_count_diff')
