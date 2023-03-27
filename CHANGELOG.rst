@@ -7,6 +7,44 @@ foursight
 Change Log
 ----------
 
+3.1.0
+=====
+* Updated foursight-core version; changes there related to /accounts page.
+* Moved lookup of check_setup.json (and accounts.json) to foursight-core,
+  from foursight/chalicelib_fourfront/app_utils.py.
+
+2.3.3
+=====
+
+`PR 514: Errored runs chk edit <https://github.com/4dn-dcic/foursight/pull/514>`_
+
+* Edited the check for errored workflow runs to only report recent ones.
+
+  * By default in the past 30 days. This can be modified using the ``days_back`` arg.
+  * Use 0 to search all errored runs.
+
+2.3.2
+=====
+
+`PR 510: Edit consistent replicate info check <https://github.com/4dn-dcic/foursight/pull/510>`_
+
+* Edit the ``consistent_replicate_info`` badge check to print a more readable message.
+
+2.4.0
+=====
+* Changes related to a new experimental /accounts page in Foursight which can show summary
+  Foursight and Portal info from other AWS accounts. To take advantage of it there is an
+  accounts.json file in the chalicelib_fourfront directory which contains a simple list
+  of Foursight URLs for other AWS accounts. If this file is not present no harm.
+  This file has been manually encrypted, since it contains internal URLs, using
+  the ENCODED_AUTH0_SECRET value in the Global Application Configuration (GAC)
+  in the AWS Secrets Manager. There are convenience poetry scripts, to encrypt
+  and/or decrypt this file locally: encrypt-accounts-file, decrypt-accounts-file.
+  Currently this file contains just URL for 4dn-dcic dev and prod.
+  Again, this is experimental, and easily disabled (remove accounts.json).
+* Moved lookup of check_setup.json (and accounts.json) to foursight-core,
+  from foursight-cgap/chalicelib_cap/app_utils.py.
+
 2.3.3
 =====
 
