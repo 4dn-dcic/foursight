@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+3.4.0
+=====
+* Updated version:
+  - foursight-core=="^4.1.0"
+  - dcicutils=="^7.2.0"
+  - tibanna-ff=="^1.4.0"
+  - PyJWT=="^2.5.0"
+
 3.3.2
 =====
 * Update to foursight-core 3.3.2 (and dcicutils 6.8.0).
