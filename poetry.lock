@@ -66,6 +66,14 @@ html5lib = ["html5lib"]
 lxml = ["lxml"]
 
 [[package]]
+name = "benchmark-4dn"
+version = "0.5.23"
+description = "Benchmark functions that returns total space, mem, cpu given input size and parameters for the CWL workflows"
+category = "main"
+optional = false
+python-versions = ">=3.5,<4.0"
+
+[[package]]
 name = "blessed"
 version = "1.19.1"
 description = "Easy, practical library for making terminal apps, by providing an elegant, well-documented interface to Colors, Keyboard input, and screen Positioning capabilities."
@@ -230,7 +238,7 @@ test = ["hypothesis (>=1.11.4,!=3.79.2)", "iso8601", "pretend", "pytest (>=6.2.0
 
 [[package]]
 name = "dcicutils"
-version = "7.2.0.1b0"
+version = "7.2.0.1b2"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
@@ -284,6 +292,14 @@ ssh = ["paramiko (>=2.4.2)"]
 tls = ["cryptography (>=1.3.4)", "idna (>=2.0.0)", "pyOpenSSL (>=17.5.0)"]
 
 [[package]]
+name = "docutils"
+version = "0.19"
+description = "Docutils -- Python Documentation Utilities"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "elasticsearch"
 version = "7.13.4"
 description = "Python client for Elasticsearch"
@@ -327,7 +343,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "foursight-core"
-version = "4.1.0.1b0"
+version = "4.1.0.1b1"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
@@ -337,7 +353,7 @@ python-versions = ">=3.7,<3.10"
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
 cryptography = "39.0.0"
-dcicutils = "7.2.0.1b0"
+dcicutils = "7.2.0.1b2"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -870,6 +886,19 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "python-lambda-4dn"
+version = "0.12.3"
+description = "FORKED for 4dn-dcic. Use to package and deploy lambda functions."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+boto3 = ">=1.7.42"
+botocore = ">=1.10.42"
+docutils = ">=0.14"
+
+[[package]]
 name = "pytz"
 version = "2020.5"
 description = "World timezone definitions, modern and historical"
@@ -1056,17 +1085,32 @@ docs = ["sphinx", "twisted"]
 tests = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest (>=3.3.0)", "python-rapidjson", "simplejson"]
 
 [[package]]
-name = "tibanna-ff"
-version = "1.4.0"
+name = "tibanna"
+version = "1.9.2"
 description = "Tibanna runs portable pipelines (in CWL/WDL) on the AWS Cloud."
 category = "main"
 optional = false
 python-versions = "*"
-develop = true
 
-[package.source]
-type = "directory"
-url = "../../tibanna_ff"
+[package.dependencies]
+Benchmark-4dn = ">=0.5.8"
+boto3 = ">=1.9.0"
+botocore = ">=1.12.1"
+python-lambda-4dn = "0.12.3"
+requests = ">=2.22.0"
+urllib3 = ">=1.24"
+
+[[package]]
+name = "tibanna-ff"
+version = "1.0.0"
+description = "Tibanna runs portable pipelines (in CWL/WDL) on the AWS Cloud."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+dcicutils = ">=3.5.0"
+tibanna = ">=1.9.0.0b22"
 
 [[package]]
 name = "toml"
@@ -1194,7 +1238,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "04d06fb011cbcd80d4702dd212a466ff183b4e394a9624af883d2f60bbfdb002"
+content-hash = "182fa7da4274047ccde611041dccaebb2c9f69c6cc6ee5d1ae585689c15f8df3"
 
 [metadata.files]
 ansicon = [
@@ -1219,6 +1263,10 @@ aws-requests-auth = [
 beautifulsoup4 = [
     {file = "beautifulsoup4-4.11.1-py3-none-any.whl", hash = "sha256:58d5c3d29f5a36ffeb94f02f0d786cd53014cf9b3b3951d42e0080d8a9498d30"},
     {file = "beautifulsoup4-4.11.1.tar.gz", hash = "sha256:ad9aa55b65ef2808eb405f46cf74df7fcb7044d5cbc26487f96eb2ef2e436693"},
+]
+benchmark-4dn = [
+    {file = "Benchmark-4dn-0.5.23.tar.gz", hash = "sha256:f17a02c5cd9669f96ea65cb31603106bb77a0a01775b4fd2983a95ab66ee7b7c"},
+    {file = "benchmark_4dn-0.5.23-py3-none-any.whl", hash = "sha256:bd8aa8c252e868f1d7afa2c2003e1148f409e6dc825af5656f37cd5fec30e2c3"},
 ]
 blessed = [
     {file = "blessed-1.19.1-py2.py3-none-any.whl", hash = "sha256:63b8554ae2e0e7f43749b6715c734cc8f3883010a809bf16790102563e6cf25b"},
@@ -1490,8 +1538,8 @@ cryptography = [
     {file = "cryptography-39.0.0.tar.gz", hash = "sha256:f964c7dcf7802d133e8dbd1565914fa0194f9d683d82411989889ecd701e8adf"},
 ]
 dcicutils = [
-    {file = "dcicutils-7.2.0.1b0-py3-none-any.whl", hash = "sha256:5e071999b8cccd831add771efc8498bd3a206c5d3f724285249f3898500a70a2"},
-    {file = "dcicutils-7.2.0.1b0.tar.gz", hash = "sha256:5ba795af09c8cdc5c5119f178c5570b776720b753b696f15663395df0635f782"},
+    {file = "dcicutils-7.2.0.1b2-py3-none-any.whl", hash = "sha256:387a77519228e2ced57acc65189bc6fbdc18c4bcbd4a6a75b8858fa8b32c07ac"},
+    {file = "dcicutils-7.2.0.1b2.tar.gz", hash = "sha256:b87e1be525c5496b5c12855c75d7577dee358161dd83986b5ed55b02d0a343b3"},
 ]
 decorator = [
     {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
@@ -1500,6 +1548,10 @@ decorator = [
 docker = [
     {file = "docker-4.4.4-py2.py3-none-any.whl", hash = "sha256:f3607d5695be025fa405a12aca2e5df702a57db63790c73b927eb6a94aac60af"},
     {file = "docker-4.4.4.tar.gz", hash = "sha256:d3393c878f575d3a9ca3b94471a3c89a6d960b35feb92f033c0de36cc9d934db"},
+]
+docutils = [
+    {file = "docutils-0.19-py3-none-any.whl", hash = "sha256:5e1de4d849fee02c63b040a4a3fd567f4ab104defd8a5511fbbc24a8a017efbc"},
+    {file = "docutils-0.19.tar.gz", hash = "sha256:33995a6753c30b7f577febfc2c50411fec6aac7f7ffeb7c4cfe5991072dcf9e6"},
 ]
 elasticsearch = [
     {file = "elasticsearch-7.13.4-py2.py3-none-any.whl", hash = "sha256:5920df0ab2630778680376d86bea349dc99860977eec9b6d2bd0860f337313f2"},
@@ -1514,8 +1566,8 @@ flaky = [
     {file = "flaky-3.6.1.tar.gz", hash = "sha256:8cd5455bb00c677f787da424eaf8c4a58a922d0e97126d3085db5b279a98b698"},
 ]
 foursight-core = [
-    {file = "foursight_core-4.1.0.1b0-py3-none-any.whl", hash = "sha256:8ec9f7a8fad92467a7a6b90487db09a44eeb4a6bd34536b4bfa17bbd479a395c"},
-    {file = "foursight_core-4.1.0.1b0.tar.gz", hash = "sha256:935d5d8f0bc847d9c8d39ab8babe5fb658d3a116bcc468e76496de7d4f96f89f"},
+    {file = "foursight_core-4.1.0.1b1-py3-none-any.whl", hash = "sha256:a3e7022a154d0934a5f035c609e68b9fa263bd59d5faf2214a63838f0c31f25c"},
+    {file = "foursight_core-4.1.0.1b1.tar.gz", hash = "sha256:881278b1ee4d1ffd15cce0b088a1de1bad0c3d2e9d42dc39fb1586cefbca78a7"},
 ]
 future = [
     {file = "future-0.18.3.tar.gz", hash = "sha256:34a17436ed1e96697a86f9de3d15a3b0be01d8bc8de9c1dffd59fb8234ed5307"},
@@ -1798,6 +1850,10 @@ python-editor = [
     {file = "python_editor-1.0.4-py2-none-any.whl", hash = "sha256:5f98b069316ea1c2ed3f67e7f5df6c0d8f10b689964a4a811ff64f0106819ec8"},
     {file = "python_editor-1.0.4-py3-none-any.whl", hash = "sha256:1bf6e860a8ad52a14c3ee1252d5dc25b2030618ed80c022598f00176adc8367d"},
 ]
+python-lambda-4dn = [
+    {file = "python-lambda-4dn-0.12.3.tar.gz", hash = "sha256:41765ea05224c035e146c89d60ef23d0d2c043ccc79e380cbeae60143547b1dc"},
+    {file = "python_lambda_4dn-0.12.3-py2.py3-none-any.whl", hash = "sha256:a87fd330fcf6702165904dbe884610df5bf029c55cd2cc176d22f788b04a5f21"},
+]
 pytz = [
     {file = "pytz-2020.5-py2.py3-none-any.whl", hash = "sha256:16962c5fb8db4a8f63a26646d8886e9d769b6c511543557bc84e9569fb9a9cb4"},
     {file = "pytz-2020.5.tar.gz", hash = "sha256:180befebb1927b16f6b57101720075a984c019ac16b1b7575673bea42c6c3da5"},
@@ -1899,7 +1955,14 @@ structlog = [
     {file = "structlog-19.2.0-py2.py3-none-any.whl", hash = "sha256:6640e6690fc31d5949bc614c1a630464d3aaa625284aeb7c6e486c3010d73e12"},
     {file = "structlog-19.2.0.tar.gz", hash = "sha256:4287058cf4ce1a59bc5dea290d6386d37f29a37529c9a51cdf7387e51710152b"},
 ]
-tibanna-ff = []
+tibanna = [
+    {file = "tibanna-1.9.2-py3-none-any.whl", hash = "sha256:4c2ac3f16ecc27d4dcdd2668c2057ac364262f933d3625438a4ef9f81e92dfeb"},
+    {file = "tibanna-1.9.2.tar.gz", hash = "sha256:b31f9a4ffc007a50e2d714b163a12d31b0f626df097ea8f68471a5b55badc38b"},
+]
+tibanna-ff = [
+    {file = "tibanna_ff-1.0.0-py3-none-any.whl", hash = "sha256:4dbd0ae7ac0afb39ecf00eaabdbb47ec1e66ea39d2197eab38fe6779a38d55f7"},
+    {file = "tibanna_ff-1.0.0.tar.gz", hash = "sha256:b74cb2eed252cf9c09430c789e714d182bdc44f769e396cbaadc7398882a7e76"},
+]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
     {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
