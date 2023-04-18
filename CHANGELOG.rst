@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.3.3
+=====
+
+* Fixes the FF build cluster value
+
 3.3.2
 =====
 * Update to foursight-core 3.3.2 (and dcicutils 6.8.0).
