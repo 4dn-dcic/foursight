@@ -1,3 +1,2 @@
-pip install toml > /dev/null 2>&1 
 echo python scripts/publish_to_pypi.py $*
-python scripts/publish_to_pypi.py $*
+     python scripts/publish_to_pypi.py $*
