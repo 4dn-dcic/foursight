@@ -1,2 +1,0 @@
-echo python scripts/publish_to_pypi.py $*
-     python scripts/publish_to_pypi.py $*

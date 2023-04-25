@@ -28,4 +28,10 @@ info:
 	   $(info - Use 'make update' to update dependencies)
 
 publish:
-	./scripts/publish
+	# New Python based publish script in dcicutils (2023-04-25).
+	python -m dcicutils.scripts.publish_to_pypi
+
+publish-for-ga:
+	# New Python based publish script in dcicutils (2023-04-25).
+	pip install dcicutils==7.3.0.1b18
+	python -m dcicutils.scripts.publish_to_pypi --noconfirm
