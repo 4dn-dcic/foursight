@@ -528,14 +528,14 @@ tox = ["tox"]
 
 [[package]]
 name = "dcicutils"
-version = "7.3.0.1b20"
+version = "7.3.0.1b21"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "dcicutils-7.3.0.1b20-py3-none-any.whl", hash = "sha256:1bb84d359dc8d06fb8569bdf6aca700de858aedff45181f354bc3c302e39967a"},
-    {file = "dcicutils-7.3.0.1b20.tar.gz", hash = "sha256:6fd62ede8418059b436d6c3e6282fa74001d4eb4f0bc944f32bafa060a8773f4"},
+    {file = "dcicutils-7.3.0.1b21-py3-none-any.whl", hash = "sha256:03f43e217b8577d001e6f79ea5693aa04c9be9747c48fab7edca389585ceae4a"},
+    {file = "dcicutils-7.3.0.1b21.tar.gz", hash = "sha256:46422d8273886dd23d616b493b52cb3ffac9e26559e05ea5ccb868df91db54f3"},
 ]
 
 [package.dependencies]
@@ -661,21 +661,21 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.1.0.5b41"
+version = "4.1.0.5b42"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "foursight_core-4.1.0.5b41-py3-none-any.whl", hash = "sha256:190527eca39ce42450bb06e44dc883875d3bb357d8b649c9fd7f2be0096e65c6"},
-    {file = "foursight_core-4.1.0.5b41.tar.gz", hash = "sha256:d03946e242c3f6f2778a6c1b8285a74540a0a25c1fb6f6db33ff55738e4e47ff"},
+    {file = "foursight_core-4.1.0.5b42-py3-none-any.whl", hash = "sha256:d65d82c97bc7b23ffbc84dbb1a57dddf7c9c263a935a9943e906af5c3cfd7836"},
+    {file = "foursight_core-4.1.0.5b42.tar.gz", hash = "sha256:ced919cd52308d363b4049d2e3ac5aa747ebcda10fb5187304a64563754c4724"},
 ]
 
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
 cryptography = "39.0.2"
-dcicutils = "7.3.0.1b20"
+dcicutils = "7.3.0.1b21"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -2000,4 +2000,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "03d8082a4387398a24e72f95229cc816b583251aeb54f0e39f956a0426eb7263"
+content-hash = "d0265bc8b0fa6e843a008706bd1c1f4fb4f046dd45aeb10f2f0df933900436ce"
