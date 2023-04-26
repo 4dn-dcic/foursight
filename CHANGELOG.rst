@@ -12,7 +12,7 @@ Change Log
 
 `PR 526: Dependency updates <https://github.com/4dn-dcic/foursight/pull/526/files>`_
 
-* Bump foursight-core, dcicutils, and PyJWT versions for consistency with foursight-cgap
+* Bump foursight-core + dcicutils, and allow higher PyJWT versions for consistency with foursight-cgap
 
 3.3.3
 =====
