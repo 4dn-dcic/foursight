@@ -12,6 +12,13 @@ Change Log
 * Version changes related to foursight-core changes for SSL certificate and Portal access key checking.
 * Using new dcicutils.scripts.publish_to_pypi for publish.
 
+3.3.4
+=====
+
+`PR 526: Dependency updates <https://github.com/4dn-dcic/foursight/pull/526/files>`_
+
+* Bump foursight-core + dcicutils, and allow higher PyJWT versions for consistency with foursight-cgap
+
 3.3.3
 =====
 
