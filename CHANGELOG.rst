@@ -7,13 +7,20 @@ foursight
 Change Log
 ----------
 
-3.3.4
+3.3.5
 =====
 
 `PR 522: Add new params to ignore uuids or reset external expset with no pub check <https://github.com/4dn-dcic/foursight/pull/527>`_
 
 * add 'uuids_to_ignore' parameter for a list of uuids to ignore and hence not warn for this check
 * add 'reset_ignore' parameter to clear the list of uuids that are ignored
+
+3.3.4
+=====
+
+`PR 526: Dependency updates <https://github.com/4dn-dcic/foursight/pull/526/files>`_
+
+* Bump foursight-core + dcicutils, and allow higher PyJWT versions for consistency with foursight-cgap
 
 3.3.3
 =====
