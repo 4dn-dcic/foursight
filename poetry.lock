@@ -467,20 +467,6 @@ files = [
 toml = ["tomli"]
 
 [[package]]
-name = "cron-descriptor"
-version = "1.2.35"
-description = "A Python library that converts cron expressions into human readable strings."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "cron_descriptor-1.2.35.tar.gz", hash = "sha256:7b6fc5e07f3e505d247f35ef432a098d75769efdaf01b04ab8e42a528c75266d"},
-]
-
-[package.extras]
-dev = ["polib"]
-
-[[package]]
 name = "cryptography"
 version = "39.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -528,14 +514,14 @@ tox = ["tox"]
 
 [[package]]
 name = "dcicutils"
-version = "7.3.0.1b36"
+version = "7.3.0.1b38"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "dcicutils-7.3.0.1b36-py3-none-any.whl", hash = "sha256:e8b44d630e8bedcd6e025322bb66ff0c4cf201ce384a7bf36de2f347ae011b6c"},
-    {file = "dcicutils-7.3.0.1b36.tar.gz", hash = "sha256:3de22294a8fd43390503b60dacfa5eec77d4ce2d9dab44ab524d01ed3520f3e0"},
+    {file = "dcicutils-7.3.0.1b38-py3-none-any.whl", hash = "sha256:d789af2da597d7b3b4f2653399b76a9c3ce3c2284ff78ef1b062c2aa4ace190d"},
+    {file = "dcicutils-7.3.0.1b38.tar.gz", hash = "sha256:45c1797d5446bc0f7b0336d3dfea1b100faba1b04e8eab729d8940961b4ca220"},
 ]
 
 [package.dependencies]
@@ -555,6 +541,7 @@ requests = ">=2.21.0,<3.0.0"
 rfc3986 = ">=1.4.0,<2.0.0"
 structlog = ">=19.2.0,<20.0.0"
 toml = ">=0.10.1,<1"
+tqdm = ">=4.65.0,<5.0.0"
 typing-extensions = ">=3.8"
 urllib3 = ">=1.26.6,<2.0.0"
 webtest = ">=2.0.34,<3.0.0"
@@ -661,35 +648,17 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.1.0.5b51"
+version = "4.1.0.5b54"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
-python-versions = ">=3.7,<3.10"
-files = [
-    {file = "foursight_core-4.1.0.5b51-py3-none-any.whl", hash = "sha256:fc08b9e51ce029d3b5ea3934797e89c3797b64ee9334aa9ce1cec4908e732bc0"},
-    {file = "foursight_core-4.1.0.5b51.tar.gz", hash = "sha256:bd8cecc3cc7425cb0ca613e40c9505300025c3ccbb2f724e03170c44d1b68305"},
-]
+python-versions = "*"
+files = []
+develop = true
 
-[package.dependencies]
-click = ">=7.1.2,<8.0.0"
-cron-descriptor = ">=1.2.31,<2.0.0"
-cryptography = "39.0.2"
-dcicutils = "7.3.0.1b36"
-elasticsearch = "7.13.4"
-elasticsearch-dsl = ">=7.0.0,<8.0.0"
-geocoder = "1.38.1"
-gitpython = ">=3.1.2,<4.0.0"
-google = ">=3.0.0,<4.0.0"
-google-api-python-client = ">=1.12.5,<2.0.0"
-google-auth-oauthlib = ">=0.7.0,<0.8.0"
-Jinja2 = "2.10.1"
-MarkupSafe = "1.1.1"
-pyDes = ">=2.0.1,<3.0.0"
-PyJWT = ">=2.5.0,<3.0.0"
-pytz = ">=2020.1"
-redis = ">=4.5.1,<5.0.0"
-toml = ">=0.10.2,<0.11.0"
+[package.source]
+type = "directory"
+url = "../foursight-core"
 
 [[package]]
 name = "future"
@@ -751,21 +720,6 @@ files = [
 [package.dependencies]
 gitdb = ">=4.0.1,<5"
 typing-extensions = {version = ">=3.7.4.3", markers = "python_version < \"3.8\""}
-
-[[package]]
-name = "google"
-version = "3.0.0"
-description = "Python bindings to the Google search engine."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "google-3.0.0-py2.py3-none-any.whl", hash = "sha256:889cf695f84e4ae2c55fbc0cfdaf4c1e729417fa52ab1db0485202ba173e4935"},
-    {file = "google-3.0.0.tar.gz", hash = "sha256:143530122ee5130509ad5e989f0512f7cb218b2d4eddbafbad40fd10e8d8ccbe"},
-]
-
-[package.dependencies]
-beautifulsoup4 = "*"
 
 [[package]]
 name = "google-api-core"
@@ -1355,17 +1309,6 @@ files = [
 ]
 
 [[package]]
-name = "pydes"
-version = "2.0.1"
-description = "Pure python implementation of DES and TRIPLE DES encryption algorithm"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pyDes-2.0.1.tar.gz", hash = "sha256:e2ab8e21d2b83e90d90dbfdcb6fb8ac0000b813238b7ecaede04f8435c389012"},
-]
-
-[[package]]
 name = "pyjwt"
 version = "2.6.0"
 description = "JSON Web Token implementation in Python"
@@ -1843,6 +1786,27 @@ files = [
 ]
 
 [[package]]
+name = "tqdm"
+version = "4.65.0"
+description = "Fast, Extensible Progress Meter"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tqdm-4.65.0-py3-none-any.whl", hash = "sha256:c4f53a17fe37e132815abceec022631be8ffe1b9381c2e6e30aa70edc99e9671"},
+    {file = "tqdm-4.65.0.tar.gz", hash = "sha256:1871fb68a86b8fb3b59ca4cdd3dcccbc7e6d613eeed31f4c332531977b89beb5"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["py-make (>=0.1.0)", "twine", "wheel"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
+
+[[package]]
 name = "typing-extensions"
 version = "4.5.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -2000,4 +1964,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "e7335386daddb4e9e1fd7627f7a65f598d37cd630d0fd7cebefe5b2b23c73763"
+content-hash = "d5eec2a180d7a86c3e46f983beabe8869c378c9a2a93fda7ee2fef1a3ca7e2ed"
