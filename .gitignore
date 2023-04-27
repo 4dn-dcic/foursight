@@ -31,3 +31,6 @@ deployment.zip
 sam.yaml
 sam.json
 chalicelib/checks/helpers/cgap_utils.py
+
+# Vim
+*.swp
