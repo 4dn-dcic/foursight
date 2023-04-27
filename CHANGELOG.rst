@@ -12,6 +12,11 @@ Change Log
 * Version changes related to foursight-core changes for SSL certificate and Portal access key checking.
 * Using new dcicutils.scripts.publish_to_pypi for publish.
 
+3.3.3
+=====
+
+* Fixes the FF build cluster value
+
 3.3.2
 =====
 * Update to foursight-core 3.3.2 (and dcicutils 6.8.0).

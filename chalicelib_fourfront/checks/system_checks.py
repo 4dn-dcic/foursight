@@ -30,7 +30,7 @@ PROD_ES_CLUSTERS = [
     FF_BLUE_ES_CLUSTER_DOMAIN,
     FF_GREEN_ES_CLUSTER_DOMAIN
 ]
-FF_TEST_CLUSTER = 'search-fourfront-testing-6-8-kncqa2za2r43563rkcmsvgn2fq.us-east-1.es.amazonaws.com:443'
+FF_TEST_CLUSTER = 'search-fourfront-testing-opensearch-kqm7pliix4wgiu4druk2indorq.us-east-1.es.amazonaws.com:443'
 TEST_ES_CLUSTERS = [
     FF_TEST_CLUSTER
 ]
