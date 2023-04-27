@@ -91,12 +91,14 @@ def external_expsets_without_pub(connection, **kwargs):
             check.status = 'ERROR'
             return check
     # get any cases to ignore from previous runs and add to any provided uuids
-    expsets_to_ignore = last_result['full_output'].get('ignore', [])
+    expsets_to_ignore.extend(last_result['full_output'].get('ignore', []))
 
     ext = ff_utils.search_metadata('search/?award.project=External&type=ExperimentSet&frame=object',
                                    key=connection.ff_keys, page_limit=50)
     no_pub = []
     for expset in ext:
+        if expset.get('uuid') in expsets_to_ignore:
+            continue
         if not expset.get('publications_of_set') and not expset.get('produced_in_pub'):
             no_pub.append({'uuid': expset['uuid'],
                            '@id': expset['@id'],
