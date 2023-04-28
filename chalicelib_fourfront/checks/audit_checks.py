@@ -66,17 +66,40 @@ def biosource_cell_line_value(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(uuids_to_ignore=None, reset_ignore=False)
 def external_expsets_without_pub(connection, **kwargs):
     '''
     checks external experiment sets to see if they are attributed to a publication
     '''
     check = CheckResult(connection, 'external_expsets_without_pub')
+    # determine which uuids of expsets to ignore
+    expsets_to_ignore = []
+    # check for any new expsets to ignore in kwargs
+    new_ignores = kwargs.get('uuids_to_ignore')
+    if new_ignores:
+        expsets_to_ignore = [u.strip() for u in new_ignores.split(',')]
+
+    last_result = check.get_primary_result()
+    # if last one was fail, find an earlier check with non-FAIL status
+    it = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        it += 1
+        hours = it * 24  # this is a daily check, so look for checks with 7 days iteration
+        last_result = check.get_closest_result(diff_hours=hours)
+        if it > 7:
+            check.summary = 'Cannot find a non-fail primary check in the past week'
+            check.status = 'ERROR'
+            return check
+    # get any cases to ignore from previous runs and add to any provided uuids
+    if 'ignore' in last_result['full_output']:  # kludge to account for change in result full_output structure
+        expsets_to_ignore.extend(last_result['full_output'].get('ignore', []))
 
     ext = ff_utils.search_metadata('search/?award.project=External&type=ExperimentSet&frame=object',
                                    key=connection.ff_keys, page_limit=50)
     no_pub = []
     for expset in ext:
+        if expset.get('uuid') in expsets_to_ignore:
+            continue
         if not expset.get('publications_of_set') and not expset.get('produced_in_pub'):
             no_pub.append({'uuid': expset['uuid'],
                            '@id': expset['@id'],
@@ -91,7 +114,10 @@ def external_expsets_without_pub(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No external experiment sets are missing publication. Searched %s' % len(ext)
         check.description = '0 external experiment sets are missing attribution to a publication.'
-    check.full_output = no_pub
+    # see if want to reset ignored
+    if kwargs.get('reset_ignore') is True:
+        expsets_to_ignore = []
+    check.full_output = {'problems': no_pub, 'ignore': expsets_to_ignore}
     check.brief_output = [item['uuid'] for item in no_pub]
     return check
 
