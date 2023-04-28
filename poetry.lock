@@ -467,20 +467,6 @@ files = [
 toml = ["tomli"]
 
 [[package]]
-name = "cron-descriptor"
-version = "1.2.35"
-description = "A Python library that converts cron expressions into human readable strings."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "cron_descriptor-1.2.35.tar.gz", hash = "sha256:7b6fc5e07f3e505d247f35ef432a098d75769efdaf01b04ab8e42a528c75266d"},
-]
-
-[package.extras]
-dev = ["polib"]
-
-[[package]]
 name = "cryptography"
 version = "39.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -528,14 +514,14 @@ tox = ["tox"]
 
 [[package]]
 name = "dcicutils"
-version = "7.3.2.1b1"
+version = "7.3.2.1b2"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "dcicutils-7.3.2.1b1-py3-none-any.whl", hash = "sha256:fa35e706f72804ea49fb25da9cba3ebdea3a7e9a344a849d94c4a223ae33041a"},
-    {file = "dcicutils-7.3.2.1b1.tar.gz", hash = "sha256:169cd61d0c63eee2f8d9ae1299d8450da987b1ab5eeaaa9817f4a19315b1d688"},
+    {file = "dcicutils-7.3.2.1b2-py3-none-any.whl", hash = "sha256:84944b9a876922db51e5c5ff88a9c8d2491c346e2b8882ec7ccc9830fa4fd77f"},
+    {file = "dcicutils-7.3.2.1b2.tar.gz", hash = "sha256:526a1debbfa7771c92f060fb4dc63cd93a585f342f6709220e56abe2609eb616"},
 ]
 
 [package.dependencies]
@@ -662,35 +648,17 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.1.0.5b58"
+version = "4.1.0.5b59"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
-python-versions = ">=3.7,<3.10"
-files = [
-    {file = "foursight_core-4.1.0.5b58-py3-none-any.whl", hash = "sha256:e58364ef40ce29e6fa46c174b7ef953a0937668ed957418360b5ee5c04c467e5"},
-    {file = "foursight_core-4.1.0.5b58.tar.gz", hash = "sha256:c449bd58c067c20bebfc34d1a79ad69877bfa226ae2ee53748c4103e3a6cb591"},
-]
+python-versions = "*"
+files = []
+develop = true
 
-[package.dependencies]
-click = ">=7.1.2,<8.0.0"
-cron-descriptor = ">=1.2.31,<2.0.0"
-cryptography = "39.0.2"
-dcicutils = "7.3.2.1b1"
-elasticsearch = "7.13.4"
-elasticsearch-dsl = ">=7.0.0,<8.0.0"
-geocoder = "1.38.1"
-gitpython = ">=3.1.2,<4.0.0"
-google = ">=3.0.0,<4.0.0"
-google-api-python-client = ">=1.12.5,<2.0.0"
-google-auth-oauthlib = ">=0.7.0,<0.8.0"
-Jinja2 = "2.10.1"
-MarkupSafe = "1.1.1"
-pyDes = ">=2.0.1,<3.0.0"
-PyJWT = ">=2.5.0,<3.0.0"
-pytz = ">=2020.1"
-redis = ">=4.5.1,<5.0.0"
-toml = ">=0.10.2,<1"
+[package.source]
+type = "directory"
+url = "../foursight-core"
 
 [[package]]
 name = "future"
@@ -752,21 +720,6 @@ files = [
 [package.dependencies]
 gitdb = ">=4.0.1,<5"
 typing-extensions = {version = ">=3.7.4.3", markers = "python_version < \"3.8\""}
-
-[[package]]
-name = "google"
-version = "3.0.0"
-description = "Python bindings to the Google search engine."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "google-3.0.0-py2.py3-none-any.whl", hash = "sha256:889cf695f84e4ae2c55fbc0cfdaf4c1e729417fa52ab1db0485202ba173e4935"},
-    {file = "google-3.0.0.tar.gz", hash = "sha256:143530122ee5130509ad5e989f0512f7cb218b2d4eddbafbad40fd10e8d8ccbe"},
-]
-
-[package.dependencies]
-beautifulsoup4 = "*"
 
 [[package]]
 name = "google-api-core"
@@ -1353,17 +1306,6 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},
     {file = "pycparser-2.21.tar.gz", hash = "sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206"},
-]
-
-[[package]]
-name = "pydes"
-version = "2.0.1"
-description = "Pure python implementation of DES and TRIPLE DES encryption algorithm"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pyDes-2.0.1.tar.gz", hash = "sha256:e2ab8e21d2b83e90d90dbfdcb6fb8ac0000b813238b7ecaede04f8435c389012"},
 ]
 
 [[package]]
@@ -2022,4 +1964,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "99d69d6a3719d794d2d8d929719904324bb762a7bbb7d4e45a8b372062ad6170"
+content-hash = "45430ac6f74039f55a891bd676ba1a88b42e2df4d1e986508d6faf313ee061b9"
