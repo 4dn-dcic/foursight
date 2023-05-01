@@ -467,6 +467,20 @@ files = [
 toml = ["tomli"]
 
 [[package]]
+name = "cron-descriptor"
+version = "1.2.35"
+description = "A Python library that converts cron expressions into human readable strings."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "cron_descriptor-1.2.35.tar.gz", hash = "sha256:7b6fc5e07f3e505d247f35ef432a098d75769efdaf01b04ab8e42a528c75266d"},
+]
+
+[package.extras]
+dev = ["polib"]
+
+[[package]]
 name = "cryptography"
 version = "39.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -648,17 +662,35 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.1.0.5b59"
+version = "4.1.0.5b60"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
-python-versions = "*"
-files = []
-develop = true
+python-versions = ">=3.7,<3.10"
+files = [
+    {file = "foursight_core-4.1.0.5b60-py3-none-any.whl", hash = "sha256:deab9d8d1b32f3b27417bcf542f0790b5b483ffed43c36a484535ae83e734f3a"},
+    {file = "foursight_core-4.1.0.5b60.tar.gz", hash = "sha256:c8731981a6f2a06985718e9b74461417c5cfbe118a8996be4fa8b89eaea0644f"},
+]
 
-[package.source]
-type = "directory"
-url = "../foursight-core"
+[package.dependencies]
+click = ">=7.1.2,<8.0.0"
+cron-descriptor = ">=1.2.31,<2.0.0"
+cryptography = "39.0.2"
+dcicutils = "7.4.0"
+elasticsearch = "7.13.4"
+elasticsearch-dsl = ">=7.0.0,<8.0.0"
+geocoder = "1.38.1"
+gitpython = ">=3.1.2,<4.0.0"
+google = ">=3.0.0,<4.0.0"
+google-api-python-client = ">=1.12.5,<2.0.0"
+google-auth-oauthlib = ">=0.7.0,<0.8.0"
+Jinja2 = "2.10.1"
+MarkupSafe = "1.1.1"
+pyDes = ">=2.0.1,<3.0.0"
+PyJWT = ">=2.5.0,<3.0.0"
+pytz = ">=2020.1"
+redis = ">=4.5.1,<5.0.0"
+toml = ">=0.10.2,<1"
 
 [[package]]
 name = "future"
@@ -720,6 +752,21 @@ files = [
 [package.dependencies]
 gitdb = ">=4.0.1,<5"
 typing-extensions = {version = ">=3.7.4.3", markers = "python_version < \"3.8\""}
+
+[[package]]
+name = "google"
+version = "3.0.0"
+description = "Python bindings to the Google search engine."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "google-3.0.0-py2.py3-none-any.whl", hash = "sha256:889cf695f84e4ae2c55fbc0cfdaf4c1e729417fa52ab1db0485202ba173e4935"},
+    {file = "google-3.0.0.tar.gz", hash = "sha256:143530122ee5130509ad5e989f0512f7cb218b2d4eddbafbad40fd10e8d8ccbe"},
+]
+
+[package.dependencies]
+beautifulsoup4 = "*"
 
 [[package]]
 name = "google-api-core"
@@ -1306,6 +1353,17 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},
     {file = "pycparser-2.21.tar.gz", hash = "sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206"},
+]
+
+[[package]]
+name = "pydes"
+version = "2.0.1"
+description = "Pure python implementation of DES and TRIPLE DES encryption algorithm"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pyDes-2.0.1.tar.gz", hash = "sha256:e2ab8e21d2b83e90d90dbfdcb6fb8ac0000b813238b7ecaede04f8435c389012"},
 ]
 
 [[package]]
@@ -1964,4 +2022,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "fc8d9166dc870190b067bb5e1a42f545fd414201981c3620bc07cbc9cc8defc7"
+content-hash = "755c41034340d220ba386a5bee2a81eff1e7fc9dee05444701810f60d2cae1e4"
