@@ -28,4 +28,9 @@ info:
 	   $(info - Use 'make update' to update dependencies)
 
 publish:
-	./scripts/publish
+	# New Python based publish script in dcicutils (2023-04-25).
+	poetry run publish-to-pypi
+
+publish-for-ga:
+	# New Python based publish script in dcicutils (2023-04-25).
+	poetry run publish-to-pypi --noconfirm
