@@ -9,7 +9,7 @@ Change Log
 
 3.4.3
 =====
-* Added a new check for automate patching of FOF-CT static section for chromatin tracing datasets
+* Added a new check in the header_checks.py for automate patching of FOF-CT static section for chromatin tracing datasets (Multiplexed FISH).
 
 3.4.2
 =====

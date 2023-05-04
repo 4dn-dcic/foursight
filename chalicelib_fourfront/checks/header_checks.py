@@ -317,8 +317,8 @@ def patch_static_headers_DNase_HiC(connection, **kwargs):
 @check_function()
 def prepare_static_headers_Chromatin_Tracing(connection, **kwargs):
      check = CheckResult(connection, 'prepare_static_headers_Chromatin_Tracing')
-     add_search = '/search/?experiments_in_set.experiment_type.display_title=multiplexed+FISH&experiments_in_set.experiment_type.display_title=RNA+FISH&experiments_in_set.experiment_type.display_title=SPT&experiments_in_set.experiment_type.display_title=OptoDroplet&experiments_in_set.experiment_type.display_title=DNA+FISH&experiments_in_set.experiment_type.display_title=Immunofluorescence&experiments_in_set.experiment_type.display_title=Electron+Tomography&experimentset_type=replicate&type=ExperimentSetReplicate'
-     remove_search = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&experiments_in_set.experiment_type.display_title%21=multiplexed+FISH&experiments_in_set.experiment_type.display_title%21=RNA+FISH&experiments_in_set.experiment_type.display_title%21=SPT&experiments_in_set.experiment_type.display_title%21=OptoDroplet&experiments_in_set.experiment_type.display_title%21=DNA+FISH&experiments_in_set.experiment_type.display_title%21=Immunofluorescence&experiments_in_set.experiment_type.display_title%21=Electron+Tomography&experimentset_type=replicate&type=ExperimentSetReplicate'
+     add_search = '/search/?experiments_in_set.experiment_type.display_title=multiplexed+FISH'
+     remove_search = '/search/?type=ExperimentSetReplicate&experimentset_type=replicate&experiments_in_set.experiment_type.display_title%21=multiplexed+FISH'
      header_at_id = '/static-sections/a09a2833-b56b-4e81-8eff-bb8ae6aaa596/'
      check.action = 'patch_static_headers_Chromatin_Tracing'
      find_items_for_header_processing(connection, check, header_at_id,
