@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+3.4.3
+=====
+* Added a new check for automate patching of FOF-CT static section for chromatin tracing datasets
+
 3.4.2
 =====
 * Version changes related to foursight-core changes for SSL certificate and Portal access key checking.
