@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+3.4.3
+=====
+* Added a new check in the header_checks.py for automate patching of FOF-CT static section for chromatin tracing datasets (Multiplexed FISH).
+
 3.4.2
 =====
 * Version changes related to foursight-core changes for SSL certificate and Portal access key checking.
