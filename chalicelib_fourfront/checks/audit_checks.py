@@ -457,7 +457,7 @@ def check_help_page_urls(connection, **kwargs):
             if url.startswith('#'):  # section of static page
                 url = result['@id'] + url
             if url.startswith('/'):  # fill in appropriate url for relative link
-                url = server + url
+                url = server.rstrip('/') + url
             if url.startswith(server.rstrip('/') + '/search/') or url.startswith(server.rstrip('/') + '/browse/'):
                 continue
             try:
