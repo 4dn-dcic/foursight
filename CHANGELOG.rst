@@ -7,11 +7,20 @@ foursight
 Change Log
 ----------
 
-3.4.4
+3.4.5
 =====
 * Update foursight-core 4.1.2.
   Fixes for check arguments not being converted (from string) to int/float/etc as
   appropriate in the React version only (was not calling query_params_to_literals).
+
+3.4.4
+=====
+* Small update to assay_subclass_short update check to use new FISH assay_subclass_short as new value
+* bug fix where an extra slash was added in url string to check against causing erroneus broken link to be reported
+
+3.4.3
+=====
+* Added a new check in the header_checks.py for automate patching of FOF-CT static section for chromatin tracing datasets (Multiplexed FISH).
 
 3.4.2
 =====
