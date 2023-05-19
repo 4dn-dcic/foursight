@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+3.4.5
+=====
+* Update foursight-core 4.1.2.
+  Fixes for check arguments not being converted (from string) to int/float/etc as
+  appropriate in the React version only (was not calling query_params_to_literals).
+
 3.4.4
 =====
 * Small update to assay_subclass_short update check to use new FISH assay_subclass_short as new value
