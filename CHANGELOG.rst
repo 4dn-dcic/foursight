@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+3.4.6
+=====
+* small bug fix for assay_subclass_short check so new experiment_type gets right value
+
 3.4.5
 =====
 * Update foursight-core 4.1.2.
