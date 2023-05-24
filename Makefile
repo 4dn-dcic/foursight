@@ -29,7 +29,7 @@ info:
 
 publish:
 	# New Python based publish script in dcicutils (2023-04-25).
-	poetry run publish-to-pypi
+	poetry run publish-to-pypi --debug
 
 publish-for-ga:
 	# New Python based publish script in dcicutils (2023-04-25).
