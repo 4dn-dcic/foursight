@@ -314,7 +314,7 @@ def patch_static_headers_DNase_HiC(connection, **kwargs):
     return action
 
 #Chromatin Tracing
-@check_function()
+@check_function(action="patch_static_headers_Chromatin_Tracing")
 def prepare_static_headers_Chromatin_Tracing(connection, **kwargs):
      check = CheckResult(connection, 'prepare_static_headers_Chromatin_Tracing')
      add_search = '/search/?experiments_in_set.experiment_type.display_title=multiplexed+FISH'
