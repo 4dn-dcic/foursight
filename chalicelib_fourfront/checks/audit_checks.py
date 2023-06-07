@@ -1204,3 +1204,40 @@ def external_submission_but_missing_dbxrefs(connection, **kwargs):
         check.description = 'All items exported for external submission more than {} days ago have dbxrefs'.format(delay)
 
     return check
+
+
+@check_function()
+def chipseq_target_missing_tag(connection, **kwargs):
+    ''' Check for BioFeatures linked to ChIP-seq experiments as targets that are missing
+    tags that are used to determine if the histone or TF processing should be run
+    '''
+    check = CheckResult(connection, 'chipseq_target_missing_tag')
+
+    exp_query = ('search/?experiment_type.display_title=ChIP-seq&type=ExperimentSeq&' +
+                 'targeted_factor.display_title%21=No+value&frame=raw&field=targeted_factor.uuid')
+    exps = ff_utils.search_metadata(exp_query, key=connection.ff_keys)
+    bf_missing_tag = {}
+    for exp in exps:
+        try:
+            target = exp.get('targeted_factor')[0].get('uuid')  # ChIP-seq can only have one target
+            bfeat = ff_utils.get_metadata(target, key=connection.ff_keys)
+        except Exception as e:
+            check.status = 'ERROR'
+            check.summary = "Error in target retrieval"
+            check.description = "Exeption generatated\n{}".format(e)
+            return check
+        bf_tags = bfeat.get('tags', [])
+        if not any(i in ['histone', 'dna binding'] for i in bf_tags):
+            bf_missing_tag.setdefault(bfeat.get('uuid'), []).append(exp.get('@id'))
+    if bf_missing_tag:
+        check.brief_output = {k: len(v) for k,v in bf_missing_tag.items()}
+        check.full_output = bf_missing_tag
+        check.status = 'WARN'
+        check.summary = 'ChIP-seq target BioFeatures missing tags (histone or dna binding)'
+        check.description = '{} Biofeatures as targets for ChIP-seq missing tags'.format(len(bf_missing_tag))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No chip-seq target BioFeatures missing tags'
+        check.description = 'All BioFeatures that are targets of ChIP-seq have appropriate tags'
+
+    return check
