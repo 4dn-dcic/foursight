@@ -528,14 +528,14 @@ tox = ["tox"]
 
 [[package]]
 name = "dcicutils"
-version = "7.4.0"
+version = "7.5.1"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "dcicutils-7.4.0-py3-none-any.whl", hash = "sha256:633ca2bae03e70d0e3b2e60f49b2d906711e862fb362536b852d9b3f4f06a0d1"},
-    {file = "dcicutils-7.4.0.tar.gz", hash = "sha256:e1c02ee3dbbb2e5065e48407dc214e2476cdb4b18580aacc63cd8ecdedf6a5fb"},
+    {file = "dcicutils-7.5.1-py3-none-any.whl", hash = "sha256:5c77b00116c3d1f9f413b30aa66865a9c50d88d02ea20349a4bb25e1e45eea85"},
+    {file = "dcicutils-7.5.1.tar.gz", hash = "sha256:c4211161f48ce727e9cd3e2b52f66336949c5a6ce6d518c908dfee9153f7b121"},
 ]
 
 [package.dependencies]
@@ -662,21 +662,21 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.2.0.1b3"
+version = "4.2.0.1b5"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "foursight_core-4.2.0.1b3-py3-none-any.whl", hash = "sha256:04e04dd01921f32be76f9b0bb81273fb4c5009e71d845e2fcbfd9ff10168c7ca"},
-    {file = "foursight_core-4.2.0.1b3.tar.gz", hash = "sha256:fc0929259abb4e507cb477f2175d8fb6c28c5b620ebad0f3374b66db0beee7d4"},
+    {file = "foursight_core-4.2.0.1b5-py3-none-any.whl", hash = "sha256:7d2c7aef849f8f82501dfb27c3723e16657b95c32951176abc79a8815e5c88d5"},
+    {file = "foursight_core-4.2.0.1b5.tar.gz", hash = "sha256:03195b4595872425564b4776dd7f522abd2526db17046ea9faa32475e9c35703"},
 ]
 
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
 cryptography = "39.0.2"
-dcicutils = "7.4.0"
+dcicutils = ">=7.5.0,<8.0.0"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -2022,4 +2022,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "89dec278cca7c18b9bb65150ed06e6d069eb1a1aad994b01d070dd02d31ee8b0"
+content-hash = "0ec8d80ecabcd43641d40ca32197e4d7f58e097ea00098dea116ca688977ece6"
