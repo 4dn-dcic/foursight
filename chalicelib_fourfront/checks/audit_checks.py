@@ -1227,7 +1227,7 @@ def chipseq_target_missing_tag(connection, **kwargs):
             check.description = "Exeption generatated\n{}".format(e)
             return check
         bf_tags = bfeat.get('tags', [])
-        if not any(i in ['histone', 'dna binding'] for i in bf_tags):
+        if not any(i in ['histone', 'dna-binding'] for i in bf_tags):
             bf_missing_tag.setdefault(bfeat.get('uuid'), []).append(exp.get('@id'))
     if bf_missing_tag:
         check.brief_output = {k: len(v) for k,v in bf_missing_tag.items()}
