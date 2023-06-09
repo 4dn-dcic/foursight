@@ -7,6 +7,15 @@ foursight
 Change Log
 ----------
 
+3.4.7
+=====
+* Fix to prepare_static_headers_Chromatin_Tracing in checks/header_checks.py from fix_sh_ct_dec branch.
+* Minor UI fixes for display of status text for checks/actions - in foursight-core.
+* Added UI warning for registered action functions with no associated check - in foursight-core.
+* Added UI display of Redis info on INFO page - in foursight-core.
+* Added a d default .chalice/config.json and removed this from .gitignore
+
+
 3.4.6
 =====
 * small bug fix for assay_subclass_short check so new experiment_type gets right value
