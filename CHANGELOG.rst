@@ -7,6 +7,17 @@ foursight
 Change Log
 ----------
 
+3.4.9
+=====
+
+`PR 535: Add new audit check for ChIP-seq target tags <https://github.com/4dn-dcic/foursight/pull/535>`_
+
+* New check that makes sure that BioFeatures linked to ChIP-seq experiments as targets have the correct tag added
+
+3.4.8
+=====
+David???
+
 3.4.7
 =====
 * Fix to prepare_static_headers_Chromatin_Tracing in checks/header_checks.py from fix_sh_ct_dec branch.
