@@ -398,13 +398,13 @@ toml = ["tomli"]
 
 [[package]]
 name = "cron-descriptor"
-version = "1.2.35"
+version = "1.4.0"
 description = "A Python library that converts cron expressions into human readable strings."
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "cron_descriptor-1.2.35.tar.gz", hash = "sha256:7b6fc5e07f3e505d247f35ef432a098d75769efdaf01b04ab8e42a528c75266d"},
+    {file = "cron_descriptor-1.4.0.tar.gz", hash = "sha256:b6ff4e3a988d7ca04a4ab150248e9f166fb7a5c828a85090e75bcc25aa93b4dd"},
 ]
 
 [package.extras]
@@ -592,14 +592,14 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.2.0"
+version = "4.2.0.2b1"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "foursight_core-4.2.0-py3-none-any.whl", hash = "sha256:9efe0b2844ca8e5c43b597b56466dc8fd4c0e1a08ef49f60b6030c8353b43905"},
-    {file = "foursight_core-4.2.0.tar.gz", hash = "sha256:dad187a18cf7a39b48607281addce928cb908c8f14f803f4fd5a0ea4f70cc796"},
+    {file = "foursight_core-4.2.0.2b1-py3-none-any.whl", hash = "sha256:4663b41d67067aafc15b8289f10768b5586874177200fea13eab18b751d10fbf"},
+    {file = "foursight_core-4.2.0.2b1.tar.gz", hash = "sha256:08cdbc31ebec9072cb33f12d8cb61caa4f6958f4cffdf210ff5e73105e8bde9b"},
 ]
 
 [package.dependencies]
@@ -1952,4 +1952,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "f44c08dab182e0a0fadd8d5ffece7b898d7a81e2bb61fe5ee8e96d61cce227e2"
+content-hash = "2e7c7b7227c85c63bfff407bf54f7c33195e5512f4acb417ee9a05412a9864d2"
