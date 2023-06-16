@@ -1,3 +1,4 @@
+from dcicutils.boto_s3 import boto_s3_resource
 from dcicutils import ff_utils
 from dcicutils.env_utils import prod_bucket_env_for_app
 import re
@@ -8,7 +9,6 @@ import time
 import itertools
 import random
 from difflib import SequenceMatcher
-import boto3
 from .helpers import wrangler_utils
 from collections import Counter
 from oauth2client.service_account import ServiceAccountCredentials
@@ -1569,7 +1569,7 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     action_logs = {'patch_success': [], 'patch_failure': [], 'missing_ref_file': []}
     total_patches = check_res['full_output']['to_add']
 
-    s3 = boto3.resource('s3')
+    s3 = boto_s3_resource()
     bucket = s3.Bucket('elasticbeanstalk-%s-files' % prod_bucket_env_for_app())
 
     query = '/search/?type=FileReference'
@@ -2401,7 +2401,7 @@ def patch_hic_summary_tables(connection, **kwargs):
 def get_oh_google_sheet():
     # GET KEY FROM S3 To Access
     # TODO: encrypt the key same as foursight key and use same function to fetch it
-    s3 = boto3.resource('s3')
+    s3 = boto_s3_resource()
     obj = s3.Object('elasticbeanstalk-fourfront-webprod-system', 'DCICjupgoogle.json')
     cont = obj.get()['Body'].read().decode()
     key_dict = json.loads(cont)
