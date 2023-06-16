@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.6.0
+=====
+* IN PROGRESS ...
+* Changes (to foursight-core) to the access key check; making sure the action does not run every single day.
+
 3.5.0
 =====
 * Changes in foursight-core (4.3.0) to fix access key check.
