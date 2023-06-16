@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+3.5.0
+=====
+* Changes in foursight-core (4.3.0) to fix access key check.
+
 3.4.7
 =====
 * Fix to prepare_static_headers_Chromatin_Tracing in checks/header_checks.py from fix_sh_ct_dec branch.
