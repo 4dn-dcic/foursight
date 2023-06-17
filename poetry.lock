@@ -592,14 +592,14 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.3.0.1b9"
+version = "4.3.0.1b10"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "foursight_core-4.3.0.1b9-py3-none-any.whl", hash = "sha256:84d4cb6eefd190cf1e801aea59258e1f45597f54358bcca55864a9ba83d50c04"},
-    {file = "foursight_core-4.3.0.1b9.tar.gz", hash = "sha256:d339adab62b234bec412661c852af8cc2ccc70ba8da01e49cfb97eb74e216224"},
+    {file = "foursight_core-4.3.0.1b10-py3-none-any.whl", hash = "sha256:1192919f9fade47be48749ee4e19299c511cb6f902a0871fc5399f0d0c08b824"},
+    {file = "foursight_core-4.3.0.1b10.tar.gz", hash = "sha256:3e976791cfbc79772c746d8584799bbf2af5be36535c00f305cf31d1a88092e1"},
 ]
 
 [package.dependencies]
@@ -1952,4 +1952,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "2069b77304691335de1f8d3cd0c474f70a59e0580294ea0057d5000c0974f2d2"
+content-hash = "91115ae4f82ea18806d84537925a31c542007373cde91e11a67a121f3d3a4ef4"
