@@ -458,14 +458,14 @@ tox = ["tox"]
 
 [[package]]
 name = "dcicutils"
-version = "7.5.1.1b1"
+version = "7.5.1"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "dcicutils-7.5.1.1b1-py3-none-any.whl", hash = "sha256:2b3ef997f1fe29fc11c982507006fcdd49958eb7d78368b489379a194a1dd2f8"},
-    {file = "dcicutils-7.5.1.1b1.tar.gz", hash = "sha256:e6b0f2622580bbfb8e74a94aa4e1c8680b523714e4dd42d9bd3aa9b3ee3cbe7e"},
+    {file = "dcicutils-7.5.1-py3-none-any.whl", hash = "sha256:5c77b00116c3d1f9f413b30aa66865a9c50d88d02ea20349a4bb25e1e45eea85"},
+    {file = "dcicutils-7.5.1.tar.gz", hash = "sha256:c4211161f48ce727e9cd3e2b52f66336949c5a6ce6d518c908dfee9153f7b121"},
 ]
 
 [package.dependencies]
@@ -592,21 +592,21 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.3.0.1b18"
+version = "4.3.0.1b19"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "foursight_core-4.3.0.1b18-py3-none-any.whl", hash = "sha256:ab951aa12a2d3dfead258ddca24f5c120b9bffc6e994375f20d7bf9b2e6c6a81"},
-    {file = "foursight_core-4.3.0.1b18.tar.gz", hash = "sha256:90929865c910c962c59b81cfa967252aa879492e71c64f7a18cb92de37d94e98"},
+    {file = "foursight_core-4.3.0.1b19-py3-none-any.whl", hash = "sha256:c8ca57ca363b0513db091290d2a391a70d0e2a5828e2c7843ad46f6427d97005"},
+    {file = "foursight_core-4.3.0.1b19.tar.gz", hash = "sha256:640f3fc507de392f0f94fe81f2bf89719844c373665123c7cb5f4fc4884ffbb7"},
 ]
 
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
 cryptography = "39.0.2"
-dcicutils = "7.5.1.1b1"
+dcicutils = ">=7.5.1,<8.0.0"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -1952,4 +1952,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "ee683f02b9d17b7530e6ae80ae7aac3876e7348045bbef100181e4008bbae4aa"
+content-hash = "da6e108fae063976e852c6fd6593dd61c34c2ac9f873b7c93a5b55cc6aba0b8a"
