@@ -7,16 +7,16 @@ foursight
 Change Log
 ----------
 
-3.4.9
+3.5.1
 =====
 
 `PR 535: Add new audit check for ChIP-seq target tags <https://github.com/4dn-dcic/foursight/pull/535>`_
 
 * New check that makes sure that BioFeatures linked to ChIP-seq experiments as targets have the correct tag added
 
-3.4.8
+3.5.0
 =====
-David???
+* Changes in foursight-core (4.3.0) to fix access key check.
 
 3.4.7
 =====
