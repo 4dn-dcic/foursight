@@ -458,14 +458,14 @@ tox = ["tox"]
 
 [[package]]
 name = "dcicutils"
-version = "7.5.1"
+version = "7.6.0.1b4"
 description = "Utility package for interacting with the 4DN Data Portal and other 4DN resources"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "dcicutils-7.5.1-py3-none-any.whl", hash = "sha256:5c77b00116c3d1f9f413b30aa66865a9c50d88d02ea20349a4bb25e1e45eea85"},
-    {file = "dcicutils-7.5.1.tar.gz", hash = "sha256:c4211161f48ce727e9cd3e2b52f66336949c5a6ce6d518c908dfee9153f7b121"},
+    {file = "dcicutils-7.6.0.1b4-py3-none-any.whl", hash = "sha256:9b81ca9ca3196ba1eff67c24d44b8dfe158f2a9542f752e281b0e4dbbb3b32d0"},
+    {file = "dcicutils-7.6.0.1b4.tar.gz", hash = "sha256:1c883c0060bc9fdac56d26a15d1493afa0bd4172e81e35c06ec003da8a08ae04"},
 ]
 
 [package.dependencies]
@@ -592,21 +592,21 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.3.0.1b40"
+version = "4.3.0.1b42"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = ">=3.7,<3.10"
 files = [
-    {file = "foursight_core-4.3.0.1b40-py3-none-any.whl", hash = "sha256:da810a04dfdddd7cf830f11ede154db102a370f27abfe6e4fa5d57a61f1698bc"},
-    {file = "foursight_core-4.3.0.1b40.tar.gz", hash = "sha256:c437d2f907a71a1a19dc0f3a41d7b344ed008cbfde5f055d47c40293cb5fbd31"},
+    {file = "foursight_core-4.3.0.1b42-py3-none-any.whl", hash = "sha256:6db814a5c6bb68ba2480b263baf60d6bf8348eea6d3ed183143d74f70063ddb1"},
+    {file = "foursight_core-4.3.0.1b42.tar.gz", hash = "sha256:24d2a0c40667f99e900c81f8acf5d42cc61a91e0931800fc45ff2715608306b5"},
 ]
 
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
 cryptography = "39.0.2"
-dcicutils = ">=7.5.1,<8.0.0"
+dcicutils = "7.6.0.1b4"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -1316,18 +1316,18 @@ tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
 
 [[package]]
 name = "pyopenssl"
-version = "23.1.1"
+version = "23.2.0"
 description = "Python wrapper module around the OpenSSL library"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "pyOpenSSL-23.1.1-py3-none-any.whl", hash = "sha256:9e0c526404a210df9d2b18cd33364beadb0dc858a739b885677bc65e105d4a4c"},
-    {file = "pyOpenSSL-23.1.1.tar.gz", hash = "sha256:841498b9bec61623b1b6c47ebbc02367c07d60e0e195f19790817f10cc8db0b7"},
+    {file = "pyOpenSSL-23.2.0-py3-none-any.whl", hash = "sha256:24f0dc5227396b3e831f4c7f602b950a5e9833d292c8e4a2e06b709292806ae2"},
+    {file = "pyOpenSSL-23.2.0.tar.gz", hash = "sha256:276f931f55a452e7dea69c7173e984eb2a4407ce413c918aa34b55f82f9b8bac"},
 ]
 
 [package.dependencies]
-cryptography = ">=38.0.0,<41"
+cryptography = ">=38.0.0,<40.0.0 || >40.0.0,<40.0.1 || >40.0.1,<42"
 
 [package.extras]
 docs = ["sphinx (!=5.2.0,!=5.2.0.post0)", "sphinx-rtd-theme"]
@@ -1543,18 +1543,18 @@ setuptools = ">=41.0"
 
 [[package]]
 name = "redis"
-version = "4.5.4"
+version = "4.6.0"
 description = "Python client for Redis database and key-value store"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "redis-4.5.4-py3-none-any.whl", hash = "sha256:2c19e6767c474f2e85167909061d525ed65bea9301c0770bb151e041b7ac89a2"},
-    {file = "redis-4.5.4.tar.gz", hash = "sha256:73ec35da4da267d6847e47f68730fdd5f62e2ca69e3ef5885c6a78a9374c3893"},
+    {file = "redis-4.6.0-py3-none-any.whl", hash = "sha256:e2b03db868160ee4591de3cb90d40ebb50a90dd302138775937f6a42b7ed183c"},
+    {file = "redis-4.6.0.tar.gz", hash = "sha256:585dc516b9eb042a619ef0a39c3d7d55fe81bdb4df09a52c9cdde0d07bf1aa7d"},
 ]
 
 [package.dependencies]
-async-timeout = {version = ">=4.0.2", markers = "python_version <= \"3.11.2\""}
+async-timeout = {version = ">=4.0.2", markers = "python_full_version <= \"3.11.2\""}
 importlib-metadata = {version = ">=1.0", markers = "python_version < \"3.8\""}
 typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
@@ -1881,14 +1881,14 @@ testing = ["coverage", "pytest (>=3.1.0)", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "websocket-client"
-version = "1.5.1"
+version = "1.6.1"
 description = "WebSocket client for Python with low level API options"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "websocket-client-1.5.1.tar.gz", hash = "sha256:3f09e6d8230892547132177f575a4e3e73cfdf06526e20cc02aa1c3b47184d40"},
-    {file = "websocket_client-1.5.1-py3-none-any.whl", hash = "sha256:cdf5877568b7e83aa7cf2244ab56a3213de587bbe0ce9d8b9600fc77b455d89e"},
+    {file = "websocket-client-1.6.1.tar.gz", hash = "sha256:c951af98631d24f8df89ab1019fc365f2227c0892f12fd150e935607c79dd0dd"},
+    {file = "websocket_client-1.6.1-py3-none-any.whl", hash = "sha256:f1f9f2ad5291f0225a49efad77abf9e700b6fef553900623060dad6e26503b9d"},
 ]
 
 [package.extras]
@@ -1952,4 +1952,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "34b6fdccbf4f084628711211ffa3ae79aafcfca90d353c4c93043c0f9954b3de"
+content-hash = "952e856171bd5f53b534d53f012305ef1c926fdf4e6b8d9afc1faba033b0631d"
