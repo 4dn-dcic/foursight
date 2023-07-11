@@ -10,7 +10,7 @@ Change Log
 3.5.2
 =====
 
-`PR : Update checks that check for number of runs - rate limits output <https://github.com/4dn-dcic/foursight/pull/>`_
+`PR 538: Update checks that check for number of runs - rate limits output <https://github.com/4dn-dcic/foursight/pull/538>`_
 
 * Adding info to brief output and WARN if the function that checks the number of runs over the past 6 hours indicates not to start new runs.
 
