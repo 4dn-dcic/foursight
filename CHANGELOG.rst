@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.6.0
+=====
+* Changes (to foursight-core) to the access key check; making sure the action does not run every single day.
+
+
 3.5.2
 =====
 
@@ -24,6 +29,11 @@ Change Log
 3.5.0
 =====
 * Changes in foursight-core (4.3.0) to fix access key check.
+
+3.4.8
+=====
+* No difference between this (3.4.8) version and 3.4.7, except that 3.47 mistakenly was referring
+  to the beta version of foursight (4.2.0.1b6) rather than the real non-beta version (4.2.0).
 
 3.4.7
 =====

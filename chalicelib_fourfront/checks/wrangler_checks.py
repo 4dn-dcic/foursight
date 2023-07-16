@@ -1,5 +1,6 @@
 from dcicutils import ff_utils
 from dcicutils.env_utils import prod_bucket_env_for_app
+import boto3
 import re
 import requests
 import json
@@ -8,7 +9,6 @@ import time
 import itertools
 import random
 from difflib import SequenceMatcher
-import boto3
 from .helpers import wrangler_utils
 from collections import Counter
 from oauth2client.service_account import ServiceAccountCredentials
