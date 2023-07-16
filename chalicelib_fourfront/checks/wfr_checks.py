@@ -114,6 +114,8 @@ def md5run_status(connection, **kwargs):
     # check number of total workflow runs in the past 6h
     check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
     if n_runs_available == 0:
+        check.brief_output.append('Runs are limited due to docker pull rate limit')
+        check.status = 'WARN'
         return check
 
     # Build the query
@@ -319,6 +321,8 @@ def fastqc_status(connection, **kwargs):
     # check number of total workflow runs in the past 6h
     check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
     if n_runs_available == 0:
+        check.brief_output.append('Runs are limited due to docker pull rate limit')
+        check.status = 'WARN'
         return check
 
     # Build the query (skip to be uploaded by workflow)
@@ -2088,6 +2092,8 @@ def fastq_first_line_status(connection, **kwargs):
     # check number of total workflow runs in the past 6h
     check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
     if n_runs_available == 0:
+        check.brief_output.append('Runs are limited due to docker pull rate limit')
+        check.status = 'WARN'
         return check
 
     query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'
