@@ -7,10 +7,14 @@ foursight
 Change Log
 ----------
 
+3.6.1
+=====
+* 2023-07-17
+* New local-check-execution script.
+
 3.6.0
 =====
 * Changes (to foursight-core) to the access key check; making sure the action does not run every single day.
-
 
 3.5.2
 =====
