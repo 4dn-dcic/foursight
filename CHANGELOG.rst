@@ -10,7 +10,7 @@ Change Log
 3.6.1
 =====
 
-
+`PR 539: badge bug fix <https://github.com/4dn-dcic/foursight/pull/539>`_
 
 * Fixed a bug in the replicate set consistency badge check 
 
