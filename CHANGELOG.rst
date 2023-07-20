@@ -7,10 +7,16 @@ foursight
 Change Log
 ----------
 
+3.6.1
+=====
+
+`PR 539: badge bug fix <https://github.com/4dn-dcic/foursight/pull/539>`_
+
+* Fixed a bug in the replicate set consistency badge check 
+
 3.6.0
 =====
 * Changes (to foursight-core) to the access key check; making sure the action does not run every single day.
-
 
 3.5.2
 =====
