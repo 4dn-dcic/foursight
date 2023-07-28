@@ -7,10 +7,16 @@ foursight
 Change Log
 ----------
 
-3.6.1
+3.6.2
 =====
 * 2023-07-17
 * New local-check-execution script.
+
+3.6.1
+=====
+`PR 539: badge bug fix <https://github.com/4dn-dcic/foursight/pull/539>`_
+
+* Fixed a bug in the replicate set consistency badge check 
 
 3.6.0
 =====

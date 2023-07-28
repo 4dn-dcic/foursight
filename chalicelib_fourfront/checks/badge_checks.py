@@ -706,7 +706,7 @@ def consistent_replicate_info(connection, **kwargs):
             audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
             results[repset['@id']] = {'status': audit_key, 'lab': lab, 'info': text}
             if audit_key == REV_KEY:
-                check.brief_output[audit_key][lab] = check.brief_output[audit_key].setdefault(lab, []).append(text)
+                check.brief_output[audit_key].setdefault(lab, []).append(text)
             if repset['status'] not in REV:
                 compare[repset['@id']] = msgs
 
