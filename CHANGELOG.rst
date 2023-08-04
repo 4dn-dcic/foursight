@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.6.2
+=====
+
+* small update to include fastq files with uploaded status that are linked to RNA-seq experiments to be checked for beta-actin counts in order to verify strandedness.
+
 3.6.1
 =====
 
