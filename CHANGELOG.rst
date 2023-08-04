@@ -10,6 +10,8 @@ Change Log
 3.6.2
 =====
 
+`PR 540: add uploaded status to beta-actin count check <https://github.com/4dn-dcic/foursight/pull/540>`_
+
 * small update to include fastq files with uploaded status that are linked to RNA-seq experiments to be checked for beta-actin counts in order to verify strandedness.
 
 3.6.1
