@@ -1817,13 +1817,13 @@ def rna_strandedness_status(connection, **kwargs):
         '/search/?type=FileFastq&file_format.file_format=fastq&track_and_facet_info.experiment_type=RNA-seq'
         + '&experiments.biosample.biosource.organism.name!=No+value'
         + '&beta_actin_sense_count=No+value&beta_actin_antisense_count=No+value'
-        + '&status=pre-release&status=released&status=released to project',
+        + '&status=uploaded&status=pre-release&status=released&status=released to project',
         key=my_auth)
     # Get RNA-seq sets that are tagged with skip_processing
     expsets_to_skip = ff_utils.search_metadata(
         '/search/?type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=RNA-seq'
         + '&experiments_in_set.biosample.biosource.organism.name!=No+value'
-        + '&status=pre-release&status=released&status=released to project'
+        + '&status=uploaded&status=pre-release&status=released&status=released to project'
         + '&tags=skip_processing&field=accession',
         key=my_auth)
     expsets_acc_to_skip = [expset['accession'] for expset in expsets_to_skip]
