@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.6.3
+=====
+
+* update locked version of dcicutils to ^7.7.0
+
 3.6.2
 =====
 
