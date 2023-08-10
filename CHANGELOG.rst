@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+3.6.3
+=====
+
+`PR 541: add uploaded status to beta-actin count check <https://github.com/4dn-dcic/foursight/pull/541>`_
+
+* update locked version of dcicutils to ^7.7.0
+
 3.6.2
 =====
 
