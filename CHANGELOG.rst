@@ -7,13 +7,14 @@ foursight
 Change Log
 ----------
 
-3.6.4
+
+3.7.0
 =====
 
 `PR 543: rewrite sync_users_oh to remove pandas and numpy <https://github.com/4dn-dcic/foursight/pull/543>`_
 
-* remove pandas and numpy to reduce package size
-
+* Removed dependency on pandas by refactoring code in wrangler_checks.py
+  to use new convert_table_to_ordered_dict function in check_utils.py.
 
 3.6.3
 =====
