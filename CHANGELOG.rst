@@ -10,7 +10,7 @@ Change Log
 3.6.4
 =====
 
-`PR 542: rewrite sync_users_oh to remove pandas and numpy <https://github.com/4dn-dcic/foursight/pull/542>`_
+`PR 543: rewrite sync_users_oh to remove pandas and numpy <https://github.com/4dn-dcic/foursight/pull/543>`_
 
 * remove pandas and numpy to reduce package size
 
