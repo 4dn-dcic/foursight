@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+3.6.4
+=====
+
+`PR 542: rewrite sync_users_oh to remove pandas <https://github.com/4dn-dcic/foursight/pull/542>`_
+
+* remove pandas to reduce package size
+
+
 3.6.3
 =====
 
