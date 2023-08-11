@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+3.7.0
+=====
+
+* 2023-08-11
+* Removed dependency on pandas by refactoring code in wrangler_checks.py
+  to use new convert_table_to_ordered_dict function in check_utils.py.
+
 3.6.3
 =====
 
