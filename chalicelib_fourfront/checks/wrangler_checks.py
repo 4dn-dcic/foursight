@@ -13,7 +13,6 @@ from .helpers import wrangler_utils
 from collections import Counter
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
-#import pandas as pd
 from .check_utils import convert_table_to_ordered_dict
 from collections import OrderedDict
 import uuid
@@ -2647,8 +2646,6 @@ def sync_users_oh_status(connection, **kwargs):
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
     # Convert table data into an ordered dictionary
-    # df = pd.DataFrame(table[1:], columns=table[0])
-    # user_list = df.to_dict(orient='records', into=OrderedDict)
     user_list = convert_table_to_ordered_dict(table)
     # all dcic users in the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
@@ -2869,8 +2866,6 @@ def sync_users_oh_start(connection, **kwargs):
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
     # Convert table data into an ordered dictionary
-    # df = pd.DataFrame(table[1:], columns=table[0])
-    # user_list = df.to_dict(orient='records', into=OrderedDict)
     user_list = convert_table_to_ordered_dict(table)
     # generate records to write
     gs_write = []
