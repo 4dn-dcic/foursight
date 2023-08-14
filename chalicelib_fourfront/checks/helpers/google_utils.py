@@ -135,7 +135,7 @@ class GoogleDataAPISyncer:
             "private_key_id": "XXXXX",
             "private_key": "XXXXX",
             "client_email": "starting-account-1k8iow9ajuu4@fourdn-fourfront-1690394203370.iam.gserviceaccount.com",
-            "client_id": "108764569188698991108",
+            "client_id": "XXXXX",
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
@@ -752,29 +752,35 @@ class GoogleDataAPISyncer:
         @report
         def fields_faceted(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
-                'dateRanges' : [{ 'startDate' : start_date, 'endDate' : end_date }],
+                'date_ranges' : [{ 'start_date' : start_date, 'end_date' : end_date }],
                 'dimensions': [
                     #{ 'name': 'ga:eventLabel' }, # Too many distinct terms if we make it this granular.
-                    { 'name': 'ga:dimension' + str(self.owner.extra_config["analytics_dimension_name_map"].get("field", 3)) }, # Field Name
+                    { 'name': 'customEvent:field_key' }, # Field Name
                     #{ 'name': 'ga:dimension' + str(self.owner.extra_config["analytics_dimension_name_map"].get("term", 4)) }  # Term Name # # Too many distinct terms if we make it this granular.
                 ],
                 'metrics': [
-                    { 'expression': 'ga:totalEvents', 'formattingType' : 'INTEGER' },
-                    { 'expression': 'ga:sessions', 'formattingType' : 'INTEGER' },
-                    { 'expression': 'ga:users', 'formattingType' : 'INTEGER' }
+                    { 'name': 'eventCount' },
+                    { 'name': 'sessions' },
+                    { 'name': 'totalUsers' }
                 ],
-                "orderBys" : [{ 'fieldName' : 'ga:totalEvents', 'sortOrder' : 'descending' }],
-                "dimensionFilterClauses" : [
-                    {
-                        "filters" : [
+                'order_bys' : [
+                    { 'metric' : { 'metric_name': 'eventCount' }, 'desc': True }
+                ],
+                'dimension_filter' : {
+                    'and_group': {
+                        'expressions': [
                             {
-                                "dimensionName" : "ga:eventAction",
-                                "expressions" : ["Set Filter"],
-                                "operator" : "EXACT"
-                            }
-                        ]
+                                "filter" : { 
+                                    'field_name' : "customEvent:action", 
+                                    'string_filter': { 
+                                        "value" : "Set Filter", 
+                                        "match_type" : "EXACT",
+                                        "case_sensitive": True
+                                    } 
+                                }
+                        }]
                     }
-                ]
+                }
             }
             if execute:
                 return self.query_reports([report_request_json])
