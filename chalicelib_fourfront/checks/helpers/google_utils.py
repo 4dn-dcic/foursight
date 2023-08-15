@@ -49,7 +49,17 @@ DEFAULT_GOOGLE_API_CONFIG = {
         'eventCount'            : 'ga:totalEvents',
         'session'               : 'ga:sessions',
         'totalUsers'            : 'ga:users',
-        'customEvent:field_key' : 'ga:dimension3'
+        'customEvent:file_type' : 'ga:productVariant',
+        'customEvent:field_key' : 'ga:dimension3',
+        'customEvent:file_size' : 'ga:metric1',
+        'customEvent:downloads' : 'ga:metric2',
+        'calcMetric_PercentRangeQueries' : 'ga:calcMetric_PercentRangeQueries',
+        'itemViewEvents'        : 'ga:productDetailViews',
+        'itemListClickEvents'   : 'ga:productListClicks',
+        'itemListViewEvents'    : 'ga:productListViews'
+    },
+    "analytics_metric_type": {
+        'calcMetric_PercentRangeQueries': 'TYPE_INTEGER'
     }
 }
 
@@ -193,7 +203,7 @@ class GoogleDataAPISyncer:
             """
 
             def try_convert_field(source_field):
-                mapping = self.owner.extra_config["analytics_to_tracking_item_fields_mapping"]
+                mapping = self.owner.extra_config.get("analytics_to_tracking_item_fields_mapping", {})
                 if source_field in mapping:
                     return mapping[source_field]
                 return source_field
@@ -202,7 +212,13 @@ class GoogleDataAPISyncer:
                 """Parses value from row into a numerical format, if necessary."""
                 value = row.metric_values[metric_index].value
                 type = metric_dict.type_.name
-                if type == 'TYPE_INTEGER':
+
+                #override type if necessary
+                metric_types = self.owner.extra_config.get("analytics_metric_type", {})
+                if metric_dict.name in metric_types:
+                    type = metric_types[metric_dict.name]
+
+                if type in ('TYPE_INTEGER', 'TYPE_STANDARD'):
                     value = int(value)
                 elif type in ('TYPE_FLOAT', 'TYPE_CURRENCY', 'TYPE_TIME', 'TYPE_SECONDS'):
                     value = float(value)
@@ -825,10 +841,19 @@ class GoogleDataAPISyncer:
                     'and_group': {
                         'expressions': [
                             {
+                                # since GA4 not allows mix usage of Event and Item-Scoped metrics/dimensions, this filter is replaced with the one below
+                                # "filter" : { 
+                                #     'field_name' : "itemCategory", 
+                                #     'string_filter': { 
+                                #         "value" : "File", 
+                                #         "match_type" : "EXACT",
+                                #         "case_sensitive": True
+                                #     } 
+                                # }
                                 "filter" : { 
-                                    'field_name' : "itemCategory", 
+                                    'field_name' : "eventName", 
                                     'string_filter': { 
-                                        "value" : "File", 
+                                        "value" : "file_download",
                                         "match_type" : "EXACT",
                                         "case_sensitive": True
                                     } 
@@ -845,7 +870,7 @@ class GoogleDataAPISyncer:
                 ]
             }
 
-        @report(disabled=True)
+        @report
         def file_downloads_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = self.file_download_base_request_json(start_date, end_date)
             report_request_json["dimensions"] = [ { 'name': 'country' } ]
@@ -853,10 +878,10 @@ class GoogleDataAPISyncer:
                 return self.query_reports([report_request_json])
             return report_request_json
 
-        @report(disabled=True)
+        @report
         def file_downloads_by_filetype(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = self.file_download_base_request_json(start_date, end_date)
-            report_request_json["dimensions"] = [ { 'name': 'itemVariant' } ] # === 'filetype'
+            report_request_json["dimensions"] = [ { 'name': 'customEvent:file_type' } ] # === 'filetype'
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
@@ -865,7 +890,7 @@ class GoogleDataAPISyncer:
         def file_downloads_by_experiment_type(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = self.file_download_base_request_json(start_date, end_date)
             report_request_json["dimensions"] = [
-                { "name" : 'customItem:experiment_type' }
+                { "name" : 'customEvent:experiment_type' }
             ]
             if execute:
                 return self.query_reports([report_request_json])
@@ -940,7 +965,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not sys.flags.interactive:
-        sys.exit(RED + "Exiting, not in interactive mode.\nRun interactively via `python3 -i google_api_utils.py` or supply a command.")
+        sys.exit(RED + "Exiting, not in interactive mode.\nRun interactively via `python3 -i google_utils.py` or supply a command.")
 
     ak = {
         "server": args.server,
