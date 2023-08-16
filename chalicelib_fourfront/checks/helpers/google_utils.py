@@ -56,7 +56,14 @@ DEFAULT_GOOGLE_API_CONFIG = {
         'calcMetric_PercentRangeQueries' : 'ga:calcMetric_PercentRangeQueries',
         'itemViewEvents'        : 'ga:productDetailViews',
         'itemListClickEvents'   : 'ga:productListClicks',
-        'itemListViewEvents'    : 'ga:productListViews'
+        'itemListViewEvents'    : 'ga:productListViews',
+        'itemsViewed'           : 'ga:productDetailViews',
+        'itemsClickedInList'    : 'ga:productListClicks',
+        'itemsViewedInList'     : 'ga:productListViews',
+        'itemName'              : 'ga:productName',
+        'itemId'                : 'ga:productSKU',
+        'itemCategory2'         : 'ga:productCategoryLevel2',
+        'itemBrand'             : 'ga:productBrand'
     },
     "analytics_metric_type": {
         'calcMetric_PercentRangeQueries': 'TYPE_INTEGER'
@@ -631,7 +638,7 @@ class GoogleDataAPISyncer:
             return report_request_json
 
 
-        @report(disabled=True)
+        @report
         def views_by_experiment_set(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
                 'date_ranges' : [{ 'start_date' : start_date, 'end_date' : end_date }],
@@ -654,10 +661,10 @@ class GoogleDataAPISyncer:
                         'expressions': [
                             {
                                 "filter" : { 
-                                    'field_name' : "itemCategory", 
-                                    'string_filter': { 
-                                        "value" : "ExperimentSet", 
-                                        "match_type" : "EXACT" 
+                                    'field_name' : "itemCategory",
+                                    'string_filter': {
+                                        "value" : "ExperimentSet",
+                                        "match_type" : "BEGINS_WITH" 
                                     } 
                                 }
                         }]
