@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+3.8.0
+=====
+
+`PR 545: update dcicutils version <https://github.com/4dn-dcic/foursight/pull/545>`_
+
+* update locked dcicutils version needed due to fourfront schema version updates
 
 3.7.0
 =====
