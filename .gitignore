@@ -1,7 +1,6 @@
 .chalice/deployments/
 .chalice/deployed/
 .chalice/venv/
-.chalice/config.json
 *.pyc
 __pycache__
 *.egg-info/
@@ -31,3 +30,6 @@ deployment.zip
 sam.yaml
 sam.json
 chalicelib/checks/helpers/cgap_utils.py
+
+# Vim
+*.swp

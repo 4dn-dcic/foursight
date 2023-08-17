@@ -356,6 +356,20 @@
             }
         }
     },
+    "chipseq_target_missing_tag": {
+        "title": "ChIP-seq target BioFeature missing tag for wfr",
+        "group": "Audit checks",
+        "schedule": {
+            "morning_checks_1": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },
     "check_for_ontology_updates": {
         "title": "Check for Ontology Updates",
         "group": "Metadata checks",
@@ -1500,6 +1514,26 @@
             }
         }
     },
+    "prepare_static_headers_Chromatin_Tracing": {
+        "title": "Chromatin Tracing",
+        "group": "Static headers checks",
+        "schedule": {
+            "morning_checks_3": {
+                "data": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                },
+                "hotseat": {
+                    "dependencies": [],
+                    "kwargs": {
+                        "primary": true
+                    }
+                }
+            }
+        }
+    },    
     "problematic_wfrs_fdn_status": {
         "title": "x) Errored Runs",
         "group": "Pipeline checks",

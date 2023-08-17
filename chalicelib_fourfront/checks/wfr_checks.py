@@ -114,6 +114,8 @@ def md5run_status(connection, **kwargs):
     # check number of total workflow runs in the past 6h
     check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
     if n_runs_available == 0:
+        check.brief_output.append('Runs are limited due to docker pull rate limit')
+        check.status = 'WARN'
         return check
 
     # Build the query
@@ -319,6 +321,8 @@ def fastqc_status(connection, **kwargs):
     # check number of total workflow runs in the past 6h
     check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
     if n_runs_available == 0:
+        check.brief_output.append('Runs are limited due to docker pull rate limit')
+        check.status = 'WARN'
         return check
 
     # Build the query (skip to be uploaded by workflow)
@@ -1813,13 +1817,13 @@ def rna_strandedness_status(connection, **kwargs):
         '/search/?type=FileFastq&file_format.file_format=fastq&track_and_facet_info.experiment_type=RNA-seq'
         + '&experiments.biosample.biosource.organism.name!=No+value'
         + '&beta_actin_sense_count=No+value&beta_actin_antisense_count=No+value'
-        + '&status=pre-release&status=released&status=released to project',
+        + '&status=uploaded&status=pre-release&status=released&status=released to project',
         key=my_auth)
     # Get RNA-seq sets that are tagged with skip_processing
     expsets_to_skip = ff_utils.search_metadata(
         '/search/?type=ExperimentSetReplicate&experiments_in_set.experiment_type.display_title=RNA-seq'
         + '&experiments_in_set.biosample.biosource.organism.name!=No+value'
-        + '&status=pre-release&status=released&status=released to project'
+        + '&status=uploaded&status=pre-release&status=released&status=released to project'
         + '&tags=skip_processing&field=accession',
         key=my_auth)
     expsets_acc_to_skip = [expset['accession'] for expset in expsets_to_skip]
@@ -2088,6 +2092,8 @@ def fastq_first_line_status(connection, **kwargs):
     # check number of total workflow runs in the past 6h
     check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
     if n_runs_available == 0:
+        check.brief_output.append('Runs are limited due to docker pull rate limit')
+        check.status = 'WARN'
         return check
 
     query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'

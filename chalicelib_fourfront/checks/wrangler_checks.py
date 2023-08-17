@@ -1,5 +1,6 @@
 from dcicutils import ff_utils
 from dcicutils.env_utils import prod_bucket_env_for_app
+import boto3
 import re
 import requests
 import json
@@ -8,12 +9,11 @@ import time
 import itertools
 import random
 from difflib import SequenceMatcher
-import boto3
 from .helpers import wrangler_utils
 from collections import Counter
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
-import pandas as pd
+from .check_utils import convert_table_to_ordered_dict
 from collections import OrderedDict
 import uuid
 
@@ -1339,16 +1339,17 @@ def check_assay_classification_short_names(connection, **kwargs):
         "transcription": "Transcription",
         "transcription - single cell": "Transcription",
         "rna-dna pairwise interactions": "RNA-DNA HiC",
-        "fixed sample dna localization": "DNA FISH",
-        "chromatin tracing": "DNA FISH",
-        "fixed sample rna localization": "RNA FISH",
+        "fixed sample dna localization": "FISH",
+        "chromatin tracing": "FISH",
+        "fixed sample rna localization": "FISH",
         "single particle tracking": "SPT",
         "context-dependent reporter expression": "Reporter Expression",
         "scanning electron microscopy": "SEM",
         "transmission electron microscopy": "TEM",
         "immunofluorescence": "Immunofluorescence",
         "synthetic condensation": "OptoDroplet",
-        "capture hi-c": "Enrichment Hi-C"
+        "capture hi-c": "Enrichment Hi-C",
+        "hicar": "Enrichment Hi-C"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
                                         key=connection.ff_keys)
@@ -2645,8 +2646,7 @@ def sync_users_oh_status(connection, **kwargs):
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
     # Convert table data into an ordered dictionary
-    df = pd.DataFrame(table[1:], columns=table[0])
-    user_list = df.to_dict(orient='records', into=OrderedDict)
+    user_list = convert_table_to_ordered_dict(table)
     # all dcic users in the list
     all_dcic_uuids = [i['DCIC UUID'] for i in user_list if i.get('DCIC UUID')]
 
@@ -2866,8 +2866,7 @@ def sync_users_oh_start(connection, **kwargs):
     worksheet = get_oh_google_sheet()
     table = worksheet.get_all_values()
     # Convert table data into an ordered dictionary
-    df = pd.DataFrame(table[1:], columns=table[0])
-    user_list = df.to_dict(orient='records', into=OrderedDict)
+    user_list = convert_table_to_ordered_dict(table)
     # generate records to write
     gs_write = []
 

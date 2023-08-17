@@ -7,6 +7,116 @@ foursight
 Change Log
 ----------
 
+
+3.7.0
+=====
+
+`PR 543: rewrite sync_users_oh to remove pandas and numpy <https://github.com/4dn-dcic/foursight/pull/543>`_
+
+* Removed dependency on pandas by refactoring code in wrangler_checks.py
+  to use new convert_table_to_ordered_dict function in check_utils.py.
+
+3.6.3
+=====
+
+`PR 541: add uploaded status to beta-actin count check <https://github.com/4dn-dcic/foursight/pull/541>`_
+
+* update locked version of dcicutils to ^7.7.0
+
+3.6.2
+=====
+
+`PR 540: add uploaded status to beta-actin count check <https://github.com/4dn-dcic/foursight/pull/540>`_
+
+* small update to include fastq files with uploaded status that are linked to RNA-seq experiments to be checked for beta-actin counts in order to verify strandedness.
+
+3.6.1
+=====
+
+`PR 539: badge bug fix <https://github.com/4dn-dcic/foursight/pull/539>`_
+
+* Fixed a bug in the replicate set consistency badge check 
+
+3.6.0
+=====
+* Changes (to foursight-core) to the access key check; making sure the action does not run every single day.
+
+3.5.2
+=====
+
+`PR 538: Update checks that check for number of runs - rate limits output <https://github.com/4dn-dcic/foursight/pull/538>`_
+
+* Adding info to brief output and WARN if the function that checks the number of runs over the past 6 hours indicates not to start new runs.
+
+3.5.1
+=====
+
+`PR 535: Add new audit check for ChIP-seq target tags <https://github.com/4dn-dcic/foursight/pull/535>`_
+
+* New check that makes sure that BioFeatures linked to ChIP-seq experiments as targets have the correct tag added
+
+3.5.0
+=====
+* Changes in foursight-core (4.3.0) to fix access key check.
+
+3.4.8
+=====
+* No difference between this (3.4.8) version and 3.4.7, except that 3.47 mistakenly was referring
+  to the beta version of foursight (4.2.0.1b6) rather than the real non-beta version (4.2.0).
+
+3.4.7
+=====
+* Fix to prepare_static_headers_Chromatin_Tracing in checks/header_checks.py from fix_sh_ct_dec branch.
+* Minor UI fixes for display of status text for checks/actions - in foursight-core.
+* Added UI warning for registered action functions with no associated check - in foursight-core.
+* Added UI display of Redis info on INFO page - in foursight-core.
+* Added a d default .chalice/config.json and removed this from .gitignore
+
+
+3.4.6
+=====
+* small bug fix for assay_subclass_short check so new experiment_type gets right value
+
+3.4.5
+=====
+* Update foursight-core 4.1.2.
+  Fixes for check arguments not being converted (from string) to int/float/etc as
+  appropriate in the React version only (was not calling query_params_to_literals).
+
+3.4.4
+=====
+* Small update to assay_subclass_short update check to use new FISH assay_subclass_short as new value
+* bug fix where an extra slash was added in url string to check against causing erroneus broken link to be reported
+
+3.4.3
+=====
+* Added a new check in the header_checks.py for automate patching of FOF-CT static section for chromatin tracing datasets (Multiplexed FISH).
+
+3.4.2
+=====
+* Version changes related to foursight-core changes for SSL certificate and Portal access key checking.
+* Using new dcicutils.scripts.publish_to_pypi for publish.
+
+3.3.5
+=====
+
+`PR 522: Add new params to ignore uuids or reset external expset with no pub check <https://github.com/4dn-dcic/foursight/pull/527>`_
+
+* add 'uuids_to_ignore' parameter for a list of uuids to ignore and hence not warn for this check
+* add 'reset_ignore' parameter to clear the list of uuids that are ignored
+
+3.3.4
+=====
+
+`PR 526: Dependency updates <https://github.com/4dn-dcic/foursight/pull/526/files>`_
+
+* Bump foursight-core + dcicutils, and allow higher PyJWT versions for consistency with foursight-cgap
+
+3.3.3
+=====
+
+* Fixes the FF build cluster value
+
 3.3.2
 =====
 * Update to foursight-core 3.3.2 (and dcicutils 6.8.0).

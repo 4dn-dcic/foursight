@@ -15,7 +15,7 @@ class AppUtils(AppUtils_from_core):
 
     # Note that this is set in the new (as of August 2022) apply_identity code;
     # see foursight-core/foursight_core/{app_utils.py,identity.py}.
-    es_host = os.environ.get("ES_HOST")
+    es_host = os.environ.get("ES_HOST_LOCAL", os.environ.get("ES_HOST"))
     if not es_host:
         raise Exception("Foursight ES_HOST environment variable not set!")
     HOST = es_host

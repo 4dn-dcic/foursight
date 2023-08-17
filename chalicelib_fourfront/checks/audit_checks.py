@@ -66,17 +66,40 @@ def biosource_cell_line_value(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(uuids_to_ignore=None, reset_ignore=False)
 def external_expsets_without_pub(connection, **kwargs):
     '''
     checks external experiment sets to see if they are attributed to a publication
     '''
     check = CheckResult(connection, 'external_expsets_without_pub')
+    # determine which uuids of expsets to ignore
+    expsets_to_ignore = []
+    # check for any new expsets to ignore in kwargs
+    new_ignores = kwargs.get('uuids_to_ignore')
+    if new_ignores:
+        expsets_to_ignore = [u.strip() for u in new_ignores.split(',')]
+
+    last_result = check.get_primary_result()
+    # if last one was fail, find an earlier check with non-FAIL status
+    it = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        it += 1
+        hours = it * 24  # this is a daily check, so look for checks with 7 days iteration
+        last_result = check.get_closest_result(diff_hours=hours)
+        if it > 7:
+            check.summary = 'Cannot find a non-fail primary check in the past week'
+            check.status = 'ERROR'
+            return check
+    # get any cases to ignore from previous runs and add to any provided uuids
+    if 'ignore' in last_result['full_output']:  # kludge to account for change in result full_output structure
+        expsets_to_ignore.extend(last_result['full_output'].get('ignore', []))
 
     ext = ff_utils.search_metadata('search/?award.project=External&type=ExperimentSet&frame=object',
                                    key=connection.ff_keys, page_limit=50)
     no_pub = []
     for expset in ext:
+        if expset.get('uuid') in expsets_to_ignore:
+            continue
         if not expset.get('publications_of_set') and not expset.get('produced_in_pub'):
             no_pub.append({'uuid': expset['uuid'],
                            '@id': expset['@id'],
@@ -91,7 +114,10 @@ def external_expsets_without_pub(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No external experiment sets are missing publication. Searched %s' % len(ext)
         check.description = '0 external experiment sets are missing attribution to a publication.'
-    check.full_output = no_pub
+    # see if want to reset ignored
+    if kwargs.get('reset_ignore') is True:
+        expsets_to_ignore = []
+    check.full_output = {'problems': no_pub, 'ignore': expsets_to_ignore}
     check.brief_output = [item['uuid'] for item in no_pub]
     return check
 
@@ -431,7 +457,7 @@ def check_help_page_urls(connection, **kwargs):
             if url.startswith('#'):  # section of static page
                 url = result['@id'] + url
             if url.startswith('/'):  # fill in appropriate url for relative link
-                url = server + url
+                url = server.rstrip('/') + url
             if url.startswith(server.rstrip('/') + '/search/') or url.startswith(server.rstrip('/') + '/browse/'):
                 continue
             try:
@@ -1176,5 +1202,42 @@ def external_submission_but_missing_dbxrefs(connection, **kwargs):
         check.status = 'PASS'
         check.summary = 'No items missing dbxrefs found'
         check.description = 'All items exported for external submission more than {} days ago have dbxrefs'.format(delay)
+
+    return check
+
+
+@check_function()
+def chipseq_target_missing_tag(connection, **kwargs):
+    ''' Check for BioFeatures linked to ChIP-seq experiments as targets that are missing
+    tags that are used to determine if the histone or TF processing should be run
+    '''
+    check = CheckResult(connection, 'chipseq_target_missing_tag')
+
+    exp_query = ('search/?experiment_type.display_title=ChIP-seq&type=ExperimentSeq&' +
+                 'targeted_factor.display_title%21=No+value&frame=raw&field=targeted_factor.uuid')
+    exps = ff_utils.search_metadata(exp_query, key=connection.ff_keys)
+    bf_missing_tag = {}
+    for exp in exps:
+        try:
+            target = exp.get('targeted_factor')[0].get('uuid')  # ChIP-seq can only have one target
+            bfeat = ff_utils.get_metadata(target, key=connection.ff_keys)
+        except Exception as e:
+            check.status = 'ERROR'
+            check.summary = "Error in target retrieval"
+            check.description = "Exeption generatated\n{}".format(e)
+            return check
+        bf_tags = bfeat.get('tags', [])
+        if not any(i in ['histone', 'dna-binding'] for i in bf_tags):
+            bf_missing_tag.setdefault(bfeat.get('uuid'), []).append(exp.get('@id'))
+    if bf_missing_tag:
+        check.brief_output = {k: len(v) for k,v in bf_missing_tag.items()}
+        check.full_output = bf_missing_tag
+        check.status = 'WARN'
+        check.summary = 'ChIP-seq target BioFeatures missing tags (histone or dna binding)'
+        check.description = '{} Biofeatures as targets for ChIP-seq missing tags'.format(len(bf_missing_tag))
+    else:
+        check.status = 'PASS'
+        check.summary = 'No chip-seq target BioFeatures missing tags'
+        check.description = 'All BioFeatures that are targets of ChIP-seq have appropriate tags'
 
     return check
