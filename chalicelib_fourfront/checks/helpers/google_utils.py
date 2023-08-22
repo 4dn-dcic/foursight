@@ -72,7 +72,7 @@ DEFAULT_GOOGLE_API_CONFIG = {
 
 
 class _NestedGoogleServiceAPI:
-    """Used as common base class for nested classes of GoogleDataAPISyncer."""
+    """Used as common base class for nested classes of GoogleAPISyncer."""
     def __init__(self, syncer_instance):
         self.owner = syncer_instance
         if not self.owner.credentials:
@@ -92,7 +92,7 @@ def report(*args, disabled=False):
         return decorate_func
 
 
-class GoogleDataAPISyncer:
+class GoogleAPISyncer:
     """
     Handles authentication and common requests against Google Data APIs using `fourfront-ec2-account` (a service_account).
     If no access keys are provided, initiates a connection to production.
@@ -117,7 +117,7 @@ class GoogleDataAPISyncer:
             assert json_api_key is not None
             assert isinstance(json_api_key, dict)
             assert json_api_key['type'] == 'service_account'
-            assert json_api_key["project_id"].startswith("fourdn-fourfront")
+            assert json_api_key["project_id"].startswith("fourfront-")
             for dict_key in ['private_key_id', 'private_key', 'client_email', 'client_id', 'auth_uri', 'client_x509_cert_url']:
                 assert json_api_key[dict_key]
         except:
@@ -163,7 +163,7 @@ class GoogleDataAPISyncer:
             "universe_domain": "googleapis.com"
         }
 
-        if not GoogleDataAPISyncer.validate_api_key_format(self._api_key):
+        if not GoogleAPISyncer.validate_api_key_format(self._api_key):
             raise Exception("Google API Key is in invalid format.")
 
         self.extra_config = extra_config
@@ -183,9 +183,9 @@ class GoogleDataAPISyncer:
         }
 
         # Init sub-class objects
-        self.analytics  = GoogleDataAPISyncer.AnalyticsAPI(self)
-        self.sheets     = GoogleDataAPISyncer.SheetsAPI(self)
-        self.docs       = GoogleDataAPISyncer.DocsAPI(self)
+        self.analytics  = GoogleAPISyncer.AnalyticsAPI(self)
+        self.sheets     = GoogleAPISyncer.SheetsAPI(self)
+        self.docs       = GoogleAPISyncer.DocsAPI(self)
 
 
 
@@ -315,7 +315,7 @@ class GoogleDataAPISyncer:
             marked with `@report` decorator (non-disabled) and returns in form of list.
             """
             report_requests = []
-            for method_name in GoogleDataAPISyncer.AnalyticsAPI.__dict__.keys():
+            for method_name in GoogleAPISyncer.AnalyticsAPI.__dict__.keys():
                 method_instance = getattr(self, method_name)
                 if method_instance and getattr(method_instance, 'is_report_provider', False):
                     report_requests.append(method_name)
@@ -980,7 +980,7 @@ if __name__ == "__main__":
         "secret": args.secret
     }
 
-    google = GoogleDataAPISyncer(ak)
+    google = GoogleAPISyncer(ak)
     print(YELLOW + "Checking last tracking item date on " + args.server + "...\n")
     last_tracking_item_date_daily = google.analytics.get_latest_tracking_item_date()
     last_tracking_item_date_monthly = google.analytics.get_latest_tracking_item_date("monthly")
