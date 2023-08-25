@@ -144,24 +144,7 @@ class GoogleAPISyncer:
         else:
             self._api_key = google_api_key
 
-        #os.environ['GRPC_DNS_RESOLVER'] = 'native'
-
-        # override
-        # TODO: remove this assignment when this json file is stored in S3
-        # please ask @utku or @gulsah for private_key_id, private_key and client_id fields
-        self._api_key = {
-            "type": "service_account",
-            "project_id": "fourdn-fourfront-1690394203370",
-            "private_key_id": "XXXXX",
-            "private_key": "XXXXX",
-            "client_email": "starting-account-1k8iow9ajuu4@fourdn-fourfront-1690394203370.iam.gserviceaccount.com",
-            "client_id": "XXXXX",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/starting-account-1k8iow9ajuu4%40fourdn-fourfront-1690394203370.iam.gserviceaccount.com",
-            "universe_domain": "googleapis.com"
-        }
+        # os.environ['GRPC_DNS_RESOLVER'] = 'native'
 
         if not GoogleAPISyncer.validate_api_key_format(self._api_key):
             raise Exception("Google API Key is in invalid format.")
@@ -908,10 +891,10 @@ class GoogleAPISyncer:
             '''Only gets top 100 results'''
             report_request_json = self.file_download_base_request_json(start_date, end_date)
             report_request_json["dimensions"] = [
-                { 'name': 'ga:productName' },
-                { 'name': 'ga:productSku' },
-                { 'name': 'ga:productCategoryLevel2' },
-                { 'name': 'ga:productBrand' }
+                { 'name': 'itemName' },
+                { 'name': 'itemId' },
+                { 'name': 'itemCategory2' },
+                { 'name': 'itemBrand' }
             ]
             report_request_json["limit"] = 100
             if execute:
