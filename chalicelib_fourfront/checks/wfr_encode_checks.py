@@ -138,20 +138,29 @@ def chipseq_status(connection, **kwargs):
             exp_id = an_exp['replicate_exp']['accession']
             exp_resp = [i for i in all_items['experiment_seq'] if i['accession'] == exp_id][0]
             exp_files, paired = wfr_utils.get_chip_files(exp_resp, all_files, True)
-            # if there are more then 2 files, we need to merge:
             print(exp_id, len(exp_files), paired)
-            # if too many input, merge them
+            
+            # note: expects all files in the same experiment to have the same endedness
+            paired_ends.append(list(set(paired))[0])
+
+            # if there are more then 2 input filesets, we need to merge them:
             if len(exp_files) > 2:
-                # exp_files format [[pair1,pair2], [pair1, pair2]]  @id
-                input_list = []
-                if paired == 'paired':
-                    # first add paired end 1s
-                    input_list.append([i[0] for i in exp_files])
-                    input_list.append([i[1] for i in exp_files])
-                    paired_ends.append('true')
-                elif paired == 'single':
-                    input_list.append([i[0] for i in exp_files])
-                    paired_ends.append('false')
+                # exp_files format: [[pair1,pair2], [pair1,pair2]]
+                # There are more than 2 files, so paired is a list (not string)
+                # Traverse paired/exp files and assign them for merging
+                input_list = [[],[],[]]
+                i = j = 0
+                while i < len(paired):
+                    exp = exp_files[j]
+                    if paired[i] == 'paired':
+                        # first add paired end 1s
+                        input_list[0].append(exp_files[j][0])
+                        input_list[1].append(exp_files[j][1])
+                        i+=2
+                    elif paired[i] == 'single':
+                        input_list[2].append(exp_files[0])
+                        i+=1
+                    j+=1
                 # collect files for step1 and step1c
                 merged_files = []
                 step0_status = 'complete'
@@ -160,15 +169,16 @@ def chipseq_status(connection, **kwargs):
                 for merge_case in input_list:
                     merge_enum += 1
                     # RUN STEP 0
-                    s0_input_files = {'input_fastqs': merge_case}
-                    s0_tag = exp_id + '_p' + str(merge_enum)
-                    keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
+                    if merge_case:
+                        s0_input_files = {'input_fastqs': merge_case}
+                        s0_tag = exp_id + '_p' + str(merge_enum)
+                        keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
                                                                          'step0', s0_tag, merge_case,
                                                                          s0_input_files, step0_name, 'merged_fastq', organism=organism)
-                    if step0_status == 'complete':
-                        merged_files.append(step0_output)
-                    else:
-                        ready_for_step1 = False
+                        if step0_status == 'complete':
+                            merged_files.append(step0_output)
+                        else:
+                            ready_for_step1 = False
 
                 if ready_for_step1:
                     # rewrite exp_files with merged ones
@@ -259,7 +269,6 @@ def chipseq_status(connection, **kwargs):
                     "chip.align_only": True
                 }
                 parameters.update(exp_parameters)
-
                 s1_input_files = input_files
                 s1_tag = exp_id
                 # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
@@ -372,13 +381,9 @@ def chipseq_status(connection, **kwargs):
                 if ta_cnt:
                     s2_input_files['chip.ctl_tas'] = ta_cnt
                     s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip(ta_cnt)}
-
+                
                 # collect parameters
                 parameters = {}
-                if paired == 'single':
-                    chip_p = False
-                elif paired == 'paired':
-                    chip_p = True
 
                 if not control_set:
                     if target_type == 'histone':
@@ -394,25 +399,22 @@ def chipseq_status(connection, **kwargs):
                     "chip.regex_bfilt_peak_chr_name": "chr[\dXY]+",
                     "chip.gensz": org
                 }
-                if paired == 'paired' or paired == 'single':
-                    parameters['chip.paired_end'] = chip_p
-                    parameters['chip.ctl_paired_end'] = chip_p
 
                 # assumes paired is instead a list
                 # if all strings are the same, define paired_end using the first string
-                elif len(set(paired)) == 1:
-                    chip_p = (paired[0] == 'paired')
+                if len(set(paired_ends)) == 1:
+                    chip_p = (paired_ends[0] == 'paired')
                     parameters['chip.paired_end'] = chip_p
                     parameters['chip.ctl_paired_end'] = chip_p
 
                 # in the case of neither, define paired_ends
                 else:
                     print("Mixed endedness here!")
-                    parameters['chip.paired_ends'] = [True if pe=="paired" else False for pe in paired]
-                    parameters['chip.ctl_paired_ends'] = [True if pe=="paired" else False for pe in paired]
+                    parameters['chip.paired_ends'] = [True if pe=="paired" else False for pe in paired_ends]
+                    parameters['chip.ctl_paired_ends'] = [True if pe=="paired" else False for pe in paired_ends]
                     parameters['chip.ctl_depth_limit'] = 0
-                    parameters['chip.exp_ctl_depth_limit'] = 0
-                    parameters['ctl_subsample_reads'] = 15000000
+                    # can't automate subsampling
+                    parameters['chip.exp_ctl_depth_ratio_limit'] = 0
 
                 if paired == 'single':
                     frag_temp = [300]
@@ -432,6 +434,7 @@ def chipseq_status(connection, **kwargs):
                                                                      ['chip.optimal_peak', 'chip.conservative_peak', 'chip.fc_bw'],
                                                                      additional_input={'parameters': parameters}, organism=organism)
                 if step2_status == 'complete':
+                    print("step2 outputs: ", step2_output)
                     set_opt_peak = step2_output[0]
                     set_cons_peak = step2_output[1]
                     set_fc_bw = step2_output[2]
