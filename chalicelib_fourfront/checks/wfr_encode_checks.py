@@ -381,10 +381,9 @@ def chipseq_status(connection, **kwargs):
                 if ta_cnt:
                     s2_input_files['chip.ctl_tas'] = ta_cnt
                     s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip(ta_cnt)}
-                
+
                 # collect parameters
                 parameters = {}
-
                 if not control_set:
                     if target_type == 'histone':
                         set_summary += "| skipped - histone without control needs attention, ie change to tf"
