@@ -2,7 +2,6 @@
 foursight
 =========
 
-
 ----------
 Change Log
 ----------
@@ -11,6 +10,36 @@ Change Log
 =====
 * 2023-07-17
 * New local-check-execution script.
+
+3.8.0
+=====
+
+`PR 545: update dcicutils version <https://github.com/4dn-dcic/foursight/pull/545>`_
+
+* update locked dcicutils version needed due to fourfront schema version updates
+
+3.7.0
+=====
+
+`PR 543: rewrite sync_users_oh to remove pandas and numpy <https://github.com/4dn-dcic/foursight/pull/543>`_
+
+* Removed dependency on pandas by refactoring code in wrangler_checks.py
+  to use new convert_table_to_ordered_dict function in check_utils.py.
+
+3.6.3
+=====
+
+`PR 541: add uploaded status to beta-actin count check <https://github.com/4dn-dcic/foursight/pull/541>`_
+
+* update locked version of dcicutils to ^7.7.0
+
+3.6.2
+=====
+
+`PR 540: add uploaded status to beta-actin count check <https://github.com/4dn-dcic/foursight/pull/540>`_
+
+* small update to include fastq files with uploaded status that are linked to RNA-seq experiments to be checked for beta-actin counts in order to verify strandedness.
+>>>>>>> master
 
 3.6.1
 =====

@@ -1,4 +1,8 @@
 from conftest import *
+from collections import OrderedDict
+from chalicelib_fourfront.checks.check_utils import (
+    convert_table_to_ordered_dict
+)
 
 
 class TestCheckUtils():
@@ -276,3 +280,14 @@ class TestCheckUtils():
         assert placeholder['name'] == 'test_check'
         assert placeholder['status'] == 'PASS'
         assert placeholder['description'] == 'If queued, this check will run with default arguments'
+
+    def test_convert_table_to_ordered_dict(self):
+        table = [['Name', 'Age', 'Location'],
+                 ['Alice', 25, 'Lviv'],
+                 ['Bob', 30, 'London'],
+                 ['Chet', 28, 'Moscow']]
+        expected_result = [
+            OrderedDict([('Name', 'Alice'), ('Age', 25), ('Location', 'Lviv')]),
+            OrderedDict([('Name', 'Bob'), ('Age', 30), ('Location', 'London')]),
+            OrderedDict([('Name', 'Chet'), ('Age', 28), ('Location', 'Moscow')])]
+        assert convert_table_to_ordered_dict(table) == expected_result
