@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "3.8.0.1b1"  # TODO: To become 3.9.0
+version = "3.8.0"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -12,35 +12,35 @@ packages = [
 python = ">=3.7.1,<3.10"
 dcicutils = "^7.8.0"
 click = "^7.1.2"
-elasticsearch = "^7.13.4"
-elasticsearch-dsl = "^7.0.0"
-## adding foursight-core
-# use below for tests but not for deployment
-# foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
-foursight-core = "4.4.0.1b8"
-geocoder = "1.38.1"
-gitpython = "^3.1.2"
-google-api-python-client = "^1.7.4"
-google-auth = "^2.22.0"
-gspread = ">=3.6.0"
+PyJWT = "^2.5.0"
 Jinja2 = "2.10.1"
 MarkupSafe = "1.1.1"
-oauth2client = ">=4.1.3"
-pandas = ">=1.1.4"
-PyJWT = "^2.5.0"
-pytest = "5.1.2"
-tibanna_ff = ">=0.22.5"
+google-api-python-client = "^1.7.4"
+geocoder = "1.38.1"
+elasticsearch = "^7.13.4"
+elasticsearch-dsl = "^7.0.0"
+gitpython = "^3.1.2"
 pytz = "^2020.1"
+tibanna_ff = ">=0.22.5"
+## adding foursight-core
+# use below for deployment
+foursight-core = "4.4.0.1b8"
+# use below for tests but not for deployment
+# foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
+pytest = "5.1.2"
+gspread = ">=3.6.0"
+oauth2client = ">=4.1.3"
 
 [tool.poetry.dev-dependencies]
 chalice = "^1.26.0"
-flaky = "3.6.1"
 pytest-cov = "2.7.1"
+flaky = "3.6.1"
 
 [tool.poetry.scripts]
-local-check-execution = "chalicelib_fourfront.scripts.local_check_execution:main"
+encrypt-accounts-file = "foursight_core.scripts.encrypt_accounts_file:main"
+decrypt-accounts-file = "foursight_core.scripts.decrypt_accounts_file:main"
 publish-to-pypi = "dcicutils.scripts.publish_to_pypi:main"
 
 [build-system]
-build-backend = "poetry.masonry.api"
 requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
