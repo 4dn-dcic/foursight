@@ -6,7 +6,7 @@ foursight
 Change Log
 ----------
 
-3.6.2
+3.9.0
 =====
 * 2023-07-17
 * New local-check-execution script.
@@ -39,11 +39,12 @@ Change Log
 `PR 540: add uploaded status to beta-actin count check <https://github.com/4dn-dcic/foursight/pull/540>`_
 
 * small update to include fastq files with uploaded status that are linked to RNA-seq experiments to be checked for beta-actin counts in order to verify strandedness.
->>>>>>> master
 
 3.6.1
 =====
 
+3.6.1
+=====
 `PR 539: badge bug fix <https://github.com/4dn-dcic/foursight/pull/539>`_
 
 * Fixed a bug in the replicate set consistency badge check 
