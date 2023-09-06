@@ -23,6 +23,7 @@ from google.analytics.data_v1beta.types import (
     RunReportRequest,
     BatchRunReportsRequest
 )
+import re
 
 
 
@@ -53,6 +54,7 @@ DEFAULT_GOOGLE_API_CONFIG = {
         'customEvent:field_key' : 'ga:dimension3',
         'customEvent:file_size' : 'ga:metric1',
         'customEvent:downloads' : 'ga:metric2',
+        'customEvent:experiment_type'    : 'ga:dimension5',
         'calcMetric_PercentRangeQueries' : 'ga:calcMetric_PercentRangeQueries',
         'itemViewEvents'        : 'ga:productDetailViews',
         'itemListClickEvents'   : 'ga:productListClicks',
@@ -60,10 +62,13 @@ DEFAULT_GOOGLE_API_CONFIG = {
         'itemsViewed'           : 'ga:productDetailViews',
         'itemsClickedInList'    : 'ga:productListClicks',
         'itemsViewedInList'     : 'ga:productListViews',
+        'itemsCheckedOut'       : 'ga:uniquePurchases',
+        'itemsPurchased'        : 'ga:uniquePurchases',
         'itemName'              : 'ga:productName',
-        'itemId'                : 'ga:productSKU',
+        'itemId'                : 'ga:productSku',
         'itemCategory2'         : 'ga:productCategoryLevel2',
-        'itemBrand'             : 'ga:productBrand'
+        'itemBrand'             : 'ga:productBrand',
+        'customEvent:lab'       : 'ga:productBrand'
     },
     "analytics_metric_type": {
         'calcMetric_PercentRangeQueries': 'TYPE_INTEGER'
@@ -259,6 +264,25 @@ class GoogleAPISyncer:
                     }
                 else:
                     parsed_reports[report_key_name] = report_to_json_items(raw_result['reports'][idx])
+                    # post-process for legacy items collected after 2023-07-05, until end-of-August 23
+                    #TODO: remove this section when metrics collection looks stable
+                    if report_key_name == 'top_files_downloaded':
+                        for report_item in parsed_reports[report_key_name]:
+                            if 'ga:productSku' in report_item:
+                                continue
+                            report_item['ga:productName'] = report_item['customEvent:name']
+                            del report_item['customEvent:name']
+                            file_item_type = report_item['customEvent:file_classification'].split('/', 2)[1]
+                            str_file_item_type = re.findall(r'[A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$))', file_item_type)
+                            report_item['ga:productSku'] = '/{}s-{}/{}/'.format(str_file_item_type[0].lower(), str_file_item_type[1].lower(), report_item['ga:productName'].split('.')[0])
+                            del report_item['customEvent:file_classification']
+                    elif report_key_name == 'views_by_file':
+                        for report_item in parsed_reports[report_key_name]:
+                            file_item_types = report_item['itemCategory'].split('/', 2)
+                            if(len(file_item_types) > 1):
+                                report_item['ga:productCategoryLevel2'] = file_item_types[1]
+                            del report_item['itemCategory']
+
 
             for_date = None
 
@@ -367,7 +391,7 @@ class GoogleAPISyncer:
                 for chunk_num in range(report_request_count // 5 + 1):
                     chunk_num_start = chunk_num * 5
                     chunk_num_end = min([chunk_num_start + 5, report_request_count])
-                    for chunk_raw_res in self._api.c.batchGet(body={ "reportRequests" : formatted_report_requests[chunk_num_start:chunk_num_end] }).execute().get('reports', []):
+                    for chunk_raw_res in self._api.batch_run_reports(BatchRunReportsRequest(requests=formatted_report_requests[chunk_num_start:chunk_num_end], property='properties/' + self.property_id)).reports:
                         raw_result['reports'].append(chunk_raw_res)
             else:
                 raw_result = {}
@@ -577,27 +601,29 @@ class GoogleAPISyncer:
         ################################
 
 
-        @report(disabled=True)
+        @report
         def views_by_file(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = {
                 'date_ranges' : [{ 'start_date' : start_date, 'end_date' : end_date }],
                 'metrics': [
-                    { 'name': 'itemViewEvents' },
-                    { 'name': 'itemListClickEvents' },
-                    { 'name': 'itemListViewEvents' },
+                    { 'name': 'itemsViewed' },
+                    { 'name': 'itemsClickedInList' },
+                    { 'name': 'itemsViewedInList' },
                     { 'name': 'itemsPurchased' }, # Total downloads + range queries
-                    { 'name': 'customEvent:downloads' },
-                    { 'name': 'customEvent:file_size' },
-                    { 'name': 'calcMetric_PercentRangeQueries', 'expression': 'eventCount - customEvent:downloads' }
+                    # since GA4 not allows mix usage of Event and Item-Scoped metrics/dimensions, the dimensions below are cancelled
+                    # { 'name': 'customEvent:downloads' },
+                    # { 'name': 'customEvent:file_size' },
+                    # { 'name': 'calcMetric_PercentRangeQueries', 'expression': 'eventCount - customEvent:downloads' }
                 ],
                 'dimensions': [
                     { 'name': 'itemName' },
                     { 'name': 'itemId' },
+                    { 'name': 'itemCategory' },
                     { 'name': 'itemCategory2' },
                     { 'name': 'itemBrand' }
                 ],
                 "order_bys" : [
-                    { 'metric' : { 'metric_name': 'itemViewEvents' }, 'desc': True },
+                    { 'metric' : { 'metric_name': 'itemsViewed' }, 'desc': True },
                     { 'metric' : { 'metric_name': 'itemsPurchased' }, 'desc': True }
                 ],
                 'dimension_filter' : {
@@ -608,7 +634,7 @@ class GoogleAPISyncer:
                                     'field_name' : "itemCategory", 
                                     'string_filter': { 
                                         "value" : "File", 
-                                        "match_type" : "EXACT" 
+                                        "match_type" : "BEGINS_WITH" 
                                     } 
                                 }
                         }]
@@ -841,9 +867,9 @@ class GoogleAPISyncer:
                                 #     } 
                                 # }
                                 "filter" : { 
-                                    'field_name' : "eventName", 
+                                    'field_name' : "customEvent:source", 
                                     'string_filter': { 
-                                        "value" : "file_download",
+                                        "value" : "Serverside File Download",
                                         "match_type" : "EXACT",
                                         "case_sensitive": True
                                     } 
@@ -876,7 +902,7 @@ class GoogleAPISyncer:
                 return self.query_reports([report_request_json])
             return report_request_json
 
-        @report(disabled=True)
+        @report
         def file_downloads_by_experiment_type(self, start_date='yesterday', end_date='yesterday', execute=True):
             report_request_json = self.file_download_base_request_json(start_date, end_date)
             report_request_json["dimensions"] = [
@@ -886,17 +912,62 @@ class GoogleAPISyncer:
                 return self.query_reports([report_request_json])
             return report_request_json
 
-        @report(disabled=True)
+        @report
         def top_files_downloaded(self, start_date='yesterday', end_date='yesterday', execute=True):
             '''Only gets top 100 results'''
             report_request_json = self.file_download_base_request_json(start_date, end_date)
+            # since GA4 not allows mix usage of Event and Item-Scoped metrics/dimensions, dimensions below are replaced with the one below
+            # report_request_json["dimensions"] = [
+            #     { 'name': 'itemName' },
+            #     { 'name': 'itemId' },
+            #     { 'name': 'itemCategory2' },
+            #     { 'name': 'itemBrand' }
+            # ]
             report_request_json["dimensions"] = [
-                { 'name': 'itemName' },
-                { 'name': 'itemId' },
-                { 'name': 'itemCategory2' },
-                { 'name': 'itemBrand' }
+                { 'name': 'customEvent:name' },
+                { 'name': 'customEvent:lab' },
+                { 'name': 'customEvent:file_classification' },
+                { 'name': 'customEvent:file_type' }
             ]
             report_request_json["limit"] = 100
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
+
+        ##############################################
+        #### Metadata.tsv File Download Analytics ####
+        ##############################################
+
+
+        @report
+        def metadata_tsv_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
+            report_request_json = {
+                'date_ranges' : [{ 'start_date' : start_date, 'end_date' : end_date }],
+                'metrics': [
+                    { 'name': 'itemsCheckedOut' },
+                ],
+                'dimensions': [
+                    { 'name': 'country' }
+                ],
+                "order_bys" : [
+                    { 'metric' : { 'metric_name': 'itemsCheckedOut' }, 'desc': True },
+                ],
+                'dimension_filter' : {
+                    'and_group': {
+                        'expressions': [
+                            {
+                                "filter" : { 
+                                    'field_name' : "customEvent:source", 
+                                    'string_filter': { 
+                                        "value" : "SelectedFilesDownloadModal", 
+                                        "match_type" : "EXACT" 
+                                    } 
+                                }
+                        }]
+                    }
+                },
+                'limit' : 100
+            }
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
