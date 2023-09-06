@@ -69,7 +69,8 @@ DEFAULT_GOOGLE_API_CONFIG = {
         'itemCategory2'         : 'ga:productCategoryLevel2',
         'itemBrand'             : 'ga:productBrand',
         'customEvent:lab'       : 'ga:productBrand',
-        'itemListName'          : 'ga:itemListName'
+        'itemListName'          : 'ga:productListName',
+        'deviceCategory'        : 'ga:deviceCategory',
     },
     "analytics_metric_type": {
         'calcMetric_PercentRangeQueries': 'TYPE_INTEGER'
@@ -392,8 +393,9 @@ class GoogleAPISyncer:
                 for chunk_num in range(report_request_count // 5 + 1):
                     chunk_num_start = chunk_num * 5
                     chunk_num_end = min([chunk_num_start + 5, report_request_count])
-                    for chunk_raw_res in self._api.batch_run_reports(BatchRunReportsRequest(requests=formatted_report_requests[chunk_num_start:chunk_num_end], property='properties/' + self.property_id)).reports:
-                        raw_result['reports'].append(chunk_raw_res)
+                    if chunk_num_start < chunk_num_end:
+                        for chunk_raw_res in self._api.batch_run_reports(BatchRunReportsRequest(requests=formatted_report_requests[chunk_num_start:chunk_num_end], property='properties/' + self.property_id)).reports:
+                            raw_result['reports'].append(chunk_raw_res)
             else:
                 raw_result = {}
                 raw_result['reports'] = self._api.batch_run_reports(BatchRunReportsRequest(requests=formatted_report_requests, property='properties/' + self.property_id)).reports
@@ -573,11 +575,8 @@ class GoogleAPISyncer:
             else:
                 return tracking_item
 
-
-
-        @report
-        def sessions_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
-            report_request_json = {
+        def session_base_request_json(self, start_date='yesterday', end_date='yesterday'):
+            return {
                 'date_ranges' : [{ 'start_date' : start_date, 'end_date' : end_date }],
                 'metrics': [
                     { 'name': 'sessions' },
@@ -586,16 +585,24 @@ class GoogleAPISyncer:
                     { 'name': 'sessionsPerUser' },
                     { 'name': 'averageSessionDuration' },
                     { 'name': 'bounceRate' }
-                ],
-                'dimensions': [
-                    { 'name': 'country' }
                 ]
             }
+
+        @report
+        def sessions_by_country(self, start_date='yesterday', end_date='yesterday', execute=True):
+            report_request_json = self.session_base_request_json(start_date, end_date)
+            report_request_json["dimensions"] = [ { 'name': 'country' } ]
             if execute:
                 return self.query_reports([report_request_json])
             return report_request_json
 
-
+        @report
+        def sessions_by_device_category(self, start_date='yesterday', end_date='yesterday', execute=True):
+            report_request_json = self.session_base_request_json(start_date, end_date)
+            report_request_json["dimensions"] = [ { 'name': 'deviceCategory' } ]
+            if execute:
+                return self.query_reports([report_request_json])
+            return report_request_json
 
         ################################
         ### Item Views & Impressions ###
