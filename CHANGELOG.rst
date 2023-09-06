@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+3.8.1
+=====
+
+`PR 528: ChIP-seq update to 2.1.6 <https://github.com/4dn-dcic/foursight/pull/528>`_
+
+* Modify wfr_encode_checks to run the updated (v2.1.6) ChIP-seq pipeline
+* Update helpers (utils and settings) to run the modified check
+
 3.8.0
 =====
 

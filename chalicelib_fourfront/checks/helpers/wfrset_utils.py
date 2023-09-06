@@ -195,9 +195,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         "app_name": "encode-chipseq-aln-chip",
-        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-chip",
+        "workflow_uuid": "212a9c91-25d6-473f-b56b-8dd93958c580",
         "parameters": {},
-        "config": {},
+        "config": {"ebs_size": 70},
         'custom_pf_fields': {
             'chip.first_ta': {
                 'genome_assembly': genome,
@@ -213,9 +213,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         "app_name": "encode-chipseq-aln-ctl",
-        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-aln-ctl",
+        "workflow_uuid": "4eb427f1-a7d5-4d74-8cfa-4c77f42d5b43",
         "parameters": {},
-        "config": {},
+        "config":{"instance_type": 'c5.2xlarge', "ebs_size": 70},
         'custom_pf_fields': {
             'chip.first_ta_ctl': {
                 'genome_assembly': genome,
@@ -226,9 +226,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         "app_name": "encode-chipseq-postaln",
-        "workflow_uuid": "4dn-dcic-lab:wf-encode-chipseq-postaln",
+        "workflow_uuid": "291d4c64-75de-434a-9d98-01f40d19e15e",
         "parameters": {},
-        "config": {},
+        "config": {"instance_type": "c5.2xlarge", "ebs_size": 80},
         'custom_pf_fields': {
             'chip.optimal_peak': {
                 'genome_assembly': genome,
@@ -238,7 +238,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'genome_assembly': genome,
                 'file_type': 'conservative peaks',
                 'description': 'Conservative peak calls from ENCODE ChIP-Seq Pipeline'},
-            'chip.sig_fc': {
+            'chip.fc_bw': {
                 'genome_assembly': genome,
                 'file_type': 'signal fold change',
                 'description': 'ChIP-seq signal fold change over input control'}
@@ -329,6 +329,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'rna.strandedness_direction': '',
             'rna.endedness': ''
         },
+        "config": {"instance_type": ["m5a.4xlarge", "m6a.4xlarge"], "ebs_size": 90},
         'custom_pf_fields': {
             'rna.outbam': {
                 'genome_assembly': genome,
