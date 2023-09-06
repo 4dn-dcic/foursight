@@ -68,7 +68,8 @@ DEFAULT_GOOGLE_API_CONFIG = {
         'itemId'                : 'ga:productSku',
         'itemCategory2'         : 'ga:productCategoryLevel2',
         'itemBrand'             : 'ga:productBrand',
-        'customEvent:lab'       : 'ga:productBrand'
+        'customEvent:lab'       : 'ga:productBrand',
+        'itemListName'          : 'ga:itemListName'
     },
     "analytics_metric_type": {
         'calcMetric_PercentRangeQueries': 'TYPE_INTEGER'
@@ -947,7 +948,8 @@ class GoogleAPISyncer:
                     { 'name': 'itemsCheckedOut' },
                 ],
                 'dimensions': [
-                    { 'name': 'country' }
+                    { 'name': 'country' },
+                    { 'name': 'itemListName' }
                 ],
                 "order_bys" : [
                     { 'metric' : { 'metric_name': 'itemsCheckedOut' }, 'desc': True },
