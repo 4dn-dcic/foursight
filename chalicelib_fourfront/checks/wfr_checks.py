@@ -384,7 +384,7 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, non-dcic=False, action="pairsqc_start")
+@check_function(lab_title=None, start_date=None, non_dcic=False, action="pairsqc_start")
 def pairsqc_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have pairsqc
     Keyword arguments:
@@ -418,7 +418,7 @@ def pairsqc_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
-    if kwargs.get('non-dcic') is not True:
+    if kwargs.get('non_dcic') is not True:
         query += '&source_experiments!=No+value'
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
@@ -1986,7 +1986,7 @@ def rna_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, non-dcic=False, action="bamqc_start")
+@check_function(lab_title=None, start_date=None, non_dcic=False, action="bamqc_start")
 def bamqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
@@ -2015,7 +2015,7 @@ def bamqc_status(connection, **kwargs):
     stati = 'status=' + (kwargs.get('status') or default_stati)
     query = 'search/?file_type=alignments&{}'.format(stati)
     query += '&type=FileProcessed'
-    if kwargs.get('non-dcic') is not True: # skip this bit if running on non-DCIC bams 
+    if kwargs.get('non_dcic') is not True: # skip this bit if running on non-DCIC bams 
         query += wfr_outputs
     query += '&quality_metric.display_title=No+value'
     # add date
