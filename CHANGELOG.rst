@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.8.2
+=====
+
+* add a non-dcic boolean option to BamQC and PairsQC to allow these workflows to run on lab provided files
+
 3.8.1
 =====
 

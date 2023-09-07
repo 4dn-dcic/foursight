@@ -384,12 +384,15 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="pairsqc_start")
+@check_function(lab_title=None, start_date=None, non-dcic=False, action="pairsqc_start")
 def pairsqc_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have pairsqc
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    non-dcic -- if True does not require source_experiments so would run on any pairs file
+        WARNING: you probably want to run along with lab_title or start_date to prevent 
+        running on all non-DCIC pairs files
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
@@ -406,7 +409,7 @@ def pairsqc_status(connection, **kwargs):
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?file_format.file_format=pairs&type=FileProcessed"
              "&status=pre-release&status=released&status=released+to+project&status=uploaded"
-             "&quality_metric.uuid=No+value&limit=all&source_experiments!=No value")
+             "&quality_metric.uuid=No+value&limit=all")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:
@@ -415,6 +418,8 @@ def pairsqc_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+    if kwargs.get('non-dcic') is not True:
+        query += '&source_experiments!=No+value'
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
@@ -1981,12 +1986,15 @@ def rna_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="bamqc_start")
+@check_function(lab_title=None, start_date=None, non-dcic=False, action="bamqc_start")
 def bamqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+    non-dcic -- if true does not check for wfr outputs so will run on any bams
+        WARNING: should likely be used with other options like lab_title or start_date
+        to avoid running on all non-QC'ed bams
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
     start = datetime.utcnow()
@@ -2000,13 +2008,15 @@ def bamqc_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # Build the query (find bam files produced bt the Hi-C Post Alignment Processing wfr)
+    # Build the query 
     default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
+    # find bam files produced bt the Hi-C Post Alignment Processing wfr
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
     query = 'search/?file_type=alignments&{}'.format(stati)
     query += '&type=FileProcessed'
-    query += wfr_outputs
+    if kwargs.get('non-dcic') is not True: # skip this bit if running on non-DCIC bams 
+        query += wfr_outputs
     query += '&quality_metric.display_title=No+value'
     # add date
     s_date = kwargs.get('start_date')
