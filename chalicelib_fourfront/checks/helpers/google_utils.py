@@ -39,7 +39,7 @@ DEFAULT_GOOGLE_API_CONFIG = {
     "analytics_property_id" : '386147844',
     "analytics_page_size" : 10000,
     "analytics_timezone" : "US/Eastern",                    # 4DN Analytics account is setup for EST time zone.
-    "analytics_to_tracking_item_fields_mapping": {
+    "analytics_to_tracking_item_fields_mapping": {          # For backwards-compatibility, we map the new GA4 fields to existing Tracking Item fields
         'country'               : 'ga:country',
         'sessions'              : 'ga:sessions',
         'totalUsers'            : 'ga:users',
@@ -223,6 +223,33 @@ class GoogleAPISyncer:
                     value = float(value) / 100
                 return value
 
+            def post_process_report_items(report_key_name, report_items):
+                """
+                post-process for legacy items collected after 2023-07-05, until end-of-August 23
+                TODO: remove post processing when metrics collection gets stable
+                """
+                if report_key_name == 'top_files_downloaded':
+                    for r_item in report_items:
+                        if 'ga:productSku' in r_item:
+                            continue
+                        r_item['ga:productName'] = r_item['customEvent:name']
+                        del r_item['customEvent:name']
+                        file_item_type = r_item['customEvent:file_classification'].split('/', 2)[1]
+                        str_file_item_type = re.findall(r'[A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$))', file_item_type)
+                        r_item['ga:productSku'] = '/{}s-{}/{}/'.format(str_file_item_type[0].lower(), str_file_item_type[1].lower(), r_item['ga:productName'].split('.')[0])
+                        del r_item['customEvent:file_classification']
+                elif report_key_name == 'views_by_file':
+                    for r_item in report_items:
+                        file_item_types = r_item['itemCategory'].split('/', 2)
+                        if(len(file_item_types) > 1):
+                            r_item['ga:productCategoryLevel2'] = file_item_types[1]
+                        del r_item['itemCategory']
+                elif report_key_name == 'file_downloads_by_experiment_type':
+                    for r_item in report_items:
+                        if "ga:dimension5" in r_item and r_item["ga:dimension5"] == '(not set)':
+                             r_item["ga:dimension5"] = "None"
+
+
             def report_to_json_items(report):
                 # [(0, "ga:productName"), (1, "ga:productSku"), ...]
                 dimension_keys = list(enumerate(report.dimension_headers))
@@ -266,24 +293,8 @@ class GoogleAPISyncer:
                     }
                 else:
                     parsed_reports[report_key_name] = report_to_json_items(raw_result['reports'][idx])
-                    # post-process for legacy items collected after 2023-07-05, until end-of-August 23
-                    #TODO: remove this section when metrics collection looks stable
-                    if report_key_name == 'top_files_downloaded':
-                        for report_item in parsed_reports[report_key_name]:
-                            if 'ga:productSku' in report_item:
-                                continue
-                            report_item['ga:productName'] = report_item['customEvent:name']
-                            del report_item['customEvent:name']
-                            file_item_type = report_item['customEvent:file_classification'].split('/', 2)[1]
-                            str_file_item_type = re.findall(r'[A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$))', file_item_type)
-                            report_item['ga:productSku'] = '/{}s-{}/{}/'.format(str_file_item_type[0].lower(), str_file_item_type[1].lower(), report_item['ga:productName'].split('.')[0])
-                            del report_item['customEvent:file_classification']
-                    elif report_key_name == 'views_by_file':
-                        for report_item in parsed_reports[report_key_name]:
-                            file_item_types = report_item['itemCategory'].split('/', 2)
-                            if(len(file_item_types) > 1):
-                                report_item['ga:productCategoryLevel2'] = file_item_types[1]
-                            del report_item['itemCategory']
+                    # convert legacy fields
+                    post_process_report_items(report_key_name, parsed_reports[report_key_name])
 
 
             for_date = None
