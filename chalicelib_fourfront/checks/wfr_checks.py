@@ -384,7 +384,7 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="pairsqc_start")
+@check_function(lab_title=None, start_date=None, non-dcic=False, action="pairsqc_start")
 def pairsqc_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have pairsqc
     Keyword arguments:
@@ -1986,7 +1986,7 @@ def rna_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="bamqc_start")
+@check_function(lab_title=None, start_date=None, non-dcic=False, action="bamqc_start")
 def bamqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
