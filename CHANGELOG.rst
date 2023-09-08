@@ -12,6 +12,24 @@ Change Log
 * 2023-07-17
 * New local-check-execution script.
 
+3.8.3
+=====
+
+* fixed a bug in keyword args to not use hyphens which caused syntax error
+
+3.8.2
+=====
+
+* add a non-dcic boolean option to BamQC and PairsQC to allow these workflows to run on lab provided files
+
+3.8.1
+=====
+
+`PR 528: ChIP-seq update to 2.1.6 <https://github.com/4dn-dcic/foursight/pull/528>`_
+
+* Modify wfr_encode_checks to run the updated (v2.1.6) ChIP-seq pipeline
+* Update helpers (utils and settings) to run the modified check
+
 3.8.0
 =====
 
