@@ -237,6 +237,7 @@ class GoogleAPISyncer:
                         file_item_type = r_item['customEvent:file_classification'].split('/', 2)[1]
                         str_file_item_type = re.findall(r'[A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$))', file_item_type)
                         r_item['ga:productSku'] = '/{}s-{}/{}/'.format(str_file_item_type[0].lower(), str_file_item_type[1].lower(), r_item['ga:productName'].split('.')[0])
+                        r_item['ga:productCategoryLevel2'] = file_item_type
                         del r_item['customEvent:file_classification']
                 elif report_key_name == 'views_by_file':
                     for r_item in report_items:
