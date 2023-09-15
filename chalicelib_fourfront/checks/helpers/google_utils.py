@@ -12,14 +12,10 @@ import pytz
 from types import FunctionType
 from calendar import monthrange
 from collections import OrderedDict
-from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 from dcicutils import ff_utils, s3_utils
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import (
-    DateRange,
-    Dimension,
-    Metric,
     RunReportRequest,
     BatchRunReportsRequest
 )
