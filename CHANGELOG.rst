@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+3.8.3
+=====
+
+* fixed a bug in keyword args to not use hyphens which caused syntax error
+
 3.8.2
 =====
 
