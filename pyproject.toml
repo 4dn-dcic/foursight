@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "3.8.3"
+version = "3.9.0"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -15,7 +15,6 @@ click = "^7.1.2"
 PyJWT = "^2.5.0"
 Jinja2 = "2.10.1"
 MarkupSafe = "1.1.1"
-google-api-python-client = "^1.7.4"
 geocoder = "1.38.1"
 elasticsearch = "^7.13.4"
 elasticsearch-dsl = "^7.0.0"
@@ -31,6 +30,7 @@ pytest = "5.1.2"
 gspread = ">=3.6.0"
 oauth2client = ">=4.1.3"
 benchmark-4dn = "^0.5.17"
+google-analytics-data = "^0.17.1"
 
 [tool.poetry.dev-dependencies]
 chalice = "^1.26.0"
