@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.0.0
+=====
+
+* Update to Python 3.11.
+
 3.9.0
 =====
 
