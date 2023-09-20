@@ -6,11 +6,18 @@ foursight
 Change Log
 ----------
 
-3.9.0
-=====
+3.10.0
+======
 
 * 2023-07-17
 * New local-check-execution script.
+
+3.9.0
+=====
+
+`PR 542: Google Analytics Data API v1 migration <https://github.com/4dn-dcic/foursight/pull/542>`_
+
+* includes Google Reporting API v4 to Google Analytics Data API v1(beta) migration updates required for running sync_google_analytics_data check
 
 3.8.3
 =====
