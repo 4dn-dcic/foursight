@@ -16,7 +16,10 @@ PyJWT = "^2.5.0"
 Jinja2 = "2.10.1"
 MarkupSafe = "1.1.1"
 geocoder = "1.38.1"
-elasticsearch = "^7.13.4"
+# elasticsearch 7.17.9 (at least) has a problem:
+# Error: "The client noticed that the server is not Elasticsearch and we do not support this unknown product"
+# https://stackoverflow.com/questions/68802324/elasticsearch-in-go-err-the-client-noticed-that-the-server-is-not-elasticsear
+elasticsearch = "7.13.4"
 elasticsearch-dsl = "^7.0.0"
 gitpython = "^3.1.2"
 pytz = "^2020.1"
