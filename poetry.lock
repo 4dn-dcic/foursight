@@ -577,13 +577,13 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.5.0.1b6"
+version = "4.5.0.1b7"
 description = "Serverless Chalice Application for Monitoring"
 optional = false
 python-versions = ">=3.8,<3.12"
 files = [
-    {file = "foursight_core-4.5.0.1b6-py3-none-any.whl", hash = "sha256:c2cecdfc6ea65f178a3a71dc028f629ca7bbba7392d10059013a7480dff88ac1"},
-    {file = "foursight_core-4.5.0.1b6.tar.gz", hash = "sha256:bb07c03ee3a6ee8d001cef151a8fcc023b62de1bd7e7fbcc61c4ad3bb0819bde"},
+    {file = "foursight_core-4.5.0.1b7-py3-none-any.whl", hash = "sha256:74aa6615000cfa94d6ac7e438772df2ec299a32aa6ad27e9371f0e1d07d142c7"},
+    {file = "foursight_core-4.5.0.1b7.tar.gz", hash = "sha256:392d8d837eff87ed9a65e4e3820426b828eeb1cc073ad0ae628af1b4958560b4"},
 ]
 
 [package.dependencies]
@@ -1974,4 +1974,4 @@ test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "5de23540b6c89cb423116b84f88a808f0b026d62fb2472f250f1d4cd16766f7a"
+content-hash = "8c1c306e3287b395cef17154f5d8ed601ef54ae5820cd582b08578904363a398"
