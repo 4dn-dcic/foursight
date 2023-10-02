@@ -59,7 +59,7 @@ workflow_details = {
     },
     "repliseq-parta": {
         "run_time": 200,
-        "accepted_versions": ["v13.1", "v14", "v16"]
+        "accepted_versions": ["v13.1", "v14", "v16","v16.1"]
     },
     "bedGraphToBigWig": {
         "run_time": 24,
@@ -189,11 +189,13 @@ accepted_versions = {
     # OFFICIAL - 1 STEP
     '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
                           'RepliSeq_Pipeline_v14_step1',
-                          'RepliSeq_Pipeline_v16_step1'],
+                          'RepliSeq_Pipeline_v16_step1',
+                          'RepliSeq_Pipeline_v16.1_step1'],
     # OFFICIAL - 1 STEP
     'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
                               'RepliSeq_Pipeline_v14_step1',
-                              'RepliSeq_Pipeline_v16_step1'],
+                              'RepliSeq_Pipeline_v16_step1',
+                              'RepliSeq_Pipeline_v16.1_step1'],
     # Preliminary - Released to network
     'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
     # OFFICIAL
@@ -1702,6 +1704,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                 # if successful
                 if step1_result['status'] == 'complete':
                     all_files.extend([step1_result['filtered_sorted_deduped_bam'],
+                                      step1_result['count_bg_rpkm'],
                                       step1_result['count_bg']])
                 # if still running
                 elif step1_result['status'] == 'running':

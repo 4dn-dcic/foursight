@@ -150,13 +150,17 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         'app_name': 'repliseq-parta',
-        'workflow_uuid': '4dn-dcic-lab:wf-repliseq-parta-v16',
+        'workflow_uuid': '4dn-dcic-lab:wf-repliseq-parta-v16.1',
         "parameters": {"nthreads": 4, "memperthread": "2G"},
         'custom_pf_fields': {
             'filtered_sorted_deduped_bam': {
                 'genome_assembly': genome,
                 'file_type': 'alignments',
                 'description': 'This is an output file of the RepliSeq processing pipeline'},
+            'count_bg_rpkm': {
+                'genome_assembly': genome,
+                'file_type': 'counts',
+                'description': 'read counts, unfiltered RPKM'},
             'count_bg': {
                 'genome_assembly': genome,
                 'file_type': 'counts',

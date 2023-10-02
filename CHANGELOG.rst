@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+3.9.1
+=====
+
+`PR 549: Update Repli-seq to v16.1 <https://github.com/4dn-dcic/foursight/pull/549>`_
+
+* configure Repli-seq pipeline to run v16.1, introducing additional output file
+
 3.9.0
 =====
 
