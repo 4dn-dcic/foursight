@@ -2333,6 +2333,7 @@ def check_hic_summary_tables(connection, **kwargs):
             table[dsg] = _add_set_to_row(table.get(dsg, {}), a_set, dsg)
 
         # consolidate the table
+        import pdb; pdb.set_trace()
         for dsg, row in table.items():
             if (len(row['Study']) == 1) and (len(row['Class']) == 1):
                 table[dsg] = _row_cleanup(row)
