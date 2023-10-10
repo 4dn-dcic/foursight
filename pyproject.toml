@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "3.9.0.1b26"  # TODO: To become 4.0.0
+version = "3.9.0.1b27"  # TODO: To become 4.0.0
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -26,7 +26,7 @@ pytz = "^2020.1"
 tibanna-ff = "2.0.1.1b10"
 ## adding foursight-core
 # use below for deployment
-foursight-core = "4.5.0.3b26"
+foursight-core = "4.5.0.3b27"
 # use below for tests but not for deployment
 # foursight-core = { git = "https://github.com/4dn-dcic/foursight-core.git", branch="master" }
 # Need pytest-redis 3.0.2 or higher for pytest 7.4.2 (or higher).
