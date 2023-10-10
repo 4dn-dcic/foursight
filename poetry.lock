@@ -577,13 +577,13 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "4.5.0.1b19"
+version = "4.5.0.3b22"
 description = "Serverless Chalice Application for Monitoring"
 optional = false
 python-versions = ">=3.8,<3.12"
 files = [
-    {file = "foursight_core-4.5.0.1b19-py3-none-any.whl", hash = "sha256:e2f358fe135ffe9ae017fa47736eb7d9ae613b6771bbc7f84f40ab608faf2600"},
-    {file = "foursight_core-4.5.0.1b19.tar.gz", hash = "sha256:852acb9de2b5b14658badff91f51daaad612c2ccff66d82bce73f9f5c9f2926c"},
+    {file = "foursight_core-4.5.0.3b22-py3-none-any.whl", hash = "sha256:e5f717ba18bb36417dc33513c8f87f0050dc6d420ae8cc8a3a3af171fe3a74fe"},
+    {file = "foursight_core-4.5.0.3b22.tar.gz", hash = "sha256:f4b71b214e545375741929e2748491eabff6c7ca9b6e2fe94481c34e764ae9ad"},
 ]
 
 [package.dependencies]
@@ -1836,13 +1836,13 @@ files = [
 
 [[package]]
 name = "tzlocal"
-version = "5.0.1"
+version = "5.1"
 description = "tzinfo object for the local timezone"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "tzlocal-5.0.1-py3-none-any.whl", hash = "sha256:f3596e180296aaf2dbd97d124fe76ae3a0e3d32b258447de7b939b3fd4be992f"},
-    {file = "tzlocal-5.0.1.tar.gz", hash = "sha256:46eb99ad4bdb71f3f72b7d24f4267753e240944ecfc16f25d2719ba89827a803"},
+    {file = "tzlocal-5.1-py3-none-any.whl", hash = "sha256:2938498395d5f6a898ab8009555cb37a4d360913ad375d4747ef16826b03ef23"},
+    {file = "tzlocal-5.1.tar.gz", hash = "sha256:a5ccb2365b295ed964e0a98ad076fe10c495591e75505d34f154d60a7f1ed722"},
 ]
 
 [package.dependencies]
@@ -1974,4 +1974,4 @@ test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "ed6cf46906432d2a4c5cee1a7ff51ea5c6dc05a6f3780cc854ef6090e8b2671e"
+content-hash = "3fc13ff15359f07a3a17056ec17d12f6992de2c8114225b56861c6b5657e8ff3"
