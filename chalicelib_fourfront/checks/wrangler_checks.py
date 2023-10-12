@@ -615,7 +615,6 @@ def item_counts_by_type(connection, **kwargs):
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
-    # import pdb; pdb.set_trace()
     check = CheckResult(connection, 'change_in_item_counts')
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
@@ -2231,7 +2230,10 @@ def check_hic_summary_tables(connection, **kwargs):
         days = 0
         while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
             days += 1
-            last_result = check.get_closest_result(diff_hours=days*24)
+            try:
+                last_result = check.get_closest_result(diff_hours=days*24)
+            except Exception:
+                pass
             if days > 10:
                 # too many recent primary checks that errored
                 check.brief_output = 'Can not find a recent non-ERROR primary check'
@@ -2333,13 +2335,16 @@ def check_hic_summary_tables(connection, **kwargs):
             table[dsg] = _add_set_to_row(table.get(dsg, {}), a_set, dsg)
 
         # consolidate the table
-        import pdb; pdb.set_trace()
         for dsg, row in table.items():
             if (len(row['Study']) == 1) and (len(row['Class']) == 1):
                 table[dsg] = _row_cleanup(row)
             else:
                 problematic.setdefault('multiple_info', []).append(dsg)
-                table.pop(dsg)
+        problems_to_remove = problematic.get('multiple_info')
+        if problems_to_remove:
+            for prob in problems_to_remove:
+                table.pop(prob)
+
 
         # split table into studygroup-specific output tables
         output = {}
