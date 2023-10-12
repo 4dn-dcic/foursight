@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.0.1
+=====
+
+`PR:549: Fix bug in hi-c table generation check <https://github.com/4dn-dcic/foursight/pull/549>`_
+
+* Fixed a bug in the hi-c markdown table generation check.
+* also allow dataset_group field search when relevant
+
 4.0.0
 =====
 
