@@ -569,37 +569,16 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "5.0.0.1b9"
+version = "5.0.0.1b10"
 description = "Serverless Chalice Application for Monitoring"
 optional = false
-python-versions = ">=3.8,<3.12"
-files = [
-    {file = "foursight_core-5.0.0.1b9-py3-none-any.whl", hash = "sha256:471aea583102ef0f241bbad2cb491b304fb00e0fd5226be3881d30ba1419bef9"},
-    {file = "foursight_core-5.0.0.1b9.tar.gz", hash = "sha256:8c6810725111061637d413a356fe0c148ca257fd7637f76f61b939c10cac1399"},
-]
+python-versions = "*"
+files = []
+develop = true
 
-[package.dependencies]
-boto3 = ">=1.28.62,<2.0.0"
-botocore = ">=1.31.62,<2.0.0"
-click = ">=7.1.2,<8.0.0"
-cron-descriptor = ">=1.2.31,<2.0.0"
-cryptography = "39.0.2"
-dcicutils = ">=8.0.0,<9.0.0"
-elasticsearch = "7.13.4"
-elasticsearch-dsl = ">=7.0.0,<8.0.0"
-geocoder = "1.38.1"
-gitpython = ">=3.1.2,<4.0.0"
-google = ">=3.0.0,<4.0.0"
-google-api-python-client = ">=1.12.5,<2.0.0"
-google-auth-oauthlib = ">=0.7.0,<0.8.0"
-Jinja2 = ">=3.1.2,<4.0.0"
-MarkupSafe = ">=2.1.3,<3.0.0"
-pyDes = ">=2.0.1,<3.0.0"
-PyJWT = ">=2.5.0,<3.0.0"
-pytz = ">=2020.1"
-redis = ">=4.5.1,<5.0.0"
-toml = ">=0.10.2,<1"
-tzlocal = ">=5.0.1,<6.0.0"
+[package.source]
+type = "directory"
+url = "../foursight-core"
 
 [[package]]
 name = "future"
@@ -661,20 +640,6 @@ gitdb = ">=4.0.1,<5"
 test = ["black", "coverage[toml]", "ddt (>=1.1.1,!=1.4.3)", "mypy", "pre-commit", "pytest", "pytest-cov", "pytest-sugar"]
 
 [[package]]
-name = "google"
-version = "3.0.0"
-description = "Python bindings to the Google search engine."
-optional = false
-python-versions = "*"
-files = [
-    {file = "google-3.0.0-py2.py3-none-any.whl", hash = "sha256:889cf695f84e4ae2c55fbc0cfdaf4c1e729417fa52ab1db0485202ba173e4935"},
-    {file = "google-3.0.0.tar.gz", hash = "sha256:143530122ee5130509ad5e989f0512f7cb218b2d4eddbafbad40fd10e8d8ccbe"},
-]
-
-[package.dependencies]
-beautifulsoup4 = "*"
-
-[[package]]
 name = "google-analytics-data"
 version = "0.17.1"
 description = "Google Analytics Data API client library"
@@ -724,25 +689,6 @@ grpcgcp = ["grpcio-gcp (>=0.2.2,<1.0.dev0)"]
 grpcio-gcp = ["grpcio-gcp (>=0.2.2,<1.0.dev0)"]
 
 [[package]]
-name = "google-api-python-client"
-version = "1.12.11"
-description = "Google API Client Library for Python"
-optional = false
-python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
-files = [
-    {file = "google-api-python-client-1.12.11.tar.gz", hash = "sha256:1b4bd42a46321e13c0542a9e4d96fa05d73626f07b39f83a73a947d70ca706a9"},
-    {file = "google_api_python_client-1.12.11-py2.py3-none-any.whl", hash = "sha256:7e0a1a265c8d3088ee1987778c72683fcb376e32bada8d7767162bd9c503fd9b"},
-]
-
-[package.dependencies]
-google-api-core = {version = ">=1.21.0,<3dev", markers = "python_version >= \"3\""}
-google-auth = {version = ">=1.16.0,<3dev", markers = "python_version >= \"3\""}
-google-auth-httplib2 = ">=0.0.3"
-httplib2 = ">=0.15.0,<1dev"
-six = ">=1.13.0,<2dev"
-uritemplate = ">=3.0.0,<4dev"
-
-[[package]]
 name = "google-auth"
 version = "2.23.3"
 description = "Google Authentication Library"
@@ -764,21 +710,6 @@ enterprise-cert = ["cryptography (==36.0.2)", "pyopenssl (==22.0.0)"]
 pyopenssl = ["cryptography (>=38.0.3)", "pyopenssl (>=20.0.0)"]
 reauth = ["pyu2f (>=0.1.5)"]
 requests = ["requests (>=2.20.0,<3.0.0.dev0)"]
-
-[[package]]
-name = "google-auth-httplib2"
-version = "0.1.1"
-description = "Google Authentication Library: httplib2 transport"
-optional = false
-python-versions = "*"
-files = [
-    {file = "google-auth-httplib2-0.1.1.tar.gz", hash = "sha256:c64bc555fdc6dd788ea62ecf7bccffcf497bf77244887a3f3d7a5a02f8e3fc29"},
-    {file = "google_auth_httplib2-0.1.1-py2.py3-none-any.whl", hash = "sha256:42c50900b8e4dcdf8222364d1f0efe32b8421fb6ed72f2613f12f75cc933478c"},
-]
-
-[package.dependencies]
-google-auth = "*"
-httplib2 = ">=0.19.0"
 
 [[package]]
 name = "google-auth-oauthlib"
@@ -1295,16 +1226,6 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},
     {file = "pycparser-2.21.tar.gz", hash = "sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206"},
-]
-
-[[package]]
-name = "pydes"
-version = "2.0.1"
-description = "Pure python implementation of DES and TRIPLE DES encryption algorithm"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pyDes-2.0.1.tar.gz", hash = "sha256:e2ab8e21d2b83e90d90dbfdcb6fb8ac0000b813238b7ecaede04f8435c389012"},
 ]
 
 [[package]]
@@ -1866,17 +1787,6 @@ tzdata = {version = "*", markers = "platform_system == \"Windows\""}
 devenv = ["black", "check-manifest", "flake8", "pyroma", "pytest (>=4.3)", "pytest-cov", "pytest-mock (>=3.3)", "zest.releaser"]
 
 [[package]]
-name = "uritemplate"
-version = "3.0.1"
-description = "URI templates"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-files = [
-    {file = "uritemplate-3.0.1-py2.py3-none-any.whl", hash = "sha256:07620c3f3f8eed1f12600845892b0e036a2420acf513c53f7de0abd911a5894f"},
-    {file = "uritemplate-3.0.1.tar.gz", hash = "sha256:5af8ad10cec94f215e3f48112de2022e1d5a37ed427fbd88652fa908f2ab7cae"},
-]
-
-[[package]]
 name = "urllib3"
 version = "1.26.17"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -1987,4 +1897,4 @@ test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "a5019a76a0b07d86d97a295853f518c582445cde268ea39bfd8652eee2b53ead"
+content-hash = "8df025092527841c468b11052daeacf0caf2b8df52d5e02ccd85dea974911e5d"
