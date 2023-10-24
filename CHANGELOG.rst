@@ -10,7 +10,7 @@ Change Log
 4.0.2
 =====
 
-`PR: : Add new expt type to assay_subclass_short dictionary <>`_
+`PR: 550: Add new expt type to assay_subclass_short dictionary <https://github.com/4dn-dcic/foursight/pull/550>`_
 
 * Fixed a bug in the hi-c markdown table generation check.
 
