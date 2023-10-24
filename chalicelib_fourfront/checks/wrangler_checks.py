@@ -1348,7 +1348,8 @@ def check_assay_classification_short_names(connection, **kwargs):
         "immunofluorescence": "Immunofluorescence",
         "synthetic condensation": "OptoDroplet",
         "capture hi-c": "Enrichment Hi-C",
-        "hicar": "Enrichment Hi-C"
+        "hicar": "Enrichment Hi-C",
+        "4c-seq": "Enrichment Hi-C"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
                                         key=connection.ff_keys)

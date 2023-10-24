@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+4.0.2
+=====
+
+`PR: : Add new expt type to assay_subclass_short dictionary <>`_
+
+* Fixed a bug in the hi-c markdown table generation check.
+
 4.0.1
 =====
 
