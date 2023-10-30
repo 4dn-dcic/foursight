@@ -7,7 +7,7 @@ foursight
 Change Log
 ----------
 
-3.9.1
+4.0.3
 =====
 
 `PR 551: Upgrade foursight to run repliseq v16.1 <https://github.com/4dn-dcic/foursight/pull/551>`_
