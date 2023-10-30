@@ -159,7 +159,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
                 'description': 'This is an output file of the RepliSeq processing pipeline'},
             'count_bg_rpkm': {
                 'genome_assembly': genome,
-                'file_type': 'counts',
+                'file_type': 'normalized counts',
                 'description': 'read counts, unfiltered RPKM'},
             'count_bg': {
                 'genome_assembly': genome,
