@@ -185,7 +185,8 @@ accepted_versions = {
     # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
                       'RepliSeq_Pipeline_v14_step1',
-                      'RepliSeq_Pipeline_v16_step1'],
+                      'RepliSeq_Pipeline_v16_step1',
+                      'RepliSeq_Pipeline_v16.1_step1'],
     # OFFICIAL - 1 STEP
     '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
                           'RepliSeq_Pipeline_v14_step1',
@@ -197,7 +198,7 @@ accepted_versions = {
                               'RepliSeq_Pipeline_v16_step1',
                               'RepliSeq_Pipeline_v16.1_step1'],
     # Preliminary - Released to network
-    'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1'],
+    'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1', 'RepliSeq_Pipeline_v16.1_step1'],
     # OFFICIAL
     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
     # OFFICIAL
