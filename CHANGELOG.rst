@@ -7,12 +7,33 @@ foursight
 Change Log
 ----------
 
-
 4.1.0
 =====
 
 * New Portal Reindex page; foursight-core 5.1.0.
 * Update poetry to 1.4.2.
+
+4.0.3
+=====
+
+`PR 551: Upgrade foursight to run repliseq v16.1 <https://github.com/4dn-dcic/foursight/pull/551>`_
+
+* configure Repli-seq pipeline to run v16.1, introducing additional output file
+
+4.0.2
+=====
+
+`PR: 550: Add new expt type to assay_subclass_short dictionary <https://github.com/4dn-dcic/foursight/pull/550>`_
+
+* Fixed a bug in the hi-c markdown table generation check.
+
+4.0.1
+=====
+
+`PR:549: Fix bug in hi-c table generation check <https://github.com/4dn-dcic/foursight/pull/549>`_
+
+* Fixed a bug in the hi-c markdown table generation check.
+* also allow dataset_group field search when relevant
 
 4.0.0
 =====

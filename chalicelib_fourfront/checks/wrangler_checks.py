@@ -615,7 +615,6 @@ def item_counts_by_type(connection, **kwargs):
 @check_function()
 def change_in_item_counts(connection, **kwargs):
     # use this check to get the comparison
-    # import pdb; pdb.set_trace()
     check = CheckResult(connection, 'change_in_item_counts')
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
@@ -1349,7 +1348,8 @@ def check_assay_classification_short_names(connection, **kwargs):
         "immunofluorescence": "Immunofluorescence",
         "synthetic condensation": "OptoDroplet",
         "capture hi-c": "Enrichment Hi-C",
-        "hicar": "Enrichment Hi-C"
+        "hicar": "Enrichment Hi-C",
+        "4c-seq": "Enrichment Hi-C"
     }
     exptypes = ff_utils.search_metadata('search/?type=ExperimentType&frame=object',
                                         key=connection.ff_keys)
@@ -2231,7 +2231,10 @@ def check_hic_summary_tables(connection, **kwargs):
         days = 0
         while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
             days += 1
-            last_result = check.get_closest_result(diff_hours=days*24)
+            try:
+                last_result = check.get_closest_result(diff_hours=days*24)
+            except Exception:
+                pass
             if days > 10:
                 # too many recent primary checks that errored
                 check.brief_output = 'Can not find a recent non-ERROR primary check'
@@ -2257,7 +2260,10 @@ def check_hic_summary_tables(connection, **kwargs):
             ''' Add ExpSet metadata to the table row for dsg'''
 
             row.setdefault('Data Set', {'text': dsg})
-            row['Data Set'].setdefault('ds_list', set()).add(expset.get('dataset_label'))
+            dsfield = expset.get('dataset_group', expset.get('dataset_label'))
+            row['Data Set'].setdefault('ds_list', set()).add(dsfield)
+            if 'dataset_group' in expset:
+                row.setdefault('dataset_group', True)
 
             row.setdefault('Study', set()).add(expset.get('study'))
             row.setdefault('Class', set()).add(expset.get('study_group'))
@@ -2310,8 +2316,10 @@ def check_hic_summary_tables(connection, **kwargs):
             '''Summarize various fields in row'''
             (row['Study'],) = row['Study']
             (row['Class'],) = row['Class']
-
-            dsg_link = '&'.join(["dataset_label=" + ds for ds in row['Data Set']['ds_list']])
+            field = 'dataset_label'
+            if 'dataset_group' in row and row.get('dataset_group'):
+                field = 'dataset_group'
+            dsg_link = '&'.join([field + '=' + ds for ds in row['Data Set']['ds_list']])
             dsg_link = "/browse/?" + dsg_link.replace("+", "%2B").replace("/", "%2F").replace(" ", "+")
             row['Data Set']['link'] = dsg_link
 
@@ -2338,7 +2346,11 @@ def check_hic_summary_tables(connection, **kwargs):
                 table[dsg] = _row_cleanup(row)
             else:
                 problematic.setdefault('multiple_info', []).append(dsg)
-                table.pop(dsg)
+        problems_to_remove = problematic.get('multiple_info')
+        if problems_to_remove:
+            for prob in problems_to_remove:
+                table.pop(prob)
+
 
         # split table into studygroup-specific output tables
         output = {}
