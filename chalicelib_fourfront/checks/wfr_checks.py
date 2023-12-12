@@ -139,19 +139,24 @@ def md5run_status(connection, **kwargs):
     # if there are files, make sure they are not on s3
     no_s3_file = []
     running = []
-    missing_md5 = []
+    missing_md5_to_start = []
+    missing_md5_to_wait = []
     not_switched_status = []
+    not_switched_status_to_wait = []
     # multiple failed runs
     problems = []
     my_s3_util = s3Utils(env=connection.ff_env)
     raw_bucket = my_s3_util.raw_file_bucket
     out_bucket = my_s3_util.outfile_bucket
-    for a_file in res[:n_runs_available]:
+    for a_file in res:
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
             check.brief_output.append('did not complete checking all')
             break
+
+        # cnt of files to be triggered at this iteration of loop
+        n_runs_to_trigger = len(missing_md5_to_start + not_switched_status) 
         # find bucket
         if 'FileProcessed' in a_file['@type']:
                 my_bucket = out_bucket
@@ -169,46 +174,66 @@ def md5run_status(connection, **kwargs):
         if md5_report['status'] == 'running':
             running.append(file_id)
         elif md5_report['status'].startswith("no complete run, too many"):
+            # Most probably the trigger did not work, and we run it manually
             problems.append(file_id)
-        # Most probably the trigger did not work, and we run it manually
         elif md5_report['status'] != 'complete':
-            missing_md5.append(file_id)
-        # There is a successful run, but status is not switched, happens when a file is reuploaded.
+            if n_runs_to_trigger < n_runs_available:
+                missing_md5_to_start.append(file_id)
+            else:
+                missing_md5_to_wait.append(file_id)
         elif md5_report['status'] == 'complete':
-            not_switched_status.append(file_id)
+            # There is a successful run, but status is not switched, happens when a file is reuploaded.
+            # note this happens infrequently so should be fine to do this way
+            if n_runs_to_trigger < n_runs_available:
+                not_switched_status.append(file_id)
+            else:
+                not_switched_status_to_wait.append(file_id)
+    summary = ''
     if no_s3_file:
-        check.summary = 'Some files are pending upload'
+        summary += 'Some files are pending upload\n'
         msg = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
         check.brief_output.append(msg)
         check.full_output['files_pending_upload'] = no_s3_file
     if running:
-        check.summary = 'Some files are running md5run'
+        summary += 'Some files are running md5run\n'
         msg = str(len(running)) + ' files are still running md5run.'
         check.brief_output.append(msg)
         check.full_output['files_running_md5'] = running
     if problems:
-        check.summary = 'Some files have problems'
+        summary += 'Some files have problems\n'
         msg = str(len(problems)) + ' file(s) have problems.'
         check.brief_output.append(msg)
         check.full_output['problems'] = problems
         check.status = 'WARN'
-    if missing_md5:
+    if missing_md5_to_start:
         check.allow_action = True
-        check.summary = 'Some files are missing md5 runs'
-        msg = str(len(missing_md5)) + ' file(s) lack a successful md5 run'
+        summary = 'Some files will be triggered for md5 runs\n'
+        msg = str(len(missing_md5_to_start)) + ' file(s) to start md5 run'
         check.brief_output.append(msg)
-        check.full_output['files_without_md5run'] = missing_md5
+        check.full_output['files_without_md5run_to_start'] = missing_md5_to_start
         check.status = 'WARN'
     if not_switched_status:
         check.allow_action = True
-        check.summary += ' Some files are have wrong status with a successful run'
-        msg = str(len(not_switched_status)) + ' file(s) are have wrong status with a successful run'
+        check.summary += 'Some files have wrong status and will re-run to update\n'
+        msg = str(len(not_switched_status)) + ' file(s) have wrong status with a successful run to start'
         check.brief_output.append(msg)
-        check.full_output['files_with_run_and_wrong_status'] = not_switched_status
+        check.full_output['files_with_run_and_wrong_status_to_start'] = not_switched_status
+        check.status = 'WARN'
+    if missing_md5_to_wait:
+        summary += 'Some files need md5 runs but must wait\n'
+        msg = str(len(missing_md5_to_start)) + ' file(s) to wait for md5 run'
+        check.brief_output.append(msg)
+        check.full_output['files_without_md5run_to_wait'] = missing_md5_to_start
+        check.status = 'WARN'
+    if not_switched_status_to_wait:
+        summary += 'Some files are have wrong status but must wait\n'
+        msg = str(len(not_switched_status)) + ' file(s) are have wrong status and will wait'
+        check.brief_output.append(msg)
+        check.full_output['files_with_run_and_wrong_status_to_wait'] = not_switched_status
         check.status = 'WARN'
     if not check.brief_output:
         check.brief_output = ['All Good!', ]
-    check.summary = check.summary.strip()
+    check.summary = summary.strip()
     return check
 
 
