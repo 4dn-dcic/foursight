@@ -294,7 +294,7 @@ def md5run_start(connection, **kwargs):
     targets = []
     if kwargs.get('start_missing'):
         # get uploading files from md5run_status
-        targets.extend(md5run_check_result.get('files_without_md5run', []))
+        targets.extend(md5run_check_result.get('files_without_md5run_to_start', []))
         # get uploaded files from md5run_uploaded_files
         targets.extend(md5run_check_result.get('uploaded_without_md5run', []))
     if kwargs.get('start_not_switched'):
