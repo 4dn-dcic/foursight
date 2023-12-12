@@ -132,7 +132,7 @@ def md5run_status(connection, **kwargs):
     if lab:
         query += '&lab.display_title=' + lab
     # The search
-    res = ff_utils.search_metadata(query, key=my_auth)
+    res = ff_utils.search_metadata(query, key=my_auth, is_generator=True)
     if not res:
         check.summary = 'All Good!'
         return check
