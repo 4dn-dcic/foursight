@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.1.1
+=====
+
+* Fix for md5_status check to allow checking all file metadata but only kickoff limited number of runs if too many files
+
 4.1.0
 =====
 
