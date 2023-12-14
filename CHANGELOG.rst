@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+
+4.1.2
+=====
+
+* Minor UI fix to Ingestion page (foursight-core).
+
 4.1.1
 =====
 
