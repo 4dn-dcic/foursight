@@ -214,7 +214,7 @@ def md5run_status(connection, **kwargs):
         check.status = 'WARN'
     if not_switched_status:
         check.allow_action = True
-        check.summary += 'Some files have wrong status and will re-run to update\n'
+        summary += 'Some files have wrong status and will re-run to update\n'
         msg = str(len(not_switched_status)) + ' file(s) have wrong status with a successful run to start'
         check.brief_output.append(msg)
         check.full_output['files_with_run_and_wrong_status_to_start'] = not_switched_status
