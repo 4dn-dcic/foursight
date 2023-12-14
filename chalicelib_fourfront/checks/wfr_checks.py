@@ -133,7 +133,7 @@ def md5run_status(connection, **kwargs):
         query += '&lab.display_title=' + lab
     # The search
     res = ff_utils.search_metadata(query, key=my_auth, is_generator=True)
-    if not res:
+    if not any(res):
         check.summary = 'All Good!'
         return check
     # if there are files, make sure they are not on s3
