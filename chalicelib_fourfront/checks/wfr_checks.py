@@ -88,7 +88,7 @@ def md5run_extra_file_start(connection, **kwargs):
     return action
 
 
-@check_function(file_type='File', lab_title=None, start_date=None, action="md5run_start")
+@check_function(file_type='File', lab_title=None, start_date=None, file_limit='all', action="md5run_start")
 def md5run_status(connection, **kwargs):
     """Searches for files that are uploaded to s3, but not went though md5 run.
     This check makes certain assumptions
@@ -131,6 +131,8 @@ def md5run_status(connection, **kwargs):
     lab = kwargs.get('lab_title')
     if lab:
         query += '&lab.display_title=' + lab
+    limit = kwargs.get('file_limit')
+    query += '&limit=' + limit
     # The search
     res = ff_utils.search_metadata(query, key=my_auth, is_generator=True)
     if not any(res):
