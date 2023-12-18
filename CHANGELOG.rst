@@ -12,6 +12,8 @@ Change Log
 
 * additional improvement to md5status check to add option to limit number of files checked
 
+`PR 555: add file limit option for md5_status <https://github.com/4dn-dcic/foursight/pull/555>`_
+
 4.1.2
 =====
 
