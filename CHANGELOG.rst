@@ -12,6 +12,13 @@ Change Log
 
 * additional improvement to md5status check to add option to limit number of files checked
 
+4.1.2
+=====
+
+* Minor UI fix to Ingestion page (foursight-core).
+
+`PR 554: UI fix to core <https://github.com/4dn-dcic/foursight/pull/554>`_
+
 4.1.1
 =====
 
