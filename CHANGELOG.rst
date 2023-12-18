@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.1.3
+=====
+
+* additional improvement to md5status check to add option to limit number of files checked
+
 4.1.1
 =====
 
