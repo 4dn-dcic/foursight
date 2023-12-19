@@ -300,7 +300,7 @@ def md5run_start(connection, **kwargs):
         # get uploaded files from md5run_uploaded_files
         targets.extend(md5run_check_result.get('uploaded_without_md5run', []))
     if kwargs.get('start_not_switched'):
-        targets.extend(md5run_check_result.get('files_with_run_and_wrong_status', []))
+        targets.extend(md5run_check_result.get('files_with_run_and_wrong_status_to_start', []))
     action_logs['targets'] = targets
     for a_target in targets:
         now = datetime.utcnow()
