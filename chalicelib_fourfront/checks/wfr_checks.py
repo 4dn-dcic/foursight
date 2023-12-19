@@ -191,11 +191,6 @@ def md5run_status(connection, **kwargs):
             else:
                 not_switched_status_to_wait.append(file_id)
     summary = ''
-    if no_s3_file:
-        summary += 'Some files are pending upload\n'
-        msg = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
-        check.brief_output.append(msg)
-        check.full_output['files_pending_upload'] = no_s3_file
     if running:
         summary += 'Some files are running md5run\n'
         msg = str(len(running)) + ' files are still running md5run.'
@@ -223,16 +218,21 @@ def md5run_status(connection, **kwargs):
         check.status = 'WARN'
     if missing_md5_to_wait:
         summary += 'Some files need md5 runs but must wait\n'
-        msg = str(len(missing_md5_to_start)) + ' file(s) to wait for md5 run'
+        msg = str(len(missing_md5_to_wait)) + ' file(s) to wait for md5 run'
         check.brief_output.append(msg)
-        check.full_output['files_without_md5run_to_wait'] = missing_md5_to_start
+        check.full_output['files_without_md5run_to_wait'] = missing_md5_to_wait
         check.status = 'WARN'
     if not_switched_status_to_wait:
         summary += 'Some files are have wrong status but must wait\n'
-        msg = str(len(not_switched_status)) + ' file(s) are have wrong status and will wait'
+        msg = str(len(not_switched_status_to_wait)) + ' file(s) are have wrong status and will wait'
         check.brief_output.append(msg)
-        check.full_output['files_with_run_and_wrong_status_to_wait'] = not_switched_status
+        check.full_output['files_with_run_and_wrong_status_to_wait'] = not_switched_status_to_wait
         check.status = 'WARN'
+    if no_s3_file:
+        summary += 'Some files are pending upload\n'
+        msg = str(len(no_s3_file)) + '(uploading/upload failed) files waiting for upload'
+        check.brief_output.append(msg)
+        check.full_output['files_pending_upload'] = no_s3_file
     if not check.brief_output:
         check.brief_output = ['All Good!', ]
     check.summary = summary.strip()

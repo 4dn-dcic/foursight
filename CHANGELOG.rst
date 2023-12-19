@@ -6,6 +6,12 @@ foursight
 ----------
 Change Log
 ----------
+4.1.4
+=====
+
+* bug fix to correct output of md5status check
+
+`PR 555: bug fix for output of md5_status <https://github.com/4dn-dcic/foursight/pull/556>`_
 
 4.1.3
 =====
