@@ -6,6 +6,14 @@ foursight
 ----------
 Change Log
 ----------
+
+
+4.2.0
+=====
+
+* Added update of a gitinfo.json file in GitHub Actions (.github/workflows/main-publish.yml).
+
+
 4.1.4
 =====
 
