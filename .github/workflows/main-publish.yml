@@ -31,7 +31,7 @@ jobs:
         run: python -m pip install dcicutils==8.7.0.1b2
       - name: Update the gitinfo.json file with latest relevant git info
         run: |
-          echo "{\"repo\": \"https://github.com/${{ github.repository }}\", \"branch\": \"${GITHUB_REF##*/}\", \"commit\": \"${GITHUB_SHA}\"}" > chalicelib_cgap/gitinfo.json
+          echo "{\"repo\": \"https://github.com/${{ github.repository }}\", \"branch\": \"${GITHUB_REF##*/}\", \"commit\": \"${GITHUB_SHA}\"}" > chalicelib_fourfront/gitinfo.json
       - name: Publish
         env:
           PYPI_USER: ${{ secrets.PYPI_USER }}
