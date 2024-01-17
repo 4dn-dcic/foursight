@@ -1223,7 +1223,7 @@ def users_with_doppelganger(connection, **kwargs):
     check.full_output = {'result': [], 'ignore': []}
     check.brief_output = []
     check.status = 'PASS'
-    query = ('/search/?type=User&sort=display_title'
+    query = ('/search/?type=User'  # &sort=display_title'
              '&field=display_title&field=contact_email&field=preferred_email&field=email')
     # if check was limited to certain emails
     if kwargs.get('emails'):
