@@ -13,7 +13,7 @@ Change Log
 * refactor of doppelganger check so it won't fail if ignore list becomes to long
 * increased stringency for warning to case insensitive equality
 
-`PR : refactor doppelganer check <https://github.com/4dn-dcic/foursight/pull/>`_
+`PR 558: refactor doppelganger check <https://github.com/4dn-dcic/foursight/pull/558>`_
 
 
 4.1.4
