@@ -1306,14 +1306,6 @@ def users_with_doppelganger(connection, **kwargs):
             a_case['log'] = a_case['log'] + add_on
             a_case['brief'] = a_case['brief'] + add_on
 
-    # are the ignored ones getting out of control N.B. Don't think this needs to fail
-    if len(ignored_cases) > 100:
-        fail_msg = 'Number of ignored cases is very high, time to resolve'
-        check.brief_output = fail_msg
-        check.full_output = {'result': [fail_msg, ], 'ignore': ignored_cases}
-        check.status = 'WARN'
-        return check
-
     check.full_output = {'to_check': cases, 'ignore': ignored_cases, 'close_matches': iffy_cases}
     if cases:
         check.summary = 'Some user accounts need attention.'
