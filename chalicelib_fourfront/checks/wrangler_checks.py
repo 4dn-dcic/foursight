@@ -1223,7 +1223,7 @@ def users_with_doppelganger(connection, **kwargs):
     check.full_output = {'result': [], 'ignore': []}
     check.brief_output = []
     check.status = 'PASS'
-    query = ('/search/?type=User&sort=display_title'
+    query = ('/search/?type=User'  # &sort=display_title'
              '&field=display_title&field=contact_email&field=preferred_email&field=email')
     # if check was limited to certain emails
     if kwargs.get('emails'):
@@ -1246,6 +1246,7 @@ def users_with_doppelganger(connection, **kwargs):
     # go through each combination
     combs = itertools.combinations(all_users, 2)
     cases = []
+    iffy_cases = []
     for comb in combs:
         us1 = comb[0]
         us2 = comb[1]
@@ -1262,7 +1263,17 @@ def users_with_doppelganger(connection, **kwargs):
                    'brief': msg}
             cases.append(log)
         # if not, compare names
-        else:
+        elif us1['display_title'].lower() == us2['display_title'].lower():
+            msg = '{} and {} are the same'.format(
+                us1['display_title'],
+                us2['display_title']
+            )
+            log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
+                   'user2': [us2['display_title'], us2['@id'], us2['email']],
+                   'log': 'have the same name',
+                   'brief': msg}
+            cases.append(log)
+        else:  # this should just provide a warning list that can be periodically reviewed   
             score = round(string_label_similarity(us1['display_title'], us2['display_title']) * 100)
             if score > 85:
                 msg = '{} and {} are similar-{}'.format(
@@ -1273,15 +1284,8 @@ def users_with_doppelganger(connection, **kwargs):
                        'user2': [us2['display_title'], us2['@id'], us2['email']],
                        'log': 'has similar names ({}/100)'.format(str(score)),
                        'brief': msg}
-                cases.append(log)
+                iffy_cases.append(log)
 
-    # are the ignored ones getting out of control
-    if len(ignored_cases) > 100:
-        fail_msg = 'Number of ignored cases is very high, time for maintainace'
-        check.brief_output = fail_msg
-        check.full_output = {'result': [fail_msg, ], 'ignore': ignored_cases}
-        check.status = 'FAIL'
-        return check
     # remove ignored cases from all cases
     if ignored_cases:
         for an_ignored_case in ignored_cases:
@@ -1292,7 +1296,6 @@ def users_with_doppelganger(connection, **kwargs):
             ignored_cases.append([a_case['user1'], a_case['user2']])
         cases = []
 
-    # add if they have any items referencing them
     if cases:
         for a_case in cases:
             us1_info = ff_utils.get_metadata('indexing-info?uuid=' + a_case['user1'][1][7:-1], key=connection.ff_keys)
@@ -1303,7 +1306,7 @@ def users_with_doppelganger(connection, **kwargs):
             a_case['log'] = a_case['log'] + add_on
             a_case['brief'] = a_case['brief'] + add_on
 
-    check.full_output = {'result': cases, 'ignore': ignored_cases}
+    check.full_output = {'to_check': cases, 'ignore': ignored_cases, 'close_matches': iffy_cases}
     if cases:
         check.summary = 'Some user accounts need attention.'
         check.brief_output = [i['brief'] for i in cases]
@@ -1311,6 +1314,12 @@ def users_with_doppelganger(connection, **kwargs):
     else:
         check.summary = 'No user account conflicts'
         check.brief_output = []
+
+    # are the ignored ones getting out of control N.B. Don't think this needs to fail
+    if len(ignored_cases) > 100:
+        fail_msg = '\nNOTE: Number of ignored cases is very high, time to resolve'
+        check.brief_output.append(fail_msg)
+        check.status = 'WARN'
     return check
 
 

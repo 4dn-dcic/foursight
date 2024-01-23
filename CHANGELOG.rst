@@ -6,6 +6,16 @@ foursight
 ----------
 Change Log
 ----------
+
+4.2.0
+=====
+
+* refactor of doppelganger check so it won't fail if ignore list becomes too long
+* increased stringency for warning to case insensitive equality
+
+`PR 558: refactor doppelganger check <https://github.com/4dn-dcic/foursight/pull/558>`_
+
+
 4.1.4
 =====
 
