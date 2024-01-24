@@ -1172,7 +1172,7 @@ def string_label_similarity(string1, string2):
     return SequenceMatcher(None, s1cmp, s2cmp).ratio()
 
 
-@check_function(emails=None, ignore_current=False, reset_ignore=False)
+@check_function(emails=None, ignore_current=False, reset_ignore=False, find_similar=False)
 def users_with_doppelganger(connection, **kwargs):
     """ Find users that share emails or have very similar names
     Args:
@@ -1181,8 +1181,12 @@ def users_with_doppelganger(connection, **kwargs):
                         they will not show up next time.
         if there are caught cases, which are not problematic, you can add them to ignore list
         reset_ignore: you can reset the ignore list, and restart it, useful if you added something by mistake
+        find_similar: if True does the very expensive (and possible timeout) operation to check all pairwise 
+                      combinations of users for name similarity - will suceeed locally but approaches or passes
+                      lambda limit (15 min) when run in aws
     Result:
-     full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
+     full_output : contains up to 3 lists, one for problematic cases, one for results to skip (ignore list)
+                   and optional a list of similar names
     """
     check = CheckResult(connection, 'users_with_doppelganger')
     check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
@@ -1197,6 +1201,9 @@ def users_with_doppelganger(connection, **kwargs):
     reset = False
     if kwargs.get('reset_ignore'):
         reset = True
+    chk_all_combos = False
+    if kwargs.get('find_similar'):
+        chk_all_combos = True
     # GET THE IGNORE LIST FROM LAST CHECKS IF NOT RESET_IGNORE
     if reset:
         ignored_cases = []
@@ -1243,7 +1250,6 @@ def users_with_doppelganger(connection, **kwargs):
                 user_mails.append(a_user[f].lower())
         a_user['all_mails'] = list(set(user_mails))
     cases = []
-    iffy_cases = []
     name_by_users = {}
     email_by_users = {}
     for a_user in all_users:
@@ -1276,58 +1282,33 @@ def users_with_doppelganger(connection, **kwargs):
                 us1 = comb[0]
                 us2 = comb[1]
                 msg = '{} and {} are the same'.format(
-                us1['display_title'],
-                us2['display_title']
-            )
+                    us1['display_title'],
+                    us2['display_title']
+                )
             log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
                    'user2': [us2['display_title'], us2['@id'], us2['email']],
                    'log': 'have the same name',
                    'brief': msg}
             cases.append(log)
 
-
-    # # go through each combination
-    # combs = itertools.combinations(all_users, 2)
-    # cases = []
-    # iffy_cases = []
-    # for comb in combs:
-    #     us1 = comb[0]
-    #     us2 = comb[1]
-    #     # is there a common email between the 2 users
-    #     common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
-    #     if common_mail:
-    #         msg = '{} and {} share mail(s) {}'.format(
-    #             us1['display_title'],
-    #             us2['display_title'],
-    #             str(common_mail))
-    #         log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
-    #                'user2': [us2['display_title'], us2['@id'], us2['email']],
-    #                'log': 'has shared email(s) {}'.format(str(common_mail)),
-    #                'brief': msg}
-    #         cases.append(log)
-    #     # if not, compare names
-    #     elif us1['display_title'].lower() == us2['display_title'].lower():
-    #         msg = '{} and {} are the same'.format(
-    #             us1['display_title'],
-    #             us2['display_title']
-    #         )
-    #         log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
-    #                'user2': [us2['display_title'], us2['@id'], us2['email']],
-    #                'log': 'have the same name',
-    #                'brief': msg}
-    #         cases.append(log)
-    #     else:  # this should just provide a warning list that can be periodically reviewed   
-    #         score = round(string_label_similarity(us1['display_title'], us2['display_title']) * 100)
-    #         if score > 85:
-    #             msg = '{} and {} are similar-{}'.format(
-    #                 us1['display_title'],
-    #                 us2['display_title'],
-    #                 str(score))
-    #             log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
-    #                    'user2': [us2['display_title'], us2['@id'], us2['email']],
-    #                    'log': 'has similar names ({}/100)'.format(str(score)),
-    #                    'brief': msg}
-    #             iffy_cases.append(log)
+    iffy_cases = []
+    if chk_all_combos:
+        # go through each combination
+        combs = itertools.combinations(all_users, 2)
+        for comb in combs:
+            us1 = comb[0]
+            us2 = comb[1]
+            score = round(string_label_similarity(us1['display_title'], us2['display_title']) * 100)
+            if score > 85:
+                msg = '{} and {} are similar-{}'.format(
+                    us1['display_title'],
+                    us2['display_title'],
+                    str(score))
+                log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
+                       'user2': [us2['display_title'], us2['@id'], us2['email']],
+                       'log': 'has similar names ({}/100)'.format(str(score)),
+                       'brief': msg}
+                iffy_cases.append(log)
 
     # remove ignored cases from all cases
     if ignored_cases:
