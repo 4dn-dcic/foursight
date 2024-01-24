@@ -1242,7 +1242,6 @@ def users_with_doppelganger(connection, **kwargs):
             if a_user.get(f):
                 user_mails.append(a_user[f].lower())
         a_user['all_mails'] = list(set(user_mails))
-
     cases = []
     iffy_cases = []
     name_by_users = {}
@@ -1250,12 +1249,11 @@ def users_with_doppelganger(connection, **kwargs):
     for a_user in all_users:
         name = a_user.get('display_title').lower()
         name_by_users.setdefault(name, []).append(a_user)
-        for email in a_user.get('all_emails', []):
+        for email in a_user.get('all_mails', []):
             email_by_users.setdefault(email, []).append(a_user)
 
     for e, u in email_by_users.items():
         if len(u) > 1:
-            import pdb; pdb.set_trace()
             combs = itertools.combinations(u, 2)
             for comb in combs:
                 us1 = comb[0]
@@ -1361,8 +1359,8 @@ def users_with_doppelganger(connection, **kwargs):
         check.brief_output = []
 
     # are the ignored ones getting out of control N.B. Don't think this needs to fail
-    if len(ignored_cases) > 100:
-        fail_msg = '\nNOTE: Number of ignored cases is very high, time to resolve'
+    if len(ignored_cases) > 300:
+        fail_msg = '\nNOTE: Number of ignored cases is very high'
         check.brief_output.append(fail_msg)
         check.status = 'WARN'
     return check
