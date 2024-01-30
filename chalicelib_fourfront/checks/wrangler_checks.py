@@ -1239,25 +1239,26 @@ def users_with_doppelganger(connection, **kwargs):
             an_email = an_email.strip()
             if an_email:
                 query += '&email=' + an_email.strip()
+
+    name_by_users = {}
+    email_by_users = {}
     # get users
     all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
-    # combine all emails for each user
     for a_user in all_users:
+        # combine all emails for each user
         mail_fields = ['email', 'contact_email', 'preferred_email']
         user_mails = []
         for f in mail_fields:
             if a_user.get(f):
                 user_mails.append(a_user[f].lower())
         a_user['all_mails'] = list(set(user_mails))
-    cases = []
-    name_by_users = {}
-    email_by_users = {}
-    for a_user in all_users:
+
         name = a_user.get('display_title').lower()
         name_by_users.setdefault(name, []).append(a_user)
         for email in a_user.get('all_mails', []):
             email_by_users.setdefault(email, []).append(a_user)
 
+    cases = []
     for e, u in email_by_users.items():
         if len(u) > 1:
             combs = itertools.combinations(u, 2)
@@ -1273,10 +1274,9 @@ def users_with_doppelganger(connection, **kwargs):
                    'log': 'has shared email(s) {}'.format(e),
                    'brief': msg}
             cases.append(log)
-            
+
     for u in name_by_users.values():
         if len(u) > 1:
-            # import pdb; pdb.set_trace()
             combs = itertools.combinations(u, 2)
             for comb in combs:
                 us1 = comb[0]

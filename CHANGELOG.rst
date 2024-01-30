@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.2.1
+=====
+
+* a refactor of the refactor to make more efficient
+* will only check all combinations for similarity if the 'find_similar' parameter = True
+
+`PR 559: another refactor doppelganger check <https://github.com/4dn-dcic/foursight/pull/559>`_
+
 4.2.0
 =====
 
