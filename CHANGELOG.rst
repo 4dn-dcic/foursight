@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+4.2.2
+=====
+
+* modification of the biorxiv update check to squash a bug 
+* if a doi is misformatted or contains an unwanted v# in it they are reported
+  
+
 4.2.1
 =====
 
