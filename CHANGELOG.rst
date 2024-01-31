@@ -13,6 +13,7 @@ Change Log
 * modification of the biorxiv update check to squash a bug 
 * if a doi is misformatted or contains an unwanted v# in it they are reported
   
+`PR 560: Fix for biorxiv version update check bug <https://github.com/4dn-dcic/foursight/pull/560>`_
 
 4.2.1
 =====
