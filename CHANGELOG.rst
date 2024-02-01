@@ -7,13 +7,27 @@ foursight
 Change Log
 ----------
 
+4.3.0
+=====
+* Added update of a gitinfo.json file in GitHub Actions (.github/workflows/main-publish.yml).
+* Update foursight-core with fix to Portal Reindex page (to not show initial deploy),
+  and straighten out blue/green staging/data dichotomy on Reindex and Redeploy pages. 
+
+4.2.1
+=====
+
+* a refactor of the refactor to make more efficient
+* will only check all combinations for similarity if the 'find_similar' parameter = True
+
+`PR 559: another refactor doppelganger check <https://github.com/4dn-dcic/foursight/pull/559>`_
 
 4.2.0
 =====
 
-* Added update of a gitinfo.json file in GitHub Actions (.github/workflows/main-publish.yml).
-* Update foursight-core with fix to Portal Reindex page (to not show initial deploy).
+* refactor of doppelganger check so it won't fail if ignore list becomes too long
+* increased stringency for warning to case insensitive equality
 
+`PR 558: refactor doppelganger check <https://github.com/4dn-dcic/foursight/pull/558>`_
 
 4.1.4
 =====

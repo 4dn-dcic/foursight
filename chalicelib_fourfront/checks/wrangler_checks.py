@@ -1172,7 +1172,7 @@ def string_label_similarity(string1, string2):
     return SequenceMatcher(None, s1cmp, s2cmp).ratio()
 
 
-@check_function(emails=None, ignore_current=False, reset_ignore=False)
+@check_function(emails=None, ignore_current=False, reset_ignore=False, find_similar=False)
 def users_with_doppelganger(connection, **kwargs):
     """ Find users that share emails or have very similar names
     Args:
@@ -1181,8 +1181,12 @@ def users_with_doppelganger(connection, **kwargs):
                         they will not show up next time.
         if there are caught cases, which are not problematic, you can add them to ignore list
         reset_ignore: you can reset the ignore list, and restart it, useful if you added something by mistake
+        find_similar: if True does the very expensive (and possible timeout) operation to check all pairwise 
+                      combinations of users for name similarity - will suceeed locally but approaches or passes
+                      lambda limit (15 min) when run in aws
     Result:
-     full_output : contains two lists, one for problematic cases, and the other one for results to skip (ignore list)
+     full_output : contains up to 3 lists, one for problematic cases, one for results to skip (ignore list)
+                   and optional a list of similar names
     """
     check = CheckResult(connection, 'users_with_doppelganger')
     check.description = 'Reports duplicate users, and number of items they created (user1/user2)'
@@ -1197,6 +1201,9 @@ def users_with_doppelganger(connection, **kwargs):
     reset = False
     if kwargs.get('reset_ignore'):
         reset = True
+    chk_all_combos = False
+    if kwargs.get('find_similar'):
+        chk_all_combos = True
     # GET THE IGNORE LIST FROM LAST CHECKS IF NOT RESET_IGNORE
     if reset:
         ignored_cases = []
@@ -1223,7 +1230,7 @@ def users_with_doppelganger(connection, **kwargs):
     check.full_output = {'result': [], 'ignore': []}
     check.brief_output = []
     check.status = 'PASS'
-    query = ('/search/?type=User&sort=display_title'
+    query = ('/search/?type=User'  # &sort=display_title'
              '&field=display_title&field=contact_email&field=preferred_email&field=email')
     # if check was limited to certain emails
     if kwargs.get('emails'):
@@ -1232,10 +1239,13 @@ def users_with_doppelganger(connection, **kwargs):
             an_email = an_email.strip()
             if an_email:
                 query += '&email=' + an_email.strip()
+
+    name_by_users = {}
+    email_by_users = {}
     # get users
     all_users = ff_utils.search_metadata(query, key=connection.ff_keys)
-    # combine all emails for each user
     for a_user in all_users:
+        # combine all emails for each user
         mail_fields = ['email', 'contact_email', 'preferred_email']
         user_mails = []
         for f in mail_fields:
@@ -1243,26 +1253,51 @@ def users_with_doppelganger(connection, **kwargs):
                 user_mails.append(a_user[f].lower())
         a_user['all_mails'] = list(set(user_mails))
 
-    # go through each combination
-    combs = itertools.combinations(all_users, 2)
+        name = a_user.get('display_title').lower()
+        name_by_users.setdefault(name, []).append(a_user)
+        for email in a_user.get('all_mails', []):
+            email_by_users.setdefault(email, []).append(a_user)
+
     cases = []
-    for comb in combs:
-        us1 = comb[0]
-        us2 = comb[1]
-        # is there a common email between the 2 users
-        common_mail = list(set(us1['all_mails']) & set(us2['all_mails']))
-        if common_mail:
-            msg = '{} and {} share mail(s) {}'.format(
+    for e, u in email_by_users.items():
+        if len(u) > 1:
+            combs = itertools.combinations(u, 2)
+            for comb in combs:
+                us1 = comb[0]
+                us2 = comb[1]
+                msg = '{} and {} share mail(s) {}'.format(
                 us1['display_title'],
                 us2['display_title'],
-                str(common_mail))
+                e)
             log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
                    'user2': [us2['display_title'], us2['@id'], us2['email']],
-                   'log': 'has shared email(s) {}'.format(str(common_mail)),
+                   'log': 'has shared email(s) {}'.format(e),
                    'brief': msg}
             cases.append(log)
-        # if not, compare names
-        else:
+
+    for u in name_by_users.values():
+        if len(u) > 1:
+            combs = itertools.combinations(u, 2)
+            for comb in combs:
+                us1 = comb[0]
+                us2 = comb[1]
+                msg = '{} and {} are the same'.format(
+                    us1['display_title'],
+                    us2['display_title']
+                )
+            log = {'user1': [us1['display_title'], us1['@id'], us1['email']],
+                   'user2': [us2['display_title'], us2['@id'], us2['email']],
+                   'log': 'have the same name',
+                   'brief': msg}
+            cases.append(log)
+
+    iffy_cases = []
+    if chk_all_combos:
+        # go through each combination
+        combs = itertools.combinations(all_users, 2)
+        for comb in combs:
+            us1 = comb[0]
+            us2 = comb[1]
             score = round(string_label_similarity(us1['display_title'], us2['display_title']) * 100)
             if score > 85:
                 msg = '{} and {} are similar-{}'.format(
@@ -1273,15 +1308,8 @@ def users_with_doppelganger(connection, **kwargs):
                        'user2': [us2['display_title'], us2['@id'], us2['email']],
                        'log': 'has similar names ({}/100)'.format(str(score)),
                        'brief': msg}
-                cases.append(log)
+                iffy_cases.append(log)
 
-    # are the ignored ones getting out of control
-    if len(ignored_cases) > 100:
-        fail_msg = 'Number of ignored cases is very high, time for maintainace'
-        check.brief_output = fail_msg
-        check.full_output = {'result': [fail_msg, ], 'ignore': ignored_cases}
-        check.status = 'FAIL'
-        return check
     # remove ignored cases from all cases
     if ignored_cases:
         for an_ignored_case in ignored_cases:
@@ -1292,7 +1320,6 @@ def users_with_doppelganger(connection, **kwargs):
             ignored_cases.append([a_case['user1'], a_case['user2']])
         cases = []
 
-    # add if they have any items referencing them
     if cases:
         for a_case in cases:
             us1_info = ff_utils.get_metadata('indexing-info?uuid=' + a_case['user1'][1][7:-1], key=connection.ff_keys)
@@ -1303,7 +1330,7 @@ def users_with_doppelganger(connection, **kwargs):
             a_case['log'] = a_case['log'] + add_on
             a_case['brief'] = a_case['brief'] + add_on
 
-    check.full_output = {'result': cases, 'ignore': ignored_cases}
+    check.full_output = {'to_check': cases, 'ignore': ignored_cases, 'close_matches': iffy_cases}
     if cases:
         check.summary = 'Some user accounts need attention.'
         check.brief_output = [i['brief'] for i in cases]
@@ -1311,6 +1338,12 @@ def users_with_doppelganger(connection, **kwargs):
     else:
         check.summary = 'No user account conflicts'
         check.brief_output = []
+
+    # are the ignored ones getting out of control N.B. Don't think this needs to fail
+    if len(ignored_cases) > 300:
+        fail_msg = '\nNOTE: Number of ignored cases is very high'
+        check.brief_output.append(fail_msg)
+        check.status = 'WARN'
     return check
 
 
