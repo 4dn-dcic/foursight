@@ -533,7 +533,7 @@ def biorxiv_version_update(connection, **kwargs):
         pubid = publication.get('ID')
         if not pubid.startswith('doi:'):
             continue
-        doi, misformatted = _remove_prefix_and_version_suffix_from_doi(publication['ID'])
+        doi, misformatted = _remove_prefix_and_version_suffix_from_doi(pubid)
         if misformatted:
             problem_ids.append(pubid)
         if not doi:
@@ -564,7 +564,7 @@ def biorxiv_version_update(connection, **kwargs):
 
     if problem_ids:
         check.status = 'WARN'
-        check.summary = check.summary + f"\nThere are {len(problem_ids)} misformatted or problematic doi pub IDs"
+        check.summary = check.summary + f"There are {len(problem_ids)} misformatted or problematic doi pub IDs"
         prob_out = {'problem_ids': problem_ids}
         if check.brief_output:
             check.brief_output.append(prob_out)
