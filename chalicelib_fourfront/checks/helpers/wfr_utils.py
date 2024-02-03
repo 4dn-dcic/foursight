@@ -43,7 +43,7 @@ workflow_details = {
     },
     "hi-c-processing-pairs": {
         "run_time": 200,
-        "accepted_versions": ["0.2.6", "0.2.7"]
+        "accepted_versions": ["0.2.6", "0.2.7", "0.3.0"]
     },
     "hi-c-processing-pairs-nore": {
         "run_time": 200,
