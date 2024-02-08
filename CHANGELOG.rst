@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.3.0
+=====
+* Fix wfr_checks.md5run_status for bug where it was missing the first item in the result
+  set because it was calling any() on a generator before iterating through it, which is
+  destructive of the generator, i.e. causing to to move one item forwared.
+
 4.2.2
 =====
 
