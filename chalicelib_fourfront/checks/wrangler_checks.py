@@ -501,6 +501,21 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     return action
 
 
+def _remove_prefix_and_version_suffix_from_doi(pub_doi_id):
+    misformatted = False
+    try:
+        doi = pub_doi_id.split(':', 1)[1]
+    except Exception:
+        misformatted = True
+        return None, misformatted
+    pattern = re.compile(r'v\d+\s*$')
+    match = pattern.search(doi)
+    if match:
+        misformatted = True
+        doi = doi[:match.start()]
+    return doi, misformatted
+
+
 @check_function(action="reindex_biorxiv")
 def biorxiv_version_update(connection, **kwargs):
     '''Check if current bioRxiv Publications (not yet replaced with PubmedID)
@@ -512,12 +527,18 @@ def biorxiv_version_update(connection, **kwargs):
     current_biorxivs = ff_utils.search_metadata(query, key=connection.ff_keys)
 
     items_to_update = []
+    problem_ids = []
     biorxiv_api = 'https://api.biorxiv.org/details/biorxiv/'
     for publication in current_biorxivs:
-        if not publication['ID'].startswith('doi:'):
+        pubid = publication.get('ID')
+        if not pubid.startswith('doi:'):
             continue
-        doi = publication['ID'].split(':')[1]
-        for count in range(5):  # try fetching data a few times
+        doi, misformatted = _remove_prefix_and_version_suffix_from_doi(pubid)
+        if misformatted:
+            problem_ids.append(pubid)
+        if not doi:
+            continue
+        for _ in range(5):  # try fetching data a few times
             r = requests.get(biorxiv_api + doi)
             if r.status_code == 200:
                 break
@@ -540,6 +561,15 @@ def biorxiv_version_update(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.summary = check.description = 'All current bioRxiv Publications are up to date'
+
+    if problem_ids:
+        check.status = 'WARN'
+        check.summary = check.summary + f"There are {len(problem_ids)} misformatted or problematic doi pub IDs"
+        prob_out = {'problem_ids': problem_ids}
+        if check.brief_output:
+            check.brief_output.append(prob_out)
+        else:
+            check.brief_output = [prob_out]
     return check
 
 

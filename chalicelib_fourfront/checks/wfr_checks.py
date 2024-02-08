@@ -135,9 +135,11 @@ def md5run_status(connection, **kwargs):
     query += '&limit=' + limit
     # The search
     res = ff_utils.search_metadata(query, key=my_auth, is_generator=True)
-    if not any(res):
-        check.summary = 'All Good!'
-        return check
+    # 2024-02-08: Note that any() is destructive of the (res) generator;
+    # so this code was causing us to skip past the first result in the generator.
+    # if not any(res):
+    #    check.summary = 'All Good!'
+    #    return check
     # if there are files, make sure they are not on s3
     no_s3_file = []
     running = []
@@ -147,10 +149,26 @@ def md5run_status(connection, **kwargs):
     not_switched_status_to_wait = []
     # multiple failed runs
     problems = []
-    my_s3_util = s3Utils(env=connection.ff_env)
-    raw_bucket = my_s3_util.raw_file_bucket
-    out_bucket = my_s3_util.outfile_bucket
-    for a_file in res:
+    # 2024-02-08: Per above comment WRT any() on a generator, only do
+    # this S3 access only if we have at least one result in the loop below.
+    # my_s3_util = s3Utils(env=connection.ff_env)
+    # raw_bucket = my_s3_util.raw_file_bucket
+    # out_bucket = my_s3_util.outfile_bucket
+    my_s3_util = None
+    while True:
+        try:
+            # TODO: Be nicer to have a generator wrapper to allow easily
+            # checking for any results without skipping past the first item.
+            a_file = next(res)
+            if not my_s3_util:
+                my_s3_util = s3Utils(env=connection.ff_env)
+                raw_bucket = my_s3_util.raw_file_bucket
+                out_bucket = my_s3_util.outfile_bucket
+        except StopIteration:
+            if not my_s3_util:
+                check.summary = 'All Good!'
+                return check
+            break
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
