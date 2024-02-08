@@ -157,7 +157,7 @@ def md5run_status(connection, **kwargs):
     my_s3_util = None
     while True:
         try:
-            # TODO: Be nicer to have a generator wrapper to allowing easily
+            # TODO: Be nicer to have a generator wrapper to allow easily
             # checking for any results without skipping past the first item.
             a_file = next(res)
             if not my_s3_util:
