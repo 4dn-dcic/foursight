@@ -151,24 +151,17 @@ def md5run_status(connection, **kwargs):
     problems = []
     # 2024-02-08: Per above comment WRT any() on a generator, only do
     # this S3 access only if we have at least one result in the loop below.
+    # Be nicer to have a generator wrapper to allow easily
+    # checking for any results without skipping past the first item.
     # my_s3_util = s3Utils(env=connection.ff_env)
     # raw_bucket = my_s3_util.raw_file_bucket
     # out_bucket = my_s3_util.outfile_bucket
     my_s3_util = None
-    while True:
-        try:
-            # TODO: Be nicer to have a generator wrapper to allow easily
-            # checking for any results without skipping past the first item.
-            a_file = next(res)
-            if not my_s3_util:
-                my_s3_util = s3Utils(env=connection.ff_env)
-                raw_bucket = my_s3_util.raw_file_bucket
-                out_bucket = my_s3_util.outfile_bucket
-        except StopIteration:
-            if not my_s3_util:
-                check.summary = 'All Good!'
-                return check
-            break
+    for a_file in res:
+        if not my_s3_util:
+            my_s3_util = s3Utils(env=connection.ff_env)
+            raw_bucket = my_s3_util.raw_file_bucket
+            out_bucket = my_s3_util.outfile_bucket
         # lambda has a time limit (300sec), kill before it is reached so we get some results
         now = datetime.utcnow()
         if (now-start).seconds > lambda_limit:
@@ -208,6 +201,13 @@ def md5run_status(connection, **kwargs):
                 not_switched_status.append(file_id)
             else:
                 not_switched_status_to_wait.append(file_id)
+    else:
+        # We get here at the end of the result set iteration for loop, regardless of where or not
+        # there were results; if my_s3_util is not set at this point it means there were no results.
+        if not my_s3_util:
+            check.summary = 'All Good!'
+            return check
+
     summary = ''
     if running:
         summary += 'Some files are running md5run\n'
