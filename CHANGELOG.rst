@@ -7,6 +7,18 @@ foursight
 Change Log
 ----------
 
+4.4.0
+=====
+* Added update of a gitinfo.json file in GitHub Actions (.github/workflows/main-publish.yml).
+* Update foursight-core with fix to Portal Reindex page (to not show initial deploy),
+  and straighten out blue/green staging/data dichotomy on Reindex and Redeploy pages. 
+
+4.3.0
+=====
+* Fix wfr_checks.md5run_status for bug where it was missing the first item in the result
+  set because it was calling any() on a generator before iterating through it, which is
+  destructive of the generator, i.e. causing to to move one item forwared.
+
 4.2.2
 =====
 
@@ -30,7 +42,6 @@ Change Log
 * increased stringency for warning to case insensitive equality
 
 `PR 558: refactor doppelganger check <https://github.com/4dn-dcic/foursight/pull/558>`_
-
 
 4.1.4
 =====

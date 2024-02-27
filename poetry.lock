@@ -569,13 +569,13 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "5.2.0"
+version = "5.3.0"
 description = "Serverless Chalice Application for Monitoring"
 optional = false
 python-versions = ">=3.8,<3.12"
 files = [
-    {file = "foursight_core-5.2.0-py3-none-any.whl", hash = "sha256:1c0735b3d67267bc784abf923fa68d8eb7fccf8b91c2e500f131a7a09617d502"},
-    {file = "foursight_core-5.2.0.tar.gz", hash = "sha256:79c4bfd3e910f7896d3072231109f05d2b427a0f6f7213c78af6cc651feef8e9"},
+    {file = "foursight_core-5.3.0-py3-none-any.whl", hash = "sha256:1ae66657263b3b89726a71edb0d86ce784a5cc784cfad3f668a0de0c00f54db9"},
+    {file = "foursight_core-5.3.0.tar.gz", hash = "sha256:50873d9de3346dfc0cc67b6a562197cc8532dfa03ac14e81609662f88b25a5e6"},
 ]
 
 [package.dependencies]
@@ -584,7 +584,7 @@ botocore = ">=1.31.62,<2.0.0"
 click = ">=7.1.2,<8.0.0"
 cron-descriptor = ">=1.2.31,<2.0.0"
 cryptography = "39.0.2"
-dcicutils = ">=8.0.0,<9.0.0"
+dcicutils = "8.0.0"
 elasticsearch = "7.13.4"
 elasticsearch-dsl = ">=7.0.0,<8.0.0"
 geocoder = "1.38.1"
@@ -1755,19 +1755,19 @@ tomlkit = ">=0.11.0,<0.12.0"
 
 [[package]]
 name = "tibanna-ff"
-version = "3.1.1"
+version = "3.2.0.2b1"
 description = "Tibanna runs portable pipelines (in CWL/WDL) on the AWS Cloud."
 optional = false
 python-versions = ">=3.8,<3.12"
 files = [
-    {file = "tibanna_ff-3.1.1-py3-none-any.whl", hash = "sha256:fac37cc31318dcc9f0fa6ce9dd9b1ce6347452c704f499939d054d51cab167b4"},
-    {file = "tibanna_ff-3.1.1.tar.gz", hash = "sha256:7801dface3e60ef6b867b8cda875238cf511bce3938d2f52f28ccb77a83c6e17"},
+    {file = "tibanna_ff-3.2.0.2b1-py3-none-any.whl", hash = "sha256:83837cb857c1bf62644f526a42b6eccf06b4935f37007469396370a5e585a74d"},
+    {file = "tibanna_ff-3.2.0.2b1.tar.gz", hash = "sha256:ebd2233485cd20c8d69864fe340bb464bbb08ed85d0aa7fa9276f707a6850d77"},
 ]
 
 [package.dependencies]
 boto3 = ">=1.28.56,<2.0.0"
 botocore = ">=1.31.56,<2.0.0"
-dcicutils = "8.0.0"
+dcicutils = ">=8.0.0,<9.0.0"
 requests = "2.27.1"
 tibanna = "5.1.0"
 tomlkit = ">=0.11.0,<0.12.0"
@@ -1987,4 +1987,4 @@ test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "122c7ed73eaa88e4f076aa94d22a62cbf97d33d8385431b917c772a0cdbc6c55"
+content-hash = "93c7c3088f12145d3d4c5946fe56bedbddf5868379ff6e7dd0f8a15699f49e73"
