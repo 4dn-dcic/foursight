@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.4.1
+=====
+* updated check_setup to autoqueue chipseq check on data/prod
+* Update lock file
+
+
 4.4.0
 =====
 * Added update of a gitinfo.json file in GitHub Actions (.github/workflows/main-publish.yml).
