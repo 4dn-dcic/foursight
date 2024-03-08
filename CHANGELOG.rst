@@ -11,6 +11,8 @@ Change Log
 =====
 * Added 'input_bed' to attr_keys in wfr_utils.py's start_missing_run for ATAC-seq pipeline
 
+`PR 563: Add ATAC-seq file key to attr_keys <https://github.com/4dn-dcic/foursight/pull/563>`_
+
 4.4.1
 =====
 * updated check_setup to autoqueue chipseq check on data/prod
