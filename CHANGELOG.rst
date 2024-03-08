@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+4.4.2
+=====
+* Added 'input_bed' to attr_keys in wfr_utils.py's start_missing_run for ATAC-seq pipeline
+
 4.4.1
 =====
 * updated check_setup to autoqueue chipseq check on data/prod
