@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.4.3
+=====
+* Convert user input str to list in find_expsets_processedfiles_requiring_higlass_items in higlass_checks.py
+
+
 4.4.2
 =====
 * Added 'input_bed' to attr_keys in wfr_utils.py's start_missing_run for ATAC-seq pipeline

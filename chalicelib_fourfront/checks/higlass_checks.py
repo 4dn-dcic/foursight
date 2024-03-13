@@ -834,6 +834,9 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
         check.allow_action = False
         return check
 
+    elif search_queries.__class__ != list:
+        search_queries = [search_queries]
+
     expsets_by_accession = {}
     # Use all of the search queries to make a list of the ExpSets we will work on.
     for query in search_queries:
