@@ -361,6 +361,9 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
         check.allow_action = False
         return check
 
+    elif search_queries.__class__ != list:
+        search_queries = [search_queries]
+
     # Add the fields we want to return.
     fields_to_include = '&field=' + '&field='.join((
         'accession',
