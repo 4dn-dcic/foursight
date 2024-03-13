@@ -763,6 +763,11 @@ def check_expsets_processedfiles_for_queried_higlass_items(connection, **kwargs)
             check result object.
     """
     search_queries = kwargs.get('search_queries', [])
+    if isinstance(search_queries, str):
+        # for case where (possibly multiple) query is passed in via kwargs
+        queries = search_queries.split(',')
+        search_queries = [q.strip() for q in queries]
+        
 
     return find_expsets_processedfiles_requiring_higlass_items(
         connection,
