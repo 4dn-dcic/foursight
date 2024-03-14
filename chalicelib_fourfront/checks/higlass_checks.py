@@ -354,15 +354,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
     check.queries = []
     check.action = action_name
 
-    # If no search query was provided, fail
-    if not search_queries:
-        check.summary = check.description = "No search query provided, nothing to update."
-        check.status = 'PASS'
-        check.allow_action = False
-        return check
-
-    elif search_queries.__class__ != list:
-        search_queries = [search_queries]
+    check, search_queries = verify_queries(check, search_queries, False)
 
     # Add the fields we want to return.
     fields_to_include = '&field=' + '&field='.join((
@@ -830,15 +822,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
         "static_content",
     ])
 
-    # If no search query was provided, fail
-    if not search_queries:
-        check.summary = check.description = "No search query provided, nothing to update."
-        check.status = 'PASS'
-        check.allow_action = False
-        return check
-
-    elif search_queries.__class__ != list:
-        search_queries = [search_queries]
+    check, search_queries = verify_queries(check, search_queries, False)
 
     expsets_by_accession = {}
     # Use all of the search queries to make a list of the ExpSets we will work on.
@@ -1183,12 +1167,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
     check.queries = []
     check.action = action_name
 
-    # If no search query was provided and find_opfs_missing_higlass is False, pass with no results
-    if not (search_queries or find_opfs_missing_higlass):
-        check.summary = check.description = "No search query provided, nothing to update."
-        check.status = 'PASS'
-        check.allow_action = False
-        return check
+    check, search_queries = verify_queries(check, search_queries, find_opfs_missing_higlass)
 
     if find_opfs_missing_higlass:
         search_queries = [
@@ -2293,3 +2272,32 @@ def convert_es_timestamp_to_datetime(raw):
         "%Y-%m-%dT%H:%M:%S"
     )
     return converted_date
+
+def verify_queries(check, search_queries, ignore_queries):
+    """
+    Helper to check that a search query if properly formatted and reformat if necessary
+
+    Args:
+        check(CheckResult): Result of check, to be passed from check.
+        search_queries(list or string): A list of search queries. All Files found in at least one of the queries will be modified.
+        ignore_queries(Boolean): If True, ignore search queries (used for other processed files default query)
+
+    Returns:
+        Check results object
+        Formatted search_queries (list)
+    """
+    # If no search query was provided (and ignore_queries is False), pass with no results
+    if not (search_queries or ignore_queries):
+        check.summary = check.description = "No search query provided, nothing to update."
+        check.status = 'PASS'
+        check.allow_action = False
+        return check
+
+    if isinstance(search_queries, str):
+        # for case where (possibly multiple) query is passed in via kwargs
+        queries = search_queries.split(',')
+        search_queries = [q.strip() for q in queries]
+        check.full_output = {
+            "query_error": "The query was not formatted as a list, please double check results"
+        }
+        return check, search_queries
