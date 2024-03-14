@@ -9,8 +9,9 @@ Change Log
 
 4.4.3
 =====
-* Convert user input str to list in find_expsets_processedfiles_requiring_higlass_items in higlass_checks.py
+* Add helper to convert user input str to list for select queries in higlass_checks.py
 
+`PR 564: Improved handling of user query for higlass items <https://github.com/4dn-dcic/foursight/pull/564>`_
 
 4.4.2
 =====
