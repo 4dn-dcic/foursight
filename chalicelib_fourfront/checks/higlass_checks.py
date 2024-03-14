@@ -2291,13 +2291,12 @@ def verify_queries(check, search_queries, ignore_queries):
         check.summary = check.description = "No search query provided, nothing to update."
         check.status = 'PASS'
         check.allow_action = False
-        return check
 
     if isinstance(search_queries, str):
         # for case where (possibly multiple) query is passed in via kwargs
         queries = search_queries.split(',')
         search_queries = [q.strip() for q in queries]
-        check.full_output = {
-            "query_error": "The query was not formatted as a list, please double check results"
+        check.brief_output = {
+            "corrected_query": "The query was not formatted as a list, please double check results"
         }
-        return check, search_queries
+    return check, search_queries
