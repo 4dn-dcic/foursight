@@ -781,17 +781,24 @@ def check_validation_errors(connection, **kwargs):
     returns link to search if found.
     '''
     check = CheckResult(connection, 'check_validation_errors')
-
+    import pdb; pdb.set_trace()
     search_url = 'search/?validation_errors.name!=No+value&type=Item'
     results = ff_utils.search_metadata(search_url + '&field=@id', key=connection.ff_keys)
     if results:
-        types = {item for result in results for item in result['@type'] if item != 'Item'}
+        ids_by_type = {}
+        for result in results:
+            ids_by_type.setdefault(result.get('@type')[0], []).append(result.get('@id'))
         check.status = 'WARN'
         check.summary = 'Validation errors found'
         check.description = ('{} items found with validation errors, comprising the following '
                              'item types: {}. \nFor search results see link below.'.format(
-                                 len(results), ', '.join(list(types))))
+                                 len(results), ', '.join(ids_by_type.keys())))
         check.ff_link = connection.ff_server + search_url
+        # too many items of a type suggests a possibly general issue for that type
+        for ty, item_ids in ids_by_type.items():
+            if len(item_ids) > 100:
+                ids_by_type[ty] = 'Many items of this type have validation errors'
+        check.full_output = ids_by_type
     else:
         check.status = 'PASS'
         check.summary = 'No validation errors'
