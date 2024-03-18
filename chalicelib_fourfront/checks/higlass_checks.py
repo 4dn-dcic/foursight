@@ -380,7 +380,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
         file_search_query = "/search/?type=File&higlass_uid!=No+value&genome_assembly!=No+value" + query + fields_to_include
 
         # Query the files
-        search_res = ff_utils.search_metadata(file_search_query, key=connection.ff_keys)
+        search_res = get_search_results(connection, check, file_search_query)
 
         # Collate the results into a dict of ExpSets, ordered by accession
         for found_file in search_res:
@@ -425,11 +425,20 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
             check.full_output[full_output_key] = {}
         check.full_output[full_output_key][ga] = target_files_by_ga[ga]
 
+    if check.full_output.get('search_problems'):
+        check.summary = "Please check input query for typo or formatting error"
+        check.description = check.summary + ". See full_output for details."
+        check.allow_action = False
+        check.status = 'FAIL'
+        return check
+
     if not target_files_by_ga:
         # nothing new to generate
         check.summary = check.description = "No new Higlass Items to generate"
         check.allow_action = False
         check.status = 'PASS'
+        return check
+
     else:
         all_files = sum([len(x) for x in check.full_output["ready"].values()])
         check.summary = "Ready to generate %s Higlass Items" % all_files
@@ -834,7 +843,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
         processed_expsets_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
 
         # Query the Experiment Sets
-        search_res = ff_utils.search_metadata(processed_expsets_query, key=connection.ff_keys)
+        search_res = get_search_results(connection, check, processed_expsets_query)
 
         # Collate the results into a dict of ExpSets, ordered by accession
         for expset in search_res:
@@ -887,6 +896,14 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
         ready_to_generate_count = sum([len(accessions) for x, accessions in check.full_output["ready_expsets"].items()])
 
     check.summary = ""
+
+    if check.full_output.get('search_problems'):
+        check.summary = "Please check input query for typo or formatting error"
+        check.description = check.summary + ". See full_output for details."
+        check.allow_action = False
+        check.status = 'FAIL'
+        return check
+
     # If there are no files to act upon, we're done.
     if not target_files_by_ga:
         check.summary = check.description = "No new view configs to generate"
@@ -1202,7 +1219,7 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
         expset_query = "/search/?type=ExperimentSetReplicate" + query + fields_to_include
 
         # Store results by accession
-        search_res = ff_utils.search_metadata(expset_query, key=connection.ff_keys)
+        search_res = get_search_results(connection, check, expset_query)
         for expset in search_res:
             expsets_by_accession[ expset["accession"] ] = expset
 
@@ -1353,6 +1370,13 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
 
             all_filegroups_to_update[accession] = filegroups_to_update
             higlass_view_count += len(filegroups_to_update.keys())
+
+    if check.full_output.get('search_problems'):
+        check.summary = "Please check input query for typo or formatting error"
+        check.description = check.summary + ". See full_output for details."
+        check.allow_action = False
+        check.status = 'FAIL'
+        return check
 
     # check announces success
     check.full_output['filegroups_to_update'] = all_filegroups_to_update
@@ -1683,7 +1707,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
             continue
 
         # Query all possible files
-        possibly_reg = ff_utils.search_metadata(search_query, key=connection.ff_keys)
+        possibly_reg = get_search_results(connection, check, search_query)
 
         for procfile in possibly_reg:
             current_file_cat = file_cat
@@ -2298,4 +2322,15 @@ def verify_queries(check, search_queries):
         check.brief_output = {
             "corrected_query": "The query was not formatted as a list, please double check results"
         }
+
+    # add '&' when missing from str
+    search_queries = [q if q[0] == '&' else '&' + q for q in search_queries]
+
     return search_queries
+
+def get_search_results(connection, check, search_query):
+    try:
+        return ff_utils.search_metadata(search_query, key=connection.ff_keys)
+    except Exception as e:
+        check.full_output.setdefault('search_problems', []).append(str(e))
+        return []
