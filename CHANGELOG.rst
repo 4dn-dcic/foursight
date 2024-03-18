@@ -10,6 +10,7 @@ Change Log
 4.4.3
 =====
 * Add helper to convert user input str to list for select queries in higlass_checks.py
+* Adjust output of check_validation_errors check to list affected items by type in full_output if not too many
 
 `PR 564: Improved handling of user query for higlass items <https://github.com/4dn-dcic/foursight/pull/564>`_
 
