@@ -781,7 +781,7 @@ def check_validation_errors(connection, **kwargs):
     returns link to search if found.
     '''
     check = CheckResult(connection, 'check_validation_errors')
-    import pdb; pdb.set_trace()
+    
     search_url = 'search/?validation_errors.name!=No+value&type=Item'
     results = ff_utils.search_metadata(search_url + '&field=@id', key=connection.ff_keys)
     if results:

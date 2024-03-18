@@ -354,7 +354,7 @@ def find_files_requiring_higlass_items(connection, check_name, action_name, sear
     check.queries = []
     check.action = action_name
 
-    check, search_queries = verify_queries(check, search_queries, False)
+    search_queries = verify_queries(check, search_queries)
 
     # Add the fields we want to return.
     fields_to_include = '&field=' + '&field='.join((
@@ -822,7 +822,7 @@ def find_expsets_processedfiles_requiring_higlass_items(connection, check_name, 
         "static_content",
     ])
 
-    check, search_queries = verify_queries(check, search_queries, False)
+    search_queries = verify_queries(check, search_queries)
 
     expsets_by_accession = {}
     # Use all of the search queries to make a list of the ExpSets we will work on.
@@ -1167,13 +1167,14 @@ def find_expsets_otherprocessedfiles_requiring_higlass_items(connection, check_n
     check.queries = []
     check.action = action_name
 
-    check, search_queries = verify_queries(check, search_queries, find_opfs_missing_higlass)
-
     if find_opfs_missing_higlass:
         search_queries = [
             "&experiments_in_set.other_processed_files.files.higlass_uid%21=No+value",
             "&other_processed_files.files.higlass_uid%21=No+value"
         ]
+
+    else:
+        search_queries = verify_queries(check, search_queries)
 
     # get the fields you need to include
     fields_to_include = ""
@@ -2273,21 +2274,19 @@ def convert_es_timestamp_to_datetime(raw):
     )
     return converted_date
 
-def verify_queries(check, search_queries, ignore_queries):
+def verify_queries(check, search_queries):
     """
     Helper to check that a search query if properly formatted and reformat if necessary
 
     Args:
         check(CheckResult): Result of check, to be passed from check.
         search_queries(list or string): A list of search queries. All Files found in at least one of the queries will be modified.
-        ignore_queries(Boolean): If True, ignore search queries (used for other processed files default query)
 
     Returns:
-        Check results object
         Formatted search_queries (list)
     """
-    # If no search query was provided (and ignore_queries is False), pass with no results
-    if not (search_queries or ignore_queries):
+    # If no search query was provided, pass with no results
+    if not (search_queries):
         check.summary = check.description = "No search query provided, nothing to update."
         check.status = 'PASS'
         check.allow_action = False
@@ -2299,4 +2298,4 @@ def verify_queries(check, search_queries, ignore_queries):
         check.brief_output = {
             "corrected_query": "The query was not formatted as a list, please double check results"
         }
-    return check, search_queries
+    return search_queries
