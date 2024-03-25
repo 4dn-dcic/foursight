@@ -7,6 +7,26 @@ foursight
 Change Log
 ----------
 
+4.4.3
+=====
+* Add helper to convert user input str to list for select queries in higlass_checks.py
+* Adjust output of check_validation_errors check to list affected items by type in full_output if not too many
+* update lock file to use foursight-core with bug fix for local-check-execution script
+
+`PR 564: Improved handling of user query for higlass items <https://github.com/4dn-dcic/foursight/pull/564>`_
+
+4.4.2
+=====
+* Added 'input_bed' to attr_keys in wfr_utils.py's start_missing_run for ATAC-seq pipeline
+
+`PR 563: Add ATAC-seq file key to attr_keys <https://github.com/4dn-dcic/foursight/pull/563>`_
+
+4.4.1
+=====
+* updated check_setup to autoqueue chipseq check on data/prod
+* Update lock file
+
+
 4.4.0
 =====
 * Added update of a gitinfo.json file in GitHub Actions (.github/workflows/main-publish.yml).
