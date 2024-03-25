@@ -1128,7 +1128,6 @@ def users_with_pending_lab(connection, **kwargs):
             check.status = 'FAIL'
             mismatch_users.append(user_append['uuid'])
             continue
-
         # cache the lab and PI contact info
         if user_append['pending_lab'] not in cached_items:
             to_cache = {}
@@ -1171,7 +1170,7 @@ def finalize_user_pending_labs(connection, **kwargs):
         # remove external-lab only
         if user.get('pending_lab') == "/labs/external-lab/":
             try:
-                ff_utils.patch_metadata({'pending_lab': ""}, obj_id=user['uuid'], key=connection.ff_keys)
+                ff_utils.delete_field(obj_id=user['uuid'], del_field='pending_lab', key=connection.ff_keys)
             except Exception as e:
                 action_logs['patch_failure'].append({user['uuid']: str(e)})
             else:
