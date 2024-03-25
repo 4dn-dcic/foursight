@@ -1105,7 +1105,7 @@ def users_with_pending_lab(connection, **kwargs):
     time.sleep(wait)
     check.action = 'finalize_user_pending_labs'
     check.full_output = []
-    check.status = 'PASS'
+    check.status = 'WARN'
     cached_items = {}  # store labs/PIs for performance
     mismatch_users = []
     # do not look for deleted/replaced users
@@ -1128,6 +1128,7 @@ def users_with_pending_lab(connection, **kwargs):
             check.status = 'FAIL'
             mismatch_users.append(user_append['uuid'])
             continue
+
         # cache the lab and PI contact info
         if user_append['pending_lab'] not in cached_items:
             to_cache = {}
@@ -1147,9 +1148,8 @@ def users_with_pending_lab(connection, **kwargs):
 
     if check.full_output:
         check.summary = 'Users found with pending_lab.'
-        if check.status == 'PASS':
-            check.status = 'WARN'
-            check.description = check.summary + ' Run the action to add lab and remove pending_lab'
+        if check.status == 'WARN':
+            check.description = check.summary + ' Run the action to add lab and remove pending_lab. Note external-lab will be removed by this action.'
             check.allow_action = True
             check.action_message = 'Will attempt to patch lab and remove pending_lab for %s users' % len(check.full_output)
         if check.status == 'FAIL':
@@ -1167,17 +1167,28 @@ def finalize_user_pending_labs(connection, **kwargs):
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
-        patch_data = {'lab': user['pending_lab']}
-        if user.get('lab_PI_viewing_groups'):
-            patch_data['viewing_groups'] = user['lab_PI_viewing_groups']
-        # patch lab and delete pending_lab in one request
-        try:
-            ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
-                                    add_on='delete_fields=pending_lab')
-        except Exception as e:
-            action_logs['patch_failure'].append({user['uuid']: str(e)})
+
+        # remove external-lab only
+        if user.get('pending_lab') == "/labs/external-lab/":
+            try:
+                ff_utils.patch_metadata({'pending_lab': ""}, obj_id=user['uuid'], key=connection.ff_keys)
+            except Exception as e:
+                action_logs['patch_failure'].append({user['uuid']: str(e)})
+            else:
+                action_logs['patch_success'].append(user['uuid'])
+        # otherwise, add lab
         else:
-            action_logs['patch_success'].append(user['uuid'])
+            patch_data = {'lab': user['pending_lab']}
+            if user.get('lab_PI_viewing_groups'):
+                patch_data['viewing_groups'] = user['lab_PI_viewing_groups']
+            # patch lab and delete pending_lab in one request
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
+                                        add_on='delete_fields=pending_lab')
+            except Exception as e:
+                action_logs['patch_failure'].append({user['uuid']: str(e)})
+            else:
+                action_logs['patch_success'].append(user['uuid'])
     action.status = 'DONE'
     action.output = action_logs
     return action
