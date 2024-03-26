@@ -1156,6 +1156,7 @@ def users_with_pending_lab(connection, **kwargs):
             check.description = check.summary + '. Resolve conflicts for mismatching users before running action. See brief_output'
             check.brief_output = mismatch_users
     else:
+        check.status = 'PASS'
         check.summary = 'No users found with pending_lab'
     return check
 
