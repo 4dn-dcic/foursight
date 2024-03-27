@@ -221,7 +221,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "parameters": {},
         "config":{"instance_type": 'c5.2xlarge', "ebs_size": 70},
         'custom_pf_fields': {
-            'chip.first_ta_ctl': {
+            'chip.first_ta': {
                 'genome_assembly': genome,
                 'file_type': 'read positions',
                 'description': 'Positions of aligned reads in bed format, one line per read mate, for control experiment, from ENCODE ChIP-Seq Pipeline',
