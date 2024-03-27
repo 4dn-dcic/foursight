@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.4.4
+=====
+* wrangler_checks.py: action finalize_user_pending_labs removes external-lab by default
+
+`PR 565: Action can remove pending lab external-lab <https://github.com/4dn-dcic/foursight/pull/565>`_
+
 4.4.3
 =====
 * Add helper to convert user input str to list for select queries in higlass_checks.py
