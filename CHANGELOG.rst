@@ -9,7 +9,7 @@ Change Log
 
 4.4.5
 =====
-* Replace outdated file name for ChIP-seq ctl output bed in workflow settings
+* Replace outdated file name for ChIP-seq control output bed in workflow settings
 
 `PR 566: Fix for ChIP-seq ctl output assembly patching <https://github.com/4dn-dcic/foursight/pull/566>`_
 
