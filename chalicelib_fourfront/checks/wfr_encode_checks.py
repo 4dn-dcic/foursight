@@ -645,8 +645,8 @@ def atacseq_status(connection, **kwargs):
                     s0_input_files = {'input_fastqs': merge_case}
                     s0_tag = exp_id + '_p' + str(merge_enum)
                     keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
-                                                                         'step0', s0_tag, merge_case,
-                                                                         s0_input_files, step0_name, 'merged_fastq')
+                                                                         'step0', s0_tag, merge_case, s0_input_files,
+                                                                         step0_name, 'merged_fastq', organism=organism)
                     if step0_status == 'complete':
                         merged_files.append(step0_output)
                     else:
@@ -707,7 +707,7 @@ def atacseq_status(connection, **kwargs):
             keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
                                                                  'step1', s1_tag, exp_files,
                                                                  s1_input_files, step1_name, 'atac.first_ta',
-                                                                 additional_input={'parameters': parameters})
+                                                                 additional_input={'parameters': parameters}, organism=organism)
             if step1_status == 'complete':
                 # accumulate files to patch on experiment
                 patch_data = [step1_output, ]
@@ -751,8 +751,8 @@ def atacseq_status(connection, **kwargs):
                     s2_tag = set_acc
                     # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
                     keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
-                                                                         'step2', s2_tag, ta,
-                                                                         s2_input_files, step2_name, 'merged_bed')
+                                                                         'step2', s2_tag, ta, s2_input_files,
+                                                                         step2_name, 'merged_bed', organism=organism)
                     if step2_status == 'complete':
                         ta = [step2_output, ]
                     else:
@@ -803,7 +803,7 @@ def atacseq_status(connection, **kwargs):
                                                                      'step3', s3_tag, ta,
                                                                      s3_input_files, step3_name,
                                                                      ['atac.optimal_peak', 'atac.conservative_peak', 'atac.sig_fc'],
-                                                                     additional_input={'parameters': parameters})
+                                                                     additional_input={'parameters': parameters}, organism=organism)
                 if step3_status == 'complete':
                     set_opt_peak = step3_output[0]
                     set_cons_peak = step3_output[1]

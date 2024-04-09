@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.4.6
+=====
+* Add organism when ATAC-seq check calls stepper helper
+
+`PR 567: Add organism when calling stepper <https://github.com/4dn-dcic/foursight/pull/567>`_
+
 4.4.5
 =====
 * Replace outdated file name for ChIP-seq ctl output bed in workflow settings
