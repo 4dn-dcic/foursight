@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.5.0
+=====
+* Update Tibanna
+
+
 4.4.6
 =====
 * Add organism when ATAC-seq check calls stepper helper
