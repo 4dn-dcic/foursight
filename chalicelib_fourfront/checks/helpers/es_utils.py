@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from dcicutils.es_utils import create_es_client
 from dcicutils import ff_utils
 
