@@ -6,6 +6,7 @@ from typing import Optional
 from dcicutils.es_utils import create_es_client
 from dcicutils import ff_utils
 from chalicelib_fourfront.checks.helpers import wrangler_utils
+from chalicelib_fourfront.checks.helpers.es_utils import get_es_metadata
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
 # individually - they're now part of class Decorators in foursight-core::decorators
@@ -600,7 +601,7 @@ def check_status_mismatch(connection, **kwargs):
     else:
         itemres = ff_utils.search_metadata(item_search, key=connection.ff_keys, page_limit=500)
         itemids = [item.get('uuid') for item in itemres]
-    es_items = _get_es_metadata(itemids, key=connection.ff_keys, chunk_size=200, is_generator=True)
+    es_items = get_es_metadata(itemids, key=connection.ff_keys, chunk_size=200, is_generator=True)
     for es_item in es_items:
         label = es_item.get('embedded').get('display_title')
         desc = es_item.get('object').get('description')
@@ -631,8 +632,8 @@ def check_status_mismatch(connection, **kwargs):
                     mismatches.setdefault(iid, []).append(lid)
 
         if len(linked2get) > MIN_CHUNK_SIZE or i + 1 == len(itemids):  # only query es when we have more than a set number of ids (500)
-            linked2chk = _get_es_metadata(list(linked2get.keys()), key=connection.ff_keys,
-                                          chunk_size=200, is_generator=True)
+            linked2chk = get_es_metadata(list(linked2get.keys()), key=connection.ff_keys,
+                                         chunk_size=200, is_generator=True)
             for litem in linked2chk:
                 luuid = litem.get('uuid')
                 listatus = litem.get('properties').get('status', 'in review by lab')
@@ -706,17 +707,17 @@ def check_opf_status_mismatch(connection, **kwargs):
                 for case in exp['other_processed_files']:
                     files.extend([i['uuid'] for i in case['files']])
     # get metadata for files, to collect status
-    resp = _get_es_metadata(list(set(files)),
-                            sources=['links.quality_metric', 'object.status', 'uuid'],
-                            key=connection.ff_keys)
+    resp = get_es_metadata(list(set(files)),
+                           sources=['links.quality_metric', 'object.status', 'uuid'],
+                           key=connection.ff_keys)
     opf_status_dict = {item['uuid']: item['object']['status'] for item in resp if item['uuid'] in files}
     opf_linked_dict = {
         item['uuid']: item.get('links', {}).get('quality_metric', []) for item in resp if item['uuid'] in files
     }
     quality_metrics = [uuid for item in resp for uuid in item.get('links', {}).get('quality_metric', [])]
-    qm_resp = _get_es_metadata(list(set(quality_metrics)),
-                               sources=['uuid', 'object.status'],
-                               key=connection.ff_keys)
+    qm_resp = get_es_metadata(list(set(quality_metrics)),
+                              sources=['uuid', 'object.status'],
+                              key=connection.ff_keys)
     opf_other_dict = {item['uuid']: item['object']['status'] for item in qm_resp if item not in files}
     check.full_output = {}
     for result in results:
@@ -887,8 +888,8 @@ def check_bio_feature_organism_name(connection, **kwargs):
                             assembly_in_dt = True
                             break
                     if not assembly_in_dt:
-                        gr_res = _get_es_metadata([genreg.get('uuid')],
-                                                  key=connection.ff_keys, sources=['properties.genome_assembly'])
+                        gr_res = get_es_metadata([genreg.get('uuid')],
+                                                 key=connection.ff_keys, sources=['properties.genome_assembly'])
                         try:
                             gr_ass = gr_res[0].get('properties').get('genome_assembly')
                         except AttributeError:
@@ -1250,14 +1251,3 @@ def chipseq_target_missing_tag(connection, **kwargs):
         check.description = 'All BioFeatures that are targets of ChIP-seq have appropriate tags'
 
     return check
-
-
-def _get_es_host_local() -> Optional[str]:
-    return os.environ.get("ES_HOST_LOCAL", None)
-
-
-def _get_es_metadata(*args, **kwargs):
-    if (kwargs.get("es_client", None) is None) and ((es_host_local := _get_es_host_local()) is not None):
-        es_client = create_es_client(es_host_local, use_aws_auth=True)
-        return ff_utils.get_es_metadata(*args, **kwargs, es_client=es_client)
-    return ff_utils.get_es_metadata(*args, **kwargs)
