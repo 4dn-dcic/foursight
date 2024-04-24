@@ -619,6 +619,7 @@ def check_status_mismatch(connection, **kwargs):
     stati2search = ['released', 'released_to_project']
     items2search = ['ExperimentSet']
     item_search = 'search/?frame=object'
+    import pdb; pdb.set_trace()
     for item in items2search:
         item_search += '&type={}'.format(item)
     for status in stati2search:
@@ -636,7 +637,7 @@ def check_status_mismatch(connection, **kwargs):
     tagged2ignore = []
     checked_tags = False
     es_items = get_es_metadata(itemids, key=connection.ff_keys, chunk_size=200, is_generator=True)
-    import pdb; pdb.set_trace()
+
     for es_item in es_items:
         if not checked_tags:
             tagged2ignore = get_items_with_ignore_tags(connection.ff_keys)
