@@ -573,14 +573,43 @@ def check_search_urls(connection, **kwargs):
     return check
 
 
-@check_function(id_list=None)
-def check_status_mismatch(connection, **kwargs):
-    check = CheckResult(connection, 'check_status_mismatch')
-    id_list = kwargs['id_list']
+def get_items_with_ignore_tags(key):
+    query = 'type=Item&tags=ignore_status_mismatch'
+    res = ff_utils.search_metadata(query, key=key)
+    return [item.get('uuid') for item in res]
 
-    MIN_CHUNK_SIZE = 200
+
+@check_function(id_list=None, last_mod_date=None)
+def check_status_mismatch(connection, **kwargs):
     # embedded sub items should have an equal or greater level
     # than that of the item in which they are embedded
+    check = CheckResult(connection, 'check_status_mismatch')
+    id_list = kwargs['id_list']
+    # if provided as a param will look for items modified more recently than
+    last_mod_date = kwargs['last_mod_date']
+
+    # limit the number of top level items to query (ExperimentSets) if id_list is not 
+    # provided - if a passing result cannot be found will do what?
+    if not (id_list or last_mod_date):
+        last_result = check.get_primary_result()
+        days = 0
+        while last_result['status'] != 'PASS' or not last_result['kwargs'].get('primary'):
+            days += 1
+            try:
+                last_result = check.get_closest_result(diff_hours=days*24)
+            except Exception:
+                pass
+            if days > 20:
+                # no passing primary check in the past 20 days so use date from 
+                # 'oldest' last_result
+                break
+        chk_uuid = last_result.get('uuid')
+        chk_uuid = chk_uuid.replace('T', ' ')
+        last_colon_idx = chk_uuid.rfind(':')
+        last_mod_date = chk_uuid[:last_colon_idx]
+
+
+    MIN_CHUNK_SIZE = 200
     id2links = {}
     id2status = {}
     id2item = {}
@@ -596,10 +625,19 @@ def check_status_mismatch(connection, **kwargs):
         itemids = re.split(',|\s+', id_list)
         itemids = [id for id in itemids if id]
     else:
+        if last_mod_date:
+            item_search += '&last_modified.date_modified.from={}'.format(last_mod_date)
         itemres = ff_utils.search_metadata(item_search, key=connection.ff_keys, page_limit=500)
         itemids = [item.get('uuid') for item in itemres]
+
+    tagged2ignore = []
+    checked_tags = False
     es_items = ff_utils.get_es_metadata(itemids, key=connection.ff_keys, chunk_size=200, is_generator=True)
+    import pdb; pdb.set_trace()
     for es_item in es_items:
+        if not checked_tags:
+            tagged2ignore = get_items_with_ignore_tags(connection.ff_keys)
+            checked_tags = True  # only do this once if at all
         label = es_item.get('embedded').get('display_title')
         desc = es_item.get('object').get('description')
         lab = es_item.get('embedded').get('lab').get('display_title')
@@ -608,7 +646,7 @@ def check_status_mismatch(connection, **kwargs):
         id2links[es_item.get('uuid')] = [li.get('uuid') for li in es_item.get('linked_uuids_embedded')]
         id2status[es_item.get('uuid')] = STATUS_LEVEL.get(status)
         id2item[es_item.get('uuid')] = {'label': label, 'status': status, 'lab': lab,
-                                        'description': desc, 'to_ignore': list(set(opfs))}
+                                        'description': desc, 'to_ignore': list(set(opfs)) + tagged2ignore}
 
     mismatches = {}
     linked2get = {}
