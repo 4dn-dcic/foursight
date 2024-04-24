@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.4.7
+=====
+* Fix calls to get_es_metadata in checks/audit_checks.py to work when ES_HOST_LOCAL is set.
+
+
 4.4.6
 =====
 * Add organism when ATAC-seq check calls stepper helper
