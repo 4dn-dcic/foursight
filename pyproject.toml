@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "4.4.7"
+version = "4.6.0"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
@@ -24,7 +24,7 @@ elasticsearch = "7.13.4"
 elasticsearch-dsl = "^7.0.0"
 gitpython = "^3.1.2"
 pytz = "^2020.1"
-tibanna-ff = "^3.2.0"
+tibanna-ff = "^3.4.0"
 ## adding foursight-core
 # use below for deployment
 foursight-core = "^5.4.2"
