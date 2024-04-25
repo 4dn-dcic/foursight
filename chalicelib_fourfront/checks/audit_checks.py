@@ -576,24 +576,34 @@ def check_search_urls(connection, **kwargs):
     return check
 
 
+# value of the tag on items where mismatch status should be ignored
+TAG_TO_IGNORE = 'ignore_status_mismatch'
+
+
 def get_items_with_ignore_tags(key):
-    query = 'type=Item&tags=ignore_status_mismatch'
+    query = 'search/?type=Item&tags={}'.format(TAG_TO_IGNORE)
+    delquery = query + '&status=deleted&status=replaced&status=obsolete'
+
     res = ff_utils.search_metadata(query, key=key)
+    res.extend(ff_utils.search_metadata(delquery, key=key))
     return [item.get('uuid') for item in res]
 
 
-@check_function(id_list=None, last_mod_date=None)
+@check_function(id_list=None, last_mod_date=None, run_for_all=False)
 def check_status_mismatch(connection, **kwargs):
     # embedded sub items should have an equal or greater level
     # than that of the item in which they are embedded
     check = CheckResult(connection, 'check_status_mismatch')
+    # if true will run on all replicate sets
+    run_for_all = kwargs['run_for_all']
+    # if values will run only on these ids
     id_list = kwargs['id_list']
     # if provided as a param will look for items modified more recently than
     last_mod_date = kwargs['last_mod_date']
 
     # limit the number of top level items to query (ExperimentSets) if id_list is not 
     # provided - if a passing result cannot be found will do what?
-    if not (id_list or last_mod_date):
+    if not (run_for_all or id_list or last_mod_date):
         last_result = check.get_primary_result()
         days = 0
         while last_result['status'] != 'PASS' or not last_result['kwargs'].get('primary'):
@@ -603,7 +613,7 @@ def check_status_mismatch(connection, **kwargs):
             except Exception:
                 pass
             if days > 20:
-                # no passing primary check in the past 20 days so use date from 
+                # no passing primary check in the past 20 days so use date from
                 # 'oldest' last_result
                 break
         chk_uuid = last_result.get('uuid')
@@ -619,7 +629,6 @@ def check_status_mismatch(connection, **kwargs):
     stati2search = ['released', 'released_to_project']
     items2search = ['ExperimentSet']
     item_search = 'search/?frame=object'
-    import pdb; pdb.set_trace()
     for item in items2search:
         item_search += '&type={}'.format(item)
     for status in stati2search:
