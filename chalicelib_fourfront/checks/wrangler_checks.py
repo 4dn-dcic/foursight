@@ -16,6 +16,7 @@ import gspread
 from .check_utils import convert_table_to_ordered_dict
 from collections import OrderedDict
 import uuid
+from chalicelib_fourfront.checks.helpers.es_utils import get_es_metadata
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
@@ -2123,7 +2124,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
         exp_set_uuids_to_check.extend([uuid for uuid in opf['exp_set_uuids'] if uuid not in exp_set_uuids_to_check])
 
     # get lab of Exp/ExpSet
-    result_exp_set = ff_utils.get_es_metadata(exp_set_uuids_to_check, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
+    result_exp_set = get_es_metadata(exp_set_uuids_to_check, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
     es_uuid_2_lab = {}  # map Exp/Set uuid to Exp/Set lab
     for es in result_exp_set:
         es_uuid_2_lab[es['uuid']] = es['properties']['lab']

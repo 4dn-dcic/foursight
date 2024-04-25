@@ -7,10 +7,16 @@ foursight
 Change Log
 ----------
 
+4.6.0
+=====
+* Fix calls to get_es_metadata in checks/audit_checks.py to work when ES_HOST_LOCAL is set.
+* Refactored item_status_mismatch check to run on fewer items if need be
+
+`PR 570: Fix status mismatch check <https://github.com/4dn-dcic/foursight/pull/570>`_
+
 4.5.0
 =====
 * Update Tibanna
-
 
 4.4.6
 =====
