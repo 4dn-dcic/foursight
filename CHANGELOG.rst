@@ -11,6 +11,76 @@ Change Log
 =====
 
 # Add new version (0.3.0) of Hi-C pipeline and workflows to accepted versions
+`PR 571: Hi-C update to 0.3.0 <https://github.com/4dn-dcic/foursight/pull/571>`_
+
+4.6.0
+=====
+* Fix calls to get_es_metadata in checks/audit_checks.py to work when ES_HOST_LOCAL is set.
+* Refactored item_status_mismatch check to run on fewer items if need be
+
+`PR 570: Fix status mismatch check <https://github.com/4dn-dcic/foursight/pull/570>`_
+
+4.5.0
+=====
+* Update Tibanna
+
+4.4.6
+=====
+* Add organism when ATAC-seq check calls stepper helper
+
+`PR 567: Add organism when calling stepper <https://github.com/4dn-dcic/foursight/pull/567>`_
+
+4.4.5
+=====
+* Replace outdated file name for ChIP-seq ctl output bed in workflow settings
+
+`PR 566: Fix for ChIP-seq ctl output assembly patching <https://github.com/4dn-dcic/foursight/pull/566>`_
+
+4.4.4
+=====
+* wrangler_checks.py: action finalize_user_pending_labs removes external-lab by default
+
+`PR 565: Action can remove pending lab external-lab <https://github.com/4dn-dcic/foursight/pull/565>`_
+
+4.4.3
+=====
+* Add helper to convert user input str to list for select queries in higlass_checks.py
+* Adjust output of check_validation_errors check to list affected items by type in full_output if not too many
+* update lock file to use foursight-core with bug fix for local-check-execution script
+
+`PR 564: Improved handling of user query for higlass items <https://github.com/4dn-dcic/foursight/pull/564>`_
+
+4.4.2
+=====
+* Added 'input_bed' to attr_keys in wfr_utils.py's start_missing_run for ATAC-seq pipeline
+
+`PR 563: Add ATAC-seq file key to attr_keys <https://github.com/4dn-dcic/foursight/pull/563>`_
+
+4.4.1
+=====
+* updated check_setup to autoqueue chipseq check on data/prod
+* Update lock file
+
+
+4.4.0
+=====
+* Added update of a gitinfo.json file in GitHub Actions (.github/workflows/main-publish.yml).
+* Update foursight-core with fix to Portal Reindex page (to not show initial deploy),
+  and straighten out blue/green staging/data dichotomy on Reindex and Redeploy pages. 
+
+4.3.0
+=====
+* Fix wfr_checks.md5run_status for bug where it was missing the first item in the result
+  set because it was calling any() on a generator before iterating through it, which is
+  destructive of the generator, i.e. causing to to move one item forwared.
+
+4.2.2
+=====
+
+* modification of the biorxiv update check to squash a bug 
+* if a doi is misformatted or contains an unwanted v# in it they are reported
+  
+`PR 560: Fix for biorxiv version update check bug <https://github.com/4dn-dcic/foursight/pull/560>`_
 
 4.2.1
 =====
@@ -27,7 +97,6 @@ Change Log
 * increased stringency for warning to case insensitive equality
 
 `PR 558: refactor doppelganger check <https://github.com/4dn-dcic/foursight/pull/558>`_
-
 
 4.1.4
 =====

@@ -15,6 +15,7 @@ from dcicutils import (
     beanstalk_utils,
     env_utils
 )
+from chalicelib_fourfront.checks.helpers.es_utils import get_es_metadata
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
@@ -833,8 +834,7 @@ def purge_download_tracking_items(connection, **kwargs):
     client = es_utils.create_es_client(connection.ff_es, True)
     # a bit convoluted, but we want the frame=raw, which does not include uuid
     # use get_es_metadata to handle this. Use it as a generator
-    for to_purge in ff_utils.get_es_metadata(search_uuids, es_client=client, is_generator=True,
-                                             key=connection.ff_keys):
+    for to_purge in get_es_metadata(search_uuids, es_client=client, is_generator=True, key=connection.ff_keys):
         if round(time.time() - t0, 2) > time_limit:
             break
         purge_properties = to_purge['properties']

@@ -16,6 +16,7 @@ import gspread
 from .check_utils import convert_table_to_ordered_dict
 from collections import OrderedDict
 import uuid
+from chalicelib_fourfront.checks.helpers.es_utils import get_es_metadata
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
@@ -501,6 +502,21 @@ def add_pub_and_replace_biorxiv(connection, **kwargs):
     return action
 
 
+def _remove_prefix_and_version_suffix_from_doi(pub_doi_id):
+    misformatted = False
+    try:
+        doi = pub_doi_id.split(':', 1)[1]
+    except Exception:
+        misformatted = True
+        return None, misformatted
+    pattern = re.compile(r'v\d+\s*$')
+    match = pattern.search(doi)
+    if match:
+        misformatted = True
+        doi = doi[:match.start()]
+    return doi, misformatted
+
+
 @check_function(action="reindex_biorxiv")
 def biorxiv_version_update(connection, **kwargs):
     '''Check if current bioRxiv Publications (not yet replaced with PubmedID)
@@ -512,12 +528,18 @@ def biorxiv_version_update(connection, **kwargs):
     current_biorxivs = ff_utils.search_metadata(query, key=connection.ff_keys)
 
     items_to_update = []
+    problem_ids = []
     biorxiv_api = 'https://api.biorxiv.org/details/biorxiv/'
     for publication in current_biorxivs:
-        if not publication['ID'].startswith('doi:'):
+        pubid = publication.get('ID')
+        if not pubid.startswith('doi:'):
             continue
-        doi = publication['ID'].split(':')[1]
-        for count in range(5):  # try fetching data a few times
+        doi, misformatted = _remove_prefix_and_version_suffix_from_doi(pubid)
+        if misformatted:
+            problem_ids.append(pubid)
+        if not doi:
+            continue
+        for _ in range(5):  # try fetching data a few times
             r = requests.get(biorxiv_api + doi)
             if r.status_code == 200:
                 break
@@ -540,6 +562,15 @@ def biorxiv_version_update(connection, **kwargs):
     else:
         check.status = 'PASS'
         check.summary = check.description = 'All current bioRxiv Publications are up to date'
+
+    if problem_ids:
+        check.status = 'WARN'
+        check.summary = check.summary + f"There are {len(problem_ids)} misformatted or problematic doi pub IDs"
+        prob_out = {'problem_ids': problem_ids}
+        if check.brief_output:
+            check.brief_output.append(prob_out)
+        else:
+            check.brief_output = [prob_out]
     return check
 
 
@@ -1075,7 +1106,7 @@ def users_with_pending_lab(connection, **kwargs):
     time.sleep(wait)
     check.action = 'finalize_user_pending_labs'
     check.full_output = []
-    check.status = 'PASS'
+    check.status = 'WARN'
     cached_items = {}  # store labs/PIs for performance
     mismatch_users = []
     # do not look for deleted/replaced users
@@ -1117,9 +1148,8 @@ def users_with_pending_lab(connection, **kwargs):
 
     if check.full_output:
         check.summary = 'Users found with pending_lab.'
-        if check.status == 'PASS':
-            check.status = 'WARN'
-            check.description = check.summary + ' Run the action to add lab and remove pending_lab'
+        if check.status == 'WARN':
+            check.description = check.summary + ' Run the action to add lab and remove pending_lab. Note external-lab will be removed by this action.'
             check.allow_action = True
             check.action_message = 'Will attempt to patch lab and remove pending_lab for %s users' % len(check.full_output)
         if check.status == 'FAIL':
@@ -1127,6 +1157,7 @@ def users_with_pending_lab(connection, **kwargs):
             check.description = check.summary + '. Resolve conflicts for mismatching users before running action. See brief_output'
             check.brief_output = mismatch_users
     else:
+        check.status = 'PASS'
         check.summary = 'No users found with pending_lab'
     return check
 
@@ -1137,17 +1168,28 @@ def finalize_user_pending_labs(connection, **kwargs):
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_failure': [], 'patch_success': []}
     for user in check_res.get('full_output', []):
-        patch_data = {'lab': user['pending_lab']}
-        if user.get('lab_PI_viewing_groups'):
-            patch_data['viewing_groups'] = user['lab_PI_viewing_groups']
-        # patch lab and delete pending_lab in one request
-        try:
-            ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
-                                    add_on='delete_fields=pending_lab')
-        except Exception as e:
-            action_logs['patch_failure'].append({user['uuid']: str(e)})
+
+        # remove external-lab only
+        if user.get('pending_lab') == "/labs/external-lab/":
+            try:
+                ff_utils.delete_field(obj_id=user['uuid'], del_field='pending_lab', key=connection.ff_keys)
+            except Exception as e:
+                action_logs['patch_failure'].append({user['uuid']: str(e)})
+            else:
+                action_logs['patch_success'].append(user['uuid'])
+        # otherwise, add lab
         else:
-            action_logs['patch_success'].append(user['uuid'])
+            patch_data = {'lab': user['pending_lab']}
+            if user.get('lab_PI_viewing_groups'):
+                patch_data['viewing_groups'] = user['lab_PI_viewing_groups']
+            # patch lab and delete pending_lab in one request
+            try:
+                ff_utils.patch_metadata(patch_data, obj_id=user['uuid'], key=connection.ff_keys,
+                                        add_on='delete_fields=pending_lab')
+            except Exception as e:
+                action_logs['patch_failure'].append({user['uuid']: str(e)})
+            else:
+                action_logs['patch_success'].append(user['uuid'])
     action.status = 'DONE'
     action.output = action_logs
     return action
@@ -2082,7 +2124,7 @@ def check_opf_lab_different_than_experiment(connection, **kwargs):
         exp_set_uuids_to_check.extend([uuid for uuid in opf['exp_set_uuids'] if uuid not in exp_set_uuids_to_check])
 
     # get lab of Exp/ExpSet
-    result_exp_set = ff_utils.get_es_metadata(exp_set_uuids_to_check, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
+    result_exp_set = get_es_metadata(exp_set_uuids_to_check, sources=['uuid', 'properties.lab'], key=connection.ff_keys)
     es_uuid_2_lab = {}  # map Exp/Set uuid to Exp/Set lab
     for es in result_exp_set:
         es_uuid_2_lab[es['uuid']] = es['properties']['lab']
