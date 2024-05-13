@@ -31,7 +31,7 @@ workflow_details = {
     },
     "bwa-mem": {
         "run_time": 50,
-        "accepted_versions": ["0.2.6"]
+        "accepted_versions": ["0.2.6", "0.3.0"]
     },
     "pairsqc-single": {
         "run_time": 100,
@@ -39,7 +39,7 @@ workflow_details = {
     },
     "hi-c-processing-bam": {
         "run_time": 200,
-        "accepted_versions": ["0.2.6"]
+        "accepted_versions": ["0.2.6", "0.3.0"]
     },
     "hi-c-processing-pairs": {
         "run_time": 200,
@@ -159,27 +159,27 @@ workflow_details = {
 # accepted versions for completed pipelines
 accepted_versions = {
     # OFFICIAL
-    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # OFFICIAL
-    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # OFFICIAL
-    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # OFFICIAL  # NO-RE
-    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # OFFICIAL  # NO-NORM
-    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # OFFICIAL  # NO-RE
-    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # Preliminary - Released to network  # NO-RE NO-NORM
-    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # Preliminary - Released to network  # NO-RE NO-NORM
-    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7"],
+    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # Preliminary - Released to network  # NO-RE NO-NORM
-    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # Preliminary - Released to network  # NO-NORM
-    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7"],
+    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # Preliminary - Released to network  # NO-NORM
-    'HiChIP': ["HiC_Pipeline_0.2.7"],
+    'HiChIP': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
     # bwa mem # handled manually for now
     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
     # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
