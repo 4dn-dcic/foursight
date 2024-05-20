@@ -1410,7 +1410,7 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
             This is relevant for pipelines that produce files to be added to datasets upon which a pipeline (eg. Hi-C)
             has already been run - eg. Compartment Caller or Insulation Score/Boundaries
     """
-    titles = {"hic": "HiC Processing Pipeline - v3.0",
+    titles = {"hic": "HiC Processing Pipeline - v0.3.0",
               "repliseq": "Repli-Seq Pipeline - Preliminary Files",
               'chip': "ENCODE ChIP-Seq Pipeline - Preliminary Files",
               'atac': "ENCODE ATAC-Seq Pipeline - Preliminary Files",
