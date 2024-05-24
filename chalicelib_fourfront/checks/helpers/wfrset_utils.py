@@ -85,7 +85,8 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     {
         'app_name': 'hi-c-processing-pairs',
         'workflow_uuid': '4dn-dcic-lab:wf-hi-c-processing-pairs-0.3.0',
-        'parameters': {"nthreads": 4,
+        'config': {"instance_type": 'r5a.2xlarge'},
+        'parameters': {"nthreads": 8,
                        "maxmem": "32g",
                        "max_split_cooler": 10,
                        "no_balance": False
