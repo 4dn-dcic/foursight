@@ -58,7 +58,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         'app_name': 'bwa-mem',
-        'workflow_uuid': '3feedadc-50f9-4bb4-919b-09a8b731d0cc',
+        'workflow_uuid': '60952f14-693a-434b-9cb2-face065620f6',
         'parameters': {"nThreads": 16},
         'custom_pf_fields': {
             'out_bam': {
@@ -69,7 +69,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         'app_name': 'hi-c-processing-bam',
-        'workflow_uuid': '023bfb3e-9a8b-42b9-a9d4-216079526f68',
+        'workflow_uuid': '6b2f1481-163e-4099-ae9b-ee49587107d3',
         'parameters': {"nthreads_merge": 16, "nthreads_parse_sort": 16},
         'custom_pf_fields': {
             'annotated_bam': {
@@ -84,8 +84,9 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
     },
     {
         'app_name': 'hi-c-processing-pairs',
-        'workflow_uuid': '4dn-dcic-lab:wf-hi-c-processing-pairs-0.2.7',
-        'parameters': {"nthreads": 4,
+        'workflow_uuid': '4dn-dcic-lab:wf-hi-c-processing-pairs-0.3.0',
+        'config': {"instance_type": 'r5a.2xlarge'},
+        'parameters': {"nthreads": 8,
                        "maxmem": "32g",
                        "max_split_cooler": 10,
                        "no_balance": False

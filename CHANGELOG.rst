@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.7.0
+=====
+
+# Add new version (0.3.0) of Hi-C pipeline and workflows to accepted versions
+`PR 571: Hi-C update to 0.3.0 <https://github.com/4dn-dcic/foursight/pull/571>`_
+
 4.6.0
 =====
 * Fix calls to get_es_metadata in checks/audit_checks.py to work when ES_HOST_LOCAL is set.
