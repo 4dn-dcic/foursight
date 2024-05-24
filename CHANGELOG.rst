@@ -7,7 +7,7 @@ foursight
 Change Log
 ----------
 
-4.6.1
+4.7.0
 =====
 
 # Add new version (0.3.0) of Hi-C pipeline and workflows to accepted versions
