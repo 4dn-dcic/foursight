@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.7.1
+=====
+
+# Modify bam-processing accepted_versions list to enable workflow rerun
+`PR 572: remove bam-processing accepted version for reruns <https://github.com/4dn-dcic/foursight/pull/572>`_
+
 4.7.0
 =====
 
