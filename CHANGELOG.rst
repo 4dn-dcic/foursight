@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.8.0
+=====
+
+* Support for Python 3.12.
+
+
 4.7.1
 =====
 
