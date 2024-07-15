@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.7.2
+=====
+
+* Exclude chromsizes files that are not `higlass_reference` from registration on the Higlass server.
+
 4.7.1
 =====
 

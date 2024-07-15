@@ -1694,7 +1694,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
             "uuid",
             "extra_files",
             "upload_key",
-            "open_data_url"
+            "open_data_url",
+            "tags"
         ):
             search_query += "&field=" + new_field
 
@@ -1727,7 +1728,8 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'file_format': procfile['file_format'].get('file_format'),
                 'higlass_uid': procfile.get('higlass_uid'),
                 'genome_assembly': procfile['genome_assembly'],
-                'open_data_url': procfile.get('open_data_url')  # get it if it has it
+                'open_data_url': procfile.get('open_data_url'),  # get it if it has it
+                'tags': procfile.get('tags')
             }
 
             file_format = file_info["file_format"]
@@ -1735,6 +1737,12 @@ def files_not_registered_with_higlass(connection, **kwargs):
             if file_format not in files_to_be_reg:
                 files_to_be_reg[file_format] = []
 
+            # Don't register chromsizes that are not tagged as "higlass_reference". Otherwise
+            # we would register multiple chromsizes files for the same genome assembly. This leads 
+            # to issues in the Higlass genome position search bar.
+            if file_format == "chromsizes" and "higlass_reference" not in file_info["tags"]:
+                continue
+                
             # bg files use an bw file from extra files to register
             # bed files use a beddb or bed.multires.mv5 files from extra files to regiser
             # don't FAIL if the bg is missing the bw, however
