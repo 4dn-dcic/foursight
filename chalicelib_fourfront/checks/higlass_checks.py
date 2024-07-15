@@ -1729,7 +1729,7 @@ def files_not_registered_with_higlass(connection, **kwargs):
                 'higlass_uid': procfile.get('higlass_uid'),
                 'genome_assembly': procfile['genome_assembly'],
                 'open_data_url': procfile.get('open_data_url'),  # get it if it has it
-                'tags': procfile.get('tags')
+                'tags': procfile.get('tags', [])
             }
 
             file_format = file_info["file_format"]
