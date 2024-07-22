@@ -682,7 +682,7 @@
         "title": "Clean up webdev workflows runs",
         "group": "Metadata checks",
         "schedule": {
-            "morning_checks_4": {
+            "manual_checks": {
                 "webdev": {
                     "dependencies": [],
                     "kwargs": {
