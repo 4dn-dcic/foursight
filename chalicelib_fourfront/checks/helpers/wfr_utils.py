@@ -227,13 +227,13 @@ feature_calling_accepted_versions = {
 # Reference Files
 bwa_index = {"human": "4DNFIZQZ39L9",
              "mouse": "4DNFI823LSI8",
-             "fruit-fly": '4DNFIO5MGY32',
+             "fruit fly": '4DNFIO5MGY32',
              "chicken": "4DNFIVGRYVQF",
              "zebrafish": "4DNFIUH46PG1"}
 
 chr_size = {"human": "4DNFI823LSII",
             "mouse": "4DNFI3UBJ3HZ",
-            "fruit-fly": '4DNFIBEEN92C',
+            "fruit fly": '4DNFIBEEN92C',
             "chicken": "4DNFIQFZW4DX",
             "zebrafish": "4DNFI5W8CN1M"}
 
@@ -270,7 +270,7 @@ re_nz = {"human": {'MboI': '/files-reference/4DNFI823L812/',
                    "HindIII": '/files-reference/4DNFI6V32T9J/',
                    "Arima - A1, A2": '/files-reference/4DNFIE78H3K7/'
                    },
-         "fruit-fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
+         "fruit fly": {'MboI': '/files-reference/4DNFIS1ZVUWO/'
                        },
          "chicken": {"HindIII": '/files-reference/4DNFITPCJFWJ/'
                      },
@@ -289,7 +289,7 @@ re_kmer = {"human": '/files-reference/4DNFIDMVPFSO/',
 # max_distance for species (used for pairsqc)
 max_size = {"human": None,
             "mouse": 8.2,
-            "fruit-fly": 7.5,
+            "fruit fly": 7.5,
             "chicken": 8.2,
             "zebrafish": 7.9}
 
@@ -309,7 +309,7 @@ re_nz_sizes = {"HindIII": "6",
 
 mapper = {'human': 'GRCh38',
           'mouse': 'GRCm38',
-          'fruit-fly': 'dm6',
+          'fruit fly': 'dm6',
           'chicken': 'galGal5',
           'zebrafish': 'GRCz11'}
 
