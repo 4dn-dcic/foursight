@@ -363,12 +363,6 @@ def fastqc_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # check number of total workflow runs in the past 6h
-    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
-    if n_runs_available == 0:
-        check.brief_output.append('Runs are limited due to docker pull rate limit')
-        check.status = 'WARN'
-        return check
 
     # Build the query (skip to be uploaded by workflow)
     query = ("/search/?type=File&file_format.file_format=fastq&quality_metric.uuid=No+value"
@@ -2143,12 +2137,6 @@ def fastq_first_line_status(connection, **kwargs):
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
-        return check
-    # check number of total workflow runs in the past 6h
-    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
-    if n_runs_available == 0:
-        check.brief_output.append('Runs are limited due to docker pull rate limit')
-        check.status = 'WARN'
         return check
 
     query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'

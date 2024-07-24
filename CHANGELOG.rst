@@ -12,6 +12,15 @@ Change Log
 
 * Support for Python 3.12.
 
+
+4.7.3
+=====
+
+* Change clean_up_webdev_wfrs to run manually and correct test UUIDs
+* fastqc and fastq-first-line checks are no longer rate limited
+* Correct key used for fruit fly reference files and parameters
+`PR 575: cleanup and remove rate limit for select checks <https://github.com/4dn-dcic/foursight/pull/575>`_
+
 4.7.2
 =====
 

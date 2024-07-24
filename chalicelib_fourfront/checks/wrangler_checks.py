@@ -1005,7 +1005,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
     # input for test pseudo hi-c-processing-bam
-    response = ff_utils.get_metadata('68f38e45-8c66-41e2-99ab-b0b2fcd20d45',
+    response = ff_utils.get_metadata('1150b428-272b-4a0c-b3e6-4b405c148f7c',
                                      key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
@@ -1016,7 +1016,7 @@ def clean_up_webdev_wfrs(connection, **kwargs):
         patch_wfr_and_log(entry, check.full_output)
 
     # input for test md5 and bwa-mem
-    response = ff_utils.get_metadata('f4864029-a8ad-4bb8-93e7-5108f462ccaa',
+    response = ff_utils.get_metadata('1fa2d6db-8a1f-4ba5-aa61-0558f80b0cf7',
                                      key=connection.ff_keys)
     wfrlist = response['workflow_run_inputs']
     for entry in wfrlist:
