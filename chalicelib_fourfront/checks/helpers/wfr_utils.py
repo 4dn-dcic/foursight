@@ -14,146 +14,166 @@ random_wait = wfrset_utils.random_wait
 load_wait = wfrset_utils.load_wait
 
 
-# wfr_name, accepted versions, expected run time # wfr_name, accepted versions,
-workflow_details = {
-    "md5": {
-        "run_time": 12,
-        "accepted_versions": ["0.0.4", "0.2.6"]
-    },
-    # old workflow run naming, updated on workflows for old ones
-    "fastqc-0-11-4-1": {
-        "run_time": 50,
-        "accepted_versions": ["0.2.0"]
-    },
-    "fastqc": {
-        "run_time": 50,
-        "accepted_versions": ["v1", "v2"]
-    },
-    "bwa-mem": {
-        "run_time": 50,
-        "accepted_versions": ["0.2.6", "0.3.0"]
-    },
-    "pairsqc-single": {
-        "run_time": 100,
-        "accepted_versions": ["0.2.5", "0.2.6"]
-    },
-    "hi-c-processing-bam": {
-        "run_time": 200,
-        "accepted_versions": ["0.3.0"]
-    },
-    "hi-c-processing-pairs": {
-        "run_time": 200,
-        "accepted_versions": ["0.3.0"]
-    },
-    "hi-c-processing-pairs-nore": {
-        "run_time": 200,
-        "accepted_versions": ["0.2.6"]
-    },
-    "hi-c-processing-pairs-nonorm": {
-        "run_time": 200,
-        "accepted_versions": ["0.2.6"]
-    },
-    "hi-c-processing-pairs-nore-nonorm": {
-        "run_time": 200,
-        "accepted_versions": ["0.2.6"]
-    },
-    "repliseq-parta": {
-        "run_time": 200,
-        "accepted_versions": ["v13.1", "v14", "v16","v16.1"]
-    },
-    "bedGraphToBigWig": {
-        "run_time": 24,
-        "accepted_versions": ["v4", "v5", "v6"]
-    },
-    "bedtomultivec": {
-        "run_time": 24,
-        "accepted_versions": ["v4"]
-    },
-    "bedtobeddb": {
-        "run_time": 24,
-        "accepted_versions": ["v2", "v3"]
-    },
-    "encode-chipseq-aln-chip": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1", "2.1.6"]
-    },
-    "encode-chipseq-aln-ctl": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1", "2.1.6"]
-    },
-    "encode-chipseq-postaln": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1", "2.1.6"]
-    },
-    "encode-atacseq-aln": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1"]
-    },
-    "encode-atacseq-postaln": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1"]
-    },
-    "mergebed": {
-        "run_time": 200,
-        "accepted_versions": ["v1"]
-    },
-    'imargi-processing-fastq': {
-        "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_4"]
-    },
-    'imargi-processing-bam': {
-        "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_4"]
-    },
-    'imargi-processing-pairs': {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1_dcic_4"]
-    },
-    'encode-rnaseq-stranded': {
-        "run_time": 200,
-        "accepted_versions": ["1.1"]
-    },
-    'encode-rnaseq-unstranded': {
-        "run_time": 200,
-        "accepted_versions": ["1.1"]
-    },
-    'rna-strandedness': {
-        "run_time": 200,
-        "accepted_versions": ["v2"]
-    },
-    'bamqc': {
-        "run_time": 200,
-        "accepted_versions": ["v2", "v3"]
-    },
-    'fastq-first-line': {
-        "run_time": 200,
-        "accepted_versions": ["v2"]
-    },
-    're_checker_workflow': {
-        "run_time": 200,
-        "accepted_versions": ['v1.1', 'v1.2']
-    },
-    'mad_qc_workflow': {
-        "run_time": 200,
-        "accepted_versions": ['1.1_dcic_2']
-    },
-    'merge-fastq': {
-        "run_time": 200,
-        "accepted_versions": ['v1']
-    },
-    'insulation-scores-and-boundaries-caller': {
-            "run_time": 200,
-            "accepted_versions": ['v1']
-    },
-    'compartments-caller': {
-                "run_time": 200,
-                "accepted_versions": ['v1.2']
-    },
-    'mcoolQC': {
-                "run_time": 200,
-                "accepted_versions": ['v1']
-    }
-}
+# creates hash keyed by workflow app_name with values for accepted versions
+# and the run_time from info in database
+def get_workflow_details(my_auth):
+    wf_details = {}
+    wf_query = "search/?type=Workflow&tags=current&tags=accepted&field=max_runtime" \
+        "&app_name!=No value&app_version!=No value&field=app_name&field=app_version"
+    workflows = ff_utils.search_metadata(wf_query, my_auth)
+    for wf in workflows:
+        app_name = wf.get('app_name')
+        app_version = wf.get('app_version')
+        run_time = wf.get('max_runtime')
+        wf_details.setdefault(app_name, {})
+        wf_details[app_name].setdefault('accepted_versions', []).append(app_version)
+        wf_details[app_name].setdefault('run_time', run_time)
+        # for unexpected case of different wf items with same app_name having
+        # different run times - use max value
+        if run_time > wf_details[app_name].get('run_time'):
+            wf_details[app_name]['run_time'] = run_time
+    return wf_details
+
+
+# workflow_details = {
+#     "md5": {
+#         "run_time": 12,
+#         "accepted_versions": ["0.0.4", "0.2.6"]
+#     },
+#     # old workflow run naming, updated on workflows for old ones
+#     "fastqc-0-11-4-1": {
+#         "run_time": 50,
+#         "accepted_versions": ["0.2.0"]
+#     },
+#     "fastqc": {
+#         "run_time": 50,
+#         "accepted_versions": ["v1", "v2"]
+#     },
+#     "bwa-mem": {
+#         "run_time": 50,
+#         "accepted_versions": ["0.2.6", "0.3.0"]
+#     },
+#     "pairsqc-single": {
+#         "run_time": 100,
+#         "accepted_versions": ["0.2.5", "0.2.6"]
+#     },
+#     "hi-c-processing-bam": {
+#         "run_time": 200,
+#         "accepted_versions": ["0.3.0"]
+#     },
+#     "hi-c-processing-pairs": {
+#         "run_time": 200,
+#         "accepted_versions": ["0.3.0"]
+#     },
+#     "hi-c-processing-pairs-nore": {
+#         "run_time": 200,
+#         "accepted_versions": ["0.2.6"]
+#     },
+#     "hi-c-processing-pairs-nonorm": {
+#         "run_time": 200,
+#         "accepted_versions": ["0.2.6"]
+#     },
+#     "hi-c-processing-pairs-nore-nonorm": {
+#         "run_time": 200,
+#         "accepted_versions": ["0.2.6"]
+#     },
+#     "repliseq-parta": {
+#         "run_time": 200,
+#         "accepted_versions": ["v13.1", "v14", "v16","v16.1"]
+#     },
+#     "bedGraphToBigWig": {
+#         "run_time": 24,
+#         "accepted_versions": ["v4", "v5", "v6"]
+#     },
+#     "bedtomultivec": {
+#         "run_time": 24,
+#         "accepted_versions": ["v4"]
+#     },
+#     "bedtobeddb": {
+#         "run_time": 24,
+#         "accepted_versions": ["v2", "v3"]
+#     },
+#     "encode-chipseq-aln-chip": {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1.1", "2.1.6"]
+#     },
+#     "encode-chipseq-aln-ctl": {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1.1", "2.1.6"]
+#     },
+#     "encode-chipseq-postaln": {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1.1", "2.1.6"]
+#     },
+#     "encode-atacseq-aln": {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1.1"]
+#     },
+#     "encode-atacseq-postaln": {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1.1"]
+#     },
+#     "mergebed": {
+#         "run_time": 200,
+#         "accepted_versions": ["v1"]
+#     },
+#     'imargi-processing-fastq': {
+#         "run_time": 50,
+#         "accepted_versions": ["1.1.1_dcic_4"]
+#     },
+#     'imargi-processing-bam': {
+#         "run_time": 50,
+#         "accepted_versions": ["1.1.1_dcic_4"]
+#     },
+#     'imargi-processing-pairs': {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1.1_dcic_4"]
+#     },
+#     'encode-rnaseq-stranded': {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1"]
+#     },
+#     'encode-rnaseq-unstranded': {
+#         "run_time": 200,
+#         "accepted_versions": ["1.1"]
+#     },
+#     'rna-strandedness': {
+#         "run_time": 200,
+#         "accepted_versions": ["v2"]
+#     },
+#     'bamqc': {
+#         "run_time": 200,
+#         "accepted_versions": ["v2", "v3"]
+#     },
+#     'fastq-first-line': {
+#         "run_time": 200,
+#         "accepted_versions": ["v2"]
+#     },
+#     're_checker_workflow': {
+#         "run_time": 200,
+#         "accepted_versions": ['v1.1', 'v1.2']
+#     },
+#     'mad_qc_workflow': {
+#         "run_time": 200,
+#         "accepted_versions": ['1.1_dcic_2']
+#     },
+#     'merge-fastq': {
+#         "run_time": 200,
+#         "accepted_versions": ['v1']
+#     },
+#     'insulation-scores-and-boundaries-caller': {
+#             "run_time": 200,
+#             "accepted_versions": ['v1']
+#     },
+#     'compartments-caller': {
+#                 "run_time": 200,
+#                 "accepted_versions": ['v1.2']
+#     },
+#     'mcoolQC': {
+#                 "run_time": 200,
+#                 "accepted_versions": ['v1']
+#     }
+# }
 
 
 # accepted versions for completed pipelines
@@ -433,9 +453,9 @@ def check_qcs_on_files(file_meta, all_qcs):
     return failed_qcs
 
 
-def stepper(library, keep,
+def stepper(my_auth, library, keep,
             step_tag, sample_tag, new_step_input_file,
-            input_file_dict,  new_step_name, new_step_output_arg,
+            input_file_dict, new_step_name, new_step_output_arg,
             additional_input={}, organism='human', no_output=False):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
@@ -487,9 +507,9 @@ def stepper(library, keep,
     # if no qc problem, go on with the run check
     else:
         if no_output:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs, md_qc=True)
         else:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs)
         step_status = step_result['status']
         # if successful
         input_file_accession = input_resp['accession']
@@ -540,7 +560,8 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
 
     error_at_failed_runs = error_threshold
     # you should provide key or all_wfrs
-    assert key or all_wfrs
+    assert key
+    workflow_details = get_workflow_details(key)
     if wfr_name not in workflow_details:
         assert wfr_name in workflow_details
     # get default accepted versions if not provided
@@ -1040,7 +1061,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             part2 = 'ready'
             for pair in exp_files[exp]:
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'bwa-mem', key=my_auth, all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     exp_bams.append(step1_result['out_bam'])
@@ -1067,7 +1088,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step2s = []
             for bam in exp_bams:
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
-                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', key=my_auth, all_wfrs=all_wfrs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -1110,7 +1131,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', key=my_auth, all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
@@ -1257,7 +1278,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 part2 = 'ready'
                 input_bam = ""
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', key=my_auth, all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     input_bam = step1_result['out_bam']
@@ -1283,7 +1304,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                     continue
 
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == input_bam][0]
-                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', key=my_auth, all_wfrs=all_wfrs)
                 # if successful
                 if step2_result['status'] == 'complete':
                     exp_margi_files.append(step2_result['out_pairs'])
@@ -1328,7 +1349,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', key=my_auth, all_wfrs=all_wfrs)
                 all_step3s.append((step3_result['status'], step3_result.get('out_mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
@@ -1714,7 +1735,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
                 elif paired == 'No':
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
-                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', key=my_auth, all_wfrs=all_wfrs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     all_files.extend([step1_result['filtered_sorted_deduped_bam'],
@@ -1914,7 +1935,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             elif paired == 'No':
                 pars['rna.endedness'] = 'single'
                 input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0]][0]
-            step1_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
+            step1_result = get_wfr_out(input_resp, app_name, key=my_auth, all_wfrs=all_wfrs)
 
             # if successful
             if step1_result['status'] == 'complete':
@@ -1971,7 +1992,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         # run step2 if step1 s are complete
         else:
             step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
-            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', key=my_auth, all_wfrs=all_wfrs, md_qc=True)
 
             # if successful
             if step2_result['status'] == 'complete':

@@ -2516,7 +2516,7 @@ def long_running_wfrs_fdn_status(connection, **kwargs):
     check.status = 'PASS'
     check.allow_action = False
     # get workflow run limits
-    workflow_details = wfr_utils.workflow_details
+    workflow_details = wfr_utils.get_workflow_details(my_auth)
     # find all runs thats status is not complete or error
     q = '/search/?type=WorkflowRun&run_status!=complete&run_status!=error'
     running_wfrs = ff_utils.search_metadata(q, my_auth)

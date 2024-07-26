@@ -172,7 +172,7 @@ def chipseq_status(connection, **kwargs):
                     if merge_case:
                         s0_input_files = {'input_fastqs': merge_case}
                         s0_tag = exp_id + '_p' + str(merge_enum)
-                        keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
+                        keep, step0_status, step0_output = wfr_utils.stepper(my_auth, library, keep,
                                                                          'step0', s0_tag, merge_case,
                                                                          s0_input_files, step0_name, 'merged_fastq', organism=organism)
                         if step0_status == 'complete':
@@ -241,7 +241,7 @@ def chipseq_status(connection, **kwargs):
 
                 s1c_input_files = input_files
                 s1c_tag = exp_id
-                keep, step1c_status, step1c_output = wfr_utils.stepper(library, keep,
+                keep, step1c_status, step1c_output = wfr_utils.stepper(my_auth, library, keep,
                                                                        'step1c', s1c_tag, exp_files,
                                                                        s1c_input_files, step1c_name, 'chip.first_ta',
                                                                        additional_input={'parameters': parameters}, organism=organism)
@@ -272,7 +272,7 @@ def chipseq_status(connection, **kwargs):
                 s1_input_files = input_files
                 s1_tag = exp_id
                 # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-                keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
+                keep, step1_status, step1_output = wfr_utils.stepper(my_auth, library, keep,
                                                                      'step1', s1_tag, exp_files,
                                                                      s1_input_files, step1_name, ['chip.first_ta'],
                                                                      additional_input={'parameters': parameters}, organism=organism)
@@ -427,7 +427,7 @@ def chipseq_status(connection, **kwargs):
 
                 s2_tag = set_acc
                 # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-                keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                keep, step2_status, step2_output = wfr_utils.stepper(my_auth, library, keep,
                                                                      'step2', s2_tag, ta,
                                                                      s2_input_files, step2_name,
                                                                      ['chip.optimal_peak', 'chip.conservative_peak', 'chip.fc_bw'],
@@ -644,7 +644,7 @@ def atacseq_status(connection, **kwargs):
                     # RUN STEP 0
                     s0_input_files = {'input_fastqs': merge_case}
                     s0_tag = exp_id + '_p' + str(merge_enum)
-                    keep, step0_status, step0_output = wfr_utils.stepper(library, keep,
+                    keep, step0_status, step0_output = wfr_utils.stepper(my_auth, library, keep,
                                                                          'step0', s0_tag, merge_case, s0_input_files,
                                                                          step0_name, 'merged_fastq', organism=organism)
                     if step0_status == 'complete':
@@ -704,7 +704,7 @@ def atacseq_status(connection, **kwargs):
             s1_input_files = input_files
             s1_tag = exp_id
             # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-            keep, step1_status, step1_output = wfr_utils.stepper(library, keep,
+            keep, step1_status, step1_output = wfr_utils.stepper(my_auth, library, keep,
                                                                  'step1', s1_tag, exp_files,
                                                                  s1_input_files, step1_name, 'atac.first_ta',
                                                                  additional_input={'parameters': parameters}, organism=organism)
@@ -750,7 +750,7 @@ def atacseq_status(connection, **kwargs):
                     s2_input_files = {'input_bed': ta}
                     s2_tag = set_acc
                     # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-                    keep, step2_status, step2_output = wfr_utils.stepper(library, keep,
+                    keep, step2_status, step2_output = wfr_utils.stepper(my_auth, library, keep,
                                                                          'step2', s2_tag, ta, s2_input_files,
                                                                          step2_name, 'merged_bed', organism=organism)
                     if step2_status == 'complete':
@@ -799,7 +799,7 @@ def atacseq_status(connection, **kwargs):
 
                 s3_tag = set_acc
                 # if complete, step1_output will have a list of 2 files, first_ta, and fist_ta_xcor
-                keep, step3_status, step3_output = wfr_utils.stepper(library, keep,
+                keep, step3_status, step3_output = wfr_utils.stepper(my_auth, library, keep,
                                                                      'step3', s3_tag, ta,
                                                                      s3_input_files, step3_name,
                                                                      ['atac.optimal_peak', 'atac.conservative_peak', 'atac.sig_fc'],
