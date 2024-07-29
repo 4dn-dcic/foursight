@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.8.1
+=====
+
+* Bug fix to remove 2 un-used variables from fastqc_status and fastq-first-line checks after removal of rate limiting
+
+
 4.8.0
 =====
 
