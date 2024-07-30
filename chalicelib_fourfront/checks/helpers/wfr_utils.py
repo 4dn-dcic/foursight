@@ -1,6 +1,8 @@
-import json
 import time
 import random
+import re
+import string
+# import json  # used for testing
 from dcicutils import ff_utils
 from dcicutils.s3_utils import s3Utils
 from dcicutils.env_utils_legacy import FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER
@@ -177,67 +179,67 @@ def get_workflow_details(my_auth):
 
 
 # accepted versions for completed pipelines
-accepted_versions = {
-    # OFFICIAL
-    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL
-    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL
-    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL  # NO-RE
-    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL  # NO-NORM
-    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL  # NO-RE
-    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
-    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
-    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
-    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-NORM
-    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-NORM
-    'HiChIP': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # bwa mem # handled manually for now
-    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
-    # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
-    'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
-                      'RepliSeq_Pipeline_v14_step1',
-                      'RepliSeq_Pipeline_v16_step1',
-                      'RepliSeq_Pipeline_v16.1_step1'],
-    # OFFICIAL - 1 STEP
-    '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
-                          'RepliSeq_Pipeline_v14_step1',
-                          'RepliSeq_Pipeline_v16_step1',
-                          'RepliSeq_Pipeline_v16.1_step1'],
-    # OFFICIAL - 1 STEP
-    'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
-                              'RepliSeq_Pipeline_v14_step1',
-                              'RepliSeq_Pipeline_v16_step1',
-                              'RepliSeq_Pipeline_v16.1_step1'],
-    # Preliminary - Released to network
-    'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1', 'RepliSeq_Pipeline_v16.1_step1'],
-    # OFFICIAL
-    'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
-    # OFFICIAL
-    'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1', 'ENCODE_ChIP_Pipeline_2.1.6'],
-    # OFFICIAL
-    'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
-    'single cell Repli-seq': [''],
-    'cryomilling TCC': [''],
-    'single cell Hi-C': [''],
-    'sci-Hi-C': [''],
-    'MC-3C': [''],
-    'MC-Hi-C': [''],
-    'DamID-seq': [''],
-    'DNA SPRITE': [''],
-    'RNA-DNA SPRITE': [''],
-    'GAM': [''],
-    'CUT&RUN': [''],
-    'TRIP': ['']
-    }
+# accepted_versions = {
+#     # OFFICIAL
+#     'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # OFFICIAL
+#     'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # OFFICIAL
+#     'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # OFFICIAL  # NO-RE
+#     'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # OFFICIAL  # NO-NORM
+#     'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # OFFICIAL  # NO-RE
+#     'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # Preliminary - Released to network  # NO-RE NO-NORM
+#     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # Preliminary - Released to network  # NO-RE NO-NORM
+#     'in situ ChIA-PET': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # Preliminary - Released to network  # NO-RE NO-NORM
+#     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # Preliminary - Released to network  # NO-NORM
+#     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # Preliminary - Released to network  # NO-NORM
+#     'HiChIP': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
+#     # bwa mem # handled manually for now
+#     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
+#     # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
+#     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
+#                       'RepliSeq_Pipeline_v14_step1',
+#                       'RepliSeq_Pipeline_v16_step1',
+#                       'RepliSeq_Pipeline_v16.1_step1'],
+#     # OFFICIAL - 1 STEP
+#     '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
+#                           'RepliSeq_Pipeline_v14_step1',
+#                           'RepliSeq_Pipeline_v16_step1',
+#                           'RepliSeq_Pipeline_v16.1_step1'],
+#     # OFFICIAL - 1 STEP
+#     'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
+#                               'RepliSeq_Pipeline_v14_step1',
+#                               'RepliSeq_Pipeline_v16_step1',
+#                               'RepliSeq_Pipeline_v16.1_step1'],
+#     # Preliminary - Released to network
+#     'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1', 'RepliSeq_Pipeline_v16.1_step1'],
+#     # OFFICIAL
+#     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
+#     # OFFICIAL
+#     'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1', 'ENCODE_ChIP_Pipeline_2.1.6'],
+#     # OFFICIAL
+#     'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
+#     'single cell Repli-seq': [''],
+#     'cryomilling TCC': [''],
+#     'single cell Hi-C': [''],
+#     'sci-Hi-C': [''],
+#     'MC-3C': [''],
+#     'MC-Hi-C': [''],
+#     'DamID-seq': [''],
+#     'DNA SPRITE': [''],
+#     'RNA-DNA SPRITE': [''],
+#     'GAM': [''],
+#     'CUT&RUN': [''],
+#     'TRIP': ['']
+#     }
 
 # Accepted versions for feature calling pipelines
 feature_calling_accepted_versions = {
@@ -358,13 +360,7 @@ def check_indexing(check, connection):
     # wait for random time
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-    # # TEMPORARILY DISABLE ALL PIPELINE RUNS
-    # check.status = 'PASS'  # maybe use warn?
-    # check.brief_output = ['Check Temporarily Disabled']
-    # check.summary = 'Check Temporarily Disabled'
-    # check.full_output = {}
-    # return check, True
-    # check indexing queue
+    # TEMPORARILY DISABLE ALL PIPELINE RUNS
     env = connection.ff_env
     if env in [FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER]:
         health = ff_utils.get_health_page(ff_env=env)
@@ -757,10 +753,40 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
     return template
 
 
-def build_exp_type_query(exp_type, kwargs):
-    assert exp_type in accepted_versions
+def get_namekey_from_etype(exp_type):
+    name = None
+    exclude = set(string.punctuation.replace('-', ''))
+    name = exp_type.replace('&', ' n ')
+    name = ''.join(ch if ch not in exclude and ch != ' ' else '-' for ch in name)
+    name = re.sub(r"[-]+", '-', name).strip('-').lower()
+    return name
+
+
+def get_current_pipeline_tag(auth, exp_type):
+    etype_meta = ff_utils.get_metadata("experiment_type/{}".format(get_namekey_from_etype(exp_type)), auth)
+    if etype_meta:
+        if 'current_pipeline' in etype_meta:
+            return etype_meta.get('current_pipeline')
+    return None
+
+
+def get_accepted_pipeline_versions(auth, exp_type, kwargs):
+    accepted_versions = kwargs.get('accepted_vers', None)
+    if not accepted_versions:
+        etype_meta = ff_utils.get_metadata("experiment_type/{}".format(get_namekey_from_etype(exp_type)), auth)
+        if not etype_meta:
+            return accepted_versions
+        accepted_versions = etype_meta.get('accepted_pipelines', [])
+        if 'current_pipeline' in etype_meta:
+            accepted_versions.append(etype_meta.get('current_pipeline'))
+        return accepted_versions
+    # or parse and return the passed in value
+    return [av.strip() for av in accepted_versions.split(',')]
+
+
+def build_exp_type_query(auth, exp_type, kwargs):
     statuses = ['pre-release', 'released', 'released to project']
-    versions = accepted_versions[exp_type]
+    versions = get_accepted_pipeline_versions(auth, exp_type, kwargs)
     # Build the query
     pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
     pre_query += "&experiments_in_set.experiment_type={}".format(exp_type)
@@ -782,14 +808,17 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
-def build_feature_calling_query(exp_types, feature, kwargs):
+def build_feature_calling_query(auth, exp_types, feature, kwargs):
     assert feature in feature_calling_accepted_versions
 
-    for exp_type in exp_types:
-        assert exp_type in accepted_versions
+    # why do we check this?
+    # for exp_type in exp_types:
+    #    assert exp_type in accepted_versions
 
     statuses = ['pre-release', 'released', 'released to project', 'uploaded']
-    versions = [i for i in accepted_versions[exp_type]]
+    versions = []
+    for exp_type in exp_types:
+        versions.extend(get_accepted_pipeline_versions(auth, exp_type, kwargs))
     feature_calling_versions = feature_calling_accepted_versions[feature]
     # Build the query
     pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
@@ -981,11 +1010,11 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
     return check
 
 
-def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False):
+def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+        all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['experiment_relation',
@@ -1080,7 +1109,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                     name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
                     missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
             # stop progress to part2 and 3
-            if part2 is not 'ready':
+            if part2 != 'ready':
                 part3 = 'not ready'
                 # skip part 2 checks
                 continue
@@ -1116,7 +1145,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 # Add part2
                 inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
                 missing_run.append(['step2', ['hi-c-processing-bam', refs['organism'], {}], inp_f, exp])
-        if part3 is not 'ready':
+        if part3 != 'ready':
             if running:
                 set_summary += "| running step 1/2"
             elif missing_run:
@@ -1124,7 +1153,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             elif problematic_run:
                 set_summary += "| problem in step 1/2"
 
-        if part3 is 'ready':
+        if part3 == 'ready':
             # if we made it to this step, there should be files in set_pairs
             assert set_pairs
             # make sure all input bams went through same last step3
@@ -1137,6 +1166,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             if len(list(set(all_step3s))) == 1:
                 # if successful
                 if step3_result['status'] == 'complete':
+                    tag = get_current_pipeline_tag(my_auth, exp_type)
                     set_summary += '| completed runs'
                     patch_data = [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]
                     complete['patch_opf'].append([set_acc, patch_data])
@@ -1197,7 +1227,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
     return check
 
 
-def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False):
+def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -1334,7 +1364,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 set_pairs.extend(exp_pairs)
 
                 # patch the experiment with exp_pairs
-        if part3 is not 'ready':
+        if part3 != 'ready':
             if running:
                 set_summary += "| running step 1/2"
             elif missing_run:
@@ -1342,7 +1372,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
             elif problematic_run:
                 set_summary += "| problem in step 1/2"
 
-        if part3 is 'ready':
+        if part3 == 'ready':
             # if we made it to this step, there should be files in set_pairs
             assert set_pairs
             # make sure all input bams went through same last step3
@@ -1355,6 +1385,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
             if len(list(set(all_step3s))) == 1:
                 # if successful
                 if step3_result['status'] == 'complete':
+                    tag = get_current_pipeline_tag(my_auth, exp_type)
                     set_summary += '| completed runs'
                     patch_data = [step3_result['merged_pairs'], step3_result['out_mcool']]
                     complete['patch_opf'].append([set_acc, patch_data])
@@ -1440,13 +1471,16 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
               'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files",
               'compartments': "Compartments Signals - Preliminary Files"}
 
-    descriptions = {'hic': ("These are files generated using the updated Hi-C processing pipeline. "
-            "They should be largely similar to those available in the Processed Files tab, which were generated "
-            "with the previous version of the standard pipeline.  One potential difference of note is that the "
-            "version of cooler used to generate the mcool file has a bug fix to prevent a pixel duplication "
-            "issue which is observed in some files generated by the previous version of the pipeline.  Another "
-            "notable difference is that a filter is applied to remove reads with MAPQ scores below 30 prior "
-            "to mcool file generation.")}
+    descriptions = {
+        'hic':
+            ("These are files generated using the updated Hi-C processing pipeline. "
+             "They should be largely similar to those available in the Processed Files tab, which were generated "
+             "with the previous version of the standard pipeline.  One potential difference of note is that the "
+             "version of cooler used to generate the mcool file has a bug fix to prevent a pixel duplication "
+             "issue which is observed in some files generated by the previous version of the pipeline.  Another "
+             "notable difference is that a filter is applied to remove reads with MAPQ scores below 30 prior "
+             "to mcool file generation.")
+        }
 
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
@@ -1666,11 +1700,11 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start
     return action
 
 
-def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
+def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+        all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
                                                            store_frame='embedded',
                                                            add_pc_wfr=True,
                                                            ignore_field=['experiment_relation',
@@ -1774,6 +1808,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                 part3 = 'not ready'
         if part3 == 'ready':
             # add the tag
+            tag = get_current_pipeline_tag(my_auth, exp_type)
             set_summary += "| completed runs"
             complete['add_tag'] = [set_acc, tag]
         else:
@@ -1818,7 +1853,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
     return check
 
 
-def check_rna(res, my_auth, tag, check, start, lambda_limit):
+def check_rna(res, my_auth, exp_type, check, start, lambda_limit):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -2017,6 +2052,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
         if final_status == 'ready':
             # add the tag
+            tag = get_current_pipeline_tag(my_auth, exp_type)
             set_summary += "| completed runs"
             complete['add_tag'] = [set_acc, tag]
         else:
@@ -2206,6 +2242,7 @@ def select_best_2(file_list, all_files, all_qcs):
         scores.append((score, f))
     scores = sorted(scores, key=lambda x: -x[0])
     return [scores[0][1], scores[1][1]]
+
 
 def limit_number_of_runs(check, my_auth):
     """Checks the number of workflow runs started in the past 6h. Return the

@@ -762,13 +762,16 @@ def bed2beddb_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="in_situ_hic_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="in_situ_hic_start")
 def in_situ_hic_status(connection, **kwargs):
     """
     Keyword arguments:
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead
+    max_runtime -- assume runs beyond max_runtime are dead - override default value on workflow
+    accepted_vers -- if used will override accepted version tags of completed pipelines
+                     obtained from ExperimentType items - multiple values as comma sep list
     """
     start = datetime.utcnow()
     check = CheckResult(connection, 'in_situ_hic_status')
@@ -781,21 +784,19 @@ def in_situ_hic_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'in situ Hi-C'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit)
     return check
 
 
@@ -837,14 +838,12 @@ def dilution_hic_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'Dilution Hi-C'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     print(len(res))
@@ -852,7 +851,7 @@ def dilution_hic_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit)
     return check
 
 
@@ -895,21 +894,19 @@ def tcc_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TCC'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False)
     return check
 
 
@@ -951,21 +948,19 @@ def dnase_hic_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'DNase Hi-C'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=False)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=True, nonorm=False)
     return check
 
 
@@ -1007,21 +1002,19 @@ def capture_hic_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'Capture Hi-C'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=True)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=True)
     return check
 
 
@@ -1063,21 +1056,19 @@ def micro_c_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'Micro-C'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=False)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=True, nonorm=False)
     return check
 
 
@@ -1119,21 +1110,19 @@ def chia_pet_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'ChIA-PET'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=True)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=True, nonorm=True)
     return check
 
 
@@ -1175,21 +1164,19 @@ def in_situ_chia_pet_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'in situ ChIA-PET'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nonorm=True)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nonorm=True)
     return check
 
 
@@ -1231,21 +1218,19 @@ def trac_loop_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TrAC-loop'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=True, nonorm=True)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=True, nonorm=True)
     return check
 
 
@@ -1287,21 +1272,19 @@ def plac_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'PLAC-seq'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=True)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=True)
     return check
 
 
@@ -1342,21 +1325,19 @@ def hichip_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'HiChIP'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
 
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=True)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=True)
     return check
 
 
@@ -1397,19 +1378,18 @@ def repli_2_stage_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = '2-stage Repli-seq'
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_repli(res, my_auth, exp_type, check, start, lambda_limit)
     return check
 
 
@@ -1451,19 +1431,18 @@ def repli_multi_stage_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'Multi-stage Repli-seq'
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_repli(res, my_auth, exp_type, check, start, lambda_limit)
     return check
 
 
@@ -1505,19 +1484,18 @@ def tsa_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'TSA-seq'
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=25000)
+    check = wfr_utils.check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=25000)
     return check
 
 
@@ -1560,19 +1538,18 @@ def nad_seq_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'NAD-seq'
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_repli(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_repli(res, my_auth, exp_type, check, start, lambda_limit)
     return check
 
 
@@ -1596,49 +1573,49 @@ def nad_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="atac_seq_start")
-def atac_seq_status(connection, **kwargs):
-    """
-    Keyword arguments:
-    lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
-    start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-    run_time -- assume runs beyond run_time are dead
-    """
-    start = datetime.utcnow()
-    check = CheckResult(connection, 'atac_seq_status')
-    my_auth = connection.ff_keys
-    check.action = "atac_seq_start"
-    check.description = "run missing steps and add processing results to processed files, match set status"
-    check.brief_output = ['All Good!']
-    check.summary = "All Good!"
-    check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
-                         'completed_runs': [], 'problematic_runs': []}
-    check.status = 'PASS'
-    exp_type = 'ATAC-seq'
-    # check indexing queue
-    check, skip = wfr_utils.check_indexing(check, connection)
-    if skip:
-        return check
-    return check
+# @check_function(lab_title=None, start_date=None, action="atac_seq_start")
+# def atac_seq_status(connection, **kwargs):
+#     """
+#     Keyword arguments:
+#     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
+#     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
+#     run_time -- assume runs beyond run_time are dead
+#     """
+#     start = datetime.utcnow()
+#     check = CheckResult(connection, 'atac_seq_status')
+#     my_auth = connection.ff_keys
+#     check.action = "atac_seq_start"
+#     check.description = "run missing steps and add processing results to processed files, match set status"
+#     check.brief_output = ['All Good!']
+#     check.summary = "All Good!"
+#     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
+#                          'completed_runs': [], 'problematic_runs': []}
+#     check.status = 'PASS'
+#     exp_type = 'ATAC-seq'
+#     # check indexing queue
+#     check, skip = wfr_utils.check_indexing(check, connection)
+#     if skip:
+#         return check
+#     return check
 
 
-@action_function(start_runs=True, patch_completed=True)
-def atac_seq_start(connection, **kwargs):
-    """Start runs by sending compiled input_json to run_workflow endpoint"""
-    start = datetime.utcnow()
-    action = ActionResult(connection, 'atac_seq_start')
-    my_auth = connection.ff_keys
-    my_env = connection.ff_env
-    fs_env = connection.fs_env
-    check_result = action.get_associated_check_result(kwargs).get('full_output', {})
-    missing_runs = []
-    patch_meta = []
-    if kwargs.get('start_runs'):
-        missing_runs = check_result.get('needs_runs')
-    if kwargs.get('patch_completed'):
-        patch_meta = check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False)
-    return action
+# @action_function(start_runs=True, patch_completed=True)
+# def atac_seq_start(connection, **kwargs):
+#     """Start runs by sending compiled input_json to run_workflow endpoint"""
+#     start = datetime.utcnow()
+#     action = ActionResult(connection, 'atac_seq_start')
+#     my_auth = connection.ff_keys
+#     my_env = connection.ff_env
+#     fs_env = connection.fs_env
+#     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
+#     missing_runs = []
+#     patch_meta = []
+#     if kwargs.get('start_runs'):
+#         missing_runs = check_result.get('needs_runs')
+#     if kwargs.get('patch_completed'):
+#         patch_meta = check_result.get('completed_runs')
+#     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False)
+#     return action
 
 
 @check_function(lab_title=None, start_date=None, action="margi_start")
@@ -1660,14 +1637,12 @@ def margi_status(connection, **kwargs):
                          'completed_runs': [], 'problematic_runs': []}
     check.status = 'PASS'
     exp_type = 'MARGI'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
     # Build the query, add date and lab if available
-    query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+    query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     print(len(res))
@@ -1675,7 +1650,7 @@ def margi_status(connection, **kwargs):
         check.summary = 'All Good!'
         return check
 
-    check = wfr_utils.check_margi(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_margi(res, my_auth, exp_type, check, start, lambda_limit)
     return check
 
 
@@ -1984,8 +1959,6 @@ def rna_seq_status(connection, **kwargs):
     check.status = 'PASS'
 
     exp_type = 'RNA-seq'
-    # completion tag
-    tag = wfr_utils.accepted_versions[exp_type][-1]
     # check indexing queue
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
@@ -1995,14 +1968,14 @@ def rna_seq_status(connection, **kwargs):
     if user_query:
         query = user_query
     else:
-        query = wfr_utils.build_exp_type_query(exp_type, kwargs)
+        query = wfr_utils.build_exp_type_query(my_auth, exp_type, kwargs)
     print(query)
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_rna(res, my_auth, tag, check, start, lambda_limit)
+    check = wfr_utils.check_rna(res, my_auth, exp_type, check, start, lambda_limit)
     return check
 
 
@@ -2377,16 +2350,13 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
     feature = 'insulation_scores_and_boundaries'
     # minimum number of reads in the mcool file (100M)
     reads_cutoff = 100000000
-    # completion tag
-    tag = wfr_utils.feature_calling_accepted_versions[feature][-1]
     # check indexing queue
-
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
 
     # Build the first query, experiments that have run the hic pipeline. add date and lab if available
-    query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
+    query = wfr_utils.build_feature_calling_query(my_auth, exp_types, feature, kwargs)
 
     # filter expSets by the total number of reads in the mcoolfile (found in the combined-pairs file qc)
     query += '&processed_files.file_format.display_title=pairs'
@@ -2662,11 +2632,11 @@ def problematic_wfrs_fdn_status(connection, **kwargs):
         return check
 
     for a_wfr in errored_wfrs:
-        wfr_type, time_info = a_wfr['display_title'].split(' run ')
+        wfr_type, _ = a_wfr['display_title'].split(' run ')
         if len(wfr_type.strip().split(' ')) == 2:
-            wfr_type_base, wfr_version = wfr_type.strip().split(' ')
+            wfr_type_base, _ = wfr_type.strip().split(' ')
         else:
-            wfr_type_base, wfr_version, tag = wfr_type.strip().split(' ')
+            wfr_type_base, _, _ = wfr_type.strip().split(' ')
         run_type = wfr_type_base.strip()
         # categorize
         desc = a_wfr.get('description', '')
@@ -2768,7 +2738,7 @@ def compartments_caller_status(connection, **kwargs):
         return check
 
     # Build the first query, experiments that have run the hic pipeline. add date and lab if available
-    query = wfr_utils.build_feature_calling_query(exp_types, feature, kwargs)
+    query = wfr_utils.build_feature_calling_query(my_auth, exp_types, feature, kwargs)
     print(query)
 
     # The search
