@@ -819,7 +819,8 @@ def in_situ_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="dilution_hic_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="dilution_hic_start")
 def dilution_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -875,7 +876,8 @@ def dilution_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="tcc_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="tcc_start")
 def tcc_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -929,7 +931,8 @@ def tcc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="dnase_hic_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="dnase_hic_start")
 def dnase_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -983,7 +986,8 @@ def dnase_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="capture_hic_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="capture_hic_start")
 def capture_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1037,7 +1041,8 @@ def capture_hic_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="micro_c_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="micro_c_start")
 def micro_c_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1091,7 +1096,8 @@ def micro_c_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="chia_pet_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="chia_pet_start")
 def chia_pet_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1145,7 +1151,8 @@ def chia_pet_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="in_situ_chia_pet_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="in_situ_chia_pet_start")
 def in_situ_chia_pet_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1199,7 +1206,8 @@ def in_situ_chia_pet_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="trac_loop_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="trac_loop_start")
 def trac_loop_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1253,7 +1261,8 @@ def trac_loop_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="plac_seq_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="plac_seq_start")
 def plac_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1306,7 +1315,8 @@ def plac_seq_start(connection, **kwargs):
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
-@check_function(lab_title=None, start_date=None, action="hichip_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="hichip_start")
 def hichip_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1360,7 +1370,8 @@ def hichip_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="repli_2_stage_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="repli_2_stage_start")
 def repli_2_stage_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1413,7 +1424,8 @@ def repli_2_stage_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="repli_multi_stage_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="repli_multi_stage_start")
 def repli_multi_stage_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1466,7 +1478,8 @@ def repli_multi_stage_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="tsa_seq_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="tsa_seq_start")
 def tsa_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1520,7 +1533,8 @@ def tsa_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="nad_seq_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="nad_seq_start")
 def nad_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1573,52 +1587,8 @@ def nad_seq_start(connection, **kwargs):
     return action
 
 
-# @check_function(lab_title=None, start_date=None, action="atac_seq_start")
-# def atac_seq_status(connection, **kwargs):
-#     """
-#     Keyword arguments:
-#     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
-#     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
-#     run_time -- assume runs beyond run_time are dead
-#     """
-#     start = datetime.utcnow()
-#     check = CheckResult(connection, 'atac_seq_status')
-#     my_auth = connection.ff_keys
-#     check.action = "atac_seq_start"
-#     check.description = "run missing steps and add processing results to processed files, match set status"
-#     check.brief_output = ['All Good!']
-#     check.summary = "All Good!"
-#     check.full_output = {'skipped': [], 'running_runs': [], 'needs_runs': [],
-#                          'completed_runs': [], 'problematic_runs': []}
-#     check.status = 'PASS'
-#     exp_type = 'ATAC-seq'
-#     # check indexing queue
-#     check, skip = wfr_utils.check_indexing(check, connection)
-#     if skip:
-#         return check
-#     return check
-
-
-# @action_function(start_runs=True, patch_completed=True)
-# def atac_seq_start(connection, **kwargs):
-#     """Start runs by sending compiled input_json to run_workflow endpoint"""
-#     start = datetime.utcnow()
-#     action = ActionResult(connection, 'atac_seq_start')
-#     my_auth = connection.ff_keys
-#     my_env = connection.ff_env
-#     fs_env = connection.fs_env
-#     check_result = action.get_associated_check_result(kwargs).get('full_output', {})
-#     missing_runs = []
-#     patch_meta = []
-#     if kwargs.get('start_runs'):
-#         missing_runs = check_result.get('needs_runs')
-#     if kwargs.get('patch_completed'):
-#         patch_meta = check_result.get('completed_runs')
-#     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=False)
-#     return action
-
-
-@check_function(lab_title=None, start_date=None, action="margi_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, action="margi_start")
 def margi_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1939,7 +1909,8 @@ def rna_strandedness_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, query='', action="rna_seq_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                accepted_vers=None, query='', action="rna_seq_start")
 def rna_seq_status(connection, **kwargs):
     """
     Keyword arguments:

@@ -37,210 +37,6 @@ def get_workflow_details(my_auth):
     return wf_details
 
 
-# workflow_details = {
-#     "md5": {
-#         "run_time": 12,
-#         "accepted_versions": ["0.0.4", "0.2.6"]
-#     },
-#     # old workflow run naming, updated on workflows for old ones
-#     "fastqc-0-11-4-1": {
-#         "run_time": 50,
-#         "accepted_versions": ["0.2.0"]
-#     },
-#     "fastqc": {
-#         "run_time": 50,
-#         "accepted_versions": ["v1", "v2"]
-#     },
-#     "bwa-mem": {
-#         "run_time": 50,
-#         "accepted_versions": ["0.2.6", "0.3.0"]
-#     },
-#     "pairsqc-single": {
-#         "run_time": 100,
-#         "accepted_versions": ["0.2.5", "0.2.6"]
-#     },
-#     "hi-c-processing-bam": {
-#         "run_time": 200,
-#         "accepted_versions": ["0.3.0"]
-#     },
-#     "hi-c-processing-pairs": {
-#         "run_time": 200,
-#         "accepted_versions": ["0.3.0"]
-#     },
-#     "hi-c-processing-pairs-nore": {
-#         "run_time": 200,
-#         "accepted_versions": ["0.2.6"]
-#     },
-#     "hi-c-processing-pairs-nonorm": {
-#         "run_time": 200,
-#         "accepted_versions": ["0.2.6"]
-#     },
-#     "hi-c-processing-pairs-nore-nonorm": {
-#         "run_time": 200,
-#         "accepted_versions": ["0.2.6"]
-#     },
-#     "repliseq-parta": {
-#         "run_time": 200,
-#         "accepted_versions": ["v13.1", "v14", "v16","v16.1"]
-#     },
-#     "bedGraphToBigWig": {
-#         "run_time": 24,
-#         "accepted_versions": ["v4", "v5", "v6"]
-#     },
-#     "bedtomultivec": {
-#         "run_time": 24,
-#         "accepted_versions": ["v4"]
-#     },
-#     "bedtobeddb": {
-#         "run_time": 24,
-#         "accepted_versions": ["v2", "v3"]
-#     },
-#     "encode-chipseq-aln-chip": {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1.1", "2.1.6"]
-#     },
-#     "encode-chipseq-aln-ctl": {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1.1", "2.1.6"]
-#     },
-#     "encode-chipseq-postaln": {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1.1", "2.1.6"]
-#     },
-#     "encode-atacseq-aln": {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1.1"]
-#     },
-#     "encode-atacseq-postaln": {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1.1"]
-#     },
-#     "mergebed": {
-#         "run_time": 200,
-#         "accepted_versions": ["v1"]
-#     },
-#     'imargi-processing-fastq': {
-#         "run_time": 50,
-#         "accepted_versions": ["1.1.1_dcic_4"]
-#     },
-#     'imargi-processing-bam': {
-#         "run_time": 50,
-#         "accepted_versions": ["1.1.1_dcic_4"]
-#     },
-#     'imargi-processing-pairs': {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1.1_dcic_4"]
-#     },
-#     'encode-rnaseq-stranded': {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1"]
-#     },
-#     'encode-rnaseq-unstranded': {
-#         "run_time": 200,
-#         "accepted_versions": ["1.1"]
-#     },
-#     'rna-strandedness': {
-#         "run_time": 200,
-#         "accepted_versions": ["v2"]
-#     },
-#     'bamqc': {
-#         "run_time": 200,
-#         "accepted_versions": ["v2", "v3"]
-#     },
-#     'fastq-first-line': {
-#         "run_time": 200,
-#         "accepted_versions": ["v2"]
-#     },
-#     're_checker_workflow': {
-#         "run_time": 200,
-#         "accepted_versions": ['v1.1', 'v1.2']
-#     },
-#     'mad_qc_workflow': {
-#         "run_time": 200,
-#         "accepted_versions": ['1.1_dcic_2']
-#     },
-#     'merge-fastq': {
-#         "run_time": 200,
-#         "accepted_versions": ['v1']
-#     },
-#     'insulation-scores-and-boundaries-caller': {
-#             "run_time": 200,
-#             "accepted_versions": ['v1']
-#     },
-#     'compartments-caller': {
-#                 "run_time": 200,
-#                 "accepted_versions": ['v1.2']
-#     },
-#     'mcoolQC': {
-#                 "run_time": 200,
-#                 "accepted_versions": ['v1']
-#     }
-# }
-
-
-# accepted versions for completed pipelines
-# accepted_versions = {
-#     # OFFICIAL
-#     'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # OFFICIAL
-#     'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # OFFICIAL
-#     'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # OFFICIAL  # NO-RE
-#     'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # OFFICIAL  # NO-NORM
-#     'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # OFFICIAL  # NO-RE
-#     'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # Preliminary - Released to network  # NO-RE NO-NORM
-#     'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # Preliminary - Released to network  # NO-RE NO-NORM
-#     'in situ ChIA-PET': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # Preliminary - Released to network  # NO-RE NO-NORM
-#     'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # Preliminary - Released to network  # NO-NORM
-#     'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # Preliminary - Released to network  # NO-NORM
-#     'HiChIP': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-#     # bwa mem # handled manually for now
-#     'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
-#     # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
-#     'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
-#                       'RepliSeq_Pipeline_v14_step1',
-#                       'RepliSeq_Pipeline_v16_step1',
-#                       'RepliSeq_Pipeline_v16.1_step1'],
-#     # OFFICIAL - 1 STEP
-#     '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
-#                           'RepliSeq_Pipeline_v14_step1',
-#                           'RepliSeq_Pipeline_v16_step1',
-#                           'RepliSeq_Pipeline_v16.1_step1'],
-#     # OFFICIAL - 1 STEP
-#     'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
-#                               'RepliSeq_Pipeline_v14_step1',
-#                               'RepliSeq_Pipeline_v16_step1',
-#                               'RepliSeq_Pipeline_v16.1_step1'],
-#     # Preliminary - Released to network
-#     'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1', 'RepliSeq_Pipeline_v16.1_step1'],
-#     # OFFICIAL
-#     'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
-#     # OFFICIAL
-#     'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1', 'ENCODE_ChIP_Pipeline_2.1.6'],
-#     # OFFICIAL
-#     'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
-#     'single cell Repli-seq': [''],
-#     'cryomilling TCC': [''],
-#     'single cell Hi-C': [''],
-#     'sci-Hi-C': [''],
-#     'MC-3C': [''],
-#     'MC-Hi-C': [''],
-#     'DamID-seq': [''],
-#     'DNA SPRITE': [''],
-#     'RNA-DNA SPRITE': [''],
-#     'GAM': [''],
-#     'CUT&RUN': [''],
-#     'TRIP': ['']
-#     }
-
 # Accepted versions for feature calling pipelines
 feature_calling_accepted_versions = {
     'insulation_scores_and_boundaries': ["insulation_scores_and_boundaries_v1"],
@@ -973,7 +769,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_file['accession']
-        report = get_wfr_out(a_file, run_name,  key=my_auth, md_qc=True)
+        report = get_wfr_out(a_file, run_name, key=my_auth, md_qc=True)
         if report['status'] == 'running':
             running.append(file_id)
         elif report['status'].startswith("no complete run, too many"):
@@ -1015,12 +811,12 @@ def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, no
     for a_set in res:
         # get all related items
         all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+                                                   store_frame='embedded',
+                                                   add_pc_wfr=True,
+                                                   ignore_field=['experiment_relation',
+                                                                 'biosample_relation',
+                                                                 'references',
+                                                                 'reference_pubs'])
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds)
