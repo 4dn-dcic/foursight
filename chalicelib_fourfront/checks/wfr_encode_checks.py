@@ -1,14 +1,12 @@
 from datetime import datetime
 from dcicutils import ff_utils
-from dcicutils.s3_utils import s3Utils
 from .helpers import wfr_utils
-from .helpers import wfrset_utils
 
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
 # individually - they're now part of class Decorators in foursight-core::decorators
 # that requires initialization with foursight prefix.
-from .helpers.confchecks import *
+from .helpers.confchecks import check_function, action_function, CheckResult, ActionResult
 
 lambda_limit = wfr_utils.lambda_limit
 
@@ -146,19 +144,18 @@ def chipseq_status(connection, **kwargs):
                 # exp_files format: [[pair1,pair2], [pair1,pair2]]
                 # There are more than 2 files, so paired is a list (not string)
                 # Traverse paired/exp files and assign them for merging
-                input_list = [[],[],[]]
+                input_list = [[], [], []]
                 i = j = 0
                 while i < len(paired):
-                    exp = exp_files[j]
                     if paired[i] == 'paired':
                         # first add paired end 1s
                         input_list[0].append(exp_files[j][0])
                         input_list[1].append(exp_files[j][1])
-                        i+=2
+                        i += 2
                     elif paired[i] == 'single':
                         input_list[2].append(exp_files[0])
-                        i+=1
-                    j+=1
+                        i += 1
+                    j += 1
                 # collect files for step1 and step1c
                 merged_files = []
                 step0_status = 'complete'
@@ -171,8 +168,9 @@ def chipseq_status(connection, **kwargs):
                         s0_input_files = {'input_fastqs': merge_case}
                         s0_tag = exp_id + '_p' + str(merge_enum)
                         keep, step0_status, step0_output = wfr_utils.stepper(my_auth, library, keep,
-                                                                         'step0', s0_tag, merge_case,
-                                                                         s0_input_files, step0_name, 'merged_fastq', organism=organism)
+                                                                             'step0', s0_tag, merge_case,
+                                                                             s0_input_files, step0_name,
+                                                                             'merged_fastq', organism=organism)
                         if step0_status == 'complete':
                             merged_files.append(step0_output)
                         else:
@@ -197,7 +195,10 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIZJB62D1/'
                 input_files['chip.ref_fa'] = '/files-reference/4DNFI823L888/'
-                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}, "chip.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.bowtie2Index.tar"}}
+                input_files['additional_file_parameters'] = {
+                    "chip.bwa_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"},
+                    "chip.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.bowtie2Index.tar"}
+                }
             if organism == 'mouse':
                 org = 'mm'
                 input_files['chip.bwa_idx_tar'] = '/files-reference/4DNFIZ2PWCC2/'
@@ -205,11 +206,14 @@ def chipseq_status(connection, **kwargs):
                 input_files['chip.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                 input_files['chip.chrsz'] = '/files-reference/4DNFIBP173GC/'
                 input_files['chip.ref_fa'] = '/files-reference/4DNFIC1NWMVJ/'
-                input_files['additional_file_parameters'] = {"chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}, "chip.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.bowtie2Index.tar"}}
+                input_files['additional_file_parameters'] = {
+                    "chip.bwa_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"},
+                    "chip.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.bowtie2Index.tar"}
+                }
             # step1 parameters
             parameters = {}
             parameters["chip.gensz"] = org
-            parameters["chip.filter_chrs"] = ["chr[MUE]","random","alt"]
+            parameters["chip.filter_chrs"] = ["chr[MUE]", "random", "alt"]
             if paired == 'single':
                 frag_temp = [300]
                 fraglist = frag_temp * len(exp_files)
@@ -218,7 +222,7 @@ def chipseq_status(connection, **kwargs):
             elif paired == 'paired':
                 parameters['chip.paired_end'] = True
             else:
-                parameters['chip.paired_ends'] = [True if pe=="paired" else False for pe in paired]
+                parameters['chip.paired_ends'] = [True if pe == "paired" else False for pe in paired]
 
             # run step1 for control
             if control:
@@ -284,7 +288,8 @@ def chipseq_status(connection, **kwargs):
                     # find the control file if there is a control set found
                     if control_set:
                         try:
-                            exp_cnt_ids = [i['experiment'] for i in exp_resp['experiment_relation'] if i['relationship_type'] == 'controlled by']
+                            exp_cnt_ids = [i['experiment'] for i in exp_resp['experiment_relation']
+                                           if i['relationship_type'] == 'controlled by']
                             exp_cnt_ids = [i['@id'] for i in exp_cnt_ids]
                         except Exception:
                             control_ready = False
@@ -332,7 +337,7 @@ def chipseq_status(connection, **kwargs):
         elif ready_for_step2:
             # for control, add tag to set, and files to experiments
             if control:
-                tag = get_current_pipeline_tag(my_auth, exp_type)
+                tag = wfr_utils.get_current_pipeline_tag(my_auth, exp_type)
                 complete['add_tag'] = [set_acc, tag]
             # for non controls check for step2
             else:
@@ -408,8 +413,8 @@ def chipseq_status(connection, **kwargs):
                 # in the case of neither, define paired_ends
                 else:
                     print("Mixed endedness here!")
-                    parameters['chip.paired_ends'] = [True if pe=="paired" else False for pe in paired_ends]
-                    parameters['chip.ctl_paired_ends'] = [True if pe=="paired" else False for pe in paired_ends]
+                    parameters['chip.paired_ends'] = [True if pe == "paired" else False for pe in paired_ends]
+                    parameters['chip.ctl_paired_ends'] = [True if pe == "paired" else False for pe in paired_ends]
                     parameters['chip.ctl_depth_limit'] = 0
                     # can't automate subsampling
                     parameters['chip.exp_ctl_depth_ratio_limit'] = 0
@@ -433,7 +438,7 @@ def chipseq_status(connection, **kwargs):
                                                                      additional_input={'parameters': parameters}, organism=organism)
                 if step2_status == 'complete':
                     print("step2 outputs: ", step2_output)
-                    tag = get_current_pipeline_tag(my_auth, exp_type)
+                    tag = wfr_utils.get_current_pipeline_tag(my_auth, exp_type)
                     set_opt_peak = step2_output[0]
                     set_cons_peak = step2_output[1]
                     set_fc_bw = step2_output[2]
@@ -509,7 +514,7 @@ def chipseq_start(connection, **kwargs):
         missing_runs = chipseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = chipseq_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=True, runtype='chip')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='chip')
     return action
 
 
@@ -668,13 +673,17 @@ def atacseq_status(connection, **kwargs):
                 input_files['atac.bowtie2_idx_tar'] = '/files-reference/4DNFIMQPTYDY/'
                 input_files['atac.blacklist'] = '/files-reference/4DNFIZ1TGJZR/'
                 input_files['atac.chrsz'] = '/files-reference/4DNFIZJB62D1/'
-                input_files['additional_file_parameters'] = {"atac.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}}
+                input_files['additional_file_parameters'] = {
+                    "atac.bowtie2_idx_tar": {"rename": "GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta.tar"}
+                }
             if organism == 'mouse':
                 org = 'mm'
                 input_files['atac.bowtie2_idx_tar'] = '/files-reference/4DNFI2493SDN/'
                 input_files['atac.blacklist'] = '/files-reference/4DNFIZ3FBPK8/'
                 input_files['atac.chrsz'] = '/files-reference/4DNFIBP173GC/'
-                input_files['additional_file_parameters'] = {"atac.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}}
+                input_files['additional_file_parameters'] = {
+                    "atac.bowtie2_idx_tar": {"rename": "mm10_no_alt_analysis_set_ENCODE.fasta.tar"}
+                }
             # add input files
             input_files['atac.fastqs'] = [exp_files]
             # step1 Parameters
@@ -803,7 +812,7 @@ def atacseq_status(connection, **kwargs):
                                                                      ['atac.optimal_peak', 'atac.conservative_peak', 'atac.sig_fc'],
                                                                      additional_input={'parameters': parameters}, organism=organism)
                 if step3_status == 'complete':
-                    tag = get_current_pipeline_tag(my_auth, exp_type)
+                    tag = wfr_utils.get_current_pipeline_tag(my_auth, exp_type)
                     set_opt_peak = step3_output[0]
                     set_cons_peak = step3_output[1]
                     set_sig_fc = step3_output[2]
@@ -879,5 +888,5 @@ def atacseq_start(connection, **kwargs):
         missing_runs = atacseq_check_result.get('needs_runs')
     if kwargs.get('patch_completed'):
         patch_meta = atacseq_check_result.get('completed_runs')
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,  move_to_pc=True, runtype='atac')
+    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='atac')
     return action

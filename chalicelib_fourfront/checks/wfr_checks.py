@@ -8,7 +8,7 @@ from .helpers import wfrset_utils
 # rather than importing check_function, action_function, CheckResult, ActionResult
 # individually - they're now part of class Decorators in foursight-core::decorators
 # that requires initialization with foursight prefix.
-from .helpers.confchecks import *
+from .helpers.confchecks import check_function, action_function, CheckResult, ActionResult
 
 lambda_limit = wfr_utils.lambda_limit
 
@@ -169,14 +169,14 @@ def md5run_status(connection, **kwargs):
             break
 
         # cnt of files to be triggered at this iteration of loop
-        n_runs_to_trigger = len(missing_md5_to_start + not_switched_status) 
+        n_runs_to_trigger = len(missing_md5_to_start + not_switched_status)
         # find bucket
         if 'FileProcessed' in a_file['@type']:
-                my_bucket = out_bucket
+            my_bucket = out_bucket
         elif 'FileVistrack' in a_file['@type']:
-                my_bucket = out_bucket
+            my_bucket = out_bucket
         else:  # covers cases of FileFastq, FileReference, FileMicroscopy
-                my_bucket = raw_bucket
+            my_bucket = raw_bucket
         # check if file is in s3
         file_id = a_file['accession']
         head_info = my_s3_util.does_key_exist(a_file['upload_key'], my_bucket)
@@ -430,7 +430,7 @@ def pairsqc_status(connection, **kwargs):
     lab_title -- limit search with a lab i.e. Bing+Ren, UCSD
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     non-dcic -- if True does not require source_experiments so would run on any pairs file
-        WARNING: you probably want to run along with lab_title or start_date to prevent 
+        WARNING: you probably want to run along with lab_title or start_date to prevent
         running on all non-DCIC pairs files
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
@@ -1315,6 +1315,7 @@ def plac_seq_start(connection, **kwargs):
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True)
     return action
 
+
 @check_function(lab_title=None, start_date=None, max_runtime=None,
                 accepted_vers=None, action="hichip_start")
 def hichip_status(connection, **kwargs):
@@ -1420,7 +1421,7 @@ def repli_2_stage_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
-                                   move_to_pc=True,  runtype='repliseq')
+                                   move_to_pc=True, runtype='repliseq')
     return action
 
 
@@ -1474,7 +1475,7 @@ def repli_multi_stage_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
-                                   move_to_pc=True,  runtype='repliseq')
+                                   move_to_pc=True, runtype='repliseq')
     return action
 
 
@@ -1529,7 +1530,7 @@ def tsa_seq_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
-                                   move_to_pc=False,  runtype='repliseq')
+                                   move_to_pc=False, runtype='repliseq')
     return action
 
 
@@ -1583,7 +1584,7 @@ def nad_seq_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = check_result.get('completed_runs')
     action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start,
-                                   move_to_pc=False,  runtype='repliseq')
+                                   move_to_pc=False, runtype='repliseq')
     return action
 
 
@@ -1720,9 +1721,10 @@ def bed2multivec_status(connection, **kwargs):
         return check
 
     if not healthy_res and prb_res:
-        check.full_output['prob_files'] = [{'missing tag': [i[0]['accession'] for i in prb_res if i[1] == 'missing_tag'],
-                                            'unregistered tag': [[i[0]['accession'], i[0]['tags']] for i in prb_res if i[1] == 'unregistered_tag'],
-                                            'missing higlass_defaults': [i[0]['accession'] for i in prb_res if i[1] == 'missing higlass_defaults']}]
+        check.full_output['prob_files'] = [
+            {'missing tag': [i[0]['accession'] for i in prb_res if i[1] == 'missing_tag'],
+             'unregistered tag': [[i[0]['accession'], i[0]['tags']] for i in prb_res if i[1] == 'unregistered_tag'],
+             'missing higlass_defaults': [i[0]['accession'] for i in prb_res if i[1] == 'missing higlass_defaults']}]
 
         check.status = 'WARN'
         return check
@@ -1789,7 +1791,6 @@ def rna_strandedness_status(connection, **kwargs):
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
-    start = datetime.utcnow()
     check = CheckResult(connection, 'rna_strandedness_status')
     my_auth = connection.ff_keys
     check.action = "rna_strandedness_start"
@@ -1819,7 +1820,8 @@ def rna_strandedness_status(connection, **kwargs):
 
     targets = []
     for a_file in files:
-        replicate_expsets = [es['accession'] for es in a_file['experiments'][0]['experiment_sets'] if es['experimentset_type'] == 'replicate']
+        replicate_expsets = [
+            es['accession'] for es in a_file['experiments'][0]['experiment_sets'] if es['experimentset_type'] == 'replicate']
         if replicate_expsets and replicate_expsets[0] in expsets_acc_to_skip:
             continue  # skip this file if the expset is tagged with skip_processing
 
@@ -1828,7 +1830,7 @@ def rna_strandedness_status(connection, **kwargs):
         if kmer_file:
             targets.append(a_file)
         else:
-            problematic.append([a_file['accession'], 'missing re_kmer reference file for %s'%(org)])
+            problematic.append([a_file['accession'], 'missing re_kmer reference file for %s' % (org)])
 
     if not targets and not problematic:
         check.summary = "All good!"
@@ -1991,14 +1993,14 @@ def bamqc_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # Build the query 
+    # Build the query
     default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
     # find bam files produced bt the Hi-C Post Alignment Processing wfr
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
     query = 'search/?file_type=alignments&{}'.format(stati)
     query += '&type=FileProcessed'
-    if kwargs.get('non_dcic') is not True: # skip this bit if running on non-DCIC bams 
+    if kwargs.get('non_dcic') is not True:  # skip this bit if running on non-DCIC bams
         query += wfr_outputs
     query += '&quality_metric.display_title=No+value'
     # add date
@@ -2071,7 +2073,6 @@ def fastq_first_line_status(connection, **kwargs):
     start_date -- limit search to files generated since a date formatted YYYY-MM-DD
     run_time -- assume runs beyond run_time are dead (default=24 hours)
     """
-    start = datetime.utcnow()
     check = CheckResult(connection, 'fastq_first_line_status')
     my_auth = connection.ff_keys
     check.action = "fastq_first_line_start"
@@ -2205,7 +2206,7 @@ def bam_re_status(connection, **kwargs):
     # per https://github.com/4dn-dcic/docker-4dn-RE-checker/blob/master/scripts/4DN_REcount.pl#L74
     acceptable_enzymes = [  # "AluI",
         "NotI", "MboI", "DpnII", "HindIII", "NcoI", "MboI+HinfI", "HinfI+MboI",  # from the workflow
-        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII", "MseI","Arima - A1, A2"  # added patterns in action
+        "MspI", "NcoI_MspI_BspHI", "DdeI", "DdeI and DpnII", "MseI", "Arima - A1, A2"  # added patterns in action
     ]
     # make a new list of files to work on
     filtered_res = []
@@ -2227,7 +2228,6 @@ def bam_re_status(connection, **kwargs):
                 missing_nz.append(nz)
         else:
             no_nz.append(a_file)
-
 
     check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
     if missing_nz:
@@ -2369,11 +2369,11 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 if str(binsize) in problematic_resolutions:
                     skip = True
                     continue
-                # # Skip problematic mcools files for now, until qc metrics for mcools are in place
-                # if file_meta.get('tags'):
-                #     if 'skip_domain_callers' in file_meta['tags']:
-                #         skip = True
-                #         continue
+                # Skip tagged mcools files as needed
+                if file_meta.get('tags'):
+                    if 'skip_domain_callers' in file_meta['tags']:
+                        skip = True
+                        continue
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
         if skip:
             continue
@@ -2389,7 +2389,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         else:
             patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
             completed['patch_opf'].append([a_res['accession'], patch_data])
-            completed['add_tag'] = [a_res['accession'], tag]
+            completed['add_tag'] = [a_res['accession'], wfr_utils.feature_calling_accepted_versions[feature][-1]]
 
         if running:
             check.full_output['running_runs'].append({a_res['accession']: running})
@@ -2434,7 +2434,9 @@ def insulation_scores_and_boundaries_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='insulation_scores_and_boundaries', pc_append=True)
+    action = wfr_utils.start_tasks(
+        missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True,
+        runtype='insulation_scores_and_boundaries', pc_append=True)
     return action
 
 
@@ -2450,7 +2452,7 @@ def long_running_wfrs_fdn_status(connection, **kwargs):
     check = CheckResult(connection, 'long_running_wfrs_fdn_status')
     my_auth = connection.ff_keys
     check.action = "long_running_wfrs_fdn_start"
-    check.description = "Find runs running longer than specified, action will delete the metadata for cleanup, which might lead to re-runs by pipeline checks"
+    check.description = "Find runs running longer than specified, action will delete the metadata and might lead to re-runs"
     check.brief_output = []
     check.summary = ""
     check.full_output = []
@@ -2806,7 +2808,9 @@ def compartments_caller_start(connection, **kwargs):
     if kwargs.get('patch_completed'):
         patch_meta = insu_and_boun_check_result.get('completed_runs')
 
-    action = wfr_utils.start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True, runtype='compartments', pc_append=True)
+    action = wfr_utils.start_tasks(
+        missing_runs, patch_meta, action, my_auth, my_env, fs_env, start, move_to_pc=True,
+        runtype='compartments', pc_append=True)
     return action
 
 

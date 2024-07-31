@@ -354,8 +354,7 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
     # you should provide key or all_wfrs
     assert key
     workflow_details = get_workflow_details(key)
-    if wfr_name not in workflow_details:
-        assert wfr_name in workflow_details
+    assert wfr_name in workflow_details
     # get default accepted versions if not provided
     if not versions:
         versions = workflow_details[wfr_name]['accepted_versions']
@@ -690,7 +689,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
                                     if relation['relationship_type'] == 'paired with']
                     assert len(paired_files) == 1
                     paired = "Yes"
-                except:
+                except Exception:
                     paired = "No"
 
             if paired == 'No':
@@ -1441,7 +1440,8 @@ def start_missing_run(run_info, auth, env, fs_env):
     if not attr_file:
         possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
         error_message = ('one of these argument names {} which carry the input file -not the references-'
-                         ' should be added to att_keys dictionary on foursight cgap_utils.py or attr_keys in wfr_utils.py function start_missing_run').format(possible_keys)
+                         ' should be added to att_keys dictionary on foursight cgap_utils.py or attr_keys'
+                         ' in wfr_utils.py function start_missing_run').format(possible_keys)
         raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
@@ -1501,12 +1501,12 @@ def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None
     for a_set in res:
         # get all related items
         all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+                                                   store_frame='embedded',
+                                                   add_pc_wfr=True,
+                                                   ignore_field=['experiment_relation',
+                                                                 'biosample_relation',
+                                                                 'references',
+                                                                 'reference_pubs'])
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds)
@@ -2017,7 +2017,7 @@ def select_best_2(file_list, all_files, all_qcs):
     scores = []
     # run it for list with at least 3 elements
     if len(file_list) < 3:
-        return(file_list)
+        return (file_list)
 
     for f in file_list:
         f_resp = [i for i in all_files if i['@id'] == f][0]
