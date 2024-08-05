@@ -7,6 +7,15 @@ foursight
 Change Log
 ----------
 
+
+4.9.0
+=====
+
+* Refactor of wfr_utils to utilize properties and tags on updated schemas for workflow and experiment_type to generate info about accepted versions of workflows and pipelines
+* Updated wfr_checks and wfr_encoded_checks to utilize the new info from db
+* provided additional keyword args to override the accepted versions (useful for testing or some cases where re-runs of updated pipelines are needed)
+
+
 4.8.1
 =====
 
