@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.8.2
+=====
+
+* Increases EC2 utilized by select QC pipelines from t3.small to t3.medium
+`PR 578: increase EC2 instance size for select QCs <https://github.com/4dn-dcic/foursight/pull/578>`_
+
 4.8.1
 =====
 
