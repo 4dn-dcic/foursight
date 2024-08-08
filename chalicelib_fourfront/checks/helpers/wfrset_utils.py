@@ -38,7 +38,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'workflow_uuid': 'c77a117b-9a58-477e-aaa5-291a109a99f6',
         "config": {
             "ebs_size": 10,
-            "instance_type": 't3.small',
+            "instance_type": 't3.medium',
             'EBS_optimized': True
         }
     },
@@ -47,14 +47,14 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         'workflow_uuid': '49e96b51-ed6c-4418-a693-d0e9f79adfa5',
         "config": {
             "ebs_size": 10,
-            "instance_type": 't3.small',
+            "instance_type": 't3.medium',
             'EBS_optimized': True
         }
     },
     {
         'app_name': 'pairsqc-single',
         'workflow_uuid': 'b8c533e0-f8c0-4510-b4a1-ac35158e27c3',
-        "config": {"instance_type": 't3.small'}
+        "config": {"instance_type": 't3.medium'}
     },
     {
         'app_name': 'bwa-mem',
@@ -404,7 +404,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "fastq-first-line",
         "workflow_uuid": "93a1a931-d55d-4623-adfb-0fa735daf6ae",
         "overwrite_input_extra": False,
-        'config': {'mem': 2, 'cpu': 2, "instance_type": "t3.small"}
+        'config': {'mem': 2, 'cpu': 2, "instance_type": "t3.medium"}
     },
     {
         "app_name": "re_checker_workflow",
