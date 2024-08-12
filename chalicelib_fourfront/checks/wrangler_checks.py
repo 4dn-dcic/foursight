@@ -1053,38 +1053,47 @@ def validate_entrez_geneids(connection, **kwargs):
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
+    import pdb; pdb.set_trace()
+
     genes = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not genes:
         check.status = "FAIL"
         check.description = "Could not retrieve gene records from fourfront"
         return check
     geneids = [g.get('geneid') for g in genes]
-
-    query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
-    for gid in geneids:
+    ID_BATCH_SIZE = 150
+    query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}&rettype=uilist&retmode=text"
+    for i in range(0, len(geneids), ID_BATCH_SIZE):
+        batch = geneids[i: i + ID_BATCH_SIZE]
+        gids = ', '.join(batch)
         if timeouts > 5:
             check.status = "FAIL"
             check.description = "Too many ncbi timeouts. Maybe they're down."
             return check
-        gquery = query.format(id=gid)
+        gquery = query.format(id=gids)
         # make 3 attempts to query gene at ncbi
         for count in range(3):
             resp = requests.get(gquery)
             if resp.status_code == 200:
+                try:
+                    rtxt = resp.text
+                    if rtxt.startswith('Error'):
+                        problems['Error response'].extend(batch)
+                    retids = [i for i in resp.text.split('\n') if i]
+                    if not len(retids) == len(batch):  # not all the gids are valid in this chunk
+                        invalids = set(batch) - set(retids)
+                        if invalids:
+                            problems.update({inv: 'not a valid geneid' for inv in invalids})
+                except AttributeError:  # seems pretty unlikely but
+                    problems['empty response'].extend(batch)
                 break
             if resp.status_code == 429:
                 time.sleep(0.334)
                 continue
             if count == 2:
                 timeouts += 1
-                problems[gid] = 'ncbi timeout'
-        try:
-            rtxt = resp.text
-        except AttributeError:
-            problems[gid] = 'empty response'
-        else:
-            if rtxt.startswith('Error'):
-                problems[gid] = 'not a valid geneid'
+                problems['ncbi timeout'] = "AFTER 3 TRIES"
+
     if problems:
         check.summary = "{} problematic entrez gene ids.".format(len(problems))
         check.brief_output = problems
