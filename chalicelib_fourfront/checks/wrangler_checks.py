@@ -1053,8 +1053,6 @@ def validate_entrez_geneids(connection, **kwargs):
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
-    import pdb; pdb.set_trace()
-
     genes = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not genes:
         check.status = "FAIL"
