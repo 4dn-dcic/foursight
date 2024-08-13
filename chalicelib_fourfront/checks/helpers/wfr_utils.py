@@ -248,7 +248,7 @@ def check_qcs_on_files(file_meta, all_qcs):
 def stepper(my_auth, library, keep,
             step_tag, sample_tag, new_step_input_file,
             input_file_dict, new_step_name, new_step_output_arg,
-            additional_input={}, organism='human', no_output=False):
+            additional_input={}, organism='human', no_output=False, **kwargs):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
     It will also check for failed qcs on input files.
@@ -299,9 +299,9 @@ def stepper(my_auth, library, keep,
     # if no qc problem, go on with the run check
     else:
         if no_output:
-            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs, md_qc=True)
+            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs, md_qc=True, **kwargs)
         else:
-            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs)
+            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs, **kwargs)
         step_status = step_result['status']
         # if successful
         input_file_accession = input_resp['accession']
@@ -332,7 +332,7 @@ def stepper(my_auth, library, keep,
 
 
 def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
-                md_qc=False, run=None, error_threshold=2):
+                md_qc=False, run=None, error_threshold=2, **kwargs):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
@@ -351,16 +351,26 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
     # if there are n failed runs, don't proceed
 
     error_at_failed_runs = error_threshold
-    # you should provide key or all_wfrs
-    assert key
-    workflow_details = get_workflow_details(key)
-    assert wfr_name in workflow_details
-    # get default accepted versions if not provided
+    # check for named args, then kwargs before getting workflow details from db
     if not versions:
-        versions = workflow_details[wfr_name]['accepted_versions']
-    # get default run out time
+        acc_vers = kwargs.get('acc_wf_vers')
+        if acc_vers:
+            versions = [av.strip() for av in acc_vers.split(',') if av.strip()]
     if not run:
-        run = workflow_details[wfr_name]['run_time']
+        run = kwargs.get('max_runtime')
+
+    if not (all_wfrs and versions and run):  # we need fourfront connection
+        assert key
+        if not (versions and run):
+            # we need to get wf detes from db
+            workflow_details = get_workflow_details(key)
+            assert wfr_name in workflow_details
+            # get default accepted versions if not provided
+            if not versions:
+                versions = workflow_details[wfr_name]['accepted_versions']
+            # get default max run time
+            if not run:
+                run = workflow_details[wfr_name].get('run_time', 0)
 
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
@@ -566,7 +576,7 @@ def get_current_pipeline_tag(auth, exp_type):
 
 
 def get_accepted_pipeline_versions(auth, exp_type, kwargs):
-    accepted_versions = kwargs.get('accepted_vers', None)
+    accepted_versions = kwargs.get('acc_pipes', None)
     if not accepted_versions:
         etype_meta = ff_utils.get_metadata("experiment_type/{}".format(get_namekey_from_etype(exp_type)), auth)
         if not etype_meta:
@@ -576,7 +586,7 @@ def get_accepted_pipeline_versions(auth, exp_type, kwargs):
             accepted_versions.append(etype_meta.get('current_pipeline'))
         return accepted_versions
     # or parse and return the passed in value
-    return [av.strip() for av in accepted_versions.split(',')]
+    return [av.strip() for av in accepted_versions.split(',') if av.strip()]
 
 
 def build_exp_type_query(auth, exp_type, kwargs):
@@ -749,7 +759,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
     return file_dict, refs
 
 
-def check_runs_without_output(res, check, run_name, my_auth, start):
+def check_runs_without_output(res, check, run_name, my_auth, start, **kwargs):
     """Common processing for checks that are running on files and not producing output files
     like qcs ones producing extra files"""
     # no successful run
@@ -768,7 +778,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_file['accession']
-        report = get_wfr_out(a_file, run_name, key=my_auth, md_qc=True)
+        report = get_wfr_out(a_file, run_name, key=my_auth, md_qc=True, **kwargs)
         if report['status'] == 'running':
             running.append(file_id)
         elif report['status'].startswith("no complete run, too many"):
@@ -805,7 +815,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
     return check
 
 
-def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False):
+def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -885,7 +895,7 @@ def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, no
             part2 = 'ready'
             for pair in exp_files[exp]:
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'bwa-mem', key=my_auth, all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'bwa-mem', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     exp_bams.append(step1_result['out_bam'])
@@ -912,7 +922,7 @@ def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, no
             all_step2s = []
             for bam in exp_bams:
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
-                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', key=my_auth, all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -955,7 +965,7 @@ def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, no
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', key=my_auth, all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
@@ -1022,7 +1032,7 @@ def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, no
     return check
 
 
-def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False):
+def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -1103,7 +1113,7 @@ def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, 
                 part2 = 'ready'
                 input_bam = ""
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', key=my_auth, all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     input_bam = step1_result['out_bam']
@@ -1129,7 +1139,7 @@ def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, 
                     continue
 
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == input_bam][0]
-                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', key=my_auth, all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step2_result['status'] == 'complete':
                     exp_margi_files.append(step2_result['out_pairs'])
@@ -1174,7 +1184,7 @@ def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, 
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', key=my_auth, all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 all_step3s.append((step3_result['status'], step3_result.get('out_mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
@@ -1496,7 +1506,7 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start
     return action
 
 
-def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None):
+def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -1565,7 +1575,7 @@ def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
                 elif paired == 'No':
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
-                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', key=my_auth, all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     all_files.extend([step1_result['filtered_sorted_deduped_bam'],
@@ -1649,7 +1659,7 @@ def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None
     return check
 
 
-def check_rna(res, my_auth, exp_type, check, start, lambda_limit):
+def check_rna(res, my_auth, exp_type, check, start, lambda_limit, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -1766,7 +1776,7 @@ def check_rna(res, my_auth, exp_type, check, start, lambda_limit):
             elif paired == 'No':
                 pars['rna.endedness'] = 'single'
                 input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0]][0]
-            step1_result = get_wfr_out(input_resp, app_name, key=my_auth, all_wfrs=all_wfrs)
+            step1_result = get_wfr_out(input_resp, app_name, key=my_auth, all_wfrs=all_wfrs, **kwargs)
 
             # if successful
             if step1_result['status'] == 'complete':
@@ -1823,7 +1833,7 @@ def check_rna(res, my_auth, exp_type, check, start, lambda_limit):
         # run step2 if step1 s are complete
         else:
             step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
-            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', key=my_auth, all_wfrs=all_wfrs, md_qc=True)
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', key=my_auth, all_wfrs=all_wfrs, md_qc=True, **kwargs)
 
             # if successful
             if step2_result['status'] == 'complete':

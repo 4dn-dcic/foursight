@@ -88,7 +88,8 @@ def md5run_extra_file_start(connection, **kwargs):
     return action
 
 
-@check_function(file_type='File', lab_title=None, start_date=None, file_limit='all', action="md5run_start")
+@check_function(file_type='File', lab_title=None, start_date=None, file_limit='all',
+                acc_wf_vers=None, acc_pipes=None, max_runtime=None, action="md5run_start")
 def md5run_status(connection, **kwargs):
     """Searches for files that are uploaded to s3, but not went though md5 run.
     This check makes certain assumptions
@@ -183,7 +184,7 @@ def md5run_status(connection, **kwargs):
         if not head_info:
             no_s3_file.append(file_id)
             continue
-        md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True)
+        md5_report = wfr_utils.get_wfr_out(a_file, "md5", key=my_auth, md_qc=True, **kwargs)
         if md5_report['status'] == 'running':
             running.append(file_id)
         elif md5_report['status'].startswith("no complete run, too many"):
@@ -763,7 +764,7 @@ def bed2beddb_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="in_situ_hic_start")
+                acc_wf_vers=None, acc_pipes=None, action="in_situ_hic_start")
 def in_situ_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -796,7 +797,7 @@ def in_situ_hic_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, kwargs)
     return check
 
 
@@ -820,7 +821,7 @@ def in_situ_hic_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="dilution_hic_start")
+                acc_wf_vers=None, acc_pipes=None, action="dilution_hic_start")
 def dilution_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -877,7 +878,7 @@ def dilution_hic_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="tcc_start")
+                acc_wf_vers=None, acc_pipes=None, action="tcc_start")
 def tcc_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -932,7 +933,7 @@ def tcc_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="dnase_hic_start")
+                acc_wf_vers=None, acc_pipes=None, action="dnase_hic_start")
 def dnase_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -987,7 +988,7 @@ def dnase_hic_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="capture_hic_start")
+                acc_wf_vers=None, acc_pipes=None, action="capture_hic_start")
 def capture_hic_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1042,7 +1043,7 @@ def capture_hic_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="micro_c_start")
+                acc_wf_vers=None, acc_pipes=None, action="micro_c_start")
 def micro_c_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1097,7 +1098,7 @@ def micro_c_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="chia_pet_start")
+                acc_wf_vers=None, acc_pipes=None, action="chia_pet_start")
 def chia_pet_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1152,7 +1153,7 @@ def chia_pet_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="in_situ_chia_pet_start")
+                acc_wf_vers=None, acc_pipes=None, action="in_situ_chia_pet_start")
 def in_situ_chia_pet_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1207,7 +1208,7 @@ def in_situ_chia_pet_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="trac_loop_start")
+                acc_wf_vers=None, acc_pipes=None, action="trac_loop_start")
 def trac_loop_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1262,7 +1263,7 @@ def trac_loop_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="plac_seq_start")
+                acc_wf_vers=None, acc_pipes=None, action="plac_seq_start")
 def plac_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1317,7 +1318,7 @@ def plac_seq_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="hichip_start")
+                acc_wf_vers=None, acc_pipes=None, action="hichip_start")
 def hichip_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1372,7 +1373,7 @@ def hichip_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="repli_2_stage_start")
+                acc_wf_vers=None, acc_pipes=None, action="repli_2_stage_start")
 def repli_2_stage_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1426,7 +1427,7 @@ def repli_2_stage_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="repli_multi_stage_start")
+                acc_wf_vers=None, acc_pipes=None, action="repli_multi_stage_start")
 def repli_multi_stage_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1480,7 +1481,7 @@ def repli_multi_stage_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="tsa_seq_start")
+                acc_wf_vers=None, acc_pipes=None, action="tsa_seq_start")
 def tsa_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1535,7 +1536,7 @@ def tsa_seq_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="nad_seq_start")
+                acc_wf_vers=None, acc_pipes=None, action="nad_seq_start")
 def nad_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1589,7 +1590,7 @@ def nad_seq_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, action="margi_start")
+                acc_wf_vers=None, acc_pipes=None, action="margi_start")
 def margi_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1645,7 +1646,8 @@ def margi_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="bed2multivec_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                acc_wf_vers=None, acc_pipes=None, action="bed2multivec_start")
 def bed2multivec_status(connection, **kwargs):
     """Searches for bed files states types that don't have bed2multivec
     Keyword arguments:
@@ -1783,7 +1785,8 @@ def bed2multivec_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="rna_strandedness_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                acc_wf_vers=None, acc_pipes=None, action="rna_strandedness_start")
 def rna_strandedness_status(connection, **kwargs):
     """Searches for fastq files from RNA-seq that don't have beta_actin_count fields
     Keyword arguments:
@@ -1841,7 +1844,7 @@ def rna_strandedness_status(connection, **kwargs):
     check.summary = ""
 
     for a_file in targets:
-        strandedness_report = wfr_utils.get_wfr_out(a_file, "rna-strandedness", key=my_auth, versions='v2', md_qc=True)
+        strandedness_report = wfr_utils.get_wfr_out(a_file, "rna-strandedness", key=my_auth, versions='v2', md_qc=True, **kwargs)
         if strandedness_report['status'] == 'running':
             running.append(a_file['accession'])
         elif strandedness_report['status'] != 'complete':
@@ -1912,7 +1915,7 @@ def rna_strandedness_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                accepted_vers=None, query='', action="rna_seq_start")
+                acc_wf_vers=None, acc_pipes=None, query='', action="rna_seq_start")
 def rna_seq_status(connection, **kwargs):
     """
     Keyword arguments:
@@ -1971,7 +1974,8 @@ def rna_seq_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, non_dcic=False, action="bamqc_start")
+@check_function(lab_title=None, start_date=None, non_dcic=False, max_runtime=None,
+                acc_wf_vers=None, acc_pipes=None, action="bamqc_start")
 def bamqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
@@ -2064,7 +2068,8 @@ def bamqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="fastq_first_line_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                acc_wf_vers=None, acc_pipes=None,action="fastq_first_line_start")
 def fastq_first_line_status(connection, **kwargs):
     print('Entering the check function')
     """Searches for fastq files that don't have file_first_line field
@@ -2100,7 +2105,7 @@ def fastq_first_line_status(connection, **kwargs):
 
     print('About to check for workflow runs for each file')
     for a_file in res:
-        fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True)
+        fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True, **kwargs)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
         elif fastq_formatqc_report['status'] != 'complete':
@@ -2163,7 +2168,7 @@ def fastq_first_line_start(connection, **kwargs):
     return action
 
 
-@check_function(action="bam_re_start")
+@check_function(max_runtime=None, acc_wf_vers=None, acc_pipes=None,action="bam_re_start")
 def bam_re_status(connection, **kwargs):
     """Searches for fastq files that don't have bam_re
 
@@ -2304,7 +2309,8 @@ def bam_re_start(connection, **kwargs):
     return action
 
 
-@check_function(action="insulation_scores_and_boundaries_start")
+@check_function(max_runtime=None, acc_wf_vers=None, acc_pipes=None,
+                action="insulation_scores_and_boundaries_start")
 def insulation_scores_and_boundaries_status(connection, **kwargs):
     """Calls insulation scores and boundaries on mcool files produced by the Hi-C pipeline"""
 
@@ -2374,7 +2380,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                     if 'skip_domain_callers' in file_meta['tags']:
                         skip = True
                         continue
-                insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth)
+                insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth, **kwargs)
         if skip:
             continue
         elif insu_and_boun_report['status'] == 'running':
@@ -2685,7 +2691,7 @@ def problematic_wfrs_fdn_start(connection, **kwargs):
     return action
 
 
-@check_function(action="compartments_caller_start")
+@check_function(max_runtime=None, acc_wf_vers=None, acc_pipes=None, action="compartments_caller_start")
 def compartments_caller_status(connection, **kwargs):
     """Calls compartments on mcool files produced by the Hi-C pipeline"""
 
@@ -2742,7 +2748,7 @@ def compartments_caller_status(connection, **kwargs):
                 #     if 'skip_domain_callers' in file_meta['tags']:
                 #         skip = True
                 #         continue
-                workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth)
+                workflow_status_report = wfr_utils.get_wfr_out(file_meta, "compartments-caller", key=my_auth, **kwargs)
                 if skip:
                     continue
                 elif workflow_status_report['status'] == 'running':
@@ -2814,7 +2820,8 @@ def compartments_caller_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="mcoolqc_start")
+@check_function(lab_title=None, start_date=None, max_runtime=None,
+                acc_wf_vers=None, acc_pipes=None,action="mcoolqc_start")
 def mcoolqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
