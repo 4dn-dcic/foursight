@@ -358,6 +358,12 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
             versions = [av.strip() for av in acc_vers.split(',') if av.strip()]
     if not run:
         run = kwargs.get('max_runtime')
+        if run:
+            try:
+                run = int(run)
+            except Exception:
+                print("Provided kwarg for run cannot be converted to an integer")
+                run = None
 
     if not (all_wfrs and versions and run):  # we need fourfront connection
         assert key

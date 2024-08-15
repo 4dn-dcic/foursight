@@ -13,7 +13,7 @@ from .helpers.confchecks import check_function, action_function, CheckResult, Ac
 lambda_limit = wfr_utils.lambda_limit
 
 
-@check_function()
+@check_function(acc_wf_vers=None, acc_pipes=None, max_runtime=None)
 def md5run_status_extra_file(connection, **kwargs):
     """Searches for extra files that are uploaded to s3, but not went though md5 run.
     no action is associated, we don't have any case so far.
@@ -258,7 +258,7 @@ def md5run_status(connection, **kwargs):
     return check
 
 
-@check_function(action="md5run_start")
+@check_function(acc_wf_vers=None, acc_pipes=None, max_runtime=None, action="md5run_start")
 def md5run_uploaded_files(connection, **kwargs):
     """
     Search for Files with status uploaded (and higher) that do not have md5sum.
@@ -345,7 +345,8 @@ def md5run_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="fastqc_start")
+@check_function(lab_title=None, start_date=None, acc_wf_vers=None, acc_pipes=None,
+                max_runtime=None, action="fastqc_start")
 def fastqc_status(connection, **kwargs):
     """Searches for fastq files that don't have fastqc
     Keyword arguments:
@@ -386,7 +387,7 @@ def fastqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'fastqc', my_auth, start, **kwargs)
     return check
 
 
@@ -424,7 +425,8 @@ def fastqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, non_dcic=False, action="pairsqc_start")
+@check_function(lab_title=None, start_date=None, non_dcic=False, acc_wf_vers=None,
+                acc_pipes=None, max_runtime=None, action="pairsqc_start")
 def pairsqc_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have pairsqc
     Keyword arguments:
@@ -465,7 +467,7 @@ def pairsqc_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'pairsqc-single', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'pairsqc-single', my_auth, start, **kwargs)
     return check
 
 
@@ -526,7 +528,8 @@ def pairsqc_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="bg2bw_start")
+@check_function(lab_title=None, start_date=None, acc_wf_vers=None, acc_pipes=None,
+                max_runtime=None,action="bg2bw_start")
 def bg2bw_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have bg2bw
     Keyword arguments:
@@ -581,7 +584,7 @@ def bg2bw_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'bedGraphToBigWig', my_auth, start, **kwargs)
     return check
 
 
@@ -626,7 +629,8 @@ def bg2bw_start(connection, **kwargs):
     return action
 
 
-@check_function(lab_title=None, start_date=None, action="bed2beddb_start")
+@check_function(lab_title=None, start_date=None, acc_wf_vers=None, acc_pipes=None,
+                max_runtime=None, action="bed2beddb_start")
 def bed2beddb_status(connection, **kwargs):
     """Searches for small bed files uploaded by user in certain types
     Keyword arguments:
@@ -707,7 +711,7 @@ def bed2beddb_status(connection, **kwargs):
                 previous.append(a_file)
                 res_all.remove(a_file)
 
-    check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res_all, check, 'bedtobeddb', my_auth, start, **kwargs)
     if missing:
         check.full_output['missing_assembly'] = missing
         msg = str(len(missing)) + ' files missing genome assembly'
@@ -1731,7 +1735,7 @@ def bed2multivec_status(connection, **kwargs):
         check.status = 'WARN'
         return check
 
-    check = wfr_utils.check_runs_without_output(healthy_res, check, 'bedtomultivec', my_auth, start)
+    check = wfr_utils.check_runs_without_output(healthy_res, check, 'bedtomultivec', my_auth, start, **kwargs)
     if prb_res:
         check.full_output['prob_files'] = [{'missing tag': [i[0]['accession'] for i in prb_res if i[1] == 'missing_tag'],
                                             'invalid tag': [i[0]['accession'] for i in prb_res if i[1] == 'invalid_tag']}]
@@ -2023,7 +2027,7 @@ def bamqc_status(connection, **kwargs):
         return check
     check.summary = '{} files need a bamqc'. format(len(res))
     check.status = 'WARN'
-    check = wfr_utils.check_runs_without_output(res, check, 'bamqc', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'bamqc', my_auth, start, **kwargs)
     return check
 
 
@@ -2168,7 +2172,7 @@ def fastq_first_line_start(connection, **kwargs):
     return action
 
 
-@check_function(max_runtime=None, acc_wf_vers=None, acc_pipes=None,action="bam_re_start")
+@check_function(max_runtime=None, acc_wf_vers=None, acc_pipes=None, action="bam_re_start")
 def bam_re_status(connection, **kwargs):
     """Searches for fastq files that don't have bam_re
 
@@ -2234,7 +2238,8 @@ def bam_re_status(connection, **kwargs):
         else:
             no_nz.append(a_file)
 
-    check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow', my_auth, start)
+    check = wfr_utils.check_runs_without_output(filtered_res, check, 're_checker_workflow',
+                                                my_auth, start, **kwargs)
     if missing_nz:
         skipped_files = str(len(res) - len(filtered_res))
         nzs = ', '.join(missing_nz)
@@ -2821,7 +2826,7 @@ def compartments_caller_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                acc_wf_vers=None, acc_pipes=None,action="mcoolqc_start")
+                acc_wf_vers=None, acc_pipes=None, action="mcoolqc_start")
 def mcoolqc_status(connection, **kwargs):
     """Searches for annotated bam files that do not have a qc object
     Keyword arguments:
@@ -2864,7 +2869,7 @@ def mcoolqc_status(connection, **kwargs):
         return check
     check.summary = '{} files need a mcoolqc'. format(len(res))
     check.status = 'WARN'
-    check = wfr_utils.check_runs_without_output(res, check, 'mcoolQC', my_auth, start)
+    check = wfr_utils.check_runs_without_output(res, check, 'mcoolQC', my_auth, start, **kwargs)
     return check
 
 
