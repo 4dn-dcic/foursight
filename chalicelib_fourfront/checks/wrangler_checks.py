@@ -1042,12 +1042,21 @@ def clean_up_webdev_wfrs(connection, **kwargs):
     return check
 
 
+def find_entrez_gene_status(report):
+    rlines = report.split('\n')
+    for l in rlines:
+        ltxt = l.strip()
+        if ltxt.startswith('status'):
+            return ltxt.replace('status', '').replace(',', '').strip()
+    return None
+
+
 @check_function()
 def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
     check = CheckResult(connection, 'validate_entrez_geneids')
-    # add random wait
+    # add random wait to stagger runs with other checks on this schedule
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
     problems = {}
@@ -1059,39 +1068,34 @@ def validate_entrez_geneids(connection, **kwargs):
         check.description = "Could not retrieve gene records from fourfront"
         return check
     geneids = [g.get('geneid') for g in genes]
-    ID_BATCH_SIZE = 150
-    query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}&rettype=uilist&retmode=text"
-    for i in range(0, len(geneids), ID_BATCH_SIZE):
-        batch = geneids[i: i + ID_BATCH_SIZE]
-        gids = ', '.join(batch)
+
+    query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
+    for gid in geneids:
         if timeouts > 5:
             check.status = "FAIL"
             check.description = "Too many ncbi timeouts. Maybe they're down."
             return check
-        gquery = query.format(id=gids)
+        gquery = query.format(id=gid)
         # make 3 attempts to query gene at ncbi
         for count in range(3):
             resp = requests.get(gquery)
+            time.sleep(0.334)
             if resp.status_code == 200:
-                try:
-                    rtxt = resp.text
-                    if rtxt.startswith('Error'):
-                        problems['Error response'].extend(batch)
-                    retids = [i for i in resp.text.split('\n') if i]
-                    if not len(retids) == len(batch):  # not all the gids are valid in this chunk
-                        invalids = set(batch) - set(retids)
-                        if invalids:
-                            problems.update({inv: 'not a valid geneid' for inv in invalids})
-                except AttributeError:  # seems pretty unlikely but
-                    problems['empty response'].extend(batch)
                 break
-            if resp.status_code == 429:
-                time.sleep(0.334)
-                continue
-            if count == 2:
+            if count == 2:  # third try without 200
                 timeouts += 1
-                problems['ncbi timeout'] = "AFTER 3 TRIES"
-
+                problems[gid] = 'ncbi timeout'
+        try:
+            rtxt = resp.text
+            if rtxt.startswith('Error'):
+                problems[gid] = 'not a valid geneid'
+            else:
+                status = find_entrez_gene_status(rtxt)
+                if status != 'live':
+                    problems[gid] = f'{status} geneid - needs update?'
+        except AttributeError:
+            problems[gid] = 'empty response'
+            
     if problems:
         check.summary = "{} problematic entrez gene ids.".format(len(problems))
         check.brief_output = problems
