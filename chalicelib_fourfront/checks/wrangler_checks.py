@@ -1051,7 +1051,7 @@ def find_entrez_gene_status(report):
     return None
 
 
-@check_function()
+@check_function(add_to_ignore= None, rm_from_ignore=None)
 def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
@@ -1059,6 +1059,45 @@ def validate_entrez_geneids(connection, **kwargs):
     # add random wait to stagger runs with other checks on this schedule
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
+
+    # get any geneids to ignore
+    last_result = check.get_primary_result()
+    # hack to add empty full_output for first time it is used
+    # last_result['full_output'] = {}
+    # if last one was fail, find an earlier check with non-FAIL status
+    it = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        it += 1
+        # this is a daily check, so look for checks with 12h iteration
+        hours = it * 12
+        last_result = check.get_closest_result(diff_hours=hours)
+            # if this is going forever kill it
+        if hours > 100:
+            err_msg = 'Can not find a non-FAIL check in last 100 hours'
+            check.brief_output = err_msg
+            check.full_output = {}
+            check.status = 'ERROR'
+            return check
+
+    # because until this update this check had no full_output need this (only once)
+    if not 'full_output' in last_result:
+        last_result['full_output'] = {}
+    # gids to ignore list
+    gids2ignore = last_result['full_output'].get('ignore', [])
+    # gids2ignore = []
+    # see if any kwargs to modify ignore list
+    new_ignores = kwargs.get('add_to_ignore')
+    if new_ignores:
+        gids2ignore.extend([ni.strip() for ni in new_ignores.split(',') if ni not in gids2ignore])
+    rm_ignores = kwargs.get('rm_from_ignore')
+    if rm_ignores:
+        import pdb; pdb.set_trace()
+        if rm_ignores == 'all':
+            # reset ignore list
+            gids2ignore = []
+        else:
+            gids2ignore[:] = [gid for gid in gids2ignore if gid not in [rm.strip() for rm in rm_ignores.split(',')]]
+
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
@@ -1067,7 +1106,7 @@ def validate_entrez_geneids(connection, **kwargs):
         check.status = "FAIL"
         check.description = "Could not retrieve gene records from fourfront"
         return check
-    geneids = [g.get('geneid') for g in genes]
+    geneids = [g.get('geneid') for g in genes if g.get('geneid') not in gids2ignore]
 
     query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
     for gid in geneids:
@@ -1095,15 +1134,17 @@ def validate_entrez_geneids(connection, **kwargs):
                     problems[gid] = f'{status} geneid - needs update?'
         except AttributeError:
             problems[gid] = 'empty response'
-            
+    check.full_output = {}
     if problems:
         check.summary = "{} problematic entrez gene ids.".format(len(problems))
         check.brief_output = problems
+        check.full_output.setdefault('problems', []).extend(problems)
         check.description = "Problematic Gene IDs found"
         check.status = "WARN"
     else:
         check.status = "PASS"
         check.description = "GENE IDs are all valid"
+    check.full_output.setdefault('ignore', []).extend(gids2ignore)
     return check
 
 
