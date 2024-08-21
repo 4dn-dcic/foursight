@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+4.8.3
+=====
+
+* Update entrez_gene_id validation check to play more nicely with ncbi
+* add kwargs so gids can be added or removed from the ignore list - for those genes without any status live or other
+
+
 4.8.2
 =====
 

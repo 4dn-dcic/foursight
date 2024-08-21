@@ -1080,7 +1080,7 @@ def validate_entrez_geneids(connection, **kwargs):
             return check
 
     # because until this update this check had no full_output need this (only once)
-    if not 'full_output' in last_result:
+    if 'full_output' not in last_result:
         last_result['full_output'] = {}
     # gids to ignore list
     gids2ignore = last_result['full_output'].get('ignore', [])
@@ -1091,7 +1091,6 @@ def validate_entrez_geneids(connection, **kwargs):
         gids2ignore.extend([ni.strip() for ni in new_ignores.split(',') if ni not in gids2ignore])
     rm_ignores = kwargs.get('rm_from_ignore')
     if rm_ignores:
-        import pdb; pdb.set_trace()
         if rm_ignores == 'all':
             # reset ignore list
             gids2ignore = []
