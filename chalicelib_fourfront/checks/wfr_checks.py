@@ -2106,12 +2106,15 @@ def fastq_first_line_status(connection, **kwargs):
 
     running = []
     missing_run = []
+    problems = []
 
     print('About to check for workflow runs for each file')
     for a_file in res:
         fastq_formatqc_report = wfr_utils.get_wfr_out(a_file, "fastq-first-line", key=my_auth, md_qc=True, **kwargs)
         if fastq_formatqc_report['status'] == 'running':
             running.append(a_file['accession'])
+        elif fastq_formatqc_report['status'].startswith("no complete run, too many"):
+            problems.append(a_file['accession'])
         elif fastq_formatqc_report['status'] != 'complete':
             missing_run.append(a_file['accession'])
     print('Done! I have the results I want')
@@ -2120,6 +2123,13 @@ def fastq_first_line_status(connection, **kwargs):
         msg = str(len(running)) + ' files are still running fastq_formatqc run.'
         check.brief_output.append(msg)
         check.full_output['files_running_fastq_formatqc_run'] = running
+
+    if problems:
+        check.summary = 'Some files have problems\n'
+        msg = str(len(problems)) + ' file(s) have problems.'
+        check.brief_output.append(msg)
+        check.full_output['problems'] = problems
+        check.status = 'WARN'
 
     if missing_run:
         check.summary = 'Some files are fastq_formatqc run'
