@@ -1,6 +1,8 @@
-import json
 import time
 import random
+import re
+import string
+# import json  # used for testing
 from dcicutils import ff_utils
 from dcicutils.s3_utils import s3Utils
 from dcicutils.env_utils_legacy import FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER
@@ -14,210 +16,26 @@ random_wait = wfrset_utils.random_wait
 load_wait = wfrset_utils.load_wait
 
 
-# wfr_name, accepted versions, expected run time # wfr_name, accepted versions,
-workflow_details = {
-    "md5": {
-        "run_time": 12,
-        "accepted_versions": ["0.0.4", "0.2.6"]
-    },
-    # old workflow run naming, updated on workflows for old ones
-    "fastqc-0-11-4-1": {
-        "run_time": 50,
-        "accepted_versions": ["0.2.0"]
-    },
-    "fastqc": {
-        "run_time": 50,
-        "accepted_versions": ["v1", "v2"]
-    },
-    "bwa-mem": {
-        "run_time": 50,
-        "accepted_versions": ["0.2.6", "0.3.0"]
-    },
-    "pairsqc-single": {
-        "run_time": 100,
-        "accepted_versions": ["0.2.5", "0.2.6"]
-    },
-    "hi-c-processing-bam": {
-        "run_time": 200,
-        "accepted_versions": ["0.3.0"]
-    },
-    "hi-c-processing-pairs": {
-        "run_time": 200,
-        "accepted_versions": ["0.3.0"]
-    },
-    "hi-c-processing-pairs-nore": {
-        "run_time": 200,
-        "accepted_versions": ["0.2.6"]
-    },
-    "hi-c-processing-pairs-nonorm": {
-        "run_time": 200,
-        "accepted_versions": ["0.2.6"]
-    },
-    "hi-c-processing-pairs-nore-nonorm": {
-        "run_time": 200,
-        "accepted_versions": ["0.2.6"]
-    },
-    "repliseq-parta": {
-        "run_time": 200,
-        "accepted_versions": ["v13.1", "v14", "v16","v16.1"]
-    },
-    "bedGraphToBigWig": {
-        "run_time": 24,
-        "accepted_versions": ["v4", "v5", "v6"]
-    },
-    "bedtomultivec": {
-        "run_time": 24,
-        "accepted_versions": ["v4"]
-    },
-    "bedtobeddb": {
-        "run_time": 24,
-        "accepted_versions": ["v2", "v3"]
-    },
-    "encode-chipseq-aln-chip": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1", "2.1.6"]
-    },
-    "encode-chipseq-aln-ctl": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1", "2.1.6"]
-    },
-    "encode-chipseq-postaln": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1", "2.1.6"]
-    },
-    "encode-atacseq-aln": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1"]
-    },
-    "encode-atacseq-postaln": {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1"]
-    },
-    "mergebed": {
-        "run_time": 200,
-        "accepted_versions": ["v1"]
-    },
-    'imargi-processing-fastq': {
-        "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_4"]
-    },
-    'imargi-processing-bam': {
-        "run_time": 50,
-        "accepted_versions": ["1.1.1_dcic_4"]
-    },
-    'imargi-processing-pairs': {
-        "run_time": 200,
-        "accepted_versions": ["1.1.1_dcic_4"]
-    },
-    'encode-rnaseq-stranded': {
-        "run_time": 200,
-        "accepted_versions": ["1.1"]
-    },
-    'encode-rnaseq-unstranded': {
-        "run_time": 200,
-        "accepted_versions": ["1.1"]
-    },
-    'rna-strandedness': {
-        "run_time": 200,
-        "accepted_versions": ["v2"]
-    },
-    'bamqc': {
-        "run_time": 200,
-        "accepted_versions": ["v2", "v3"]
-    },
-    'fastq-first-line': {
-        "run_time": 200,
-        "accepted_versions": ["v2"]
-    },
-    're_checker_workflow': {
-        "run_time": 200,
-        "accepted_versions": ['v1.1', 'v1.2']
-    },
-    'mad_qc_workflow': {
-        "run_time": 200,
-        "accepted_versions": ['1.1_dcic_2']
-    },
-    'merge-fastq': {
-        "run_time": 200,
-        "accepted_versions": ['v1']
-    },
-    'insulation-scores-and-boundaries-caller': {
-            "run_time": 200,
-            "accepted_versions": ['v1']
-    },
-    'compartments-caller': {
-                "run_time": 200,
-                "accepted_versions": ['v1.2']
-    },
-    'mcoolQC': {
-                "run_time": 200,
-                "accepted_versions": ['v1']
-    }
-}
+# creates hash keyed by workflow app_name with values for accepted versions
+# and the run_time from info in database
+def get_workflow_details(my_auth):
+    wf_details = {}
+    wf_query = "search/?type=Workflow&tags=current&tags=accepted&field=max_runtime" \
+        "&app_name!=No value&app_version!=No value&field=app_name&field=app_version"
+    workflows = ff_utils.search_metadata(wf_query, my_auth)
+    for wf in workflows:
+        app_name = wf.get('app_name')
+        app_version = wf.get('app_version')
+        run_time = wf.get('max_runtime')
+        wf_details.setdefault(app_name, {})
+        wf_details[app_name].setdefault('accepted_versions', []).append(app_version)
+        wf_details[app_name].setdefault('run_time', run_time)
+        # for unexpected case of different wf items with same app_name having
+        # different run times - use max value
+        if run_time > wf_details[app_name].get('run_time'):
+            wf_details[app_name]['run_time'] = run_time
+    return wf_details
 
-
-# accepted versions for completed pipelines
-accepted_versions = {
-    # OFFICIAL
-    'in situ Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL
-    'Dilution Hi-C': ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL
-    'TCC':           ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL  # NO-RE
-    'DNase Hi-C':    ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL  # NO-NORM
-    'Capture Hi-C':  ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # OFFICIAL  # NO-RE
-    'Micro-C':       ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
-    'ChIA-PET':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
-    'in situ ChIA-PET': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-RE NO-NORM
-    'TrAC-loop':     ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-NORM
-    'PLAC-seq':      ["HiC_Pipeline_0.2.6", "HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # Preliminary - Released to network  # NO-NORM
-    'HiChIP': ["HiC_Pipeline_0.2.7", "HiC_Pipeline_0.3.0"],
-    # bwa mem # handled manually for now
-    'MARGI':         ['MARGI_Pipeline_1.1.1_dcic_4'],
-    # Preliminary -  Don't release - (Released to network is pending approval from Belmont lab)
-    'TSA-seq':       ['RepliSeq_Pipeline_v13.1_step1',
-                      'RepliSeq_Pipeline_v14_step1',
-                      'RepliSeq_Pipeline_v16_step1',
-                      'RepliSeq_Pipeline_v16.1_step1'],
-    # OFFICIAL - 1 STEP
-    '2-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
-                          'RepliSeq_Pipeline_v14_step1',
-                          'RepliSeq_Pipeline_v16_step1',
-                          'RepliSeq_Pipeline_v16.1_step1'],
-    # OFFICIAL - 1 STEP
-    'Multi-stage Repli-seq': ['RepliSeq_Pipeline_v13.1_step1',
-                              'RepliSeq_Pipeline_v14_step1',
-                              'RepliSeq_Pipeline_v16_step1',
-                              'RepliSeq_Pipeline_v16.1_step1'],
-    # Preliminary - Released to network
-    'NAD-seq':       ['RepliSeq_Pipeline_v13.1_step1', 'RepliSeq_Pipeline_v14_step1', 'RepliSeq_Pipeline_v16_step1', 'RepliSeq_Pipeline_v16.1_step1'],
-    # OFFICIAL
-    'ATAC-seq':      ['ENCODE_ATAC_Pipeline_1.1.1'],
-    # OFFICIAL
-    'ChIP-seq':      ['ENCODE_ChIP_Pipeline_1.1.1', 'ENCODE_ChIP_Pipeline_2.1.6'],
-    # OFFICIAL
-    'RNA-seq': ['ENCODE_RNAseq_Pipeline_1.1'],
-    'single cell Repli-seq': [''],
-    'cryomilling TCC': [''],
-    'single cell Hi-C': [''],
-    'sci-Hi-C': [''],
-    'MC-3C': [''],
-    'MC-Hi-C': [''],
-    'DamID-seq': [''],
-    'DNA SPRITE': [''],
-    'RNA-DNA SPRITE': [''],
-    'GAM': [''],
-    'CUT&RUN': [''],
-    'TRIP': ['']
-    }
 
 # Accepted versions for feature calling pipelines
 feature_calling_accepted_versions = {
@@ -338,13 +156,6 @@ def check_indexing(check, connection):
     # wait for random time
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-    # # TEMPORARILY DISABLE ALL PIPELINE RUNS
-    # check.status = 'PASS'  # maybe use warn?
-    # check.brief_output = ['Check Temporarily Disabled']
-    # check.summary = 'Check Temporarily Disabled'
-    # check.full_output = {}
-    # return check, True
-    # check indexing queue
     env = connection.ff_env
     if env in [FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER]:
         health = ff_utils.get_health_page(ff_env=env)
@@ -433,10 +244,10 @@ def check_qcs_on_files(file_meta, all_qcs):
     return failed_qcs
 
 
-def stepper(library, keep,
+def stepper(my_auth, library, keep,
             step_tag, sample_tag, new_step_input_file,
-            input_file_dict,  new_step_name, new_step_output_arg,
-            additional_input={}, organism='human', no_output=False):
+            input_file_dict, new_step_name, new_step_output_arg,
+            additional_input={}, organism='human', no_output=False, **kwargs):
     """This functions packs the core of wfr check, for a given workflow and set of
     input files, it will return the status of process on these files.
     It will also check for failed qcs on input files.
@@ -487,9 +298,9 @@ def stepper(library, keep,
     # if no qc problem, go on with the run check
     else:
         if no_output:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs, md_qc=True)
+            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs, md_qc=True, **kwargs)
         else:
-            step_result = get_wfr_out(input_resp, new_step_name, all_wfrs=all_wfrs)
+            step_result = get_wfr_out(input_resp, new_step_name, key=my_auth, all_wfrs=all_wfrs, **kwargs)
         step_status = step_result['status']
         # if successful
         input_file_accession = input_resp['accession']
@@ -520,7 +331,7 @@ def stepper(library, keep,
 
 
 def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
-                md_qc=False, run=None, error_threshold=2):
+                md_qc=False, run=None, error_threshold=2, **kwargs):
     """For a given file, fetches the status of last wfr (of wfr_name type)
     If there is a successful run, it will return the output files as a dictionary of
     argument_name:file_id, else, will return the status. Some runs, like qc and md5,
@@ -539,16 +350,32 @@ def get_wfr_out(emb_file, wfr_name, key=None, all_wfrs=None, versions=None,
     # if there are n failed runs, don't proceed
 
     error_at_failed_runs = error_threshold
-    # you should provide key or all_wfrs
-    assert key or all_wfrs
-    if wfr_name not in workflow_details:
-        assert wfr_name in workflow_details
-    # get default accepted versions if not provided
+    # check for named args, then kwargs before getting workflow details from db
     if not versions:
-        versions = workflow_details[wfr_name]['accepted_versions']
-    # get default run out time
+        acc_vers = kwargs.get('acc_wf_vers')
+        if acc_vers:
+            versions = [av.strip() for av in acc_vers.split(',') if av.strip()]
     if not run:
-        run = workflow_details[wfr_name]['run_time']
+        run = kwargs.get('max_runtime')
+        if run:
+            try:
+                run = int(run)
+            except Exception:
+                print("Provided kwarg for run cannot be converted to an integer")
+                run = None
+
+    if not (all_wfrs and versions and run):  # we need fourfront connection
+        assert key
+        if not (versions and run):
+            # we need to get wf detes from db
+            workflow_details = get_workflow_details(key)
+            assert wfr_name in workflow_details
+            # get default accepted versions if not provided
+            if not versions:
+                versions = workflow_details[wfr_name]['accepted_versions']
+            # get default max run time
+            if not run:
+                run = workflow_details[wfr_name].get('run_time', 0)
 
     workflows = emb_file.get('workflow_run_inputs')
     wfr = {}
@@ -736,10 +563,40 @@ def extract_file_info(obj_id, arg_name, additional_parameters, auth, env, rename
     return template
 
 
-def build_exp_type_query(exp_type, kwargs):
-    assert exp_type in accepted_versions
+def get_namekey_from_etype(exp_type):
+    name = None
+    exclude = set(string.punctuation.replace('-', ''))
+    name = exp_type.replace('&', ' n ')
+    name = ''.join(ch if ch not in exclude and ch != ' ' else '-' for ch in name)
+    name = re.sub(r"[-]+", '-', name).strip('-').lower()
+    return name
+
+
+def get_current_pipeline_tag(auth, exp_type):
+    etype_meta = ff_utils.get_metadata("experiment_type/{}".format(get_namekey_from_etype(exp_type)), auth)
+    if etype_meta:
+        if 'current_pipeline' in etype_meta:
+            return etype_meta.get('current_pipeline')
+    return None
+
+
+def get_accepted_pipeline_versions(auth, exp_type, kwargs):
+    accepted_versions = kwargs.get('acc_pipes', None)
+    if not accepted_versions:
+        etype_meta = ff_utils.get_metadata("experiment_type/{}".format(get_namekey_from_etype(exp_type)), auth)
+        if not etype_meta:
+            return accepted_versions
+        accepted_versions = etype_meta.get('accepted_pipelines', [])
+        if 'current_pipeline' in etype_meta:
+            accepted_versions.append(etype_meta.get('current_pipeline'))
+        return accepted_versions
+    # or parse and return the passed in value
+    return [av.strip() for av in accepted_versions.split(',') if av.strip()]
+
+
+def build_exp_type_query(auth, exp_type, kwargs):
     statuses = ['pre-release', 'released', 'released to project']
-    versions = accepted_versions[exp_type]
+    versions = get_accepted_pipeline_versions(auth, exp_type, kwargs)
     # Build the query
     pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
     pre_query += "&experiments_in_set.experiment_type={}".format(exp_type)
@@ -761,14 +618,17 @@ def build_exp_type_query(exp_type, kwargs):
     return pre_query
 
 
-def build_feature_calling_query(exp_types, feature, kwargs):
+def build_feature_calling_query(auth, exp_types, feature, kwargs):
     assert feature in feature_calling_accepted_versions
 
-    for exp_type in exp_types:
-        assert exp_type in accepted_versions
+    # why do we check this?
+    # for exp_type in exp_types:
+    #    assert exp_type in accepted_versions
 
     statuses = ['pre-release', 'released', 'released to project', 'uploaded']
-    versions = [i for i in accepted_versions[exp_type]]
+    versions = []
+    for exp_type in exp_types:
+        versions.extend(get_accepted_pipeline_versions(auth, exp_type, kwargs))
     feature_calling_versions = feature_calling_accepted_versions[feature]
     # Build the query
     pre_query = "/search/?experimentset_type=replicate&type=ExperimentSetReplicate"
@@ -844,7 +704,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
                                     if relation['relationship_type'] == 'paired with']
                     assert len(paired_files) == 1
                     paired = "Yes"
-                except:
+                except Exception:
                     paired = "No"
 
             if paired == 'No':
@@ -904,7 +764,7 @@ def find_fastq_info(my_rep_set, fastq_files, type=None):
     return file_dict, refs
 
 
-def check_runs_without_output(res, check, run_name, my_auth, start):
+def check_runs_without_output(res, check, run_name, my_auth, start, **kwargs):
     """Common processing for checks that are running on files and not producing output files
     like qcs ones producing extra files"""
     # no successful run
@@ -923,7 +783,7 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
             check.brief_output.append('did not complete checking all')
             break
         file_id = a_file['accession']
-        report = get_wfr_out(a_file, run_name,  key=my_auth, md_qc=True)
+        report = get_wfr_out(a_file, run_name, key=my_auth, md_qc=True, **kwargs)
         if report['status'] == 'running':
             running.append(file_id)
         elif report['status'].startswith("no complete run, too many"):
@@ -960,17 +820,17 @@ def check_runs_without_output(res, check, run_name, my_auth, start):
     return check
 
 
-def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False):
+def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+        all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+                                                   store_frame='embedded',
+                                                   add_pc_wfr=True,
+                                                   ignore_field=['experiment_relation',
+                                                                 'biosample_relation',
+                                                                 'references',
+                                                                 'reference_pubs'])
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds)
@@ -1040,7 +900,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             part2 = 'ready'
             for pair in exp_files[exp]:
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'bwa-mem', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'bwa-mem', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     exp_bams.append(step1_result['out_bam'])
@@ -1059,7 +919,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                     name_tag = pair[0].split('/')[2]+'_'+pair[1].split('/')[2]
                     missing_run.append(['step1', ['bwa-mem', refs['organism'], {}], inp_f, name_tag])
             # stop progress to part2 and 3
-            if part2 is not 'ready':
+            if part2 != 'ready':
                 part3 = 'not ready'
                 # skip part 2 checks
                 continue
@@ -1067,7 +927,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             all_step2s = []
             for bam in exp_bams:
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == bam][0]
-                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
             assert len(list(set(all_step2s))) == 1
@@ -1095,7 +955,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
                 # Add part2
                 inp_f = {'input_bams': exp_bams, 'chromsize': refs['chrsize_ref']}
                 missing_run.append(['step2', ['hi-c-processing-bam', refs['organism'], {}], inp_f, exp])
-        if part3 is not 'ready':
+        if part3 != 'ready':
             if running:
                 set_summary += "| running step 1/2"
             elif missing_run:
@@ -1103,19 +963,20 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
             elif problematic_run:
                 set_summary += "| problem in step 1/2"
 
-        if part3 is 'ready':
+        if part3 == 'ready':
             # if we made it to this step, there should be files in set_pairs
             assert set_pairs
             # make sure all input bams went through same last step3
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'hi-c-processing-pairs', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 all_step3s.append((step3_result['status'], step3_result.get('mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
                 # if successful
                 if step3_result['status'] == 'complete':
+                    tag = get_current_pipeline_tag(my_auth, exp_type)
                     set_summary += '| completed runs'
                     patch_data = [step3_result['merged_pairs'], step3_result['hic'], step3_result['mcool']]
                     complete['patch_opf'].append([set_acc, patch_data])
@@ -1176,7 +1037,7 @@ def check_hic(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=
     return check
 
 
-def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonorm=False):
+def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -1257,7 +1118,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 part2 = 'ready'
                 input_bam = ""
                 pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
-                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'imargi-processing-fastq', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     input_bam = step1_result['out_bam']
@@ -1283,7 +1144,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                     continue
 
                 bam_resp = [i for i in all_items['file_processed'] if i['@id'] == input_bam][0]
-                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', all_wfrs=all_wfrs)
+                step2_result = get_wfr_out(bam_resp, 'imargi-processing-bam', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step2_result['status'] == 'complete':
                     exp_margi_files.append(step2_result['out_pairs'])
@@ -1313,7 +1174,7 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
                 set_pairs.extend(exp_pairs)
 
                 # patch the experiment with exp_pairs
-        if part3 is not 'ready':
+        if part3 != 'ready':
             if running:
                 set_summary += "| running step 1/2"
             elif missing_run:
@@ -1321,19 +1182,20 @@ def check_margi(res, my_auth, tag, check, start, lambda_limit, nore=False, nonor
             elif problematic_run:
                 set_summary += "| problem in step 1/2"
 
-        if part3 is 'ready':
+        if part3 == 'ready':
             # if we made it to this step, there should be files in set_pairs
             assert set_pairs
             # make sure all input bams went through same last step3
             all_step3s = []
             for a_pair in set_pairs:
                 a_pair_resp = [i for i in all_items['file_processed'] if i['@id'] == a_pair][0]
-                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', all_wfrs=all_wfrs)
+                step3_result = get_wfr_out(a_pair_resp, 'imargi-processing-pairs', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 all_step3s.append((step3_result['status'], step3_result.get('out_mcool')))
             # make sure existing step3s are matching
             if len(list(set(all_step3s))) == 1:
                 # if successful
                 if step3_result['status'] == 'complete':
+                    tag = get_current_pipeline_tag(my_auth, exp_type)
                     set_summary += '| completed runs'
                     patch_data = [step3_result['merged_pairs'], step3_result['out_mcool']]
                     complete['patch_opf'].append([set_acc, patch_data])
@@ -1419,13 +1281,16 @@ def patch_complete_data(patch_data, pipeline_type, auth, move_to_pc=False, pc_ap
               'insulation_scores_and_boundaries': "Insulation scores and boundaries calls - Preliminary Files",
               'compartments': "Compartments Signals - Preliminary Files"}
 
-    descriptions = {'hic': ("These are files generated using the updated Hi-C processing pipeline. "
-            "They should be largely similar to those available in the Processed Files tab, which were generated "
-            "with the previous version of the standard pipeline.  One potential difference of note is that the "
-            "version of cooler used to generate the mcool file has a bug fix to prevent a pixel duplication "
-            "issue which is observed in some files generated by the previous version of the pipeline.  Another "
-            "notable difference is that a filter is applied to remove reads with MAPQ scores below 30 prior "
-            "to mcool file generation.")}
+    descriptions = {
+        'hic':
+            ("These are files generated using the updated Hi-C processing pipeline. "
+             "They should be largely similar to those available in the Processed Files tab, which were generated "
+             "with the previous version of the standard pipeline.  One potential difference of note is that the "
+             "version of cooler used to generate the mcool file has a bug fix to prevent a pixel duplication "
+             "issue which is observed in some files generated by the previous version of the pipeline.  Another "
+             "notable difference is that a filter is applied to remove reads with MAPQ scores below 30 prior "
+             "to mcool file generation.")
+        }
 
     """move files to other processed_files field."""
     if not patch_data.get('patch_opf'):
@@ -1590,7 +1455,8 @@ def start_missing_run(run_info, auth, env, fs_env):
     if not attr_file:
         possible_keys = [i for i in inputs.keys() if i != 'additional_file_parameters']
         error_message = ('one of these argument names {} which carry the input file -not the references-'
-                         ' should be added to att_keys dictionary on foursight cgap_utils.py or attr_keys in wfr_utils.py function start_missing_run').format(possible_keys)
+                         ' should be added to att_keys dictionary on foursight cgap_utils.py or attr_keys'
+                         ' in wfr_utils.py function start_missing_run').format(possible_keys)
         raise ValueError(error_message)
     attributions = get_attribution(ff_utils.get_metadata(attr_file, auth))
     settings = wfrset_utils.step_settings(run_settings[0], run_settings[1], attributions, run_settings[2])
@@ -1645,17 +1511,17 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start
     return action
 
 
-def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
+def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+        all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+                                                   store_frame='embedded',
+                                                   add_pc_wfr=True,
+                                                   ignore_field=['experiment_relation',
+                                                                 'biosample_relation',
+                                                                 'references',
+                                                                 'reference_pubs'])
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds)
@@ -1714,7 +1580,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair[0]][0]
                 elif paired == 'No':
                     pair_resp = [i for i in all_items['file_fastq'] if i['@id'] == pair][0]
-                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', all_wfrs=all_wfrs)
+                step1_result = get_wfr_out(pair_resp, 'repliseq-parta', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 # if successful
                 if step1_result['status'] == 'complete':
                     all_files.extend([step1_result['filtered_sorted_deduped_bam'],
@@ -1753,6 +1619,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
                 part3 = 'not ready'
         if part3 == 'ready':
             # add the tag
+            tag = get_current_pipeline_tag(my_auth, exp_type)
             set_summary += "| completed runs"
             complete['add_tag'] = [set_acc, tag]
         else:
@@ -1797,7 +1664,7 @@ def check_repli(res, my_auth, tag, check, start, lambda_limit, winsize=None):
     return check
 
 
-def check_rna(res, my_auth, tag, check, start, lambda_limit):
+def check_rna(res, my_auth, exp_type, check, start, lambda_limit, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
     for a_set in res:
         # get all related items
@@ -1914,7 +1781,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
             elif paired == 'No':
                 pars['rna.endedness'] = 'single'
                 input_resp = [i for i in all_items['file_fastq'] if i['@id'] == input_files[0]][0]
-            step1_result = get_wfr_out(input_resp, app_name, all_wfrs=all_wfrs)
+            step1_result = get_wfr_out(input_resp, app_name, key=my_auth, all_wfrs=all_wfrs, **kwargs)
 
             # if successful
             if step1_result['status'] == 'complete':
@@ -1971,7 +1838,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
         # run step2 if step1 s are complete
         else:
             step2_input = [i for i in all_items['file_processed'] if i['@id'] == step2_files[0]][0]
-            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', all_wfrs=all_wfrs, md_qc=True)
+            step2_result = get_wfr_out(step2_input, 'mad_qc_workflow', key=my_auth, all_wfrs=all_wfrs, md_qc=True, **kwargs)
 
             # if successful
             if step2_result['status'] == 'complete':
@@ -1996,6 +1863,7 @@ def check_rna(res, my_auth, tag, check, start, lambda_limit):
 
         if final_status == 'ready':
             # add the tag
+            tag = get_current_pipeline_tag(my_auth, exp_type)
             set_summary += "| completed runs"
             complete['add_tag'] = [set_acc, tag]
         else:
@@ -2164,7 +2032,7 @@ def select_best_2(file_list, all_files, all_qcs):
     scores = []
     # run it for list with at least 3 elements
     if len(file_list) < 3:
-        return(file_list)
+        return (file_list)
 
     for f in file_list:
         f_resp = [i for i in all_files if i['@id'] == f][0]
@@ -2185,6 +2053,7 @@ def select_best_2(file_list, all_files, all_qcs):
         scores.append((score, f))
     scores = sorted(scores, key=lambda x: -x[0])
     return [scores[0][1], scores[1][1]]
+
 
 def limit_number_of_runs(check, my_auth):
     """Checks the number of workflow runs started in the past 6h. Return the
