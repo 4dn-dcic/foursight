@@ -156,7 +156,6 @@ def check_indexing(check, connection):
     # wait for random time
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-    # TEMPORARILY DISABLE ALL PIPELINE RUNS
     env = connection.ff_env
     if env in [FF_PRODUCTION_IDENTIFIER, FF_STAGING_IDENTIFIER]:
         health = ff_utils.get_health_page(ff_env=env)

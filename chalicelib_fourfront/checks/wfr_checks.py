@@ -529,7 +529,7 @@ def pairsqc_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, acc_wf_vers=None, acc_pipes=None,
-                max_runtime=None,action="bg2bw_start")
+                max_runtime=None, action="bg2bw_start")
 def bg2bw_status(connection, **kwargs):
     """Searches for pairs files produced by 4dn pipelines that don't have bg2bw
     Keyword arguments:
@@ -2073,7 +2073,7 @@ def bamqc_start(connection, **kwargs):
 
 
 @check_function(lab_title=None, start_date=None, max_runtime=None,
-                acc_wf_vers=None, acc_pipes=None,action="fastq_first_line_start")
+                acc_wf_vers=None, acc_pipes=None, action="fastq_first_line_start")
 def fastq_first_line_status(connection, **kwargs):
     print('Entering the check function')
     """Searches for fastq files that don't have file_first_line field

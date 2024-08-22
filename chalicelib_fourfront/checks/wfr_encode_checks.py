@@ -397,7 +397,6 @@ def chipseq_status(connection, **kwargs):
                         check.brief_output.append(set_summary)
                         check.full_output['skipped'].append({set_acc: set_summary})
                         continue
-                # run_ids = {'desc': set_acc + a_set.get('description', '')}
                 parameters = {
                     "chip.pipeline_type": target_type,
                     "chip.always_use_pooled_ctl": True,
