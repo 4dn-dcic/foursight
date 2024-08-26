@@ -1059,29 +1059,35 @@ def validate_entrez_geneids(connection, **kwargs):
     # add random wait to stagger runs with other checks on this schedule
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-
+    check.status='PASS'
     # get any geneids to ignore
     last_result = check.get_primary_result()
-    # hack to add empty full_output for first time it is used
-    # last_result['full_output'] = {}
-    # if last one was fail, find an earlier check with non-FAIL status
+    # if last one was fail, find an earlier primary check with non-FAIL status
+    # if this is the first time it is run or there are no earlier checks with non-FAIL status
+    # set up to run anyway
     it = 0
-    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+    err_msg = None
+    while not last_result or last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
         it += 1
         # this is a daily check, so look for checks with 12h iteration
         hours = it * 12
-        last_result = check.get_closest_result(diff_hours=hours)
-            # if this is going forever kill it
+        try:
+            last_result = check.get_closest_result(diff_hours=hours)
+        except Exception as e:
+            err_msg = e
+            break
+        # if this is going forever kill it
         if hours > 100:
-            err_msg = 'Can not find a non-FAIL check in last 100 hours'
-            check.brief_output = err_msg
-            check.full_output = {}
-            check.status = 'ERROR'
-            return check
+            err_msg = 'Can not find a non-FAIL check in last 100 hours - run as new'
+            break
 
+    if err_msg:
+        check.status='WARN'
+        last_result = {}
     # because until this update this check had no full_output need this (only once)
-    if 'full_output' not in last_result:
+    if not last_result.get('full_output'):
         last_result['full_output'] = {}
+    # import pdb; pdb.set_trace()
     # gids to ignore list
     gids2ignore = last_result['full_output'].get('ignore', [])
     # gids2ignore = []
@@ -1102,7 +1108,7 @@ def validate_entrez_geneids(connection, **kwargs):
     search_query = 'search/?type=Gene&limit=all&field=geneid'
     genes = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not genes:
-        check.status = "FAIL"
+        check.status = "ERROR"
         check.description = "Could not retrieve gene records from fourfront"
         return check
     geneids = [g.get('geneid') for g in genes if g.get('geneid') not in gids2ignore]
@@ -1110,7 +1116,7 @@ def validate_entrez_geneids(connection, **kwargs):
     query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
     for gid in geneids:
         if timeouts > 5:
-            check.status = "FAIL"
+            check.status = "ERROR"
             check.description = "Too many ncbi timeouts. Maybe they're down."
             return check
         gquery = query.format(id=gid)
@@ -1141,7 +1147,6 @@ def validate_entrez_geneids(connection, **kwargs):
         check.description = "Problematic Gene IDs found"
         check.status = "WARN"
     else:
-        check.status = "PASS"
         check.description = "GENE IDs are all valid"
     check.full_output.setdefault('ignore', []).extend(gids2ignore)
     return check
