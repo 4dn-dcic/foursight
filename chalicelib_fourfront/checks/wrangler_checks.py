@@ -22,7 +22,7 @@ from chalicelib_fourfront.checks.helpers.es_utils import get_es_metadata
 # rather than importing check_function, action_function, CheckResult, ActionResult
 # individually - they're now part of class Decorators in foursight-core::decorators
 # that requires initialization with foursight prefix.
-from .helpers.confchecks import *
+from .helpers.confchecks import check_function, action_function, CheckResult, ActionResult
 
 
 # use a random number to stagger checks
@@ -1043,14 +1043,45 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
 
 def find_entrez_gene_status(report):
-    pattern = r"track-info\s*{\s*.*?status\s+(\w+)\s*,"
-    match = re.search(pattern, report, re.DOTALL)
-    if match:
-        return match.group(1)
+    # Pattern for track-info block
+    start_pattern = r"track-info\s*{"
+
+    # Find the start of the track-info block
+    start_match = re.search(start_pattern, report)
+    if not start_match:
+        return None
+
+    # track braces
+    braces = []
+    start_index = start_match.end() - 1  # start after the opening brace
+    end_index = start_index
+
+    # go through the characters to find the matching closing brace
+    for i in range(start_index, len(report)):
+        char = report[i]
+        if char == '{':
+            braces.append('{')
+        elif char == '}':
+            if braces:
+                braces.pop()
+            # If the stack is empty at matching closing brace
+            if not braces:
+                end_index = i + 1  # Include the closing brace
+                break
+
+    # get content between the start and end indexes
+    track_info = report[start_index:end_index]
+    if not track_info:
+        return
+    # look for status in track_info
+    status_pattern = r"status\s+(\w+)\s*,"
+    status_match = re.search(status_pattern, track_info)
+    if status_match:
+        return status_match.group(1)
     return None
 
 
-@check_function(add_to_ignore= None, rm_from_ignore=None)
+@check_function(add_to_ignore=None, rm_from_ignore=None)
 def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
@@ -1058,7 +1089,7 @@ def validate_entrez_geneids(connection, **kwargs):
     # add random wait to stagger runs with other checks on this schedule
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-    check.status='PASS'
+    check.status = 'PASS'
     # get any geneids to ignore
     last_result = check.get_primary_result()
     # if last one was fail, find an earlier primary check with non-FAIL status
@@ -1081,12 +1112,11 @@ def validate_entrez_geneids(connection, **kwargs):
             break
 
     if err_msg:
-        check.status='WARN'
+        check.status = 'WARN'
         last_result = {}
     # because until this update this check had no full_output need this (only once)
     if not last_result.get('full_output'):
         last_result['full_output'] = {}
-    # import pdb; pdb.set_trace()
     # gids to ignore list
     gids2ignore = last_result['full_output'].get('ignore', [])
     # gids2ignore = []
@@ -1121,7 +1151,10 @@ def validate_entrez_geneids(connection, **kwargs):
         gquery = query.format(id=gid)
         # make 3 attempts to query gene at ncbi
         for count in range(3):
-            resp = requests.get(gquery)
+            try:
+                resp = requests.get(gquery)
+            except Exception:
+                pass  # after 3 times will hit conditional below
             time.sleep(0.334)
             if resp.status_code == 200:
                 break
@@ -1140,7 +1173,7 @@ def validate_entrez_geneids(connection, **kwargs):
             problems[gid] = 'empty response'
     check.full_output = {}
     if problems:
-        problems = dict(sorted(problems.items()))
+        problems = dict(sorted(problems.items(), key=lambda item: int(item[0])))
         check.summary = "{} problematic entrez gene ids.".format(len(problems))
         check.brief_output = problems
         check.full_output.setdefault('problems', []).extend(problems)
