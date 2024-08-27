@@ -1043,11 +1043,10 @@ def clean_up_webdev_wfrs(connection, **kwargs):
 
 
 def find_entrez_gene_status(report):
-    rlines = report.split('\n')
-    for l in rlines:
-        ltxt = l.strip()
-        if ltxt.startswith('status'):
-            return ltxt.replace('status', '').replace(',', '').strip()
+    pattern = r"track-info\s*{\s*.*?status\s+(\w+)\s*,"
+    match = re.search(pattern, report, re.DOTALL)
+    if match:
+        return match.group(1)
     return None
 
 
@@ -1141,6 +1140,7 @@ def validate_entrez_geneids(connection, **kwargs):
             problems[gid] = 'empty response'
     check.full_output = {}
     if problems:
+        problems = dict(sorted(problems.items()))
         check.summary = "{} problematic entrez gene ids.".format(len(problems))
         check.brief_output = problems
         check.full_output.setdefault('problems', []).extend(problems)
