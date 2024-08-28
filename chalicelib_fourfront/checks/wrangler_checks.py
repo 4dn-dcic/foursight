@@ -22,7 +22,7 @@ from chalicelib_fourfront.checks.helpers.es_utils import get_es_metadata
 # rather than importing check_function, action_function, CheckResult, ActionResult
 # individually - they're now part of class Decorators in foursight-core::decorators
 # that requires initialization with foursight prefix.
-from .helpers.confchecks import *
+from .helpers.confchecks import check_function, action_function, CheckResult, ActionResult
 
 
 # use a random number to stagger checks
@@ -1042,57 +1042,146 @@ def clean_up_webdev_wfrs(connection, **kwargs):
     return check
 
 
-@check_function()
+def find_entrez_gene_status(report):
+    # Pattern for track-info block
+    start_pattern = r"track-info\s*{"
+
+    # Find the start of the track-info block
+    start_match = re.search(start_pattern, report)
+    if not start_match:
+        return None
+
+    # track braces
+    braces = []
+    start_index = start_match.end() - 1  # start after the opening brace
+    end_index = start_index
+
+    # go through the characters to find the matching closing brace
+    for i in range(start_index, len(report)):
+        char = report[i]
+        if char == '{':
+            braces.append('{')
+        elif char == '}':
+            if braces:
+                braces.pop()
+            # If the stack is empty at matching closing brace
+            if not braces:
+                end_index = i + 1  # Include the closing brace
+                break
+
+    # get content between the start and end indexes
+    track_info = report[start_index:end_index]
+    if not track_info:
+        return
+    # look for status in track_info
+    status_pattern = r"status\s+(\w+)\s*,"
+    status_match = re.search(status_pattern, track_info)
+    if status_match:
+        return status_match.group(1)
+    return None
+
+
+@check_function(add_to_ignore=None, rm_from_ignore=None)
 def validate_entrez_geneids(connection, **kwargs):
     ''' query ncbi to see if geneids are valid
     '''
     check = CheckResult(connection, 'validate_entrez_geneids')
-    # add random wait
+    # add random wait to stagger runs with other checks on this schedule
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
+    check.status = 'PASS'
+    # get any geneids to ignore
+    last_result = check.get_primary_result()
+    # if last one was fail, find an earlier primary check with non-FAIL status
+    # if this is the first time it is run or there are no earlier checks with non-FAIL status
+    # set up to run anyway
+    it = 0
+    err_msg = None
+    while not last_result or last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        it += 1
+        # this is a daily check, so look for checks with 12h iteration
+        hours = it * 12
+        try:
+            last_result = check.get_closest_result(diff_hours=hours)
+        except Exception as e:
+            err_msg = e
+            break
+        # if this is going forever kill it
+        if hours > 100:
+            err_msg = 'Can not find a non-FAIL check in last 100 hours - run as new'
+            break
+
+    if err_msg:
+        check.status = 'WARN'
+        last_result = {}
+    # because until this update this check had no full_output need this (only once)
+    if not last_result.get('full_output'):
+        last_result['full_output'] = {}
+    # gids to ignore list
+    gids2ignore = last_result['full_output'].get('ignore', [])
+    # gids2ignore = []
+    # see if any kwargs to modify ignore list
+    new_ignores = kwargs.get('add_to_ignore')
+    if new_ignores:
+        gids2ignore.extend([ni.strip() for ni in new_ignores.split(',') if ni not in gids2ignore])
+    rm_ignores = kwargs.get('rm_from_ignore')
+    if rm_ignores:
+        if rm_ignores == 'all':
+            # reset ignore list
+            gids2ignore = []
+        else:
+            gids2ignore[:] = [gid for gid in gids2ignore if gid not in [rm.strip() for rm in rm_ignores.split(',')]]
+
     problems = {}
     timeouts = 0
     search_query = 'search/?type=Gene&limit=all&field=geneid'
     genes = ff_utils.search_metadata(search_query, key=connection.ff_keys)
     if not genes:
-        check.status = "FAIL"
+        check.status = "ERROR"
         check.description = "Could not retrieve gene records from fourfront"
         return check
-    geneids = [g.get('geneid') for g in genes]
+    geneids = [g.get('geneid') for g in genes if g.get('geneid') not in gids2ignore]
 
     query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
     for gid in geneids:
         if timeouts > 5:
-            check.status = "FAIL"
+            check.status = "ERROR"
             check.description = "Too many ncbi timeouts. Maybe they're down."
             return check
         gquery = query.format(id=gid)
         # make 3 attempts to query gene at ncbi
         for count in range(3):
-            resp = requests.get(gquery)
+            try:
+                resp = requests.get(gquery)
+            except Exception:
+                pass  # after 3 times will hit conditional below
+            time.sleep(0.334)
             if resp.status_code == 200:
                 break
-            if resp.status_code == 429:
-                time.sleep(0.334)
-                continue
-            if count == 2:
+            if count == 2:  # third try without 200
                 timeouts += 1
                 problems[gid] = 'ncbi timeout'
         try:
             rtxt = resp.text
-        except AttributeError:
-            problems[gid] = 'empty response'
-        else:
             if rtxt.startswith('Error'):
                 problems[gid] = 'not a valid geneid'
+            else:
+                status = find_entrez_gene_status(rtxt)
+                if status != 'live':
+                    problems[gid] = f'{status} geneid - needs update?'
+        except AttributeError:
+            problems[gid] = 'empty response'
+    check.full_output = {}
     if problems:
+        problems = dict(sorted(problems.items(), key=lambda item: int(item[0])))
         check.summary = "{} problematic entrez gene ids.".format(len(problems))
         check.brief_output = problems
+        check.full_output.setdefault('problems', []).extend(problems)
         check.description = "Problematic Gene IDs found"
         check.status = "WARN"
     else:
-        check.status = "PASS"
         check.description = "GENE IDs are all valid"
+    check.full_output.setdefault('ignore', []).extend(gids2ignore)
     return check
 
 
