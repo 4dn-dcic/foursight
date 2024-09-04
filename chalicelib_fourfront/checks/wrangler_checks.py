@@ -1114,7 +1114,7 @@ def validate_entrez_geneids(connection, **kwargs):
     if err_msg:
         check.status = 'WARN'
         last_result = {}
-    # because until this update this check had no full_output need this (only once)
+    # because no full_output if there was an issue getting last_result
     if not last_result.get('full_output'):
         last_result['full_output'] = {}
     # gids to ignore list
@@ -1144,6 +1144,7 @@ def validate_entrez_geneids(connection, **kwargs):
 
     query = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=gene&id={id}"
     for gid in geneids:
+        qstart = datetime.datetime.now()
         if timeouts > 5:
             check.status = "ERROR"
             check.description = "Too many ncbi timeouts. Maybe they're down."
@@ -1153,9 +1154,14 @@ def validate_entrez_geneids(connection, **kwargs):
         for count in range(3):
             try:
                 resp = requests.get(gquery)
+                qstop = datetime.datetime.now()
             except Exception:
+                qstop = datetime.datetime.now()
                 pass  # after 3 times will hit conditional below
-            time.sleep(0.334)
+            try:
+                time.sleep(0.334 - (qstop - qstart).total_seconds())
+            except ValueError:
+                pass
             if resp.status_code == 200:
                 break
             if count == 2:  # third try without 200
