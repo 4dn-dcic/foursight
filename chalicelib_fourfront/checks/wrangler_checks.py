@@ -1151,12 +1151,13 @@ def validate_entrez_geneids(connection, **kwargs):
         gquery = query.format(id=gid)
         # make 3 attempts to query gene at ncbi
         for count in range(3):
+            resp = None
             try:
                 resp = requests.get(gquery)
             except Exception:
                 pass  # after 3 times will hit conditional below
             time.sleep(0.334)
-            if resp.status_code == 200:
+            if resp and resp.status_code == 200:
                 break
             if count == 2:  # third try without 200
                 timeouts += 1
