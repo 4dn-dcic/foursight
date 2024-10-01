@@ -2305,7 +2305,6 @@ def grouped_with_file_relation_consistency(connection, **kwargs):
     # list groups of related items
     groups = []
     newgroups = [set(rel).union({file}) for file, rel in file2grp.items()]
-
     # Check if any pair of groups in the list has a common file (intersection).
     # In that case, they are parts of the same group: merge them.
     # Repeat until all groups are disjoint (not intersecting).
@@ -2324,6 +2323,14 @@ def grouped_with_file_relation_consistency(connection, **kwargs):
     for a_group in newgroups:
         pairs = [(a, b) for a in a_group for b in a_group if a != b]
         for (a_file, related) in pairs:
+            found = False
+            rel_info = file2all.get(a_file)
+            for rel in rel_info:
+                if rel.get('relationship_type') == 'paired with':
+                    if rel.get('file') == related:
+                        found = True
+            if found:
+                continue
             if related not in file2grp.get(a_file, []):
                 missing.setdefault(a_file, []).append(related)
 
