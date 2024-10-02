@@ -7,6 +7,17 @@ foursight
 Change Log
 ----------
 
+
+4.9.2
+=====
+
+`PR 580: Bug fixes for 3 checks <https://github.com/4dn-dcic/foursight/pull/580>`_
+
+* fixed 'grouped with' relationship check to ignore 'paired with' when needed
+* tweak entrez_gene_id validation check to gracefully deal with no ncbi response
+* refactor the update higlass_defaults check and action so it actually works 
+
+
 4.9.1
 =====
 
