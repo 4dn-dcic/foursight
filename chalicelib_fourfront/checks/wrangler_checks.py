@@ -1703,24 +1703,41 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
+    valid_tags = ['SPIN_states_v1']  # only 1 at the moment but make the current tag the first in the list
     query = '/search/?file_type=chromatin states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    updates = {}
     for a_res in res:
-        if not a_res.get('higlass_defaults'):
-            if not a_res.get('tags'):
-                check.full_output['problematic_files'][a_res['accession']] = 'missing state tag'
-            else:
-                check.full_output['to_add'][a_res['accession']] = a_res["tags"]
-
-    if check.full_output['to_add']:
+        uid = a_res.get('uuid')
+        acc = a_res.get('accession')
+        has_higlass_defaults = False
+        has_tag = False
+        import pdb; pdb.set_trace()
+        if a_res.get('higlass_defaults'):
+            has_higlass_defaults = True
+        if 'tags' not in a_res:
+            continue
+        else:
+            tags = a_res.get('tags')
+            for t in tags:
+                if t in valid_tags:
+                    has_tag = True
+                    break
+        if not has_tag or not has_higlass_defaults:
+            updates.setdefault(uid, {})
+            updates[uid]['accession'] = acc
+            if not has_tag:
+                updates[uid]['add_tag'] = a_res.get('tags', []).append(valid_tags[0])
+            if not has_higlass_defaults:
+                updates[uid]['update_defaults'] = True
+    
+    if updates:
         check.status = 'WARN'
-        check.summary = 'Ready to patch higlass_defaults'
-        check.description = 'Ready to patch higlass_defaults'
+        check.summary = 'Ready to patch higlass_defaults and/or add tag'
+        check.description = 'Ready to patch higlass_defaults for visualization and add missing tags to file'
         check.allow_action = True
-        check.action_message = 'Will patch higlass_defaults to %s items' % (len(check.full_output['to_add']))
-    elif check.full_output['problematic_files']:
-        check.status = 'WARN'
-        check.summary = 'There are some files without states tags'
+        check.action_message = 'Will update {} files'.format(len(updates))
+        check.full_output['updates'] = updates
     else:
         check.status = 'PASS'
         check.summary = 'higlass_defaults are all set'
@@ -1732,36 +1749,42 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     action = ActionResult(connection, 'patch_states_files_higlass_defaults')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_success': [], 'patch_failure': [], 'missing_ref_file': []}
-    total_patches = check_res['full_output']['to_add']
+    updates = check_res.full_output.get('updates')
 
-    s3 = boto3.resource('s3')
-    bucket = s3.Bucket('elasticbeanstalk-%s-files' % prod_bucket_env_for_app())
+    for uid, needed_updates in updates.items():
+        patch = {}
+        if 'add_tag' in needed_updates:
+            patch.update({'tags': needed_updates.get('add_tag')})
+        if needed_updates.get('update_defaults'):
+            s3 = boto3.resource('s3')
+            bucket = s3.Bucket('elasticbeanstalk-%s-files' % prod_bucket_env_for_app())
+            query = '/search/?type=FileReference'
+            all_ref_files = ff_utils.search_metadata(query, key=connection.ff_keys)
+            ref_files_tags = {}
+            for ref_file in all_ref_files:
+                if ref_file.get('tags'):
+                    for ref_file_tag in ref_file.get('tags'):
+                        if 'states' in ref_file_tag:
+                            ref_files_tags[ref_file_tag] = {'uuid': ref_file['uuid'], 'accession': ref_file['accession']}
 
-    query = '/search/?type=FileReference'
-    all_ref_files = ff_utils.search_metadata(query, key=connection.ff_keys)
-    ref_files_tags = {}
-    for ref_file in all_ref_files:
-        if ref_file.get('tags'):
-            for ref_file_tag in ref_file.get('tags'):
-                if 'states' in ref_file_tag:
-                    ref_files_tags[ref_file_tag] = {'uuid': ref_file['uuid'], 'accession': ref_file['accession']}
-
-    for item, tag in total_patches.items():
-        if ref_files_tags.get(tag[0]):
-            buck_obj = ref_files_tags[tag[0]]['uuid'] + '/' + ref_files_tags[tag[0]]['accession'] + '.txt'
-            obj = bucket.Object(buck_obj)
-            body = obj.get()['Body'].read().decode('utf8')
-            lines = body.split()
-            states_colors = [item for num, item in enumerate(lines) if num % 2 != 0]
-            patch = {'higlass_defaults': {'colorScale': states_colors}}
+            for ref_files_tag, info in ref_files_tags.items():
+                buck_obj = info.get('uuid') + '/' + ref_files_tag['accession'] + '.txt'
+                obj = bucket.Object(buck_obj)
+                body = obj.get()['Body'].read().decode('utf8')
+                lines = body.split()
+                states_colors = [item for num, item in enumerate(lines) if num % 2 != 0]
+                patch.update({'higlass_defaults': {'colorScale': states_colors}})
+        
+        # now have all the updates for this uid
+        if patch:
             try:
-                ff_utils.patch_metadata(patch, item, key=connection.ff_keys)
+                ff_utils.patch_metadata(patch, uid, key=connection.ff_keys)
             except Exception as e:
-                action_logs['patch_failure'].append({item: str(e)})
+                action_logs['patch_failure'].append({uid: str(e)})
             else:
-                action_logs['patch_success'].append(item)
+                action_logs['patch_success'].append(uid)
         else:
-            action_logs['missing_ref_file'].append({item: 'missing rows_info reference file'})
+            action_logs['missing_ref_file'].append({uid: 'missing rows_info reference file'})
 
     if action_logs['patch_failure'] or action_logs['missing_ref_file']:
         action.status = 'FAIL'
