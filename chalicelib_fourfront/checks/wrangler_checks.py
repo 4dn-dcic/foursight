@@ -1712,7 +1712,6 @@ def states_files_without_higlass_defaults(connection, **kwargs):
         acc = a_res.get('accession')
         has_higlass_defaults = False
         has_tag = False
-        import pdb; pdb.set_trace()
         if a_res.get('higlass_defaults'):
             has_higlass_defaults = True
         if 'tags' not in a_res:
