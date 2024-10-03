@@ -1748,7 +1748,7 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     action = ActionResult(connection, 'patch_states_files_higlass_defaults')
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_success': [], 'patch_failure': [], 'missing_ref_file': []}
-    updates = check_res.full_output.get('updates')
+    updates = check_res.get('full_output').get('updates', {})
 
     for uid, needed_updates in updates.items():
         patch = {}
