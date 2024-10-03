@@ -1703,7 +1703,10 @@ def states_files_without_higlass_defaults(connection, **kwargs):
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
-    valid_tags = ['SPIN_states_v1']  # only 1 at the moment but make the current tag the first in the list
+    valid_tag = 'SPIN_states_v1'  # only 1 at the moment - have kwargs to pass different tag
+    # important - the tag added to files MUST match the tag on the reference file to use!!!
+    if kwargs.get('tag', None):
+        valid_tag = kwargs.get('tag')
     query = '/search/?file_type=chromatin states&type=File'
     res = ff_utils.search_metadata(query, key=connection.ff_keys)
     updates = {}
@@ -1719,14 +1722,14 @@ def states_files_without_higlass_defaults(connection, **kwargs):
         else:
             tags = a_res.get('tags')
             for t in tags:
-                if t in valid_tags:
+                if t == valid_tag:
                     has_tag = True
                     break
         if not has_tag or not has_higlass_defaults:
             updates.setdefault(uid, {})
             updates[uid]['accession'] = acc
             if not has_tag:
-                updates[uid]['add_tag'] = a_res.get('tags', []).append(valid_tags[0])
+                updates[uid]['add_tag'] = a_res.get('tags', []).append(valid_tag)
             if not has_higlass_defaults:
                 updates[uid]['update_defaults'] = True
 
@@ -1736,6 +1739,7 @@ def states_files_without_higlass_defaults(connection, **kwargs):
         check.description = 'Ready to patch higlass_defaults for visualization and add missing tags to file'
         check.allow_action = True
         check.action_message = 'Will update {} files'.format(len(updates))
+        check.full_output['valid_tag'] = valid_tag
         check.full_output['updates'] = updates
     else:
         check.status = 'PASS'
@@ -1749,6 +1753,7 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     check_res = action.get_associated_check_result(kwargs)
     action_logs = {'patch_success': [], 'patch_failure': [], 'missing_ref_file': []}
     updates = check_res.get('full_output').get('updates', {})
+    valid_tag = check_res.get('full_output').get('valid_tag')
 
     ''' 
         this action has been refactored to look for a specific single reference file to obtain states based on a tag
@@ -1759,17 +1764,15 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     # this is to get the wanted reference file and generate state_colors
     s3info = s3Utils()
     bucket = s3info.raw_file_bucket
-    states_ref_file_tag = 'SPIN_states_v1'
-    if kwargs.get('tag', None):
-        states_ref_file_tag = kwargs.get('tag')
-    query = '/search/?type=FileReference&status=released&tags={}'.format(states_ref_file_tag)
+    
+    query = '/search/?type=FileReference&status=released&tags={}'.format(valid_tag)
     search_res = ff_utils.search_metadata(query, key=connection.ff_keys)
     if not search_res:
         action.status = 'WARN'
         action.output = 'Failed to retrieve row_info reference file'
         return action
     elif len(search_res) > 1:
-        msg = "WARNING - more than one row_info file found with tag {}\nUsing first one found".format(states_ref_file_tag)
+        msg = "WARNING - more than one row_info file found with tag {}\nUsing first one found".format(valid_tag)
         action_logs.setdefault('ref_file_problem', msg)
         action.status = 'WARN'
     row_info_file_meta = search_res[0]
