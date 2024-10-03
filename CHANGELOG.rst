@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+4.9.3
+=====
+
+`PR 581: Bug fix for states file action <https://github.com/4dn-dcic/foursight/pull/581>`_
+
+* fix bug in states file action
+
 
 4.9.2
 =====
