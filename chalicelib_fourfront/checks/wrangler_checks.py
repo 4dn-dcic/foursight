@@ -1,5 +1,5 @@
 from dcicutils import ff_utils
-from dcicutils.env_utils import prod_bucket_env_for_app
+from dcicutils.s3_utils import s3Utils
 import boto3
 import re
 import requests
@@ -1729,7 +1729,7 @@ def states_files_without_higlass_defaults(connection, **kwargs):
                 updates[uid]['add_tag'] = a_res.get('tags', []).append(valid_tags[0])
             if not has_higlass_defaults:
                 updates[uid]['update_defaults'] = True
-    
+
     if updates:
         check.status = 'WARN'
         check.summary = 'Ready to patch higlass_defaults and/or add tag'
@@ -1750,29 +1750,41 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     action_logs = {'patch_success': [], 'patch_failure': [], 'missing_ref_file': []}
     updates = check_res.get('full_output').get('updates', {})
 
+    ''' 
+        this action has been refactored to look for a specific single reference file to obtain states based on a tag
+        the way that the s3 bucket is obtained was updated (previously used a now deprecated function)
+        an optional kwarg for the tag has been added in case a different one should be used
+    '''
+
+    # this is to get the wanted reference file and generate state_colors
+    s3info = s3Utils()
+    bucket = s3info.raw_file_bucket
+    states_ref_file_tag = 'SPIN_states_v1'
+    if kwargs.get('tag', None):
+        states_ref_file_tag = kwargs.get('tag')
+    query = '/search/?type=FileReference&status=released&tags={}'.format(states_ref_file_tag)
+    search_res = ff_utils.search_metadata(query, key=connection.ff_keys)
+    if not search_res:
+        action.status = 'WARN'
+        action.output = 'Failed to retrieve row_info reference file'
+        return action
+    elif len(search_res) > 1:
+        msg = "WARNING - more than one row_info file found with tag {}\nUsing first one found".format(states_ref_file_tag)
+        action_logs.setdefault('ref_file_problem', msg)
+        action.status = 'WARN'
+    row_info_file_meta = search_res[0]
+    buck_obj = row_info_file_meta.get('uuid') + '/' + row_info_file_meta.get('display_title')
+    obj = bucket.Object(buck_obj)
+    body = obj.get()['Body'].read().decode('utf8')
+    lines = body.split()
+    states_colors = [item for num, item in enumerate(lines) if num % 2 != 0]
+
     for uid, needed_updates in updates.items():
         patch = {}
         if 'add_tag' in needed_updates:
             patch.update({'tags': needed_updates.get('add_tag')})
         if needed_updates.get('update_defaults'):
-            s3 = boto3.resource('s3')
-            bucket = s3.Bucket('elasticbeanstalk-%s-files' % prod_bucket_env_for_app())
-            query = '/search/?type=FileReference'
-            all_ref_files = ff_utils.search_metadata(query, key=connection.ff_keys)
-            ref_files_tags = {}
-            for ref_file in all_ref_files:
-                if ref_file.get('tags'):
-                    for ref_file_tag in ref_file.get('tags'):
-                        if 'states' in ref_file_tag:
-                            ref_files_tags[ref_file_tag] = {'uuid': ref_file['uuid'], 'accession': ref_file['accession']}
-
-            for ref_files_tag, info in ref_files_tags.items():
-                buck_obj = info.get('uuid') + '/' + ref_files_tag['accession'] + '.txt'
-                obj = bucket.Object(buck_obj)
-                body = obj.get()['Body'].read().decode('utf8')
-                lines = body.split()
-                states_colors = [item for num, item in enumerate(lines) if num % 2 != 0]
-                patch.update({'higlass_defaults': {'colorScale': states_colors}})
+            patch.update({'higlass_defaults': {'colorScale': states_colors}})
         
         # now have all the updates for this uid
         if patch:
