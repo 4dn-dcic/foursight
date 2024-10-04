@@ -1762,9 +1762,8 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
     '''
 
     # this is to get the wanted reference file and generate state_colors
-    s3info = s3Utils()
-    bucket = s3info.raw_file_bucket
-    
+    s3_util_obj = s3Utils(env=connection.ff_env)
+    bucketname = s3_util_obj.raw_file_bucket
     query = '/search/?type=FileReference&status=released&tags={}'.format(valid_tag)
     search_res = ff_utils.search_metadata(query, key=connection.ff_keys)
     if not search_res:
@@ -1776,9 +1775,10 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
         action_logs.setdefault('ref_file_problem', msg)
         action.status = 'WARN'
     row_info_file_meta = search_res[0]
-    buck_obj = row_info_file_meta.get('uuid') + '/' + row_info_file_meta.get('display_title')
-    obj = bucket.Object(buck_obj)
-    body = obj.get()['Body'].read().decode('utf8')
+    file_key = row_info_file_meta.get('uuid') + '/' + row_info_file_meta.get('display_title')
+    #obj = bucket.Object(buck_obj)
+    #body = obj.get()['Body'].read().decode('utf8')
+    body = s3_util_obj.read_s3(file_key, bucket=bucketname).decode('utf8')
     lines = body.split()
     states_colors = [item for num, item in enumerate(lines) if num % 2 != 0]
 
@@ -1788,7 +1788,7 @@ def patch_states_files_higlass_defaults(connection, **kwargs):
             patch.update({'tags': needed_updates.get('add_tag')})
         if needed_updates.get('update_defaults'):
             patch.update({'higlass_defaults': {'colorScale': states_colors}})
-        
+
         # now have all the updates for this uid
         if patch:
             try:
