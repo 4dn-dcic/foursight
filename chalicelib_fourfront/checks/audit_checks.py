@@ -734,6 +734,9 @@ def check_opf_status_mismatch(connection, **kwargs):
     '''
     check = CheckResult(connection, 'check_opf_status_mismatch')
 
+    # list of uuids to filter out as they have a tag to ignore them
+    tagged2ignore = get_items_with_ignore_tags(connection.ff_keys)
+
     opf_set = ('search/?type=ExperimentSet&other_processed_files.title%21=No+value&field=status'
                '&field=other_processed_files&field=experiments_in_set.other_processed_files')
     opf_exp = ('search/?type=ExperimentSet&other_processed_files.title=No+value'
@@ -741,34 +744,46 @@ def check_opf_status_mismatch(connection, **kwargs):
                '&field=experiments_in_set.other_processed_files&field=status')
     opf_set_results = ff_utils.search_metadata(opf_set, key=connection.ff_keys)
     opf_exp_results = ff_utils.search_metadata(opf_exp, key=connection.ff_keys)
-    results = opf_set_results + opf_exp_results
-    # extract file uuids
+    results = opf_set_results + opf_exp_results  # these are expset and expt items w/opfs
+    # extract all opf file and higlass viewconf uuids
     files = []
     for result in results:
         if result.get('other_processed_files'):
             for case in result['other_processed_files']:
-                files.extend([i['uuid'] for i in case['files']])
+                files.extend([i['uuid'] for i in case['files']]) # if i.get('uuid') not in tagged2ignore])
                 if case.get('higlass_view_config'):
+                    # if case['higlass_view_config'].get('uuid') not in tagged2ignore:
                     files.append(case['higlass_view_config'].get('uuid'))
         if result.get('experiments_in_set'):
             for exp in result['experiments_in_set']:
                 for case in exp['other_processed_files']:
-                    files.extend([i['uuid'] for i in case['files']])
-    # get metadata for files, to collect status
+                    files.extend([i['uuid'] for i in case['files']]) # if i.get('uuid') not in tagged2ignore])
+    
+    # get metadata for files, to collect status 
     resp = get_es_metadata(list(set(files)),
                            sources=['links.quality_metric', 'object.status', 'uuid'],
                            key=connection.ff_keys)
+    # key = opf uuid; value = status
     opf_status_dict = {item['uuid']: item['object']['status'] for item in resp if item['uuid'] in files}
+    
+    # key opf uuid; value = linked quality metric items
     opf_linked_dict = {
         item['uuid']: item.get('links', {}).get('quality_metric', []) for item in resp if item['uuid'] in files
     }
+
+    # quality metric uuids
     quality_metrics = [uuid for item in resp for uuid in item.get('links', {}).get('quality_metric', [])]
+
+    # get metadata for quality metrics (status)
     qm_resp = get_es_metadata(list(set(quality_metrics)),
                               sources=['uuid', 'object.status'],
                               key=connection.ff_keys)
+
+    # key = qual met uuid; value = status
     opf_other_dict = {item['uuid']: item['object']['status'] for item in qm_resp if item not in files}
+
     check.full_output = {}
-    for result in results:
+    for result in results:  # now go through each expset or experiment again and make sure all the statuses agree
         hg_dict = {item['title']: item.get('higlass_view_config', {}).get('uuid')
                    for item in result.get('other_processed_files', [])}
         titles = [item['title'] for item in result.get('other_processed_files', [])]
@@ -782,8 +797,7 @@ def check_opf_status_mismatch(connection, **kwargs):
             file_list.extend([item for exp in result.get('experiments_in_set', [])
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
-            statuses = set([opf_status_dict[f['uuid']] for f in file_list])
-            # import pdb; pdb.set_trace()
+            statuses = set([opf_status_dict[f['uuid']] for f in file_list if f.get('uuid') not in tagged2ignore])
             if not statuses:
                 # to account for empty sections that may not yet contain files
                 pass
