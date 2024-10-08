@@ -7,6 +7,16 @@ foursight
 Change Log
 ----------
 
+
+4.9.4
+=====
+
+`PR 582: Refactor and bug fix for states file action <https://github.com/4dn-dcic/foursight/pull/582>`_
+
+* refactor states file action once it was clear bug fix in previous PR was insufficient
+* make use of s3Utils s3 access with update to read_s3 method in dcicutils 8.15.0
+
+
 4.9.3
 =====
 
