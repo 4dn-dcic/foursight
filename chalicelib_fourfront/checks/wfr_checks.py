@@ -654,11 +654,11 @@ def bed2beddb_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # Build the query (find bg files without bw files)
+    # Build the query (find bed files without beddb files)
     query = ("/search/?type=File&file_format.file_format=bed"
              "&extra_files.file_format.display_title!=beddb"
              "&status!=uploading&status!=to be uploaded by workflow"
-             "&status!=archived&status!=archived to project")
+             "&status!=archived&status!=archived to project&tags!=skip_processing")
     query += "".join(["&file_type=" + i for i in accepted_types])
     # add date
     s_date = kwargs.get('start_date')
