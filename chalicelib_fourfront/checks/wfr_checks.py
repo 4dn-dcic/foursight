@@ -674,7 +674,8 @@ def bed2beddb_status(connection, **kwargs):
                "&extra_files.file_format.display_title=beddb"
                "&extra_files.status=uploading"
                "&extra_files.status=to be uploaded by workflow"
-               "&status!=uploading&status!=to be uploaded by workflow")
+               "&status!=uploading&status!=to be uploaded by workflow"
+               "&tags!=skip_processing")
     # add date
     s_date = kwargs.get('start_date')
     if s_date:

@@ -8,6 +8,15 @@ Change Log
 ----------
 
 
+4.9.5
+=====
+
+`PR 583: Update opf status mismatch check <https://github.com/4dn-dcic/foursight/pull/583>`_
+
+* add a filter to filter on 'ignore_status_mismatch' tag on items (opfs, quality metrics or higlass_viewconfs) to ignore in opf status mismatch
+* small update to search for bed2beddb files to respect the 'skip_processing' tag if present
+
+
 4.9.4
 =====
 
