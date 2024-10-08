@@ -798,7 +798,6 @@ def check_opf_status_mismatch(connection, **kwargs):
                               for fileset in exp['other_processed_files']
                               for item in fileset['files'] if fileset['title'] == title])
             statuses = set([opf_status_dict[f['uuid']] for f in file_list if f.get('uuid') not in tagged2ignore])
-            # import pdb; pdb.set_trace()
             if not statuses:
                 # to account for empty sections that may not yet contain files
                 pass
