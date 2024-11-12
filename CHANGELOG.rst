@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.7
+=====
+
+`PR 585: Remove rate limit for md5_status check <https://github.com/4dn-dcic/foursight/pull/585>`_
+
+* remove rate limiting (and related variables) for md5_status check
+
+
 4.9.6
 =====
 * 2024-10-11/dmichaels
