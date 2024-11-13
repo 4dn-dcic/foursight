@@ -112,12 +112,6 @@ def md5run_status(connection, **kwargs):
     check, skip = wfr_utils.check_indexing(check, connection)
     if skip:
         return check
-    # check number of total workflow runs in the past 6h
-    check, n_runs_available = wfr_utils.limit_number_of_runs(check, my_auth)
-    if n_runs_available == 0:
-        check.brief_output.append('Runs are limited due to docker pull rate limit')
-        check.status = 'WARN'
-        return check
 
     # Build the query
     query = '/search/?status=uploading&status=upload failed&status!=archived&status!=archived to project'
@@ -145,9 +139,7 @@ def md5run_status(connection, **kwargs):
     no_s3_file = []
     running = []
     missing_md5_to_start = []
-    missing_md5_to_wait = []
     not_switched_status = []
-    not_switched_status_to_wait = []
     # multiple failed runs
     problems = []
     # 2024-02-08: Per above comment WRT any() on a generator, only do
@@ -191,17 +183,11 @@ def md5run_status(connection, **kwargs):
             # Most probably the trigger did not work, and we run it manually
             problems.append(file_id)
         elif md5_report['status'] != 'complete':
-            if n_runs_to_trigger < n_runs_available:
-                missing_md5_to_start.append(file_id)
-            else:
-                missing_md5_to_wait.append(file_id)
+            missing_md5_to_start.append(file_id)
         elif md5_report['status'] == 'complete':
             # There is a successful run, but status is not switched, happens when a file is reuploaded.
             # note this happens infrequently so should be fine to do this way
-            if n_runs_to_trigger < n_runs_available:
-                not_switched_status.append(file_id)
-            else:
-                not_switched_status_to_wait.append(file_id)
+            not_switched_status.append(file_id)
     else:
         # We get here at the end of the result set iteration for loop, regardless of where or not
         # there were results; if my_s3_util is not set at this point it means there were no results.
@@ -234,18 +220,6 @@ def md5run_status(connection, **kwargs):
         msg = str(len(not_switched_status)) + ' file(s) have wrong status with a successful run to start'
         check.brief_output.append(msg)
         check.full_output['files_with_run_and_wrong_status_to_start'] = not_switched_status
-        check.status = 'WARN'
-    if missing_md5_to_wait:
-        summary += 'Some files need md5 runs but must wait\n'
-        msg = str(len(missing_md5_to_wait)) + ' file(s) to wait for md5 run'
-        check.brief_output.append(msg)
-        check.full_output['files_without_md5run_to_wait'] = missing_md5_to_wait
-        check.status = 'WARN'
-    if not_switched_status_to_wait:
-        summary += 'Some files are have wrong status but must wait\n'
-        msg = str(len(not_switched_status_to_wait)) + ' file(s) are have wrong status and will wait'
-        check.brief_output.append(msg)
-        check.full_output['files_with_run_and_wrong_status_to_wait'] = not_switched_status_to_wait
         check.status = 'WARN'
     if no_s3_file:
         summary += 'Some files are pending upload\n'
