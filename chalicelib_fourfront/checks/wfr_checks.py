@@ -2347,6 +2347,13 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
                 qc_values = file_meta['quality_metric']['quality_metric_summary'][0]['value']
                 problematic_resolutions = qc_values.split('; ')
+                
+                # Skip tagged mcools files as needed
+                if file_meta.get('tags'):
+                    if 'skip_domain_callers' in file_meta['tags']:
+                        skip = True
+                        continue
+                
                 # verify if binsize is good
                 enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
                 organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
@@ -2365,27 +2372,22 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 if str(binsize) in problematic_resolutions:
                     skip = True
                     continue
-                # Skip tagged mcools files as needed
-                if file_meta.get('tags'):
-                    if 'skip_domain_callers' in file_meta['tags']:
-                        skip = True
-                        continue
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth, **kwargs)
-        if skip:
-            continue
-        elif insu_and_boun_report['status'] == 'running':
-            running.append(pfile['accession'])
-        elif insu_and_boun_report['status'].startswith("no complete run, too many"):
-            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
-        elif insu_and_boun_report['status'] != 'complete':
-            overwrite = {'parameters': {"binsize": binsize}}
-            inp_f = {'mcoolfile': pfile['accession']}
-            missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
-                                inp_f, a_res['accession']])
-        else:
-            patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
-            completed['patch_opf'].append([a_res['accession'], patch_data])
-            completed['add_tag'] = [a_res['accession'], wfr_utils.feature_calling_accepted_versions[feature][-1]]
+            
+                # only want to modify report if we're looking at an mcool file
+                if insu_and_boun_report['status'] == 'running':
+                    running.append(pfile['accession'])
+                elif insu_and_boun_report['status'].startswith("no complete run, too many"):
+                    problematic_run.append(['step1', a_res['accession'], pfile['accession']])
+                elif insu_and_boun_report['status'] != 'complete':
+                    overwrite = {'parameters': {"binsize": binsize}}
+                    inp_f = {'mcoolfile': pfile['accession']}
+                    missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
+                                        inp_f, a_res['accession']])
+                else:
+                    patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
+                    completed['patch_opf'].append([a_res['accession'], patch_data])
+                    completed['add_tag'] = [a_res['accession'], wfr_utils.feature_calling_accepted_versions[feature][-1]]
 
         if running:
             check.full_output['running_runs'].append({a_res['accession']: running})
@@ -2401,7 +2403,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
     if check.full_output['needs_runs']:
         check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
-        check.allow_action = True
+        check.allow_action = False
         check.status = 'WARN'
     if check.full_output['completed_runs']:
         check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'
@@ -2831,7 +2833,7 @@ def mcoolqc_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find mcool files)
-    default_stati = 'released&status=uploaded&status=released+to+project'
+    default_stati = 'released&status=uploaded&status=released+to+project&status=pre-release'
     stati = 'status=' + (kwargs.get('status') or default_stati)
     query = 'search/?file_format.file_format=mcool&{}'.format(stati)
     query += '&type=FileProcessed'
