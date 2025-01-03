@@ -2347,6 +2347,13 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 file_meta = ff_utils.get_metadata(pfile['accession'], key=my_auth)
                 qc_values = file_meta['quality_metric']['quality_metric_summary'][0]['value']
                 problematic_resolutions = qc_values.split('; ')
+                
+                # Skip tagged mcools files as needed
+                if file_meta.get('tags'):
+                    if 'skip_domain_callers' in file_meta['tags']:
+                        skip = True
+                        continue
+                
                 # verify if binsize is good
                 enz = a_res['experiments_in_set'][0]['digestion_enzyme']['name']
                 organism = a_res['experiments_in_set'][0]['biosample']['biosource'][0]['organism']['name']
@@ -2365,11 +2372,6 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 if str(binsize) in problematic_resolutions:
                     skip = True
                     continue
-                # Skip tagged mcools files as needed
-                if file_meta.get('tags'):
-                    if 'skip_domain_callers' in file_meta['tags']:
-                        skip = True
-                        continue
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth, **kwargs)
             
                 # only want to modify report if we're looking at an mcool file
