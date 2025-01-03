@@ -2375,9 +2375,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth, **kwargs)
             
                 # only want to modify report if we're looking at an mcool file
-                if skip:
-                    continue
-                elif insu_and_boun_report['status'] == 'running':
+                if insu_and_boun_report['status'] == 'running':
                     running.append(pfile['accession'])
                 elif insu_and_boun_report['status'].startswith("no complete run, too many"):
                     problematic_run.append(['step1', a_res['accession'], pfile['accession']])
