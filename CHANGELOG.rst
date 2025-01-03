@@ -13,6 +13,7 @@ Change Log
 `PR 586: Ignore non-mcools in insulation-score check <https://github.com/4dn-dcic/foursight/pull/586>`_
 
 * The insulation score and boundaries caller check won't append a file to its output unless it is the mcool
+* Add pre-released files to mcoolQC query
 
 4.9.7
 =====

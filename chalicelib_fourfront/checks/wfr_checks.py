@@ -2835,7 +2835,7 @@ def mcoolqc_status(connection, **kwargs):
     if skip:
         return check
     # Build the query (find mcool files)
-    default_stati = 'released&status=uploaded&status=released+to+project'
+    default_stati = 'released&status=uploaded&status=released+to+project&status=pre-release'
     stati = 'status=' + (kwargs.get('status') or default_stati)
     query = 'search/?file_format.file_format=mcool&{}'.format(stati)
     query += '&type=FileProcessed'
