@@ -2371,21 +2371,23 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
                         skip = True
                         continue
                 insu_and_boun_report = wfr_utils.get_wfr_out(file_meta, "insulation-scores-and-boundaries-caller", key=my_auth, **kwargs)
-        if skip:
-            continue
-        elif insu_and_boun_report['status'] == 'running':
-            running.append(pfile['accession'])
-        elif insu_and_boun_report['status'].startswith("no complete run, too many"):
-            problematic_run.append(['step1', a_res['accession'], pfile['accession']])
-        elif insu_and_boun_report['status'] != 'complete':
-            overwrite = {'parameters': {"binsize": binsize}}
-            inp_f = {'mcoolfile': pfile['accession']}
-            missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
-                                inp_f, a_res['accession']])
-        else:
-            patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
-            completed['patch_opf'].append([a_res['accession'], patch_data])
-            completed['add_tag'] = [a_res['accession'], wfr_utils.feature_calling_accepted_versions[feature][-1]]
+            
+                # only want to modify report if we're looking at an mcool file
+                if skip:
+                    continue
+                elif insu_and_boun_report['status'] == 'running':
+                    running.append(pfile['accession'])
+                elif insu_and_boun_report['status'].startswith("no complete run, too many"):
+                    problematic_run.append(['step1', a_res['accession'], pfile['accession']])
+                elif insu_and_boun_report['status'] != 'complete':
+                    overwrite = {'parameters': {"binsize": binsize}}
+                    inp_f = {'mcoolfile': pfile['accession']}
+                    missing_run.append(['step1', ['insulation-scores-and-boundaries-caller', organism, overwrite],
+                                        inp_f, a_res['accession']])
+                else:
+                    patch_data = [insu_and_boun_report['bedfile'], insu_and_boun_report['bwfile']]
+                    completed['patch_opf'].append([a_res['accession'], patch_data])
+                    completed['add_tag'] = [a_res['accession'], wfr_utils.feature_calling_accepted_versions[feature][-1]]
 
         if running:
             check.full_output['running_runs'].append({a_res['accession']: running})
