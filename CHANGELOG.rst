@@ -10,7 +10,7 @@ Change Log
 4.9.9
 =====
 
-`PR ???: Remove restricted status from search query <https://github.com/4dn-dcic/foursight/pull/???>`_
+`PR 587: Remove restricted status from search query <https://github.com/4dn-dcic/foursight/pull/587>`_
 
 * Remove the 'restricted' status from the search query in the fastq_first_line check
 * Remove the 'restricted' status from the search query in the bamQC check (and add pre-release)
