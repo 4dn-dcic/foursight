@@ -1977,7 +1977,7 @@ def bamqc_status(connection, **kwargs):
     if skip:
         return check
     # Build the query
-    default_stati = 'released&status=uploaded&status=released+to+project&status=restricted'
+    default_stati = 'released&status=uploaded&status=released+to+project&status=pre-release'
     # find bam files produced bt the Hi-C Post Alignment Processing wfr
     wfr_outputs = "&workflow_run_outputs.workflow.title=Hi-C+Post-alignment+Processing+0.2.6"
     stati = 'status=' + (kwargs.get('status') or default_stati)
@@ -2069,7 +2069,7 @@ def fastq_first_line_status(connection, **kwargs):
         return check
 
     query = ('/search/?status=uploaded&status=pre-release&status=released+to+project&status=released'
-             '&type=FileFastq&file_format.file_format=fastq&file_first_line=No value&status=restricted')
+             '&type=FileFastq&file_format.file_format=fastq&file_first_line=No value')
 
     # The search
     print('About to query ES for files')
