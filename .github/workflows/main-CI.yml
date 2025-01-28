@@ -42,4 +42,6 @@ jobs:
         env:
           S3_ENCRYPT_KEY: ${{ secrets.S3_ENCRYPT_KEY }}
           DEV_SECRET: ${{ secrets.DEV_SECRET }}
+          IDENTITY: ${{ secrets.IDENTITY }}
+          STACK_NAME: ${{ secrets.STACK_NAME }}
         run: poetry run pytest -vv tests -m "not integratedx"
