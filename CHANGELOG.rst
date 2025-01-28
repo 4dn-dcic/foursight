@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.10
+=====
+
+`PR 588: Deduplicate control TAs in ChIP-seq input JSON <https://github.com/4dn-dcic/foursight/pull/588>`_
+
+* For ChIP-seq sets with 2+ identical control TA files, replace multi-file ctl list with one-item list
+
+
 4.9.9
 =====
 

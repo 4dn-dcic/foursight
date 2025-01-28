@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "foursight"
-version = "4.9.9"
+version = "4.9.10"
 description = "Serverless Chalice Application for Monitoring"
 authors = ["4DN-DCIC Team <support@4dnucleome.org>"]
 license = "MIT"
