@@ -388,6 +388,10 @@ def chipseq_status(connection, **kwargs):
                 if ta_cnt:
                     s2_input_files['chip.ctl_tas'] = ta_cnt
                     s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip(ta_cnt)}
+                    if len(set(ta_cnt)) == 1 and len(ta_cnt) != 1:
+                        print("Control TAs are identical, listing file only once")
+                        s2_input_files['chip.ctl_tas'] = [ta_cnt[0]]
+                        s2_input_files['additional_file_parameters']['chip.ctl_tas'] = {"rename": rename_chip([ta_cnt[0]])}
 
                 # collect parameters
                 parameters = {}
