@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.9.11
+=====
+
+* Update lock file to use a newer version of dcicutils to get around publish script issue due to change in github API
+
+
 4.9.10
 =====
 

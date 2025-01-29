@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: 3.11
       - name: Install Python dependencies for publish
-        run: python -m pip install dcicutils==8.7.0.1b2
+        run: python -m pip install dcicutils==8.17.0
       - name: Update the gitinfo.json file with latest relevant git info
         run: |
           echo "{\"repo\": \"https://github.com/${{ github.repository }}\", \"branch\": \"${GITHUB_REF##*/}\", \"commit\": \"${GITHUB_SHA}\"}" > chalicelib_fourfront/gitinfo.json
