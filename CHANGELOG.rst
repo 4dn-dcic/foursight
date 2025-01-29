@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.9.13
+=====
+Thug commit to again to master branch to remove put back dcicutils install from Makefile/publish-to-ga,
+buit with the latest (8.17.0) version; some lingering issue here with this to resolve.
+
+
 4.9.12
 =====
 Thug commit to master branch to remove unnecessary dcicutils install from Makefile/publish-to-ga.
