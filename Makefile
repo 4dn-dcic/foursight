@@ -33,5 +33,4 @@ publish:
 
 publish-for-ga:
 	# New Python based publish script in dcicutils (2023-04-25).
-	pip install dcicutils==8.17.0
 	poetry run publish-to-pypi --noconfirm

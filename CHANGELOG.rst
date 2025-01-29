@@ -7,19 +7,25 @@ foursight
 Change Log
 ----------
 
+4.9.14
+======
+Thug commit yet again to master branch to remove again dcicutils install from Makefile/publish-to-ga; AND
+added poetry.toml with '[virtualenvs] / create = false'  like other repos; THINK this is the publish problem.
+
+
 4.9.13
-=====
-Thug commit to again to master branch to remove put back dcicutils install from Makefile/publish-to-ga,
+======
+Thug commit to again to master branch to put back dcicutils install from Makefile/publish-to-ga,
 buit with the latest (8.17.0) version; some lingering issue here with this to resolve.
 
 
 4.9.12
-=====
+======
 Thug commit to master branch to remove unnecessary dcicutils install from Makefile/publish-to-ga.
 
 
 4.9.11
-=====
+======
 
 * Update lock file to use a newer version of dcicutils to get around publish script issue due to change in github API
 
