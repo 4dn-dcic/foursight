@@ -722,7 +722,7 @@ def check_status_mismatch(connection, **kwargs):
     return check
 
 
-@check_function(id_list=None)
+@check_function()
 def check_opf_status_mismatch(connection, **kwargs):
     '''
     Check to make sure that collections of other_processed_files don't have
@@ -738,10 +738,10 @@ def check_opf_status_mismatch(connection, **kwargs):
     tagged2ignore = get_items_with_ignore_tags(connection.ff_keys)
 
     opf_set = ('search/?type=ExperimentSet&other_processed_files.title%21=No+value&field=status'
-               '&field=other_processed_files&field=experiments_in_set.other_processed_files')
+               '&field=other_processed_files&field=experiments_in_set.other_processed_files&field=accession')
     opf_exp = ('search/?type=ExperimentSet&other_processed_files.title=No+value'
                '&experiments_in_set.other_processed_files.title%21=No+value'
-               '&field=experiments_in_set.other_processed_files&field=status')
+               '&field=experiments_in_set.other_processed_files&field=status&field=accession')
     opf_set_results = ff_utils.search_metadata(opf_set, key=connection.ff_keys)
     opf_exp_results = ff_utils.search_metadata(opf_exp, key=connection.ff_keys)
     results = opf_set_results + opf_exp_results  # these are expset and expt items w/opfs
@@ -809,8 +809,9 @@ def check_opf_status_mismatch(connection, **kwargs):
                         problem_dict[title][hg_dict[title]] = {'status': opf_status_dict[hg_dict[title]]}
             elif hg_dict.get(title) and STATUS_LEVEL[list(statuses)[0]] != STATUS_LEVEL[opf_status_dict[hg_dict[title]]]:
                 if not (list(statuses)[0] == 'pre-release' and opf_status_dict[hg_dict[title]] == 'released to lab'):
-                    problem_dict[title] = {'files': list(statuses)[0],
-                                           'higlass_view_config': opf_status_dict[hg_dict[title]]}
+                    if hg_dict[title] not in tagged2ignore:
+                        problem_dict[title] = {'files': list(statuses)[0],
+                                               'higlass_view_config': opf_status_dict[hg_dict[title]]}
             elif STATUS_LEVEL[result['status']] < STATUS_LEVEL[list(statuses)[0]]:
                 problem_dict[title] = {result['@id']: result['status'], title: list(statuses)[0]}
             for f in file_list:
@@ -1178,7 +1179,7 @@ def released_output_from_restricted_input(connection, **kwargs):
                         file_report['open_data_url'] = a_file['value']['open_data_url']
                     files['visible'].append(file_report)
     # search for visible fastq or bam processed files that are not output of any workflow
-    query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value'
+    query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value&tags!=ignore_unlinked'
     query_pf += ''.join(['&status=' + st for st in visible_statuses])
     query_pf += ''.join(['&file_format.file_format=' + f for f in formats])
     query_pf += '&field=file_format&field=status&field=open_data_url'

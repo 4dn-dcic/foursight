@@ -7,6 +7,16 @@ foursight
 Change Log
 ----------
 
+
+4.9.15
+======
+
+`PR 590: Deduplicate control TAs in ChIP-seq input JSON <https://github.com/4dn-dcic/foursight/pull/590>`_
+
+* fix for opf status mismatch audit to deal correctly with highglass viewconf mismatch even if ignore tag was present
+* fix to add ability to ignore tagged files unlinked to wfrs that should not be restricted from showing up in restricted pf check
+
+
 4.9.14
 ======
 Thug commit yet again to master branch to remove again dcicutils install from Makefile/publish-to-ga; AND
