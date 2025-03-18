@@ -1179,7 +1179,7 @@ def released_output_from_restricted_input(connection, **kwargs):
                         file_report['open_data_url'] = a_file['value']['open_data_url']
                     files['visible'].append(file_report)
     # search for visible fastq or bam processed files that are not output of any workflow
-    query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value'
+    query_pf = 'search/?type=FileProcessed&workflow_run_outputs.workflow.title=No+value&tags!=ignore_unlinked'
     query_pf += ''.join(['&status=' + st for st in visible_statuses])
     query_pf += ''.join(['&file_format.file_format=' + f for f in formats])
     query_pf += '&field=file_format&field=status&field=open_data_url'
