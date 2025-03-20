@@ -1662,18 +1662,19 @@ def files_not_registered_with_higlass(connection, **kwargs):
             continue
 
         # Build a file query string.
+        # 250320 add skipping files with skip_processing tag
         if file_cat == "raw":
-            type_filter = '&type=FileReference'
+            type_filter = '&type=FileReference&tags!=skip_processing'
         else:
-            type_filter = '&type=FileProcessed' + '&type=FileVistrack'
+            type_filter = '&type=FileProcessed' + '&type=FileVistrack&tags!=skip_processing'
 
         # Build a file format filter
         file_format_filter = "?file_format.file_format=" + "&file_format.file_format=".join(filetypes_to_use)
 
-        # Build the query that finds all published files.
+        # Build the query that finds all uploaded files of type and formats to check.
         search_query = 'search/' + file_format_filter + type_filter
 
-        # Make sure it's published
+        # Make sure it's uploaded
         unpublished_statuses = (
             "uploading",
             "to be uploaded by workflow",
