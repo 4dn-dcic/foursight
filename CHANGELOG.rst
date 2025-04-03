@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.16
+======
+
+`PR 591: bug fixes <https://github.com/4dn-dcic/foursight/pull/591>`_
+
+* Let the higlass registration check not try to register files with a skip_processing tag
+* Allow the action to run for the insulation and boundary caller but do not automatically queue it.
+
 
 4.9.15
 ======

@@ -2403,7 +2403,7 @@ def insulation_scores_and_boundaries_status(connection, **kwargs):
         check.summary = str(len(check.full_output['running_runs'])) + ' running|'
     if check.full_output['needs_runs']:
         check.summary += str(len(check.full_output['needs_runs'])) + ' missing|'
-        check.allow_action = False
+        check.allow_action = True
         check.status = 'WARN'
     if check.full_output['completed_runs']:
         check.summary += str(len(check.full_output['completed_runs'])) + ' completed|'

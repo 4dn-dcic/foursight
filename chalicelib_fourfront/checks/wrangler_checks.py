@@ -2425,7 +2425,6 @@ def check_hic_summary_tables(connection, **kwargs):
     check.action = 'patch_hic_summary_tables'
     query = ('search/?type=ExperimentSetReplicate&status=released' +
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
-
     # search if there is any new expset
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back_as_string'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
