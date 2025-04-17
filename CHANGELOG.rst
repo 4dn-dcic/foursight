@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.17
+======
+
+`PR 592: bug fixes <https://github.com/4dn-dcic/foursight/pull/592>`_
+
+* Adjust RNA-seq workflows to rely on benchmarking and adjust mergebed to avoid micro instances
+
+
 4.9.16
 ======
 

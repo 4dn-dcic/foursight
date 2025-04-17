@@ -233,7 +233,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "encode-chipseq-postaln",
         "workflow_uuid": "291d4c64-75de-434a-9d98-01f40d19e15e",
         "parameters": {},
-        "config": {"instance_type": "c5.2xlarge", "ebs_size": 80},
+        "config": {"instance_type": "c5.2xlarge", "ebs_size": 120},
         'custom_pf_fields': {
             'chip.optimal_peak': {
                 'genome_assembly': genome,
@@ -285,6 +285,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "mergebed",
         "workflow_uuid": "2b10e472-065e-43ed-992c-fccad6417b65",
         "parameters": {"sortv": "0"},
+        "config": {"mem": 2, "cpu": 2},
         'custom_pf_fields': {
             'merged_bed': {
                 'genome_assembly': genome,
@@ -334,7 +335,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'rna.strandedness_direction': '',
             'rna.endedness': ''
         },
-        "config": {"instance_type": ["m5a.4xlarge", "m6a.4xlarge"], "ebs_size": 90},
+        "config": {"instance_type": ["m5a.4xlarge", "m6a.4xlarge"]},
         'custom_pf_fields': {
             'rna.outbam': {
                 'genome_assembly': genome,
