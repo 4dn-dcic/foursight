@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.17
+======
+
+`PR 592: bug fixes <https://github.com/4dn-dcic/foursight/pull/592>`_
+
+* Adjust RNA-seq workflows to rely on benchmarking and insulation-score caller to avoid micro instance
+
+
 4.9.16
 ======
 
