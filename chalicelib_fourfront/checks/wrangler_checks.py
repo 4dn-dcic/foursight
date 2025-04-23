@@ -1224,18 +1224,20 @@ def users_with_pending_lab(connection, **kwargs):
             to_cache = {}
             pending_meta = ff_utils.get_metadata(user_append['pending_lab'], key=connection.ff_keys,
                                                  add_on='frame=object')
-            to_cache['lab_title'] = pending_meta['display_title']
-            if 'pi' in pending_meta:
-                pi_meta = ff_utils.get_metadata(pending_meta['pi'], key=connection.ff_keys,
-                                                add_on='frame=object')
-                to_cache['lab_PI_email'] = pi_meta['email']
-                to_cache['lab_PI_title'] = pi_meta['title']
-                to_cache['lab_PI_viewing_groups'] = pi_meta['viewing_groups']
+            if pending_meta:
+                to_cache['lab_title'] = pending_meta.get('display_title')
+                if 'pi' in pending_meta:
+                    pi_meta = ff_utils.get_metadata(pending_meta['pi'], key=connection.ff_keys,
+                                                    add_on='frame=object')
+                    to_cache['lab_PI_email'] = pi_meta.get('email')
+                to_cache['lab_PI_title'] = pi_meta.get('title')
+                to_cache['lab_PI_viewing_groups'] = pi_meta.get('viewing_groups')
             cached_items[user_append['pending_lab']] = to_cache
         # now use the cache to fill fields
         for lab_field in ['lab_title', 'lab_PI_email', 'lab_PI_title', 'lab_PI_viewing_groups']:
-            user_append[lab_field] = cached_items[user_append['pending_lab']].get(lab_field)
-
+            if value := cached_items[user_append['pending_lab']].get(lab_field):
+                user_append[lab_field] = value 
+    
     if check.full_output:
         check.summary = 'Users found with pending_lab.'
         if check.status == 'WARN':

@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.18
+======
+
+`PR 593: bug fix <https://github.com/4dn-dcic/foursight/pull/593>`_
+
+* Fix bug that cause exception in user with pending lab check if a property is missing.
+
+
 4.9.17
 ======
 
