@@ -7,6 +7,15 @@ foursight
 Change Log
 ----------
 
+
+4.9.19
+======
+
+`PR 594: request header update <https://github.com/4dn-dcic/foursight/pull/594>`_
+
+* Update header with new user agent info in the help section url check
+
+
 4.9.18
 ======
 
