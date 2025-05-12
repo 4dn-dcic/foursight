@@ -8,6 +8,14 @@ Change Log
 ----------
 
 
+4.9.20
+======
+
+`PR 595: pending lab bug fix <https://github.com/4dn-dcic/foursight/pull/595>`_
+
+* fix bug (unbound local) in pending lab check that caused exception due to incorrect nesting
+
+
 4.9.19
 ======
 
