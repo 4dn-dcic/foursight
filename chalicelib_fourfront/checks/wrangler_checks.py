@@ -1227,7 +1227,6 @@ def users_with_pending_lab(connection, **kwargs):
             if pending_meta:
                 to_cache['lab_title'] = pending_meta.get('display_title')
                 if 'pi' in pending_meta:
-                    import pdb; pdb.set_trace()
                     pi_meta = ff_utils.get_metadata(pending_meta['pi'], key=connection.ff_keys,
                                                     add_on='frame=object')
                     if pi_meta:
