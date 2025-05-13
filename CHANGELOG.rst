@@ -8,6 +8,13 @@ Change Log
 ----------
 
 
+4.9.21
+======
+
+`PR 596: remove pdb <https://github.com/4dn-dcic/foursight/pull/596>`_
+
+* remove pdb
+
 4.9.20
 ======
 
