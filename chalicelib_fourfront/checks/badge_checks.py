@@ -117,6 +117,8 @@ def compare_badges_and_messages(obj_id_dict, item_type, badge, ff_keys,
             item['badges'].remove(this_badge)
             remove_badge[item['@id']] = item['badges']
     for key, val in obj_id_dict.items():
+        if not val:
+            continue
         if key not in badge_ok + list(badge_edit.keys()):
             needs_badge[key] = val if not replace_messages else replace_messages_content(val, ff_keys)
     return needs_badge, remove_badge, badge_edit, badge_ok
@@ -201,10 +203,10 @@ def yellow_flag_biosamples(connection, **kwargs):
     6. For phase 2 samples must include FBS info (post 2022-05-10)
     '''
     check = CheckResult(connection, 'yellow_flag_biosamples')
-
-    results = ff_utils.search_metadata('search/?type=Biosample', key=connection.ff_keys)
+    query = 'search/?type=Biosample' + ''.join('&status!={}'.format(s) for s in REV)
+    results = ff_utils.search_metadata(query, key=connection.ff_keys)
     flagged = {}
-    check.brief_output = {RELEASED_KEY: {}, REV_KEY: []}
+    check.brief_output = {}
 
     fbs_chk_date = '2022-05-10'
     for result in results:
@@ -253,12 +255,7 @@ def yellow_flag_biosamples(connection, **kwargs):
             messages.append('HAP-1 biosample missing ploidy authentication')
         if messages:
             messages = [messages[i] for i in range(len(messages)) if messages[i] not in messages[:i]]
-            if result.get('status') in REV:
-                check.brief_output[REV_KEY].append('{} missing {}'.format(
-                    result['@id'], ', '.join(list(set([item[item.index('missing') + 8:] for item in messages])))
-                ))
-            else:
-                flagged[result['@id']] = messages
+            flagged[result['@id']] = messages
 
     to_add, to_remove, to_edit, ok = compare_badges_and_messages(
         flagged, 'Biosample', 'biosample-metadata-incomplete', connection.ff_keys
@@ -277,9 +274,8 @@ def yellow_flag_biosamples(connection, **kwargs):
         check.description = 'No yellow flag biosample badges need patching'
     check.full_output = {'Add badge': to_add,
                          'Remove badge': to_remove,
-                         'Keep badge and edit messages': to_edit,
-                         'Keep badge (no change)': ok}
-    check.brief_output[RELEASED_KEY] = {
+                         'Keep badge and edit messages': to_edit,}
+    check.brief_output = {
         'Add badge': ['{} missing {}'.format(
             k, ', '.join([item[item.index('missing') + 8:] for item in flagged[k]])
         ) for k in to_add.keys()],
@@ -320,15 +316,15 @@ def gold_biosamples(connection, **kwargs):
     check = CheckResult(connection, 'gold_biosamples')
 
     search_url = ('search/?biosource.cell_line_tier=Tier+1&biosource.cell_line_tier=Tier+2'
-                  '&type=Biosample&badges.badge.warning=No+value')
+                  '&type=Biosample&badges.badge.warning=No+value') + ''.join('&status!={}'.format(s) for s in REV)
     results = ff_utils.search_metadata(search_url, key=connection.ff_keys)
     gold = []
     for result in results:
         # follows SOP w/ no deviations
         sop = True if all([bcc.get('follows_sop', '') == 'Yes' for bcc in result.get('cell_culture_details', [])]) else False
-        if sop and result.get('status') not in REV:
+        if sop:
             gold.append(result['@id'])
-    to_add, to_remove, ok = compare_badges(gold, 'Biosample', 'gold-biosample', connection.ff_keys)
+    to_add, to_remove, _ = compare_badges(gold, 'Biosample', 'gold-biosample', connection.ff_keys)
     check.action = 'patch_gold_biosample_badges'
     if to_add or to_remove:
         check.status = 'WARN'
@@ -344,8 +340,7 @@ def gold_biosamples(connection, **kwargs):
         check.summary = 'Gold biosample badges up-to-date'
         check.description = 'No gold biosample badges need patching'
     check.full_output = {'Add badge': to_add,
-                         'Remove badge': to_remove,
-                         'Keep badge (no change)': ok}
+                         'Remove badge': to_remove}
     return check
 
 
@@ -380,14 +375,10 @@ def repsets_have_bio_reps(connection, **kwargs):
     Action patches badges with a message detailing which of the above issues is relevant.
     '''
     check = CheckResult(connection, 'repsets_have_bio_reps')
+    query = 'search/?type=ExperimentSetReplicate&frame=object' + ''.join('&status!={}'.format(s) for s in REV)
+    results = ff_utils.search_metadata(query, key=connection.ff_keys, page_limit=50)
 
-    results = ff_utils.search_metadata('search/?type=ExperimentSetReplicate&frame=object',
-                                       key=connection.ff_keys, page_limit=50)
-
-    audits = {
-        REV_KEY: {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []},
-        RELEASED_KEY: {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
-    }
+    audits = {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []}
     by_exp = {}
     for result in results:
         rep_dict = {}
@@ -400,34 +391,29 @@ def repsets_have_bio_reps(connection, **kwargs):
                 else:
                     rep_dict[exp['bio_rep_no']] = [exp['tec_rep_no']]
         if rep_dict:
-            if result.get('status') in REV:
-                audit_key = REV_KEY
-            else:
-                audit_key = RELEASED_KEY
-
             # check if single biological replicate
             if len(rep_dict.keys()) == 1:
                 # this tag labels an ExpSet with many replicates, but only one present in the database (typically imaging datasets)
                 if 'many_replicates' in result.get('tags', []):  # skip false positive
                     continue
-                audits[audit_key]['single_biorep'].append(result['@id'])
+                audits['single_biorep'].append(result['@id'])
                 exp_audits.append('Replicate set contains only a single biological replicate')
             # check if bio rep numbers not in sequence
             if sorted(list(rep_dict.keys())) != list(range(min(rep_dict.keys()), max(rep_dict.keys()) + 1)):
-                audits[audit_key]['biorep_nums'].append('{} - bio rep #s:'
+                audits['biorep_nums'].append('{} - bio rep #s:'
                                              ' {}'.format(result['@id'], str(sorted(list(rep_dict.keys())))))
                 exp_audits.append('Biological replicate numbers are not in sequence')
         # check if tech rep numbers not in sequence
             for key, val in rep_dict.items():
                 if sorted(val) != list(range(min(val), max(val) + 1)):
-                    audits[audit_key]['techrep_nums'].append('{} - tech rep #s of biorep {}:'
+                    audits['techrep_nums'].append('{} - tech rep #s of biorep {}:'
                                                   ' {}'.format(result['@id'], key, str(sorted(val))))
                     exp_audits.append('Technical replicate numbers of biological replicate {}'
                                       ' are not in sequence'.format(key))
-        if exp_audits and result.get('status') not in REV:
-            by_exp[result['@id']] = sorted(exp_audits)
+        by_exp[result['@id']] = sorted(exp_audits)
 
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
+    # import pdb; pdb.set_trace()
+    to_add, to_remove, to_edit, _ = compare_badges_and_messages(by_exp, 'ExperimentSetReplicate',
                                                                  'replicate-numbers', connection.ff_keys)
     check.action = 'patch_badges_for_replicate_numbers'
     if to_add or to_remove or to_edit:
@@ -443,22 +429,16 @@ def repsets_have_bio_reps(connection, **kwargs):
         check.description = 'No replicate number badges need patching'
     check.full_output = {'Add badge': to_add,
                          'Remove badge': to_remove,
-                         'Keep badge and edit messages': to_edit,
-                         'Keep badge (no change)': len(ok)}
-    check.brief_output = {REV_KEY: audits[REV_KEY]}
-    check.brief_output[RELEASED_KEY] = {
+                         'Keep badge and edit messages': to_edit,}
+    check.brief_output = {
         k: {'single_biorep': [], 'biorep_nums': [], 'techrep_nums': []} for k in check.full_output.keys()
     }
-    for k, v in audits[RELEASED_KEY].items():
-        nochg_cnt = 0
+    for k, v in audits.items():
         for item in v:
             name = item.split(' ')[0]
             for key in ["Add badge", 'Remove badge', 'Keep badge and edit messages']:
                 if name in check.full_output[key].keys():
-                    check.brief_output[RELEASED_KEY][key][k].append(item)
-            if name in ok:
-                nochg_cnt += 1
-        check.brief_output[RELEASED_KEY]['Keep badge (no change)'][k] = nochg_cnt
+                    check.brief_output[key][k].append(item)
     return check
 
 
@@ -485,8 +465,8 @@ def exp_has_raw_files(connection, **kwargs):
     '''
     check = CheckResult(connection, 'exp_has_raw_files')
     # search all experiments except microscopy experiments for missing files field
-    no_files = ff_utils.search_metadata('search/?type=Experiment&%40type%21=ExperimentMic&files.uuid=No+value',
-                                        key=connection.ff_keys)
+    query = 'search/?type=Experiment&%40type!={}&files.uuid=No+value'.format('ExperimentMic') + ''.join('&status!={}'.format(s) for s in REV)
+    no_files = ff_utils.search_metadata(query, key=connection.ff_keys)
     # also check sequencing experiments whose files items are all uploading/archived/deleted
     bad_status = ff_utils.search_metadata('search/?status=uploading&status=archived&status=deleted&status=upload+failed'
                                           '&type=FileFastq&experiments.uuid%21=No+value',
@@ -494,8 +474,7 @@ def exp_has_raw_files(connection, **kwargs):
     bad_status_ids = {item['@id']: item['status'] for item in bad_status}
     exps = list(set([exp['@id'] for fastq in bad_status for exp in
                      fastq.get('experiments') if fastq.get('experiments')]))
-    missing_files_released = [e['@id'] for e in no_files if e.get('status') not in REV]
-    missing_files_in_rev = [e['@id'] for e in no_files if e.get('status') in REV]
+    missing_files_released = [e['@id'] for e in no_files]
     for expt in exps:
         result = ff_utils.get_metadata(expt, key=connection.ff_keys)
         raw_files = False
@@ -505,12 +484,9 @@ def exp_has_raw_files(connection, **kwargs):
                     raw_files = True
                     break
         if not raw_files:
-            if result.get('status') in REV:
-                missing_files_in_rev.append(expt)
-            else:
-                missing_files_released.append(expt)
+            missing_files_released.append(expt)
 
-    to_add, to_remove, ok = compare_badges(missing_files_released, 'Experiment', 'no-raw-files', connection.ff_keys)
+    to_add, to_remove, _ = compare_badges(missing_files_released, 'Experiment', 'no-raw-files', connection.ff_keys)
 
     if to_add or to_remove:
         check.status = 'WARN'
@@ -525,10 +501,8 @@ def exp_has_raw_files(connection, **kwargs):
         check.description = 'No sequencing experiments need raw files badges patched'
     check.action = 'patch_badges_for_raw_files'
     check.full_output = {'Add badge': to_add,
-                         'Remove badge': to_remove,
-                         'Keep badge': ok}
-    check.brief_output = {REV_KEY: missing_files_in_rev,
-                          RELEASED_KEY: {'Add badge': to_add, 'Remove badge': to_remove}}
+                         'Remove badge': to_remove}
+    check.brief_output = {'Add badge': to_add, 'Remove badge': to_remove}
     return check
 
 
@@ -566,7 +540,8 @@ def consistent_replicate_info(connection, **kwargs):
     check = CheckResult(connection, 'consistent_replicate_info')
 
     repset_url = 'search/?type=ExperimentSetReplicate&field=experiments_in_set.%40id' + ''.join(
-        ['&field=' + field for field in ['uuid', 'status', 'lab.display_title']])
+        ['&field=' + field for field in ['uuid', 'status', 'lab.display_title']]) + ''.join(
+            '&status!={}'.format(s) for s in REV)
     exps_url = 'search/?type=Experiment&frame=object'
     exps_bio_url = 'search/?type=Experiment&field=biosample'
     exps_path_url = 'search/?type=ExperimentMic&field=imaging_paths.channel' + ''.join(
@@ -612,9 +587,6 @@ def consistent_replicate_info(connection, **kwargs):
         'microscopy_technique',
         'microscope_configuration_master'
     ]
-    check.brief_output = {REV_KEY: {}, RELEASED_KEY: {
-        'Add badge': {}, 'Remove badge': {}, 'Keep badge and edit messages': {}
-    }}
     compare = {}
     results = {}
 
@@ -703,40 +675,36 @@ def consistent_replicate_info(connection, **kwargs):
             msgs = [f"Inconsistent replicate information in {field}: {stringify(values)}" for field, values in info_dict.items()]
             text = f"{repset['@id'][-13:-1]} - inconsistency in {', '.join(list(info_dict.keys()))}"
             lab = repset['lab']['display_title']
-            audit_key = REV_KEY if repset['status'] in REV else RELEASED_KEY
+            audit_key = repset['status']
             results[repset['@id']] = {'status': audit_key, 'lab': lab, 'info': text}
-            if audit_key == REV_KEY:
-                check.brief_output[audit_key].setdefault(lab, []).append(text)
-            if repset['status'] not in REV:
-                compare[repset['@id']] = msgs
+            # check.brief_output[audit_key].setdefault(lab, []).append(text)
+            compare[repset['@id']] = msgs
 
-    to_add, to_remove, to_edit, ok = compare_badges_and_messages(
+    to_add, to_remove, to_edit, _ = compare_badges_and_messages(
         compare, 'ExperimentSetReplicate', 'inconsistent-replicate-info', connection.ff_keys,
         kwargs['ignore_details'], replace_messages=True
     )
 
     key_dict = {'Add badge': to_add, 'Remove badge': to_remove, 'Keep badge and edit messages': to_edit}
-    for result in results.keys():
+    brief_output = {}
+    for result, resultinfo in results.items():
         for k, v in key_dict.items():
             if result in v.keys():
-                if results[result]['lab'] not in check.brief_output[RELEASED_KEY][k].keys():
-                    check.brief_output[RELEASED_KEY][k][results[result]['lab']] = []
-                check.brief_output[RELEASED_KEY][k][results[result]['lab']].append(results[result]['info'])
+                brief_output.setdefault(resultinfo.get('status'), {}).setdefault(resultinfo.get('lab', 'Unknown'), {}).setdefault(k, []).append(resultinfo.get('info'))
                 break
-    check.brief_output[RELEASED_KEY]['Remove badge'] = list(to_remove.keys())
     if to_add or to_remove or to_edit:
         check.status = 'WARN'
         check.summary = 'Replicate Info badges need patching'
         check.description = ('{} ExperimentSetReplicates found that need a replicate-info badge patched'
                              ''.format(len(to_add.keys()) + len(to_remove.keys()) + len(to_edit.keys())))
+        check.brief_output = brief_output
     else:
         check.status = 'PASS'
         check.summary = 'Replicate Info badges are up-to-date'
         check.description = 'No ExperimentSetReplicates found that need a replicate-info badge patched'
     check.full_output = {'Add badge': to_add,
                          'Remove badge': to_remove,
-                         'Keep badge and edit messages': to_edit,
-                         'Keep badge (no change)': ok}
+                         'Keep badge and edit messages': to_edit,}
     check.action = 'patch_badges_for_inconsistent_replicate_info'
     if to_add or to_remove or to_edit:
         check.allow_action = True
