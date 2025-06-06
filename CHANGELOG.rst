@@ -7,6 +7,13 @@ foursight
 Change Log
 ----------
 
+4.9.22
+======
+
+`PR 597: update badge check, assay_subclass_short check and rm action <https://github.com/4dn-dcic/foursight/pull/597>`_
+
+* made queries more specific and adjusted the reported output for the badge checks
+* simplified the check for assay_subclass_short and removed the action as it was trying to do too much for too little 
 
 4.9.21
 ======
