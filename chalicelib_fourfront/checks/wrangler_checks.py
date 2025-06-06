@@ -1485,7 +1485,6 @@ def users_with_doppelganger(connection, **kwargs):
 @check_function()
 def check_assay_classification_short_names(connection, **kwargs):
     check = CheckResult(connection, 'check_assay_classification_short_names')
-    check.action = 'patch_assay_subclass_short'
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)

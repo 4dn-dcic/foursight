@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.24
+======
+
+`PR 599: rm action reference <https://github.com/4dn-dcic/foursight/pull/599>`_
+
+* remove reference to deleted action in check_subclass_short check
+
+
 4.9.23
 ======
 
