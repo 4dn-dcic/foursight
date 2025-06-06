@@ -7,7 +7,7 @@ foursight
 Change Log
 ----------
 
-4.9.23
+4.9.24
 ======
 
 `PR 599: rm action reference <https://github.com/4dn-dcic/foursight/pull/599>`_
