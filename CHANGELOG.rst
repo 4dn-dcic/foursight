@@ -7,6 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.23
+======
+
+`PR 598: update lock file <https://github.com/4dn-dcic/foursight/pull/598>`_
+
+* update poetry.lock
+
+
 4.9.22
 ======
 
