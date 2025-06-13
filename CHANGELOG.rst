@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.9.25.1b1
+==========
+
+* Initial beta release for 4.9.25.1 to fix ui bug
+* to become 4.9.25
+
 4.9.24
 ======
 
