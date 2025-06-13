@@ -1482,10 +1482,9 @@ def users_with_doppelganger(connection, **kwargs):
     return check
 
 
-@check_function(action="patch_assay_subclass_short")
+@check_function()
 def check_assay_classification_short_names(connection, **kwargs):
     check = CheckResult(connection, 'check_assay_classification_short_names')
-    check.action = 'patch_assay_subclass_short'
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
@@ -1512,10 +1511,10 @@ def check_assay_classification_short_names(connection, **kwargs):
     return check
 
 
-@action_function()
-def patch_assay_subclass_short(connection, **kwargs):
-    action = ActionResult(connection, 'patch_assay_subclass_short')
-    pass
+# @action_function()
+# def patch_assay_subclass_short(connection, **kwargs):
+#    action = ActionResult(connection, 'patch_assay_subclass_short')
+#    pass
 
 
 def semver2int(semver):
