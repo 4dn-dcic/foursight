@@ -2367,6 +2367,7 @@ def check_hic_summary_tables(connection, **kwargs):
     check.action = 'patch_hic_summary_tables'
     query = ('search/?type=ExperimentSetReplicate&status=released' +
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
+    import pdb; pdb.set_trace()
     # search if there is any new expset
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back_as_string'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
@@ -2391,7 +2392,9 @@ def check_hic_summary_tables(connection, **kwargs):
                 check.full_output = {}
                 check.status = 'ERROR'
                 return check
-        if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+        if not last_result.get('full_output'):
+            pass
+        elif last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
             no_previous_results = False
 
     if len(new_sets) == 0 and no_previous_results:  # no update needed
