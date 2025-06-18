@@ -1514,8 +1514,12 @@ def check_assay_classification_short_names(connection, **kwargs):
 
 @action_function()
 def patch_assay_subclass_short(connection, **kwargs):
-    ActionResult(connection, 'patch_assay_subclass_short')
-    pass
+    # this is a placeholder for the non-action    action = ActionResult(connection, 'patch_assay_subclass_short')
+    action = ActionResult(connection, 'patch_assay_subclass_short')
+    action_logs = {}
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
 
 
 def semver2int(semver):
