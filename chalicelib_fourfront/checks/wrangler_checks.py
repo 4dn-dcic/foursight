@@ -2367,36 +2367,35 @@ def check_hic_summary_tables(connection, **kwargs):
     check.action = 'patch_hic_summary_tables'
     query = ('search/?type=ExperimentSetReplicate&status=released' +
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
-    # search if there is any new expset
+    # search if there are any new Hi-C sets that have been modified since the number of days in the days_back parameter
+    # if that kwarg cannot be cast to a float then all Hi-C sets are considered new
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back_as_string'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
-
-    no_previous_results = True
-    if not from_date_query:
-        # run on all results
-        no_previous_results = False
-    else:
-        # run on recent results + get problematic sets from the most recent successful primary check
-        last_result = check.get_primary_result()
-        days = 0
-        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
-            days += 1
-            try:
-                last_result = check.get_closest_result(diff_hours=days*24)
-            except Exception:
-                pass
-            if days > 10:
-                # too many recent primary checks that errored
-                check.brief_output = 'Can not find a recent non-ERROR primary check'
-                check.full_output = {}
-                check.status = 'ERROR'
-                return check
-        if not last_result.get('full_output'):
+    has_previous_results = False
+    # any need for this?  I don't think so as they should show up in results
+    # run on recent results + get problematic sets from the most recent successful primary check if any
+    last_result = check.get_primary_result()
+    days = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        days += 1
+        try:
+            last_result = check.get_closest_result(diff_hours=days*24)
+        except Exception:
             pass
-        elif last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
-            no_previous_results = False
+        if days > 10:
+            # too many recent primary checks that errored so run on all sets
+            last_result = {}
+            break
+            # check.brief_output = 'Can not find a recent non-ERROR primary check'
+            # check.full_output = {}
+            # check.status = 'ERROR'
+            #return check
+    if not last_result.get('full_output'):
+        pass
+    elif last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+        has_previous_results = True
 
-    if len(new_sets) == 0 and no_previous_results:  # no update needed
+    if len(new_sets) == 0 and not has_previous_results:  # no update needed
         check.status = 'PASS'
         check.full_output = {}
         check.summary = check.description = "No update needed for Hi-C summary tables"
@@ -2404,9 +2403,7 @@ def check_hic_summary_tables(connection, **kwargs):
 
     else:
         check.status = 'WARN'
-        check.summary = 'New Hi-C datasets found'
-        # collect ALL metadata to patch
-        expsets = ff_utils.search_metadata(query, key=connection.ff_keys)
+        check.summary = 'New or problematic Hi-C datasets found'
 
         def _add_set_to_row(row, expset, dsg):
             ''' Add ExpSet metadata to the table row for dsg'''
@@ -2481,6 +2478,8 @@ def check_hic_summary_tables(connection, **kwargs):
             return row
 
         # build the table
+        # collect ALL metadata to patch
+        expsets = ff_utils.search_metadata(query, key=connection.ff_keys)
         table = {}
         problematic = {}
         for a_set in expsets:
@@ -2502,7 +2501,6 @@ def check_hic_summary_tables(connection, **kwargs):
         if problems_to_remove:
             for prob in problems_to_remove:
                 table.pop(prob)
-
 
         # split table into studygroup-specific output tables
         output = {}
