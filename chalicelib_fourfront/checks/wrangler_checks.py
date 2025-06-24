@@ -2479,7 +2479,8 @@ def check_hic_summary_tables(connection, **kwargs):
 
         # build the table
         # collect ALL metadata to patch
-        expsets = ff_utils.search_metadata(query, key=connection.ff_keys)
+        # get only needed fields
+        expsets = ff_utils.search_metadata(query, key=connection.ff_keys, is_generator=True)
         table = {}
         problematic = {}
         for a_set in expsets:

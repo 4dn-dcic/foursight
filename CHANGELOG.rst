@@ -7,10 +7,10 @@ foursight
 Change Log
 ----------
 
-4.9.25.1b1
+4.9.25.1b7
 ==========
 
-* Initial beta release for 4.9.25.1 to fix ui bug
+* beta release for 4.9.25.1 to fix ui bug and see what's up with hi-c summary table check
 * to become 4.9.25
 
 4.9.24
