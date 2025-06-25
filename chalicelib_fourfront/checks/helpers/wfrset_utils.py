@@ -253,7 +253,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "encode-atacseq-aln",
         "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-aln",
         "parameters": {},
-        "config": {},
+        "config": {"instance_type": 'c6a.2xlarge'},
         'custom_pf_fields': {
             'atac.first_ta': {
                 'genome_assembly': genome,
@@ -265,7 +265,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
         "app_name": "encode-atacseq-postaln",
         "workflow_uuid": "4dn-dcic-lab:wf-encode-atacseq-postaln",
         "parameters": {},
-        "config": {"instance_type": 'c6a.8xlarge'},
+        "config": {},
         'custom_pf_fields': {
             'atac.optimal_peak': {
                 'genome_assembly': genome,
