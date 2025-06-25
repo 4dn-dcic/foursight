@@ -10,7 +10,7 @@ Change Log
 4.9.25.1b7
 ==========
 
-* beta release for 4.9.25.1 to fix ui bug and see what's up with hi-c summary table check
+* beta release for 4.9.25 to fix ui bug and see what's up with hi-c summary table check
 * to become 4.9.25
 
 4.9.24
