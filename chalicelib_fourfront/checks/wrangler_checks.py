@@ -1482,9 +1482,10 @@ def users_with_doppelganger(connection, **kwargs):
     return check
 
 
-@check_function()
+@check_function(action="patch_assay_subclass_short")
 def check_assay_classification_short_names(connection, **kwargs):
     check = CheckResult(connection, 'check_assay_classification_short_names')
+    check.action = 'patch_assay_subclass_short'
     # add random wait
     wait = round(random.uniform(0.1, random_wait), 1)
     time.sleep(wait)
@@ -1509,6 +1510,16 @@ def check_assay_classification_short_names(connection, **kwargs):
         check.summary = 'Experiment Type classifications all set'
         check.description = 'No experiment types need assay_subclass_short patched'
     return check
+
+
+@action_function()
+def patch_assay_subclass_short(connection, **kwargs):
+    # this is a placeholder for the non-action    action = ActionResult(connection, 'patch_assay_subclass_short')
+    action = ActionResult(connection, 'patch_assay_subclass_short')
+    action_logs = {}
+    action.status = 'DONE'
+    action.output = action_logs
+    return action
 
 
 def semver2int(semver):
@@ -2356,34 +2367,35 @@ def check_hic_summary_tables(connection, **kwargs):
     check.action = 'patch_hic_summary_tables'
     query = ('search/?type=ExperimentSetReplicate&status=released' +
              '&experiments_in_set.experiment_type.assay_subclass_short=Hi-C')
-    # search if there is any new expset
+    # search if there are any new Hi-C sets that have been modified since the number of days in the days_back parameter
+    # if that kwarg cannot be cast to a float then all Hi-C sets are considered new
     from_date_query, from_text = wrangler_utils.last_modified_from(kwargs.get('days_back_as_string'))
     new_sets = ff_utils.search_metadata(query + from_date_query + '&field=accession', key=connection.ff_keys)
+    has_previous_results = False
+    # any need for this?  I don't think so as they should show up in results
+    # run on recent results + get problematic sets from the most recent successful primary check if any
+    last_result = check.get_primary_result()
+    days = 0
+    while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
+        days += 1
+        try:
+            last_result = check.get_closest_result(diff_hours=days*24)
+        except Exception:
+            pass
+        if days > 10:
+            # too many recent primary checks that errored so run on all sets
+            last_result = {}
+            break
+            # check.brief_output = 'Can not find a recent non-ERROR primary check'
+            # check.full_output = {}
+            # check.status = 'ERROR'
+            #return check
+    if not last_result.get('full_output'):
+        pass
+    elif last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
+        has_previous_results = True
 
-    no_previous_results = True
-    if not from_date_query:
-        # run on all results
-        no_previous_results = False
-    else:
-        # run on recent results + get problematic sets from the most recent successful primary check
-        last_result = check.get_primary_result()
-        days = 0
-        while last_result['status'] == 'ERROR' or not last_result['kwargs'].get('primary'):
-            days += 1
-            try:
-                last_result = check.get_closest_result(diff_hours=days*24)
-            except Exception:
-                pass
-            if days > 10:
-                # too many recent primary checks that errored
-                check.brief_output = 'Can not find a recent non-ERROR primary check'
-                check.full_output = {}
-                check.status = 'ERROR'
-                return check
-        if last_result['full_output'].get('missing_info') or last_result['full_output'].get('multiple_info'):
-            no_previous_results = False
-
-    if len(new_sets) == 0 and no_previous_results:  # no update needed
+    if len(new_sets) == 0 and not has_previous_results:  # no update needed
         check.status = 'PASS'
         check.full_output = {}
         check.summary = check.description = "No update needed for Hi-C summary tables"
@@ -2391,9 +2403,7 @@ def check_hic_summary_tables(connection, **kwargs):
 
     else:
         check.status = 'WARN'
-        check.summary = 'New Hi-C datasets found'
-        # collect ALL metadata to patch
-        expsets = ff_utils.search_metadata(query, key=connection.ff_keys)
+        check.summary = 'New or problematic Hi-C datasets found'
 
         def _add_set_to_row(row, expset, dsg):
             ''' Add ExpSet metadata to the table row for dsg'''
@@ -2468,6 +2478,9 @@ def check_hic_summary_tables(connection, **kwargs):
             return row
 
         # build the table
+        # collect ALL metadata to patch
+        # get only needed fields
+        expsets = ff_utils.search_metadata(query, key=connection.ff_keys, is_generator=True)
         table = {}
         problematic = {}
         for a_set in expsets:
@@ -2489,7 +2502,6 @@ def check_hic_summary_tables(connection, **kwargs):
         if problems_to_remove:
             for prob in problems_to_remove:
                 table.pop(prob)
-
 
         # split table into studygroup-specific output tables
         output = {}

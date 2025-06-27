@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.9.25
+==========
+
+* fix ui bug due to removal of action from check_subclass_short - add back 'empty' action
+* refactor hi-c summary table check to use generator in search query
+
 4.9.24
 ======
 
