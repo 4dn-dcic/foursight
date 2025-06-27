@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+4.9.26
+==========
+* only a version bump to allow tagging via tag-and-push and make release history clear in pypi
+
 4.9.25
 ==========
 
