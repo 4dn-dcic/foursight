@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+4.9.27
+==========
+* modify missing raw file check to not add badge if files are restricted and missing as this is expected in some cases
+
 4.9.26
 ==========
 * only a version bump to allow tagging via tag-and-push and make release history clear in pypi
