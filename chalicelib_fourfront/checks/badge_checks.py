@@ -474,7 +474,11 @@ def exp_has_raw_files(connection, **kwargs):
     bad_status_ids = {item['@id']: item['status'] for item in bad_status}
     exps = list(set([exp['@id'] for fastq in bad_status for exp in
                      fastq.get('experiments') if fastq.get('experiments')]))
-    missing_files_released = [e['@id'] for e in no_files]
+    ok_status = ff_utils.search_metadata('search/?status=restricted&type=FileFastq&experiments.uuid%21=No+value',
+                                          key=connection.ff_keys)
+    ok_exps = list(set([exp['@id'] for fastq in ok_status for exp in
+                        fastq.get('experiments') if fastq.get('experiments')]))
+    missing_files_released = [e['@id'] for e in no_files if e['@id'] not in ok_exps]
     for expt in exps:
         result = ff_utils.get_metadata(expt, key=connection.ff_keys)
         raw_files = False
