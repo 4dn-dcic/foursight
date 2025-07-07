@@ -268,7 +268,7 @@ def md5run_uploaded_files(connection, **kwargs):
         else:
             files.setdefault('files_without_md5run', []).append(f['accession'])
 
-    if files['uploaded_without_md5run'] or files['uploaded_with_md5run']:
+    if files.get('uploaded_without_md5run') or files.get('uploaded_with_md5run'):
         check.status = 'WARN'
         check.summary = 'Some files need md5 run before release'
         check.description = 'Some files with status updloaded or higher are missing md5sum'
