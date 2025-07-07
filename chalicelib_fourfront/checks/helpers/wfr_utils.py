@@ -2072,3 +2072,19 @@ def limit_number_of_runs(check, my_auth):
         check.summary = f'Limiting the number of workflow runs to {n_runs_max} every 6h'
         check.full_output = {}
     return check, n_runs_available
+
+
+def prereleased_and_not_uploaded(connection, filemeta):
+    """Check if a file is pre-released and not uploaded yet.
+    This should only happen for files that are to be restricted status upon release.
+    Some files with pipelines will be uploaded so should have the usual basic QC run on them,
+    however, there will be cases where there is no processing pipeline so no need to upload the 
+    raw files and so the md5, fastq_first_line and fastQC can be skipped"""
+    statuses_to_check = ['pre-release', 'restricted']
+    if filemeta.get('status') not in statuses_to_check:
+        return False
+    my_s3_util = s3Utils(env=connection.ff_env)
+    if not my_s3_util.does_key_exist(filemeta.get('upload_key'), my_s3_util.raw_file_bucket):
+        # if the file is not in the raw bucket, it is not uploaded
+        return True
+    return False

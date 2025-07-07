@@ -161,8 +161,6 @@ def md5run_status(connection, **kwargs):
             check.brief_output.append('did not complete checking all')
             break
 
-        # cnt of files to be triggered at this iteration of loop
-        n_runs_to_trigger = len(missing_md5_to_start + not_switched_status)
         # find bucket
         if 'FileProcessed' in a_file['@type']:
             my_bucket = out_bucket
@@ -256,10 +254,19 @@ def md5run_uploaded_files(connection, **kwargs):
     query = '/search/?type=File&md5sum=No+value' + ''.join(['&status=' + s for s in statuses])
 
     files = {}
-    files['uploaded_without_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
-        query + '&workflow_run_inputs.workflow.title%21=md5+0.2.6', key=my_auth)]
-    files['uploaded_with_md5run'] = [f['accession'] for f in ff_utils.search_metadata(
-        query + '&workflow_run_inputs.workflow.title=md5+0.2.6', key=my_auth)]
+    no_md5_files = ff_utils.search_metadata(query, key=my_auth)
+    no_md5_files = [f for f in no_md5_files if not wfr_utils.prereleased_and_not_uploaded(connection, f)]
+    for f in no_md5_files:
+        wfrs = f.get('workflow_run_inputs')
+        has_md5run = False
+        for wfr in wfrs:
+            if wfr.get('workflow', {}).get('title') == 'md5+0.2.6':
+                has_md5run = True
+                break
+        if has_md5run:
+            files.setdefault('files_with_md5run', []).append(f['accession'])
+        else:
+            files.setdefault('files_without_md5run', []).append(f['accession'])
 
     if files['uploaded_without_md5run'] or files['uploaded_with_md5run']:
         check.status = 'WARN'
@@ -358,6 +365,9 @@ def fastqc_status(connection, **kwargs):
         query += '&lab.display_title=' + lab
     # The search
     res = ff_utils.search_metadata(query, key=my_auth)
+    # check for pre-released status files that have not been uploaded (because they will become restricted)
+    # and remove from res
+    res = [f for f in res if not wfr_utils.prereleased_and_not_uploaded(connection, f)]
     if not res:
         check.summary = 'All Good!'
         return check
@@ -2074,7 +2084,7 @@ def fastq_first_line_status(connection, **kwargs):
     # The search
     print('About to query ES for files')
     res = ff_utils.search_metadata(query, key=my_auth)
-
+    res = [f for f in res if not wfr_utils.prereleased_and_not_uploaded(connection, f)]
     if not res:
         check.summary = "All good!"
         return check
