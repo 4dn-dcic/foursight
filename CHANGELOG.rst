@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+4.9.28
+==========
+* update fastq checks to not run pipelines on pre-release status files that have not been uploaded as OK as they will become restricted
+* md5run_uploaded, fastqc, fastq_first_line
+
+
 4.9.27
 ==========
 * modify missing raw file check to not add badge if files are restricted and missing as this is expected in some cases
