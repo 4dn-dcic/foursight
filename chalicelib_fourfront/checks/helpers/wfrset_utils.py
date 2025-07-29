@@ -335,7 +335,7 @@ def step_settings(step_name, my_organism, attribution, overwrite=None):
             'rna.strandedness_direction': '',
             'rna.endedness': ''
         },
-        "config": {"instance_type": ["m5a.4xlarge", "m6a.4xlarge"]},
+        "config": {"instance_type": ["m5a.8xlarge", "m6a.8xlarge"]},
         'custom_pf_fields': {
             'rna.outbam': {
                 'genome_assembly': genome,
