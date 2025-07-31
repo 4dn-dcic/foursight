@@ -7,6 +7,11 @@ foursight
 Change Log
 ----------
 
+4.9.29
+==========
+* bug. fix for some pre-release files being missed that need md5 runs
+
+
 4.9.28
 ==========
 * update fastq checks to not run pipelines on pre-release status files that have not been uploaded as OK as they will become restricted

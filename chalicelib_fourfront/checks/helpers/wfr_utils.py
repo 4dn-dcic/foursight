@@ -2084,7 +2084,10 @@ def prereleased_and_not_uploaded(connection, filemeta):
     if filemeta.get('status') not in statuses_to_check:
         return False
     my_s3_util = s3Utils(env=connection.ff_env)
-    if not my_s3_util.does_key_exist(filemeta.get('upload_key'), my_s3_util.raw_file_bucket, False):
-        # if the file is not in the raw bucket, it is not uploaded
+    bucket = my_s3_util.raw_file_bucket
+    if 'FileProcessed' in filemeta.get('@type', []):
+        bucket = my_s3_util.outfile_bucket
+    if not my_s3_util.does_key_exist(filemeta.get('upload_key'), bucket, False):
+        # if the file is not in the bucket, it is not uploaded
         return True
     return False
