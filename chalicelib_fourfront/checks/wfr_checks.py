@@ -264,9 +264,9 @@ def md5run_uploaded_files(connection, **kwargs):
                 has_md5run = True
                 break
         if has_md5run:
-            files.setdefault('files_with_md5run', []).append(f['accession'])
+            files.setdefault('uploaded_with_md5run', []).append(f['accession'])
         else:
-            files.setdefault('files_without_md5run', []).append(f['accession'])
+            files.setdefault('uploaded_without_md5run', []).append(f['accession'])
 
     if files.get('uploaded_without_md5run') or files.get('uploaded_with_md5run'):
         check.status = 'WARN'
@@ -274,9 +274,9 @@ def md5run_uploaded_files(connection, **kwargs):
         check.description = 'Some files with status updloaded or higher are missing md5sum'
         check.brief_output = {k: str(len(v)) + ' files' for k, v in files.items()}
         check.full_output = files
-        if files['uploaded_without_md5run']:
+        if files.get('uploaded_without_md5run'):
             check.allow_action = True
-        if files['uploaded_with_md5run']:
+        if files.get('uploaded_with_md5run'):
             check.action_message = ('Action will only run on Files without previous md5 run. ' +
                                     'You need to manually fix those with previous md5 run.')
     else:
