@@ -930,7 +930,9 @@ def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, no
                 step2_result = get_wfr_out(bam_resp, 'hi-c-processing-bam', key=my_auth, all_wfrs=all_wfrs, **kwargs)
                 all_step2s.append((step2_result['status'], step2_result.get('annotated_bam')))
             # all bams should have same wfr
-            assert len(list(set(all_step2s))) == 1
+            if len(list(set(all_step2s))) != 1:
+                import pdb; pdb.set_trace()
+                # assert len(list(set(all_step2s))) == 1
             # check if part 2 run already
             if step2_result['status'] == 'complete':
                 # accumulate pairs files for step3
