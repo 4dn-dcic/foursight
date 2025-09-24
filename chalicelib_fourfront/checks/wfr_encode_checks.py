@@ -1,7 +1,7 @@
 from datetime import datetime
 from dcicutils import ff_utils
 from .helpers import wfr_utils
-
+from chalicelib_fourfront.checks.helpers.es_utils import expand_es_metadata
 # Use confchecks to import decorators object and its methods for each check module
 # rather than importing check_function, action_function, CheckResult, ActionResult
 # individually - they're now part of class Decorators in foursight-core::decorators
@@ -52,13 +52,13 @@ def chipseq_status(connection, **kwargs):
 
     for a_set in res:
         set_acc = a_set['accession']
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=[  # 'experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+        all_items, all_uuids = expand_es_metadata([a_set['uuid']], my_auth,
+                                                  store_frame='embedded',
+                                                  add_pc_wfr=True,
+                                                  ignore_field=[  # 'experiment_relation',
+                                                                'biosample_relation',
+                                                                'references',
+                                                                'reference_pubs'])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:
@@ -568,13 +568,13 @@ def atacseq_status(connection, **kwargs):
 
     for a_set in res:
         set_acc = a_set['accession']
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+        all_items, all_uuids = expand_es_metadata([a_set['uuid']], my_auth,
+                                                  store_frame='embedded',
+                                                  add_pc_wfr=True,
+                                                  ignore_field=['experiment_relation',
+                                                                'biosample_relation',
+                                                                'references',
+                                                                'reference_pubs'])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds, len(all_uuids))
         if (now-start).seconds > lambda_limit:

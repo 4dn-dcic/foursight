@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 from operator import itemgetter
 from tibanna_4dn.core import API
 from . import wfrset_utils
+from chalicelib_fourfront.checks.helpers.es_utils import expand_es_metadata
 
 lambda_limit = wfrset_utils.lambda_limit
 random_wait = wfrset_utils.random_wait
@@ -822,15 +823,17 @@ def check_runs_without_output(res, check, run_name, my_auth, start, **kwargs):
 
 def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
+    # es_client = kwargs.get('es_client')
     for a_set in res:
         # get all related items
-        all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
+        all_items, _ = expand_es_metadata([a_set['uuid']], my_auth,
                                                    store_frame='embedded',
                                                    add_pc_wfr=True,
                                                    ignore_field=['experiment_relation',
                                                                  'biosample_relation',
                                                                  'references',
-                                                                 'reference_pubs'])
+                                                                 'reference_pubs'],)
+                                                   #es_client=es_client)
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds)
@@ -1039,15 +1042,17 @@ def check_hic(res, my_auth, exp_type, check, start, lambda_limit, nore=False, no
 
 def check_margi(res, my_auth, exp_type, check, start, lambda_limit, nore=False, nonorm=False, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
+    # es_client = kwargs.get('es_client')
     for a_set in res:
         # get all related items
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+        all_items, all_uuids = expand_es_metadata([a_set['uuid']], my_auth,
+                                                  store_frame='embedded',
+                                                  add_pc_wfr=True,
+                                                  ignore_field=['experiment_relation',
+                                                                'biosample_relation',
+                                                                'references',
+                                                                'reference_pubs'],)
+                                                  # es_client=es_client)
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds, len(all_uuids))
@@ -1513,15 +1518,17 @@ def start_tasks(missing_runs, patch_meta, action, my_auth, my_env, fs_env, start
 
 def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
+    # es_client = kwargs.get('es_client')
     for a_set in res:
         # get all related items
-        all_items, _ = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                   store_frame='embedded',
-                                                   add_pc_wfr=True,
-                                                   ignore_field=['experiment_relation',
-                                                                 'biosample_relation',
-                                                                 'references',
-                                                                 'reference_pubs'])
+        all_items, _ = expand_es_metadata([a_set['uuid']], my_auth,
+                                          store_frame='embedded',
+                                          add_pc_wfr=True,
+                                          ignore_field=['experiment_relation',
+                                                        'biosample_relation',
+                                                        'references',
+                                                        'reference_pubs'],)
+                                          # es_client=es_client)
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         print(a_set['accession'], (now-start).seconds)
@@ -1666,15 +1673,17 @@ def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None
 
 def check_rna(res, my_auth, exp_type, check, start, lambda_limit, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
+    # es_client = kwargs.get('es_client')
     for a_set in res:
         # get all related items
-        all_items, all_uuids = ff_utils.expand_es_metadata([a_set['uuid']], my_auth,
-                                                           store_frame='embedded',
-                                                           add_pc_wfr=True,
-                                                           ignore_field=['experiment_relation',
-                                                                         'biosample_relation',
-                                                                         'references',
-                                                                         'reference_pubs'])
+        all_items, _ = expand_es_metadata([a_set['uuid']], my_auth,
+                                                  store_frame='embedded',
+                                                  add_pc_wfr=True,
+                                                  ignore_field=['experiment_relation',
+                                                                'biosample_relation',
+                                                                'references',
+                                                                'reference_pubs'],)
+                                                  # es_client=es_client)
         all_wfrs = all_items.get('workflow_run_awsem', []) + all_items.get('workflow_run_sbg', [])
         now = datetime.utcnow()
         # print(a_set['accession'], (now-start).seconds)

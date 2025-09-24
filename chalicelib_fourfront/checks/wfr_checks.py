@@ -786,7 +786,7 @@ def in_situ_hic_status(connection, **kwargs):
     if not res:
         check.summary = 'All Good!'
         return check
-    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, kwargs)
+    check = wfr_utils.check_hic(res, my_auth, exp_type, check, start, lambda_limit, **kwargs)
     return check
 
 
