@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 from operator import itemgetter
 from tibanna_4dn.core import API
 from . import wfrset_utils
+from chalicelib_fourfront.checks.helpers.es_utils import expand_es_metadata
 
 
 lambda_limit = wfrset_utils.lambda_limit
