@@ -1668,7 +1668,7 @@ def check_repli(res, my_auth, exp_type, check, start, lambda_limit, winsize=None
 
 def check_rna(res, my_auth, exp_type, check, start, lambda_limit, **kwargs):
     """Check run status for each set in res, and report missing runs and completed process"""
-     for a_set in res:
+    for a_set in res:
         # get all related items
         all_items, _ = expand_es_metadata([a_set['uuid']], my_auth,
                                                   store_frame='embedded',
