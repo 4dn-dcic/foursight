@@ -34,8 +34,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: Verify AWS Identity
-        run: aws sts get-caller-identity
       - name: Deploy
         env:
           DEV_SECRET: ${{ secrets.DEV_SECRET }}
