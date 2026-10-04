@@ -7,6 +7,12 @@ foursight
 Change Log
 ----------
 
+
+4.9.30
+==========
+* update lock file for security
+
+
 4.9.29
 ==========
 * bug. fix for some pre-release files being missed that need md5 runs
