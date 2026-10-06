@@ -7,10 +7,14 @@ foursight
 Change Log
 ----------
 
+4.9.31
+==========
+* update lock file for security
+
 
 4.9.30
 ==========
-* update lock file for security
+* update GA to use OIDC
 
 
 4.9.29
