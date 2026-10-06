@@ -7,6 +7,10 @@ foursight
 Change Log
 ----------
 
+4.9.31
+==========
+* update lock file for security updates
+
 
 4.9.30
 ==========
