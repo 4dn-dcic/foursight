@@ -131,18 +131,18 @@ docs = ["Pillow", "Sphinx (>3)", "sphinx-paramlinks", "sphinx_rtd_theme", "sphin
 
 [[package]]
 name = "boto3"
-version = "1.43.108"
+version = "1.43.109"
 description = "The AWS SDK for Python (Boto3)"
 category = "main"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "boto3-1.43.108-py3-none-any.whl", hash = "sha256:19e9da95ef0c494e27052049a42137550e66730509bb613e76eaa30ddf9a7170"},
-    {file = "boto3-1.43.108.tar.gz", hash = "sha256:03341f089158368acf83e921aca98b706095322ca52bc4c039a616940aa5ad41"},
+    {file = "boto3-1.43.109-py3-none-any.whl", hash = "sha256:703a81baed186d31e27cf50065d25a9faeb704f009e7c56b0f002ca52a328896"},
+    {file = "boto3-1.43.109.tar.gz", hash = "sha256:c829bc3352e1e3922d8fe1db10b697182ac411b64ce5fc3acb0a06a29837417e"},
 ]
 
 [package.dependencies]
-botocore = ">=1.43.108,<1.44.0"
+botocore = ">=1.43.109,<1.44.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.19.0,<0.20.0"
 
@@ -151,14 +151,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.43.108"
+version = "1.43.109"
 description = "Low-level, data-driven core of boto 3."
 category = "main"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "botocore-1.43.108-py3-none-any.whl", hash = "sha256:ab9d16c6b4350aaa54ed28202dfa2998b2d735fdbf3247eb60af469d8d48a5b8"},
-    {file = "botocore-1.43.108.tar.gz", hash = "sha256:ee4f75cf3bdbb0da7912e089950e8112f692016539d939312c771499958e6cfd"},
+    {file = "botocore-1.43.109-py3-none-any.whl", hash = "sha256:cd00edff465264fb448e36acc9ee29a828f738fff3746270b3f685a19194a5a6"},
+    {file = "botocore-1.43.109.tar.gz", hash = "sha256:46b15bea4d942aaea6d7ab7c4b8a3a7290305064a3b41a6cb271cde9da3ba371"},
 ]
 
 [package.dependencies]
@@ -779,14 +779,14 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "5.10.4.1b1"
+version = "5.10.4.1b2"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = "<3.13,>=3.10"
 files = [
-    {file = "foursight_core-5.10.4.1b1-py3-none-any.whl", hash = "sha256:575931205cc716aa23d21eb69c9fccff26276b85a7b51e5ef790e0fa671bbc84"},
-    {file = "foursight_core-5.10.4.1b1.tar.gz", hash = "sha256:9cf718da002f04865c9d6df7ecc9dfe6996791047224e826f8474592cfe294c1"},
+    {file = "foursight_core-5.10.4.1b2-py3-none-any.whl", hash = "sha256:fd2fbab270c943f40ed21221fbbf1d64b044c3a1c363f00dc24c2720ac71f379"},
+    {file = "foursight_core-5.10.4.1b2.tar.gz", hash = "sha256:fe37a694fbca7f03bec2ed5fb49f23dbbac0ee25af3dd2ffc2f94879e7820ff6"},
 ]
 
 [package.dependencies]
@@ -3035,4 +3035,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "da0bb1fbadf35ca8db665258eb197daecbf4a8d34877a5501f1e5894d47e95c8"
+content-hash = "55217230bc42ea95c958223f2a4dcecdbd2fa169816b789d45d8847fe4467798"
