@@ -779,14 +779,14 @@ files = [
 
 [[package]]
 name = "foursight-core"
-version = "5.10.4.1b2"
+version = "5.10.4.1b3"
 description = "Serverless Chalice Application for Monitoring"
 category = "main"
 optional = false
 python-versions = "<3.13,>=3.10"
 files = [
-    {file = "foursight_core-5.10.4.1b2-py3-none-any.whl", hash = "sha256:fd2fbab270c943f40ed21221fbbf1d64b044c3a1c363f00dc24c2720ac71f379"},
-    {file = "foursight_core-5.10.4.1b2.tar.gz", hash = "sha256:fe37a694fbca7f03bec2ed5fb49f23dbbac0ee25af3dd2ffc2f94879e7820ff6"},
+    {file = "foursight_core-5.10.4.1b3-py3-none-any.whl", hash = "sha256:241115787a16ef83500f3d4508679c41c7f67cd146b33bb91bf1523f560cbbf0"},
+    {file = "foursight_core-5.10.4.1b3.tar.gz", hash = "sha256:164837bb53a5f4573e74677dac82ecd5beace0c278104e662924fb73209c994c"},
 ]
 
 [package.dependencies]
@@ -964,14 +964,14 @@ uritemplate = ">=3.0.0,<4dev"
 
 [[package]]
 name = "google-auth"
-version = "2.60.0"
+version = "2.61.0"
 description = "Google Authentication Library"
 category = "main"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "google_auth-2.60.0-py3-none-any.whl", hash = "sha256:e78414cd2e22cc02884768707def024ca32da17695f2c0e6194cdbe1316c4cd4"},
-    {file = "google_auth-2.60.0.tar.gz", hash = "sha256:34aa0283ef72c99cd410e35db4417211fa3e6aaa5399183227bbe3b82bd15192"},
+    {file = "google_auth-2.61.0-py3-none-any.whl", hash = "sha256:ca60266a37475ae68b63bac007272f46094b3d571abe92aded329b6cfb568025"},
+    {file = "google_auth-2.61.0.tar.gz", hash = "sha256:37f0815967322e8c32b12bf422531e8b637cafdaae0acbb9141117cfe6a96f23"},
 ]
 
 [package.dependencies]
@@ -3035,4 +3035,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "55217230bc42ea95c958223f2a4dcecdbd2fa169816b789d45d8847fe4467798"
+content-hash = "a712d26d072dab5752f199261d532e6fc3d2cd3c39bc4a75844e1b014aaf7a82"
